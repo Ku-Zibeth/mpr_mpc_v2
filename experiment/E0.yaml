@@ -1,0 +1,18 @@
+# @package _global_
+exp_name: mpr_mpc_v2_E0
+cost:
+  enabled: false
+residual_rl:
+  constraint_alignment: false
+  conservative_cost: false
+  nonnegative_cost: false
+  risk_features: []
+  risk_auxiliary_weight: 0.0
+mpr_mpc:
+  mppi:
+    dynamic_safety: false
+    multimodal: false
+    absolute_smoothness: false
+    uncertainty_coef: 0.0
+    geometry_coef: 0.0
+    cost_coef: 0.0

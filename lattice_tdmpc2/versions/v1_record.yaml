@@ -1,0 +1,42 @@
+schema_version: 1
+algorithm_version: v1
+status: historical_checkpoint_only
+trained_at: 2026-09-08
+source_reproducible_from_current_tree: false
+
+wandb:
+  project: lattice_tdmpc2_sac_metadrive
+  run_name: lattice_tdmpc_sac_online_wm_cost_seed1
+  run_id: kafnd4rl
+  local_run: wandb/run-20260908_111601-kafnd4rl
+
+checkpoints:
+  sac_final: logs/residual_sac/lattice_tdmpc_sac_online_wm_cost_seed1/final.pt
+  sac_best: logs/residual_sac/lattice_tdmpc_sac_online_wm_cost_seed1/best.pt
+  world_model_final: logs/residual_sac/lattice_tdmpc_sac_online_wm_cost_seed1/world_model_final.pt
+
+training:
+  seed: 1
+  steps: 1000000
+  scenarios: {start_seed: 100, num_scenarios: 50}
+  planner: lattice_tdmpc_sac_wm_guided
+  world_model_mode: online
+  residual_selection: 16_candidates_scored_by_tdmpc2
+  action_mapping: legacy_dynamic_lateral_and_fixed_delta_v
+  delta_v_range_mps: [-2.0, 2.0]
+  lagrangian: false
+
+losses:
+  reward_critic: "MSE(Q1,y_reward) + MSE(Q2,y_reward)"
+  actor: "L_SAC + 0.1 * L_wm_aux + 0.01 * L_trust"
+  cost_critic: null
+  constraint_cost: null
+
+final_wandb_eval:
+  return: 303.63952844866435
+  cost: 3.886741644441666
+  success_rate: 0.7
+
+compatibility:
+  current_sac_loader: rejected_due_to_legacy_action_mapping
+  world_model_reusable: true

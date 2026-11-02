@@ -1,0 +1,28 @@
+# @package _global_
+
+defaults:
+  - /config
+  - _self_
+
+algorithm_version: lattice_tdmpc2_v2
+steps: 1000000
+horizon: 3
+planner:
+  type: lattice_tdmpc_sac
+residual_rl:
+  enabled: true
+  tdmpc2_checkpoint: <MPR_MetaDrive>/logs/residual_sac/lattice_tdmpc_sac_online_wm_cost_seed1/world_model_final.pt
+  training_mode: sac_residual_online_wm
+  freeze_tdmpc2: false
+  include_wm_return_in_state: true
+  include_wm_cost_in_state: true
+  use_world_model_cost: true
+  action_mapping: symmetric_coarse_speed_v2
+  delta_d_max: 0.4
+  trust_loss_weight: 0.01
+  unsafe_residual_cost: 1.0
+  use_lagrangian: true
+  cost_limit: 10.0
+  lagrangian_pid: [0.05, 0.0005, 0.1]
+wandb_project: lattice_tdmpc2_sac_metadrive
+wandb_run_name: lattice_tdmpc_sacl_online_wm_v2_reproduction_seed1

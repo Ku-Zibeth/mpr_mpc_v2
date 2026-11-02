@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+.venv/
+venv/
+conda-env/
+
+# IDE
+.vscode/
+.idea/
+
+# Environment variables
+.env
+.env.*
+
+# Logs
+*.log
+wandb/
+checkpoints/
+videos/
+.pytest_cache/
+
+# Model checkpoints
+*.pt
+*.pth
+*.ckpt
+
+# Cache / generated data
+*.npy
+*.npz
+
+# OS
+.DS_Store

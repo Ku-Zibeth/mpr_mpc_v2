@@ -1,0 +1,76 @@
+schema_version: 1
+algorithm_version: v4
+status: implementation_ready_untrained
+source_reproducible_from_current_tree: true
+source_provenance: versions/v4_plus_shared_current_modules
+
+wandb:
+  project: lattice_tdmpc2_sac_metadrive
+  run_name: lattice_tdmpc_sacl_v4_frozen_wm2_h10_costq_lane_width_seed1
+  run_id: null
+
+checkpoints:
+  sac_final: null
+  sac_best: null
+  world_model: logs/metadrive-risk/1/tdmpc2_mppi_teacher_costq_h10_v1/models/final.pt
+
+training:
+  seed: 1
+  steps: 1000000
+  horizon: 10
+  scenarios: {start_seed: 100, num_scenarios: 50}
+  traffic_density: 0.1
+  accident_prob: 0.8
+  planner: lattice_tdmpc_sac
+  world_model_mode: frozen
+  freeze_tdmpc2: true
+  residual_selection: one_direct_sac_output
+  action_mapping: lane_width_coarse_speed_v4
+  lateral_mapping: "delta_d = u_d * current_lane_width"
+  speed_mapping: "delta_v = u_v * coarse_target_speed"
+  include_wm_return_in_state: true
+  include_wm_cost_in_state: true
+
+world_model_constraint:
+  source: refined_trajectory_cost_to_go
+  target: "sum(t=0..9, 0.99^t * immediate_cost_t) + 0.99^10 * terminal_cost_Q"
+  terminal_cost_q: twin_average
+  environment_cost_usage: logging_and_evaluation_only
+
+sac:
+  hidden_sizes: [256, 256]
+  replay_size: 200000
+  batch_size: 256
+  gamma: 0.99
+  tau: 0.05
+  actor_lr: 0.0005
+  critic_lr: 0.001
+  alpha_lr: 0.0003
+  alpha_initial: 0.005
+  auto_alpha: true
+
+constraint:
+  implementation: projected_dual_gradient
+  update: "lambda = max(0, lambda + 0.01 * (mean_episode_wm_cost_to_go - 5.0))"
+  cost_limit: 5.0
+  lagrangian_lr: 0.01
+  episode_cost: mean_world_model_cost_to_go
+
+losses:
+  reward_critic: "MSE(Q1,y_reward) + MSE(Q2,y_reward)"
+  cost_target: frozen_world_model_cost_to_go
+  cost_critic: "Huber(QC1,c_wm_to_go) + Huber(QC2,c_wm_to_go)"
+  actor: "(L_SAC + lambda * mean(QC1,QC2)) / (1+lambda)"
+  cost_td_bootstrap: disabled_to_avoid_double_counting
+  trust_loss: removed
+
+safety_execution:
+  collision_terminates: false
+  environment_cost: v3_deduplicated_logging_only
+  zero_target_speed_supported: true
+  unsafe_residual: fallback_and_diagnostic_only
+
+compatibility:
+  v2_v3_sac_checkpoint_warm_start: false_due_to_action_mapping_change
+  from_scratch_retraining_with_current_source: true
+  exact_training_resume: false

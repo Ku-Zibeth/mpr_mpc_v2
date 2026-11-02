@@ -1,0 +1,9 @@
+# @package _global_
+defaults:
+  - E0
+  - _self_
+exp_name: mpr_mpc_v2_E1
+residual_rl:
+  constraint_alignment: true
+  conservative_cost: true
+  nonnegative_cost: true

@@ -1,0 +1,87 @@
+schema_version: 1
+algorithm_version: v2
+status: reconstructed_executable_version
+trained_at: 2026-09-10
+algorithm_semantics_reproducible_from_current_tree: true
+full_historical_tree_snapshot_available: false
+source_provenance: reconstructed_from_exact_local_v2_to_v3_source_diffs
+
+wandb:
+  project: lattice_tdmpc2_sac_metadrive
+  run_name: lattice_tdmpc_sacl_online_wm_v2_seed1
+  run_id: 1hbs0hck
+  local_run: wandb/run-20260910_142505-1hbs0hck
+
+checkpoints:
+  sac_final: logs/residual_sac/lattice_tdmpc_sacl_online_wm_v2_seed1/final.pt
+  sac_best: logs/residual_sac/lattice_tdmpc_sacl_online_wm_v2_seed1/best.pt
+  world_model_initial: logs/residual_sac/lattice_tdmpc_sac_online_wm_cost_seed1/world_model_final.pt
+  world_model_final: logs/residual_sac/lattice_tdmpc_sacl_online_wm_v2_seed1/world_model_final.pt
+
+training:
+  seed: 1
+  steps: 1000000
+  horizon: 3
+  scenarios: {start_seed: 100, num_scenarios: 50}
+  traffic_density: 0.1
+  accident_prob: 0.8
+  planner: lattice_tdmpc_sac
+  world_model_mode: online
+  freeze_tdmpc2: false
+  online_wm_update_every: 1
+  residual_selection: one_direct_sac_output
+  action_mapping: symmetric_coarse_speed_v2
+  delta_d_max: 0.4
+  include_wm_return_in_state: true
+  include_wm_cost_in_state: true
+
+sac:
+  hidden_sizes: [256, 256]
+  replay_size: 200000
+  batch_size: 256
+  gamma: 0.99
+  tau: 0.05
+  actor_lr: 0.0005
+  critic_lr: 0.001
+  alpha_lr: 0.0003
+  alpha_initial: 0.005
+  auto_alpha: true
+
+constraint:
+  implementation: pid_lagrangian
+  cost_limit: 10.0
+  pid: [0.05, 0.0005, 0.1]
+  unsafe_residual_cost: 1.0
+  episode_cost: "environment_cost + count(unsafe_residual)"
+
+losses:
+  reward_critic: "MSE(Q1,y_reward) + MSE(Q2,y_reward)"
+  cost_target: "c_constraint + gamma * max(target_QC1,target_QC2)"
+  cost_critic: "MSE(QC1,y_cost) + MSE(QC2,y_cost)"
+  actor: "(L_SAC + lambda * max(QC1,QC2)) / (1+lambda) + 0.01 * L_trust"
+
+known_issues:
+  - online_encoder_with_stale_latent_replay
+  - unsafe_residual_dominates_constraint_cost
+  - pid_integral_history_and_variable_episode_updates
+  - conservative_max_cost_target_and_mse_long_tail
+  - duplicate_collision_event_cost
+  - zero_target_speed_restored_to_13_89_mps
+  - trust_loss_penalizes_emergency_braking
+
+final_wandb_eval:
+  return: 302.1160352909748
+  cost: 6.018653842567536
+  success_rate: 0.7
+best_wandb_eval:
+  checkpoint_step: 850000
+  return: 321.94
+  cost: 4.30
+  success_rate: 0.8
+
+compatibility:
+  current_visual_evaluator: supported
+  versioned_training_implementation: versions/v2
+  from_scratch_reproduction: supported
+  exact_training_resume: false
+  resume_limitation: replay_buffer_and_environment_rng_are_not_checkpointed

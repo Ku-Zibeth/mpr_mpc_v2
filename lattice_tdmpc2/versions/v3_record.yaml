@@ -1,0 +1,83 @@
+schema_version: 1
+algorithm_version: v3
+status: current_reproducible_baseline
+trained_at: 2026-09-11
+source_reproducible_from_current_tree: true
+source_provenance: versions/v3_plus_shared_current_modules
+
+wandb:
+  project: lattice_tdmpc2_sac_metadrive
+  run_name: lattice_tdmpc_sacl_frozen_wm_cost5_v3_seed1
+  run_id: qkzu62g9
+  local_run: wandb/run-20260911_143813-qkzu62g9
+
+checkpoints:
+  sac_final: logs/residual_sac/lattice_tdmpc_sacl_frozen_wm_cost5_v3_seed1/final.pt
+  sac_best: logs/residual_sac/lattice_tdmpc_sacl_frozen_wm_cost5_v3_seed1/best.pt
+  world_model: logs/metadrive-risk/1/tdmpc2_mppi_teacher_cost_v2/models/final.pt
+
+training:
+  seed: 1
+  steps: 1000000
+  horizon: 3
+  scenarios: {start_seed: 100, num_scenarios: 50}
+  traffic_density: 0.1
+  accident_prob: 0.8
+  planner: lattice_tdmpc_sac
+  world_model_mode: frozen
+  freeze_tdmpc2: true
+  residual_selection: one_direct_sac_output
+  action_mapping: symmetric_coarse_speed_v2
+  delta_d_max: 0.4
+  include_wm_return_in_state: true
+  include_wm_cost_in_state: true
+
+sac:
+  hidden_sizes: [256, 256]
+  replay_size: 200000
+  batch_size: 256
+  gamma: 0.99
+  tau: 0.05
+  actor_lr: 0.0005
+  critic_lr: 0.001
+  alpha_lr: 0.0003
+  alpha_initial: 0.005
+  auto_alpha: true
+
+constraint:
+  implementation: projected_dual_gradient
+  update: "lambda = max(0, lambda + 0.01 * (episode_cost - 5.0))"
+  cost_limit: 5.0
+  lagrangian_lr: 0.01
+  unsafe_residual_cost: 0.0
+  episode_cost: environment_cost_only
+
+losses:
+  reward_critic: "MSE(Q1,y_reward) + MSE(Q2,y_reward)"
+  cost_target: "c_env + gamma * (1-done) * mean(target_QC1,target_QC2)"
+  cost_critic: "Huber(QC1,y_cost) + Huber(QC2,y_cost)"
+  actor: "(L_SAC + lambda * mean(QC1,QC2)) / (1+lambda)"
+  trust_loss: removed
+
+safety_execution:
+  collision_terminates: false
+  cost_events: alias_deduplicated_and_one_shot_per_contact
+  zero_target_speed_supported: true
+  unsafe_residual: fallback_and_diagnostic_only
+
+final_wandb_eval:
+  return: 279.59941021546257
+  cost: 2.2113609059218176
+  success_rate: 0.5
+best_wandb_eval:
+  checkpoint_step: 300000
+  return: 296.03
+  cost: 1.90
+  success_rate: 0.7
+
+compatibility:
+  current_visual_evaluator: supported
+  from_scratch_retraining_with_current_source: true
+  checkpoint_warm_start_with_current_source: true
+  exact_training_resume: false
+  exact_resume_blockers: [replay_buffer_not_saved, environment_rng_not_saved]

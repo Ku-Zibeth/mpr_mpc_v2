@@ -1,0 +1,36 @@
+# @package _global_
+
+defaults:
+  - /config
+  - _self_
+
+algorithm_version: lattice_tdmpc2_v4
+steps: 1000000
+horizon: 10
+planner:
+  type: lattice_tdmpc_sac
+residual_rl:
+  enabled: true
+  tdmpc2_checkpoint: <MPR_MetaDrive>/logs/metadrive-risk/1/tdmpc2_mppi_teacher_costq_h10_v1/models/final.pt
+  sac_checkpoint: null
+  training_mode: sac_residual_frozen_wm
+  freeze_tdmpc2: true
+  include_wm_return_in_state: true
+  include_wm_cost_in_state: true
+  include_wm_uncertainty_in_state: false
+  use_world_model_cost: true
+  use_terminal_cost_q: true
+  wm_cost_gamma: 0.99
+  constraint_cost_source: world_model_cost_to_go
+  action_mapping: lane_width_coarse_speed_v4
+  use_lagrangian: true
+  cost_limit: 5.0
+  lagrangian_lr: 0.01
+cost:
+  enabled: true
+  gamma: 0.99
+  q_enabled: true
+  num_q: 2
+  q_loss_coef: 1.0
+wandb_project: lattice_tdmpc2_sac_metadrive
+wandb_run_name: lattice_tdmpc_sacl_v4_frozen_wm2_h10_costq_lane_width_seed1

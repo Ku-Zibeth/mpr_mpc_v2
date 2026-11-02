@@ -1,0 +1,10 @@
+# @package _global_
+defaults:
+  - E1
+  - _self_
+exp_name: mpr_mpc_v2_E2
+cost:
+  enabled: true
+mpr_mpc:
+  mppi:
+    cost_coef: 1.0

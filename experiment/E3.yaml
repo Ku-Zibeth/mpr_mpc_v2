@@ -1,0 +1,9 @@
+# @package _global_
+defaults:
+  - E2
+  - _self_
+exp_name: mpr_mpc_v2_E3
+mpr_mpc:
+  mppi:
+    dynamic_safety: true
+    geometry_coef: 10.0

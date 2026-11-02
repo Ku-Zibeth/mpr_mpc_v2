@@ -1,0 +1,14 @@
+# @package _global_
+# Explicit opt-in; the repository's original 1M-step default is unchanged.
+steps: 50000
+residual_rl:
+  freeze_tdmpc2_on_start: true
+mpr_mpc:
+  stages:
+    residual_start_step: 20000
+    mppi_start_step: 50000
+milestone_checkpoints:
+  world_model_step: 20000
+  world_model_residual_step: 50000
+  full_model_step: 50000
+eval_freq: 10000

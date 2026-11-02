@@ -1,0 +1,233 @@
+defaults:
+    - override hydra/launcher: submitit_local
+
+# environment
+task: dog-run
+obs: state
+episodic: false
+
+# evaluation
+checkpoint: ???
+eval_episodes: 10
+eval_freq: 50000
+
+# training
+steps: 1_000_000
+batch_size: 256
+reward_coef: 0.1
+value_coef: 0.1
+termination_coef: 1
+consistency_coef: 20
+rho: 0.5
+lr: 3e-4
+enc_lr_scale: 0.3
+grad_clip_norm: 20
+tau: 0.01
+discount_denom: 5
+discount_min: 0.95
+discount_max: 0.995
+buffer_size: 1_000_000
+exp_name: default
+data_dir: ???
+
+# planning
+mpc: true
+iterations: 6
+num_samples: 512
+num_elites: 64
+num_pi_trajs: 24
+horizon: 3
+min_std: 0.05
+max_std: 2
+temperature: 0.5
+
+planner:
+    type: mppi
+    final_cost_lambda: 0.0
+    num_candidates: 64
+
+lattice:
+    frenet_target_speed: 13.89
+    frenet_dt: 0.1
+    frenet_time_horizon: 3.0
+    frenet_time_horizons: [2.0, 3.0]
+    frenet_speed_offsets: [0.0, -4.0, -8.0]
+    frenet_lateral_sample_count: 5
+    frenet_obstacle_check: true
+    frenet_filter_off_lane_paths: true
+    frenet_show_in_window: true
+
+residual_rl:
+    enabled: false
+    tdmpc2_checkpoint: null
+    sac_checkpoint: null
+    training_mode: sac_residual_frozen_wm
+    device: cuda
+    # u_d maps linearly to [-delta_d_max, +delta_d_max]. u_v maps linearly
+    # to [-coarse_target_speed, +coarse_target_speed].
+    action_mapping: symmetric_coarse_speed_v2
+    delta_d_max: 0.4
+    sigma_d: 0.4
+    sigma_v: 2.0
+    path_feature_scales: null
+    path_feature_clip: 5.0
+    include_wm_return_in_state: true
+    include_wm_cost_in_state: false
+    include_wm_uncertainty_in_state: false
+    wm_return_state_scale: 10.0
+    wm_cost_state_scale: 10.0
+    wm_uncertainty_state_scale: 10.0
+    use_world_model_cost: false
+    use_uncertainty: true
+    wm_cost_weight: 1.0
+    wm_uncertainty_weight: 0.0
+    wm_delta_weight: 0.1
+    freeze_tdmpc2: true
+    safe_fallback: true
+    seed_steps: 5000
+    learning_starts: 5000
+    update_per_step: 0.2
+    replay_size: 200000
+    batch_size: 256
+    n_step: 1
+    gamma: 0.99
+    actor_lr: 0.0005
+    critic_lr: 0.001
+    alpha_lr: 0.0003
+    alpha: 0.005
+    auto_alpha: true
+    tau: 0.05
+    use_lagrangian: true
+    cost_limit: 10.0
+    lagrangian_lr: 0.01
+    lagrangian_rescaling: true
+    hidden_sizes: [256, 256]
+    checkpoint_every: 50000
+    eval_every: 50000
+    eval_episodes: 10
+    log_every: 1000
+    output_dir: logs/residual_sac
+    online_wm_update_every: 1
+
+flow:
+    enabled: false
+    model_type: x_start
+    hidden_dim: 256
+    num_layers: 4
+    num_heads: 4
+    dropout: 0.0
+    condition_dim: 0
+    condition_dropout: 0.1
+    horizon: null
+    num_flow_steps: 8
+    num_samples: 64
+    solver: midpoint
+    cfg_scale: 1.0
+    ema: false
+    checkpoint: null
+
+teacher:
+    num_candidates: 512
+    num_elites: 64
+    selection_mode: value
+    cost_lambda: 0.0
+    diversity_filter: false
+    diversity_threshold: 0.0
+    dataset_path: datasets/flow_elites
+    chunk_size: 8192
+    rollout_steps: 10000
+
+flow_train:
+    batch_size: 256
+    lr: 3e-4
+    epochs: 10
+    beta: 1.0
+    weight_mode: none
+    lambda_cost: 0.0
+    min_weight: 0.05
+    max_weight: 20.0
+    lambda_smooth: 0.0
+    lambda_cons: 0.0
+    val_fraction: 0.05
+    checkpoint_dir: logs/flow/checkpoints
+    log_checkpoints_to_wandb: true
+
+guidance:
+    use_reward: true
+    use_cost: false
+    reward_scale: 0.0
+    cost_scale: 0.0
+    normalize_grad: true
+    grad_clip: 1.0
+    start_time: 0.0
+    end_time: 1.0
+
+cost:
+    enabled: true
+    gamma: 0.99
+    loss_coef: 1.0
+    event_weights:
+        cost: 1.0
+        crash: 1.0
+        crash_vehicle: 1.0
+        crash_object: 1.0
+        out_of_road: 1.0
+        out_of_road_warning: 1.0
+
+self_improve:
+    enabled: false
+    every_env_steps: 50000
+    teacher_samples: 2048
+    flow_updates: 1000
+    dataset_max_size: 1000000
+    log_checkpoints_to_wandb: true
+
+# actor
+log_std_min: -10
+log_std_max: 2
+entropy_coef: 1e-4
+
+# critic
+num_bins: 101
+vmin: -10
+vmax: +10
+
+# architecture
+model_size: ???
+num_enc_layers: 2
+enc_dim: 256
+num_channels: 32
+mlp_dim: 512
+latent_dim: 512
+task_dim: 96
+num_q: 5
+dropout: 0.01
+simnorm_dim: 8
+
+# logging
+wandb_project: ???
+wandb_entity: ???
+wandb_run_name: null
+wandb_silent: false
+enable_wandb: true
+save_csv: true
+
+# misc
+compile: false
+save_video: true
+save_agent: true
+seed: 1
+
+# convenience
+work_dir: ???
+task_title: ???
+multitask: ???
+tasks: ???
+obs_shape: ???
+action_dim: ???
+episode_length: ???
+obs_shapes: ???
+action_dims: ???
+episode_lengths: ???
+seed_steps: ???
+bin_size: ???
