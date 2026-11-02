@@ -1,5 +1,8 @@
 # MPR-MPC V2 Delivery
 
+The current third-round changes and verification are in [ROUND3_REPORT.md](ROUND3_REPORT.md).
+Earlier verification below is historical and does not supersede that report.
+
 ## Scope And Status
 
 The prompt-alignment revision additionally completes independent per-mode MPPI
@@ -23,8 +26,8 @@ visibility. Run from the V2 directory; outputs stay under its own `logs`.
 
 ### Train The Full E5 Model
 
-This explicitly opts into the requested frozen 20K/50K schedule. It does NOT
-silently change the repository's default one-million-step schedule.
+The default is the requested frozen 20K/50K schedule. The named schedule below
+is an equivalent explicit alias; training actions never enable MPPI.
 Training seeds 10000--11999 are disjoint from the supplied fixed-100 test set.
 The last 20 training-pool maps are reserved for calibration/evaluation and
 never enter either training replay.
@@ -46,13 +49,14 @@ MUJOCO_GL=egl PYTHONUNBUFFERED=1 \
 Expected model directory: `logs/metadrive-risk/1/mpr_mpc_v2_E5/models/`.
 It contains `milestone_20k_world_model.pt`,
 `milestone_50k_world_model_residual_rl.pt`,
-`milestone_50k_full_mpr_mpc.pt`, `best.pt`, `latest.pt`, and `final.pt`.
+`milestone_50k_full_mpr_mpc.pt`, `latest.pt`, and `final.pt`; `best.pt` is written
+only when the safety/progress feasibility checks pass.
 The full 50K artifact packages WM/SAC/planner deployment state; MPPI itself has
 no learned weights and does not need a million-step checkpoint to run.
 
-To retain the original actual schedule, omit `+schedule=frozen_20k_50k`:
-1M steps, residual start 20K, MPPI start 50K, WM freeze false. Other defaults
-including 20 evaluation episodes, no video, and 64 local samples remain.
+Omitting `+schedule=frozen_20k_50k` also uses 50K steps, residual start 20K,
+MPPI deployment threshold 50K, and WM freeze true. Other defaults including
+20 evaluation episodes, no video, and 64 local samples remain.
 Do not confuse top-level TD-MPC2 `num_samples=512` with
 `mpr_mpc.mppi.num_samples=64`, which is the optimizer used by this stack.
 
@@ -279,18 +283,21 @@ not the infinite-horizon SAC cost critic. A hallucinated learned termination
 does not suppress future safety predictions. Terminal Q is a value estimate,
 not an extra explicit safety step.
 
-Before cost may affect state/scoring/auxiliary labels, validation requires:
-at least 1000 cost-supervised updates, 128 held-out windows, one-step MAE<=.1,
-RMSE<=.5, cumulative MAE<=H*.1, cumulative RMSE<=H*.5, and pairwise risk ranking
-accuracy>=.55 at the requested horizon. Horizons 1/5/10/15/20 and the active H
-are evaluated using real recorded controls and matching future costs. Ties
-within .05 are excluded from pairwise ranking. Constant-cost validation has
-no identifiable ranking and does NOT pass just because its MAE is low.
+Before cost may affect state/scoring/auxiliary labels, each actual candidate
+mode must pass at the requested horizon: at least 1000 cost-supervised updates,
+128 real candidate replays from at least 10 held-out scenes, one-step MAE<=.1,
+RMSE<=.5, cumulative MAE<=H*.1, cumulative RMSE<=H*.5, cross-scene risk ranking
+accuracy>=.60 and scenario-cluster bootstrap 95% lower bound>=.50. Horizons
+1/5/10/15/20 and active H are validated independently. One-step approval is
+also required for longer horizons. Ties within .05 and within-scene pairs do
+not identify cross-scene ranking; constant/low-variance labels cannot pass.
+Legacy executed Lattice/SAC windows remain diagnostics, never mode approvals.
+See the independent reset/replay collector and commands in ROUND3_REPORT.md.
 
 Predictions are revalidated every 1000 cost updates on cached held-out data,
-at evaluation, and before freezing. A validation approval lasts at most the
-interval until the next check, not indefinitely while weights change. A
-per-horizon mask and update count are checkpoint buffers. Different environment
+at evaluation, and before freezing. Mode approval is revoked immediately at
+ANY WM optimizer step; a cached independent mode dataset can re-establish it.
+Per-mode/horizon masks and update stamps are checkpoint buffers. Different environment
 cost/risk definitions or missing historical validation revoke readiness.
 Validation metrics computed after a test run are diagnostics, not proof that
 untested counterfactual candidate controls are all calibrated.
@@ -432,7 +439,7 @@ from scratch, or explicitly retain legacy semantics for a legacy resume.
 | `evaluate_frozen_stack.py` | Composite weights, optional MPPI file, diagnostics/reports |
 | `evaluate_model_suite.py` | Architecture inference, seed-range checks and new metrics |
 | `experiment/E0.yaml` through `E5.yaml` | Independent cumulative ablation configurations |
-| `schedule/frozen_20k_50k.yaml` | Explicit alternative to original actual default schedule |
+| `schedule/frozen_20k_50k.yaml` | Explicit alias of the default frozen 20K/50K schedule |
 | `scenarios/fixed100.json` | User-supplied fixed evaluation IDs, preserved order |
 | `tests/test_v2_safety.py` | New safety/risk/replay/calibration/constraint tests |
 | `tests/test_v2_cost_training.py` | Real CUDA cost-head optimizer/rollout/legacy test |
@@ -451,7 +458,7 @@ cd /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2
 /home/kzb/anaconda3/envs/tdmpc2/bin/python tools/smoke_v2.py
 ```
 
-Verified on the local CUDA/MetaDrive installation:
+Historical pre-third-round verification on the local CUDA/MetaDrive installation:
 
 - 94 tests passing across `tests` and `env/tests`, including a real cost-head
   optimizer step (not only mocks).

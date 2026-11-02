@@ -1,5 +1,5 @@
 # @package _global_
-# Explicit opt-in; the repository's original 1M-step default is unchanged.
+# Named alias of the deployment-only MPPI schedule, also the V2 default.
 steps: 50000
 residual_rl:
   freeze_tdmpc2_on_start: true

@@ -7,7 +7,7 @@ check, not a guarantee against unobserved motion or Bullet integration error.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
@@ -30,6 +30,7 @@ class SafetyContext:
     previous_action: np.ndarray
     road: Any
     obstacles: tuple
+    cache: dict = field(default_factory=dict, repr=False)
 
 
 @dataclass
@@ -44,10 +45,11 @@ class SafetyResult:
     soft_risk: torch.Tensor
     emergency_cost: torch.Tensor
     positions: torch.Tensor
+    boundary_risk: torch.Tensor | None = None
 
     def summary(self, index=0):
         return {key: float(getattr(self, key)[index].cpu())
-                for key in ("min_clearance", "min_ttc", "boundary_margin", "soft_risk")}
+                for key in ("min_clearance", "min_ttc", "boundary_margin", "soft_risk", "boundary_risk")}
 
 
 def _corners(positions, headings, length, width):
@@ -73,12 +75,18 @@ class TrajectorySafetyEvaluator:
         self.device = torch.device(device)
         self.substeps = int(cfg.get("substeps", 5))
         self.model_margin = float(cfg.get("model_margin", 0.0))
+        for name in ("soft_boundary_margin", "boundary_risk_weight", "clearance_risk_weight", "ttc_risk_weight", "road_margin"):
+            value = float(cfg.get(name, .5 if name == "soft_boundary_margin" else 1. if name.endswith("weight") else .15))
+            if not np.isfinite(value) or value < 0:
+                raise ValueError(f"{name} must be finite and nonnegative.")
         if not np.isfinite([self.dt, self.model_margin]).all() or self.dt <= 0 or self.model_margin < 0 or self.substeps <= 0:
             raise ValueError("Safety timestep/substeps must be positive and model_margin finite/nonnegative.")
         self._road_cache = {}
+        self._road_geometry_cache = {}
 
     def reset(self):
         self._road_cache.clear()
+        self._road_geometry_cache.clear()
 
     def context(self, planner, vehicle, *, width, wheelbase, max_steering):
         navigation = getattr(vehicle, "navigation", None)
@@ -173,23 +181,26 @@ class TrajectorySafetyEvaluator:
         ego_length, ego_width = context.length + 2*self.model_margin, context.width + 2*self.model_margin
         ego = _corners(positions, headings, ego_length, ego_width)
         road = context.road
-        safe_road = road.buffer(-float(self.cfg.get("road_margin", 0.15)))
-        prepared = prep(safe_road)
+        road_key = (id(road), float(self.cfg.get("road_margin", 0.15)))
+        if road_key not in self._road_geometry_cache:
+            safe_road = road.buffer(-road_key[1])
+            self._road_geometry_cache[road_key] = (road, safe_road, prep(safe_road), road.boundary)
+        _, safe_road, prepared, road_boundary = self._road_geometry_cache[road_key]
         corners_array = ego.cpu().numpy().reshape(-1, 4, 2)
         if hasattr(shapely, "polygons"):
             footprints = shapely.polygons(corners_array)
             road_valid = shapely.covers(safe_road, footprints)
             inside = shapely.covers(road, footprints)
-            inside_margin = shapely.distance(road.boundary, footprints)
+            inside_margin = shapely.distance(road_boundary, footprints)
             outside_margin = shapely.distance(shapely.points(corners_array), road).max(-1)
-            margins = np.where(inside, inside_margin, -outside_margin)
+            margins = np.where(inside, inside_margin, -np.maximum(outside_margin, 1e-6))
         else:
             road_valid, margins = [], []
             for corners in corners_array:
                 footprint = Polygon(corners)
                 road_valid.append(prepared.covers(footprint))
                 margins.append(road.boundary.distance(footprint) if road.covers(footprint)
-                               else -max(Point(point).distance(road) for point in corners))
+                               else -max(1e-6, max(Point(point).distance(road) for point in corners)))
         road_valid = torch.tensor(road_valid, device=actions.device).view(n, steps)
         offroad = ~road_valid.all(1)
         margin = actions.new_tensor(margins).view(n, steps).amin(1)
@@ -199,11 +210,12 @@ class TrajectorySafetyEvaluator:
         obstacles = context.obstacles
         if obstacles:
             times = actions.new_tensor(np.arange(steps) * self.dt / self.substeps)
-            other_xy = actions.new_tensor(np.asarray([o.position for o in obstacles]))
-            other_v = actions.new_tensor(np.asarray([o.velocity for o in obstacles]))
-            other_heading = actions.new_tensor([o.heading for o in obstacles])
-            lengths = actions.new_tensor([o.length for o in obstacles])
-            widths = actions.new_tensor([o.width for o in obstacles])
+            tensor_key = (str(actions.device), actions.dtype)
+            if tensor_key not in context.cache:
+                context.cache[tensor_key] = tuple(actions.new_tensor(values) for values in (
+                    np.asarray([o.position for o in obstacles]), np.asarray([o.velocity for o in obstacles]),
+                    [o.heading for o in obstacles], [o.length for o in obstacles], [o.width for o in obstacles]))
+            other_xy, other_v, other_heading, lengths, widths = context.cache[tensor_key]
             predicted = other_xy[None] + times[:, None, None] * other_v[None]
             other = _corners(predicted, other_heading[None].expand(steps, -1), lengths[None, :, None], widths[None, :, None])
             ego_forward = torch.stack((headings.cos(), headings.sin()), -1)
@@ -235,16 +247,20 @@ class TrajectorySafetyEvaluator:
             entry = torch.where(moving, entry, torch.where(distance.abs() <= radius, -torch.inf, torch.inf))
             exit = torch.where(moving, exit, torch.where(distance.abs() <= radius, torch.inf, -torch.inf))
             entry, exit = entry.amax(-1).clamp_min(0), exit.amin(-1)
-            contact_time = torch.where((exit >= entry) & (entry <= float(self.cfg.get("ttc_lookahead", 5.0))), entry, torch.inf)
+            absolute_entry = times[None, :, None] + entry
+            contact_time = torch.where((exit >= entry) & (absolute_entry <= float(self.cfg.get("ttc_lookahead", 5.0))), absolute_entry, torch.inf)
             ttc = contact_time.amin(dim=(1, 2))
         hit = collision.any(1)
         distance_margin = float(self.cfg.get("soft_clearance", 1.0))
         ttc_margin = float(self.cfg.get("soft_ttc", 3.0))
-        soft = (distance_margin-clearance).clamp_min(0)/max(distance_margin, 1e-6)
-        soft += (ttc_margin-ttc).clamp_min(0)/max(ttc_margin, 1e-6)
+        boundary_safe = float(self.cfg.get("soft_boundary_margin", .5))
+        boundary_risk = (boundary_safe-margin).clamp_min(0)/max(boundary_safe, 1e-6)
+        soft = float(self.cfg.get("clearance_risk_weight", 1.0)) * (distance_margin-clearance).clamp_min(0)/max(distance_margin, 1e-6)
+        soft += float(self.cfg.get("ttc_risk_weight", 1.0)) * (ttc_margin-ttc).clamp_min(0)/max(ttc_margin, 1e-6)
+        soft += float(self.cfg.get("boundary_risk_weight", 1.0)) * boundary_risk
         valid = (~hit & ~offroad & ~kinematic
                  & (clearance >= float(self.cfg.get("hard_clearance", 0.0)))
                  & (ttc >= float(self.cfg.get("hard_ttc", 0.0))))
         emergency = (collision.float().sum(1)*10000 + (~road_valid).float().sum(1)*10000
                      + kinematic.float()*1000 + soft*100 + speeds[:, -1].square())
-        return SafetyResult(valid, hit, offroad, kinematic, clearance, ttc, margin, soft, emergency, positions)
+        return SafetyResult(valid, hit, offroad, kinematic, clearance, ttc, margin, soft, emergency, positions, boundary_risk)

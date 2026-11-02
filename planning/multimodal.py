@@ -4,6 +4,9 @@ import torch
 
 
 MODE_NAMES = ("nominal", "braking", "lateral", "joint")
+# Actual component IDs: negative steering is right, positive steering is left
+# in the validated MetaDrive XY/heading convention.
+MODE_COMPONENT_NAMES = ("nominal", "braking", "right_lateral", "left_lateral", "joint_right", "joint_left")
 
 
 class MultiModalProposals:

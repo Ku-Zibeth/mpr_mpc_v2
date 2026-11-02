@@ -1,0 +1,533 @@
+{
+  "mean_ms": 1079.8655148386024,
+  "p50_ms": 765.2498650131747,
+  "p95_ms": 1748.183106444776,
+  "p99_ms": 1837.6406968478113,
+  "max_ms": 1840.0036168750376,
+  "planning_calls": 100,
+  "revision": "d2cbefb6af4af5c7cef31dac13fc2651fd57c897",
+  "source_root": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2",
+  "checkpoint": "/tmp/mpr_v2_prompt_train_smoke/models/milestone_24_full_mpr_mpc.pt",
+  "device": "NVIDIA GeForce RTX 3070",
+  "horizon": 10,
+  "samples": 64,
+  "iterations": 4,
+  "seed": 1,
+  "scenarios": [
+    1714,
+    539,
+    1525,
+    1084,
+    694
+  ],
+  "warmup_per_scene": 5,
+  "prefix_steps": 20,
+  "states": [
+    {
+      "scenario": 1714,
+      "position": [
+        10.315338134765625,
+        0.06203002855181694
+      ],
+      "velocity": [
+        5.478614330291748,
+        0.06822133809328079
+      ],
+      "heading": 0.012299676336476217
+    },
+    {
+      "scenario": 539,
+      "position": [
+        10.343459129333496,
+        0.9444801807403564
+      ],
+      "velocity": [
+        5.513374328613281,
+        1.0335501432418823
+      ],
+      "heading": 0.18314825132583934
+    },
+    {
+      "scenario": 1525,
+      "position": [
+        10.06427001953125,
+        1.7170004844665527
+      ],
+      "velocity": [
+        5.2313032150268555,
+        1.9260672330856323
+      ],
+      "heading": 0.3444552527616658
+    },
+    {
+      "scenario": 1084,
+      "position": [
+        10.308252334594727,
+        3.5
+      ],
+      "velocity": [
+        5.471286296844482,
+        9.175968784802535e-07
+      ],
+      "heading": 1.331580543606492e-07
+    },
+    {
+      "scenario": 694,
+      "position": [
+        10.9583740234375,
+        3.5
+      ],
+      "velocity": [
+        6.141409873962402,
+        8.495699148625135e-07
+      ],
+      "heading": 0.0
+    }
+  ],
+  "profiles": [
+    {
+      "context_construction": {
+        "cpu_wall_ms": 61.76259298808873,
+        "cuda_stream_elapsed_ms": 61.748512268066406
+      },
+      "candidate_generation": {
+        "cpu_wall_ms": 4.246836062520742,
+        "cuda_stream_elapsed_ms": 4.13260805606842
+      },
+      "safety_check": {
+        "cpu_wall_ms": 1568.61751107499,
+        "cuda_stream_elapsed_ms": 1569.0249843597412
+      },
+      "world_model_evaluation": {
+        "cpu_wall_ms": 63.48540121689439,
+        "cuda_stream_elapsed_ms": 62.68649673461914
+      },
+      "cost_evaluation": {
+        "cpu_wall_ms": 0,
+        "cuda_stream_elapsed_ms": 0
+      },
+      "candidate_scoring": {
+        "cpu_wall_ms": 1.2057200074195862,
+        "cuda_stream_elapsed_ms": 1.089440017938614
+      },
+      "distribution_update": {
+        "cpu_wall_ms": 16.775935888290405,
+        "cuda_stream_elapsed_ms": 16.804255962371826
+      },
+      "total_planning": {
+        "cpu_wall_ms": 1704.4804038014263,
+        "cuda_stream_elapsed_ms": 1704.45361328125
+      }
+    },
+    {
+      "context_construction": {
+        "cpu_wall_ms": 61.721110017970204,
+        "cuda_stream_elapsed_ms": 61.7108154296875
+      },
+      "candidate_generation": {
+        "cpu_wall_ms": 6.826498080044985,
+        "cuda_stream_elapsed_ms": 6.862848162651062
+      },
+      "safety_check": {
+        "cpu_wall_ms": 1473.1284028384835,
+        "cuda_stream_elapsed_ms": 1473.025369644165
+      },
+      "world_model_evaluation": {
+        "cpu_wall_ms": 62.61936901137233,
+        "cuda_stream_elapsed_ms": 62.123711585998535
+      },
+      "cost_evaluation": {
+        "cpu_wall_ms": 0,
+        "cuda_stream_elapsed_ms": 0
+      },
+      "candidate_scoring": {
+        "cpu_wall_ms": 1.2338720262050629,
+        "cuda_stream_elapsed_ms": 1.0262400060892105
+      },
+      "distribution_update": {
+        "cpu_wall_ms": 19.12433677352965,
+        "cuda_stream_elapsed_ms": 19.45414400100708
+      },
+      "total_planning": {
+        "cpu_wall_ms": 1612.833575811237,
+        "cuda_stream_elapsed_ms": 1612.8336181640625
+      }
+    },
+    {
+      "context_construction": {
+        "cpu_wall_ms": 55.90996379032731,
+        "cuda_stream_elapsed_ms": 55.89731216430664
+      },
+      "candidate_generation": {
+        "cpu_wall_ms": 6.692142225801945,
+        "cuda_stream_elapsed_ms": 7.059616148471832
+      },
+      "safety_check": {
+        "cpu_wall_ms": 605.8581133838743,
+        "cuda_stream_elapsed_ms": 605.7798385620117
+      },
+      "world_model_evaluation": {
+        "cpu_wall_ms": 63.288497272878885,
+        "cuda_stream_elapsed_ms": 62.61123275756836
+      },
+      "cost_evaluation": {
+        "cpu_wall_ms": 0,
+        "cuda_stream_elapsed_ms": 0
+      },
+      "candidate_scoring": {
+        "cpu_wall_ms": 1.2138269376009703,
+        "cuda_stream_elapsed_ms": 0.8908799886703491
+      },
+      "distribution_update": {
+        "cpu_wall_ms": 20.923086209222674,
+        "cuda_stream_elapsed_ms": 21.082784175872803
+      },
+      "total_planning": {
+        "cpu_wall_ms": 747.6962190121412,
+        "cuda_stream_elapsed_ms": 747.6781005859375
+      }
+    },
+    {
+      "context_construction": {
+        "cpu_wall_ms": 56.91213393583894,
+        "cuda_stream_elapsed_ms": 56.90156936645508
+      },
+      "candidate_generation": {
+        "cpu_wall_ms": 6.97512342594564,
+        "cuda_stream_elapsed_ms": 6.980799853801727
+      },
+      "safety_check": {
+        "cpu_wall_ms": 522.47195225209,
+        "cuda_stream_elapsed_ms": 522.3867568969727
+      },
+      "world_model_evaluation": {
+        "cpu_wall_ms": 62.83071939833462,
+        "cuda_stream_elapsed_ms": 62.297696113586426
+      },
+      "cost_evaluation": {
+        "cpu_wall_ms": 0,
+        "cuda_stream_elapsed_ms": 0
+      },
+      "candidate_scoring": {
+        "cpu_wall_ms": 1.218669582158327,
+        "cuda_stream_elapsed_ms": 1.0755199790000916
+      },
+      "distribution_update": {
+        "cpu_wall_ms": 15.012286836281419,
+        "cuda_stream_elapsed_ms": 14.9376962184906
+      },
+      "total_planning": {
+        "cpu_wall_ms": 654.4541080947965,
+        "cuda_stream_elapsed_ms": 654.4473876953125
+      }
+    },
+    {
+      "context_construction": {
+        "cpu_wall_ms": 55.66953797824681,
+        "cuda_stream_elapsed_ms": 55.656768798828125
+      },
+      "candidate_generation": {
+        "cpu_wall_ms": 6.336430553346872,
+        "cuda_stream_elapsed_ms": 6.0667518973350525
+      },
+      "safety_check": {
+        "cpu_wall_ms": 1532.334939809516,
+        "cuda_stream_elapsed_ms": 1532.0328216552734
+      },
+      "world_model_evaluation": {
+        "cpu_wall_ms": 62.28903867304325,
+        "cuda_stream_elapsed_ms": 61.71030330657959
+      },
+      "cost_evaluation": {
+        "cpu_wall_ms": 0,
+        "cuda_stream_elapsed_ms": 0
+      },
+      "candidate_scoring": {
+        "cpu_wall_ms": 1.2370620388537645,
+        "cuda_stream_elapsed_ms": 1.1474559903144836
+      },
+      "distribution_update": {
+        "cpu_wall_ms": 22.659744368866086,
+        "cuda_stream_elapsed_ms": 23.260543823242188
+      },
+      "total_planning": {
+        "cpu_wall_ms": 1676.4954689424485,
+        "cuda_stream_elapsed_ms": 1676.4847412109375
+      }
+    },
+    {
+      "context_construction": {
+        "cpu_wall_ms": 62.28675995953381,
+        "cuda_stream_elapsed_ms": 62.27724838256836
+      },
+      "candidate_generation": {
+        "cpu_wall_ms": 6.435852264985442,
+        "cuda_stream_elapsed_ms": 6.285312175750732
+      },
+      "safety_check": {
+        "cpu_wall_ms": 1350.455172592774,
+        "cuda_stream_elapsed_ms": 1350.8598155975342
+      },
+      "world_model_evaluation": {
+        "cpu_wall_ms": 67.54110823385417,
+        "cuda_stream_elapsed_ms": 66.75817584991455
+      },
+      "cost_evaluation": {
+        "cpu_wall_ms": 0,
+        "cuda_stream_elapsed_ms": 0
+      },
+      "candidate_scoring": {
+        "cpu_wall_ms": 1.3320599682629108,
+        "cuda_stream_elapsed_ms": 1.3013120144605637
+      },
+      "distribution_update": {
+        "cpu_wall_ms": 14.810638036578894,
+        "cuda_stream_elapsed_ms": 14.728927850723267
+      },
+      "total_planning": {
+        "cpu_wall_ms": 1489.6598069462925,
+        "cuda_stream_elapsed_ms": 1489.6610107421875
+      }
+    },
+    {
+      "context_construction": {
+        "cpu_wall_ms": 55.10072805918753,
+        "cuda_stream_elapsed_ms": 55.08879852294922
+      },
+      "candidate_generation": {
+        "cpu_wall_ms": 6.420691031962633,
+        "cuda_stream_elapsed_ms": 6.412223994731903
+      },
+      "safety_check": {
+        "cpu_wall_ms": 519.8271141853184,
+        "cuda_stream_elapsed_ms": 519.7852478027344
+      },
+      "world_model_evaluation": {
+        "cpu_wall_ms": 61.2124556209892,
+        "cuda_stream_elapsed_ms": 60.5079345703125
+      },
+      "cost_evaluation": {
+        "cpu_wall_ms": 0,
+        "cuda_stream_elapsed_ms": 0
+      },
+      "candidate_scoring": {
+        "cpu_wall_ms": 1.1614973191171885,
+        "cuda_stream_elapsed_ms": 0.9465599954128265
+      },
+      "distribution_update": {
+        "cpu_wall_ms": 22.16143603436649,
+        "cuda_stream_elapsed_ms": 22.387808322906494
+      },
+      "total_planning": {
+        "cpu_wall_ms": 662.0537729468197,
+        "cuda_stream_elapsed_ms": 662.03271484375
+      }
+    },
+    {
+      "context_construction": {
+        "cpu_wall_ms": 56.036368012428284,
+        "cuda_stream_elapsed_ms": 56.025150299072266
+      },
+      "candidate_generation": {
+        "cpu_wall_ms": 6.707000080496073,
+        "cuda_stream_elapsed_ms": 6.68560004234314
+      },
+      "safety_check": {
+        "cpu_wall_ms": 638.6389862746,
+        "cuda_stream_elapsed_ms": 638.4113578796387
+      },
+      "world_model_evaluation": {
+        "cpu_wall_ms": 60.841435799375176,
+        "cuda_stream_elapsed_ms": 60.56886386871338
+      },
+      "cost_evaluation": {
+        "cpu_wall_ms": 0,
+        "cuda_stream_elapsed_ms": 0
+      },
+      "candidate_scoring": {
+        "cpu_wall_ms": 1.161803025752306,
+        "cuda_stream_elapsed_ms": 1.0167040079832077
+      },
+      "distribution_update": {
+        "cpu_wall_ms": 19.028726033866405,
+        "cuda_stream_elapsed_ms": 19.393215894699097
+      },
+      "total_planning": {
+        "cpu_wall_ms": 777.0923518110067,
+        "cuda_stream_elapsed_ms": 777.0864868164062
+      }
+    },
+    {
+      "context_construction": {
+        "cpu_wall_ms": 51.78086506202817,
+        "cuda_stream_elapsed_ms": 51.76710510253906
+      },
+      "candidate_generation": {
+        "cpu_wall_ms": 7.146137999370694,
+        "cuda_stream_elapsed_ms": 7.089311838150024
+      },
+      "safety_check": {
+        "cpu_wall_ms": 534.286692738533,
+        "cuda_stream_elapsed_ms": 534.3427543640137
+      },
+      "world_model_evaluation": {
+        "cpu_wall_ms": 62.18123575672507,
+        "cuda_stream_elapsed_ms": 61.503071784973145
+      },
+      "cost_evaluation": {
+        "cpu_wall_ms": 0,
+        "cuda_stream_elapsed_ms": 0
+      },
+      "candidate_scoring": {
+        "cpu_wall_ms": 1.1855869088321924,
+        "cuda_stream_elapsed_ms": 0.8311360068619251
+      },
+      "distribution_update": {
+        "cpu_wall_ms": 17.036259174346924,
+        "cuda_stream_elapsed_ms": 17.145567893981934
+      },
+      "total_planning": {
+        "cpu_wall_ms": 667.4986958969384,
+        "cuda_stream_elapsed_ms": 667.4784545898438
+      }
+    },
+    {
+      "context_construction": {
+        "cpu_wall_ms": 54.856542963534594,
+        "cuda_stream_elapsed_ms": 54.84534454345703
+      },
+      "candidate_generation": {
+        "cpu_wall_ms": 6.008773110806942,
+        "cuda_stream_elapsed_ms": 6.306271910667419
+      },
+      "safety_check": {
+        "cpu_wall_ms": 645.8420150447637,
+        "cuda_stream_elapsed_ms": 645.3506755828857
+      },
+      "world_model_evaluation": {
+        "cpu_wall_ms": 65.29571465216577,
+        "cuda_stream_elapsed_ms": 64.83331108093262
+      },
+      "cost_evaluation": {
+        "cpu_wall_ms": 0,
+        "cuda_stream_elapsed_ms": 0
+      },
+      "candidate_scoring": {
+        "cpu_wall_ms": 1.2810570187866688,
+        "cuda_stream_elapsed_ms": 1.1860159933567047
+      },
+      "distribution_update": {
+        "cpu_wall_ms": 20.771478535607457,
+        "cuda_stream_elapsed_ms": 21.043296337127686
+      },
+      "total_planning": {
+        "cpu_wall_ms": 782.8453900292516,
+        "cuda_stream_elapsed_ms": 782.8399658203125
+      }
+    }
+  ],
+  "measurement": "Synchronized wall ms; repeated live states; selected controls are NOT executed.",
+  "cost_readiness": {
+    "updates": 4,
+    "ready": false
+  },
+  "effective_mppi_config": {
+    "dynamic_safety": true,
+    "multimodal": true,
+    "mode_weights": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "mode_counts": null,
+    "mode_std": {
+      "nominal": [
+        0.025,
+        0.1
+      ],
+      "braking": [
+        0.025,
+        0.15
+      ],
+      "lateral": [
+        0.05,
+        0.1
+      ],
+      "joint": [
+        0.05,
+        0.15
+      ]
+    },
+    "braking_center": -0.6,
+    "braking_std": 0.15,
+    "braking_delta": 0.4,
+    "mode_score_delta": [
+      0.25,
+      1.5
+    ],
+    "absolute_smoothness": true,
+    "lateral_shift": 0.12,
+    "lateral_delta": 0.25,
+    "cost_coef": 1.0,
+    "geometry_coef": 10.0,
+    "expanded_delta": [
+      0.3,
+      1.5
+    ],
+    "substeps": 5,
+    "road_margin": 0.15,
+    "model_margin": 0.3,
+    "max_acceleration": 4.0,
+    "max_deceleration": 6.0,
+    "max_steering_rate": 2.5,
+    "max_lateral_acceleration": 6.0,
+    "soft_clearance": 1.0,
+    "soft_ttc": 3.0,
+    "soft_boundary_margin": 0.5,
+    "boundary_risk_weight": 1.0,
+    "clearance_risk_weight": 1.0,
+    "ttc_risk_weight": 1.0,
+    "hard_clearance": 0.0,
+    "hard_ttc": 0.0,
+    "ttc_lookahead": 5.0,
+    "num_samples": 64,
+    "num_elites": 8,
+    "iterations": 4,
+    "initial_std": [
+      0.025,
+      0.1
+    ],
+    "min_std": [
+      0.005,
+      0.02
+    ],
+    "max_std": [
+      0.05,
+      0.2
+    ],
+    "max_delta": [
+      0.05,
+      0.2
+    ],
+    "temperature": 0.5,
+    "lateral_corridor_ratio": 0.5,
+    "lateral_safety_margin": 0.15,
+    "kinematic_vehicle_width": 1.852,
+    "kinematic_wheelbase": 2.46894,
+    "kinematic_max_steering_angle": 0.6981317,
+    "kinematic_max_acceleration": 4.0,
+    "kinematic_max_deceleration": 6.0,
+    "deviation_coef": 5.0,
+    "smoothness_coef": 1.0,
+    "throttle_deviation_weight": 0.25,
+    "min_improvement_abs": 1.0,
+    "min_improvement_ratio": 0.01,
+    "uncertainty_coef": 0.1,
+    "eval_seed": 1,
+    "proposal_init": "structured_baseline",
+    "blend_alpha": 0.8
+  },
+  "source_dirty": true,
+  "profile_notes": "Separate instrumented pass; nested phase times are not additive. CPU wall includes waits. CUDA events measure stream elapsed including idle CPU gaps, NOT pure GPU kernel time. Context includes coarse planning/WM; WM includes cost. Distribution is per-mode update only. Baseline scoring covers penalties only when _score_candidates is absent. No approved cost => cost time zero."
+}

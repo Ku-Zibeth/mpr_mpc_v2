@@ -35,6 +35,7 @@ class TrajectoryConsequence:
     predicted_cost: torch.Tensor | None = None
     cumulative_cost: torch.Tensor | None = None
     cost_validated: bool = False
+    cost_validated_mask: torch.Tensor | None = None
     risk_summary: dict[str, Any] = field(default_factory=dict)
 
     @property

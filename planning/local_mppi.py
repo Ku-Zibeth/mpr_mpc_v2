@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 import torch
 
 from .kinematic_filter import BatchedKinematicCorridor, CorridorContext
-from .multimodal import MultiModalProposals
+from .multimodal import MultiModalProposals, MODE_COMPONENT_NAMES
 
 
 MPPI_DIAGNOSTIC_KEYS = (
@@ -16,7 +16,9 @@ MPPI_DIAGNOSTIC_KEYS = (
     "offroad_reject_rate", "kinematic_reject_count", "baseline_soft_risk",
     "selected_soft_risk", "risk_reduction", "selected_min_clearance",
     "selected_min_ttc", "selected_boundary_margin", "cost_validated",
-) + tuple(f"mode_{mode}_{metric}" for mode in ("nominal", "braking", "lateral", "joint")
+    "boundary_risk", "boundary_margin", "baseline_boundary_risk", "selected_boundary_risk",
+    "boundary_risk_reduction", "cost_validated_ratio",
+) + tuple(f"cost_validated_{mode}" for mode in (*MODE_COMPONENT_NAMES, "lateral", "joint")) + tuple(f"mode_{mode}_{metric}" for mode in ("nominal", "braking", "lateral", "joint")
           for metric in ("samples", "safe_ratio"))
 
 
@@ -56,6 +58,7 @@ class LocalMPPIResult:
     max_lateral_deviation: float
     max_action_delta: torch.Tensor
     safety_metrics: dict = field(default_factory=dict)
+    selected_mode_id: int = -1
 
 
 class LocalMPPI:
@@ -182,6 +185,14 @@ class LocalMPPI:
         actions[1] = self._project(mean, baseline)
         return actions
 
+    def _score_candidates(self, actions, baseline, wm_values, uncertainty, predicted_cost, safety):
+        deviation, smoothness = self._penalties(actions, baseline)
+        scores = (wm_values - uncertainty - self.deviation_coef * deviation
+                  - self.smoothness_coef * smoothness - self.cost_coef * predicted_cost)
+        if safety is not None:
+            scores -= self.geometry_coef * safety.soft_risk
+        return scores
+
     @torch.no_grad()
     def plan(
         self,
@@ -219,11 +230,11 @@ class LocalMPPI:
         previous_best_mode = -1
         for _ in range(self.iterations):
             actions = self._candidate_batch(mean, std, baseline, generator)
-            mode_ids = self._mode_bank.ids.clone() if self._mode_bank is not None else None
+            mode_ids = (self._mode_bank.ids.clone() if self._mode_bank is not None
+                        else torch.zeros(len(actions), dtype=torch.long, device=self.device))
             if previous_best is not None:
                 actions[1] = previous_best
-                if mode_ids is not None:
-                    mode_ids[1] = previous_best_mode
+                mode_ids[1] = previous_best_mode
             safety = None
             if self.safety_evaluator is not None and safety_context is not None:
                 safety = self.safety_evaluator.check(actions, safety_context)
@@ -256,23 +267,18 @@ class LocalMPPI:
             uncertainty_penalty = torch.zeros_like(wm_values)
             predicted_cost = torch.zeros_like(wm_values)
             costs_validated = False
+            cost_mask = torch.zeros(len(actions), dtype=torch.bool, device=self.device)
             if valid.any():
-                consequence = self.evaluator.evaluate_mppi_candidates(z_t, actions[valid], task=task)
+                consequence = self.evaluator.evaluate_mppi_candidates(z_t, actions[valid], task=task, mode_ids=mode_ids[valid])
                 wm_values[valid] = consequence.total_value
                 uncertainty_penalty[valid] = self.uncertainty_coef * consequence.terminal_q_std
-                if getattr(consequence, "cost_validated", False):
-                    predicted_cost[valid] = consequence.cumulative_cost
-                    costs_validated = True
-            deviation, smoothness = self._penalties(actions, baseline)
-            scores = (
-                wm_values
-                - uncertainty_penalty
-                - self.deviation_coef * deviation
-                - self.smoothness_coef * smoothness
-                - self.cost_coef * predicted_cost
-            )
-            if safety is not None:
-                scores -= self.geometry_coef * safety.soft_risk
+                approved = getattr(consequence, "cost_validated_mask", None)
+                if approved is not None and consequence.cumulative_cost is not None:
+                    approved = approved & torch.isfinite(consequence.cumulative_cost)
+                    cost_mask[valid] = approved
+                    predicted_cost[valid] = torch.where(approved, consequence.cumulative_cost, 0.)
+                    costs_validated = bool(approved.all())
+            scores = self._score_candidates(actions, baseline, wm_values, uncertainty_penalty, predicted_cost, safety)
             valid &= torch.isfinite(scores)
             scores = scores.masked_fill(~valid, -torch.inf)
             baseline_wm_value = wm_values[0]
@@ -293,8 +299,8 @@ class LocalMPPI:
             elite_wm_values = wm_values[elite_indices]
             elite_actions = actions[elite_indices]
             previous_best = elite_actions[0].clone()
-            if mode_ids is not None:
-                previous_best_mode = int(mode_ids[elite_indices[0]])
+            previous_best_mode = int(mode_ids[elite_indices[0]])
+            if self._mode_bank is not None:
                 self._mode_bank.update(actions, scores, valid, mode_ids)
             finite = torch.isfinite(elite_values)
             logits = self.temperature * (elite_values - elite_values[finite].max())
@@ -354,6 +360,21 @@ class LocalMPPI:
                 "selected_boundary_margin": float(safety.boundary_margin[selected_batch_index]),
                 "cost_validated": float(costs_validated),
             }
+            boundary = getattr(safety, "boundary_risk", None)
+            if boundary is not None:
+                safety_metrics.update(boundary_risk=float(boundary[selected_batch_index]),
+                    boundary_margin=float(safety.boundary_margin[selected_batch_index]),
+                    baseline_boundary_risk=float(boundary[0]), selected_boundary_risk=float(boundary[selected_batch_index]),
+                    boundary_risk_reduction=float(boundary[0]-boundary[selected_batch_index]))
+        safety_metrics["cost_validated_ratio"] = float((cost_mask & valid).sum() / valid.sum().clamp_min(1))
+        model = getattr(getattr(self.evaluator, "agent", None), "model", None)
+        approval = getattr(model, "_cost_validated_by_mode", None) if bool(getattr(model, "cost_ready", False)) else None
+        if model is not None and not bool(self.evaluator.agent.cfg.cost.get("enabled", False)):
+            approval = None
+        for mode, name in enumerate(MODE_COMPONENT_NAMES):
+            safety_metrics[f"cost_validated_{name}"] = float(approval[mode, self.horizon]) if approval is not None else 0.
+        for group, indices in (("lateral", [2, 3]), ("joint", [4, 5])):
+            safety_metrics[f"cost_validated_{group}"] = min(safety_metrics[f"cost_validated_{MODE_COMPONENT_NAMES[m]}"] for m in indices)
         if self._mode_bank is not None:
             safety_metrics.update(self._mode_bank.metrics())
 
@@ -389,6 +410,7 @@ class LocalMPPI:
             max_lateral_deviation=selected_lateral,
             max_action_delta=action_delta,
             safety_metrics=safety_metrics,
+            selected_mode_id=int(mode_ids[selected_batch_index]),
         )
 
 

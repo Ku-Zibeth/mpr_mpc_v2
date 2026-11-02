@@ -12,7 +12,13 @@ resume_replay_warmup: true
 eval_episodes: 20
 eval_freq: 50000
 
-steps: 1000000
+steps: 50000
+checkpoint_selection:
+  priority: [collision_rate, out_of_road_rate, average_safety_cost, success_rate, route_completion, episode_reward]
+  min_success_rate: 0.05
+  min_route_completion: 0.1
+  max_success_drop: 0.1
+  max_route_completion_drop: 0.1
 batch_size: 256
 reward_coef: 0.1
 value_coef: 0.1
@@ -100,6 +106,10 @@ mpr_mpc:
     max_lateral_acceleration: 6.0
     soft_clearance: 1.0
     soft_ttc: 3.0
+    soft_boundary_margin: 0.5
+    boundary_risk_weight: 1.0
+    clearance_risk_weight: 1.0
+    ttc_risk_weight: 1.0
     hard_clearance: 0.0
     hard_ttc: 0.0
     ttc_lookahead: 5.0
@@ -164,7 +174,7 @@ residual_rl:
   lagrangian_lr: 0.01
   lagrangian_initial: 0.0
   lagrangian_rescaling: true
-  freeze_tdmpc2_on_start: false
+  freeze_tdmpc2_on_start: true
   seed_steps: 5000
   warmup_action_scale: 0.5
   learning_starts: 5000
@@ -187,7 +197,7 @@ milestone_checkpoints:
   enabled: true
   world_model_step: 20000
   world_model_residual_step: 50000
-  full_model_step: 1000000
+  full_model_step: 50000
   save_world_model: true
   save_world_model_residual: true
   save_full_model: true
@@ -230,7 +240,12 @@ cost:
   max_mae: 0.1
   max_rmse: 0.5
   ranking_min_gap: 0.05
-  min_ranking_accuracy: 0.55
+  min_ranking_accuracy: 0.60
+  min_scenes: 10
+  bootstrap_samples: 1000
+  bootstrap_seed: 1
+  min_ranking_ci_low: 0.50
+  mode_validation_dataset: null
 
 log_std_min: -10.0
 log_std_max: 2.0

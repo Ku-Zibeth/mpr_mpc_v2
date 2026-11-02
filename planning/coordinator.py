@@ -359,6 +359,8 @@ class MPRMPCPlanner:
     ) -> MPRPlanResult:
         started = time.perf_counter()
         stage = self.stage_for_step(global_step)
+        if not eval_mode:
+            stage = PlanningStage(stage.name, stage.use_residual, False)
         coarse = context.selection.coarse_path
         residual_warmup = False
         coarse_parameters = np.asarray(
@@ -480,7 +482,7 @@ class MPRMPCPlanner:
                 baseline_wm_value = selected_wm_value = float("nan")
             else:
                 refined_value = self.evaluator.evaluate_trajectory_consequence(
-                    context.latent, refined_actions.unsqueeze(0)
+                    context.latent, refined_actions.unsqueeze(0), mode_ids=[0]
                 ).total_value[0]
                 baseline_wm_value = selected_wm_value = float(refined_value.cpu())
             baseline_score = selected_score = baseline_wm_value
@@ -490,24 +492,22 @@ class MPRMPCPlanner:
             max_delta = torch.zeros(self.action_dim, device=self.device)
             selected_actions = refined_actions
 
-        final_mppi_xy = self._selected_sequence_xy(
-            refined,
-            refined_actions,
-            selected_actions,
-            corridor_context,
-        )
         diagnostics = {}
         stage_actions = torch.stack((context.coarse_actions, refined_actions, selected_actions))
         geometry = None
         if self.safety is not None and context.safety_context is not None:
             geometry = self.safety.check(stage_actions, context.safety_context)
             final_mppi_xy = geometry.positions[2].detach().cpu().numpy()
+        else:
+            final_mppi_xy = self._selected_sequence_xy(refined, refined_actions, selected_actions, corridor_context)
         stage_consequence = None
         if context.latent is not None:
-            stage_consequence = self.evaluator.evaluate_trajectory_consequence(context.latent, stage_actions)
+            stage_consequence = self.evaluator.evaluate_trajectory_consequence(
+                context.latent, stage_actions, mode_ids=[-1, 0, mppi.selected_mode_id if stage.use_mppi else 0])
         for index, name in enumerate(("lattice", "sac", "mppi")):
             cost = (float(stage_consequence.cumulative_cost[index])
-                    if stage_consequence is not None and stage_consequence.cost_validated else float("nan"))
+                    if stage_consequence is not None and stage_consequence.cumulative_cost is not None
+                    and bool(stage_consequence.cost_validated_mask[index]) else float("nan"))
             diagnostics[f"mpr/{name}_predicted_cost"] = cost
             diagnostics[f"mpr/{name}_value"] = (float(stage_consequence.total_value[index])
                                                       if stage_consequence is not None else float("nan"))
@@ -518,7 +518,8 @@ class MPRMPCPlanner:
         diagnostics["mpr/risk_reduction_sac"] = diagnostics["mpr/lattice_predicted_cost"] - diagnostics["mpr/sac_predicted_cost"]
         diagnostics["mpr/risk_reduction_mppi"] = diagnostics["mpr/sac_predicted_cost"] - diagnostics["mpr/mppi_predicted_cost"]
         diagnostics["mpr/mppi_correction_magnitude"] = float((selected_actions - refined_actions).square().mean().sqrt())
-        diagnostics["mpr/sac_risk_valid"] = float(residual_valid and stage_consequence is not None and stage_consequence.cost_validated)
+        diagnostics["mpr/sac_risk_valid"] = float(residual_valid and stage_consequence is not None
+            and stage_consequence.cost_validated_mask is not None and stage_consequence.cost_validated_mask[1])
         diagnostics["mpr/sac_trajectory_is_fallback"] = float(not residual_valid)
         if not residual_valid:
             diagnostics["mpr/sac_predicted_cost"] = float("nan")

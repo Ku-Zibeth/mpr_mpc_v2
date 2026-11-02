@@ -51,7 +51,7 @@ def test_time_aligned_crossing_and_ttc():
     crossing = context(obstacles=(obstacle(15, 15, 0, -5, np.pi/2),))
     result = evaluator.check(torch.zeros(3, 11, 2), crossing)
     assert result.collision.all()
-    assert (result.min_ttc == 0).all()
+    torch.testing.assert_close(result.min_ttc, torch.full((3,), .4))
     stopped = evaluator.check(torch.zeros(1, 11, 2), context(speed=0, obstacles=crossing.obstacles))
     assert not stopped.collision.any()
 
@@ -82,10 +82,11 @@ def test_only_validated_cost_changes_soft_ranking():
     class Evaluator:
         ready = False
 
-        def evaluate_mppi_candidates(self, z, actions, task=None):
+        def evaluate_mppi_candidates(self, z, actions, task=None, mode_ids=None):
             value = actions[:, :, 1].mean(-1)
             return SimpleNamespace(total_value=value, terminal_q_std=torch.zeros_like(value),
-                cumulative_cost=100 * value.clamp_min(0), cost_validated=self.ready)
+                cumulative_cost=100 * value.clamp_min(0), cost_validated=self.ready,
+                cost_validated_mask=torch.full_like(value, self.ready, dtype=torch.bool))
 
     evaluator = Evaluator()
     planner = LocalMPPI(evaluator, mppi_cfg(num_samples=4, iterations=1, num_elites=2, cost_coef=10),
@@ -176,8 +177,9 @@ def test_cost_validation_uses_actual_executed_controls_and_horizon_mask():
     validator = CostModelValidator({"min_samples": 8, "stride": 1, "horizons": [1, 5, 10], "max_mae": .001})
     validator.set_episodes([(np.zeros((80, 3)), actions, actions[:, 0])])
     metrics = validator.validate(model, "cpu", horizon=10)
-    assert metrics["wm/cost_ready"] == 1
-    assert model._cost_validated_horizons.item() & (1 << 10)
+    # Unlabelled executed sequences cannot authorize any counterfactual mode.
+    assert metrics["wm/cost_ready"] == 0
+    assert not model._cost_validated_horizons.item() & (1 << 10)
     assert not model._cost_validated_horizons.item() & (1 << 20)
     assert metrics["wm/cost_mae_h10"] < 1e-5
     model._cost_updates.zero_()

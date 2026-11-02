@@ -43,6 +43,7 @@ class TrajectoryWorldModelEvaluator:
         *,
         terminal_action_mode: str,
         task=None,
+        mode_ids=None,
     ) -> TrajectoryConsequence:
         if actions.ndim != 3:
             raise ValueError(f"actions must be [B,S,A], got {tuple(actions.shape)}.")
@@ -76,11 +77,16 @@ class TrajectoryWorldModelEvaluator:
         rewards = []
         total = actions.new_zeros((batch, 1))
         cost_ready = bool(getattr(model, "cost_ready", False))
-        validated_horizons = getattr(model, "_cost_validated_horizons", None)
-        if validated_horizons is not None:
-            cost_ready = cost_ready and bool(int(validated_horizons.item()) & (1 << self.horizon))
         cost_cfg = getattr(self.agent.cfg, "cost", {}) or {}
         cost_ready = cost_ready and bool(cost_cfg.get("enabled", False))
+        cost_mask = torch.zeros(batch, dtype=torch.bool, device=actions.device)
+        if cost_ready and mode_ids is not None and self.horizon < 63:
+            ids = torch.as_tensor(mode_ids, device=actions.device, dtype=torch.long)
+            if ids.shape != (batch,):
+                raise ValueError("mode_ids must have shape [B].")
+            known = (ids >= 0) & (ids < 6)
+            cost_mask[known] = model._cost_validated_by_mode[ids[known], self.horizon]
+        cost_ready = bool(cost_mask.any())
         cost_gamma = float(cost_cfg.get("gamma", float(discount_step.flatten()[0])))
         cost_total = actions.new_zeros((batch, 1))
         costs = []
@@ -90,7 +96,11 @@ class TrajectoryWorldModelEvaluator:
             rewards.append(reward.squeeze(-1))
             total += discount * (1.0 - terminated) * reward
             if cost_ready:
-                cost = model.cost(z, action, task)
+                cost = actions.new_full((batch, 1), float("nan"))
+                cost_task = task
+                if torch.is_tensor(task) and task.ndim and task.shape[0] == batch:
+                    cost_task = task[cost_mask]
+                cost[cost_mask] = model.cost(z[cost_mask], action[cost_mask], cost_task)
                 costs.append(cost.squeeze(-1))
                 # A learned early termination must not hide later predicted danger.
                 cost_total += cost_gamma**step * cost
@@ -113,6 +123,8 @@ class TrajectoryWorldModelEvaluator:
         terminal_q = terminal_q_all.mean(dim=0)
         terminal_q_std = terminal_q_all.std(dim=0, unbiased=False)
         total += discount * (1.0 - terminated) * terminal_q
+        if costs:
+            cost_mask &= torch.isfinite(cost_total.squeeze(-1))
         return TrajectoryConsequence(
             reward_sequence=torch.stack(rewards, dim=1).detach(),
             terminal_q=terminal_q.squeeze(-1).detach(),
@@ -121,14 +133,15 @@ class TrajectoryWorldModelEvaluator:
             terminal_latent=z.detach(),
             predicted_cost=torch.stack(costs, dim=1).detach() if costs else None,
             cumulative_cost=cost_total.squeeze(-1).detach() if costs else None,
-            cost_validated=cost_ready,
+            cost_validated=bool(cost_mask.all()) and cost_ready,
+            cost_validated_mask=cost_mask,
         )
 
     def evaluate_trajectory_consequence(
-        self, z_t: torch.Tensor, actions: torch.Tensor, task=None
+        self, z_t: torch.Tensor, actions: torch.Tensor, task=None, mode_ids=None
     ) -> TrajectoryConsequence:
         return self.evaluate(
-            z_t, actions, terminal_action_mode="trajectory", task=task
+            z_t, actions, terminal_action_mode="trajectory", task=task, mode_ids=mode_ids
         )
 
     def evaluate_policy_terminal(
@@ -137,9 +150,9 @@ class TrajectoryWorldModelEvaluator:
         return self.evaluate(z_t, actions, terminal_action_mode="policy", task=task)
 
     def evaluate_mppi_candidates(
-        self, z_t: torch.Tensor, actions: torch.Tensor, task=None
+        self, z_t: torch.Tensor, actions: torch.Tensor, task=None, mode_ids=None
     ) -> TrajectoryConsequence:
-        return self.evaluate_trajectory_consequence(z_t, actions, task=task)
+        return self.evaluate_trajectory_consequence(z_t, actions, task=task, mode_ids=mode_ids)
 
 
 __all__ = ["TrajectoryWorldModelEvaluator"]

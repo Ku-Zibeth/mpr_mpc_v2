@@ -55,11 +55,27 @@ class WorldModel(nn.Module):
 		self.register_buffer("_cost_updates", torch.tensor(0, dtype=torch.long))
 		self.register_buffer("_cost_validated", torch.tensor(False))
 		self.register_buffer("_cost_validated_horizons", torch.tensor(0, dtype=torch.long))
+		self.register_buffer("_cost_validated_by_mode", torch.zeros(6, 63, dtype=torch.bool))
+		self.register_buffer("_cost_validated_by_horizon", torch.zeros(63, dtype=torch.bool))
+		self.register_buffer("_cost_validation_samples_by_mode", torch.zeros(6, 63, dtype=torch.long))
+		self.register_buffer("_cost_validation_scenes_by_mode", torch.zeros(6, 63, dtype=torch.long))
+		self.register_buffer("_cost_mode_validated_at", torch.tensor(0, dtype=torch.long))
 		self.init()
 
 	@property
 	def cost_ready(self):
-		return bool(self._cost_validated.item()) and int(self._cost_updates.item()) > 0
+		return (int(self._cost_updates.item()) > 0
+			and int(self._cost_mode_validated_at.item()) == int(self._cost_updates.item())
+			and bool(self._cost_validated_by_mode.any()))
+
+	def invalidate_cost_validation(self):
+		self._cost_validated.zero_()
+		self._cost_validated_horizons.zero_()
+		self._cost_validated_by_mode.zero_()
+		self._cost_validated_by_horizon.zero_()
+		self._cost_validation_samples_by_mode.zero_()
+		self._cost_validation_scenes_by_mode.zero_()
+		self._cost_mode_validated_at.zero_()
 
 	def init(self):
 		# Create params

@@ -72,6 +72,7 @@ class MPRMPCAgent:
         self._planner_calls = 0
         self.global_env_step = 0
         self.best_eval_key = None
+        self.best_eval_selection = None
         self.last_plan = None
         self.last_residual_transition_metrics: dict[str, float] = {}
         self.residual_rl_step = 0
@@ -83,6 +84,9 @@ class MPRMPCAgent:
         self._tdmpc_frozen = False
         self.last_loaded_checkpoint_metadata: dict = {}
         self.cost_validator = CostModelValidator(mapping(section(cfg, "cost")))
+        dataset = section(cfg, "cost").get("mode_validation_dataset")
+        if dataset:
+            self.cost_validator.load_dataset(dataset, cost_definition=self._cost_definition())
         self.cost_validation_metrics = {}
 
     def _print_residual_startup_diagnostics(self) -> None:
@@ -98,7 +102,7 @@ class MPRMPCAgent:
             f"enabled={self.residual_sac.use_lagrangian} "
             f"cost_limit={self.residual_sac.cost_limit:g} "
             f"lr={self.residual_sac.lagrangian.learning_rate:g}\n\n"
-            f"Stage-C TD-MPC2 freeze={self.freeze_tdmpc2_on_start}"
+            f"Stage-B TD-MPC2 freeze={self.freeze_tdmpc2_on_start}; MPPI is evaluation-only"
         )
 
     def set_global_step(self, step: int) -> None:
@@ -428,6 +432,7 @@ class MPRMPCAgent:
             "tdmpc_scale": self.tdmpc_agent.scale.state_dict(),
             "global_env_step": self.global_env_step,
             "best_eval_key": self.best_eval_key,
+            "best_eval_selection": getattr(self, "best_eval_selection", None),
             "mpr_mpc": {
                 "residual_sac": self.residual_sac.state_dict(),
                 "residual_rl_step": self.residual_rl_step,
@@ -457,6 +462,10 @@ class MPRMPCAgent:
         return value
 
     def _checkpoint_metadata(self) -> dict:
+        sim = self._plain(section(self.cfg, "metadrive")).get("simulator", {})
+        start, count = int(sim.get("start_seed", 0)), int(sim.get("num_scenarios", 0))
+        fixed = list(getattr(self.cfg, "evaluation_scenarios", []) or [])
+        reserved = fixed or list(range(start + max(0, count-int(getattr(self.cfg, "eval_episodes", 20))), start+count))
         return {
             "algorithm_version": str(getattr(self.cfg, "algorithm_version", "unknown")),
             "experiment_profile": getattr(self.cfg, "experiment_profile", None),
@@ -474,6 +483,8 @@ class MPRMPCAgent:
             "residual_mapping": getattr(self.planner, "residual_mapping", "linear"),
             "residual_config": self._plain(self.residual_cfg),
             "cost_definition": self._cost_definition(),
+            "training_scene_range": self._plain(section(self.cfg, "metadrive").get("simulator", {})),
+            "validation_scene_ids": reserved,
         }
 
     def _check_checkpoint_compatibility(
@@ -560,8 +571,7 @@ class MPRMPCAgent:
         saved = state.get("metadata", {}).get("cost_definition")
         model = getattr(self, "model", self.tdmpc_agent.model)
         if saved != self._cost_definition() and hasattr(model, "_cost_validated"):
-            model._cost_validated.zero_()
-            model._cost_validated_horizons.zero_()
+            model.invalidate_cost_validation()
             print("[cost] No matching cost-definition validation; learned cost disabled until revalidated.")
 
     def _planner_state(self) -> dict:
@@ -743,8 +753,11 @@ class MPRMPCAgent:
         self.residual_update_budget = float(mpr_state.get("residual_update_budget", 0.0))
         self._planner_calls = int(mpr_state.get("planner_calls", 0))
         self.global_env_step = int(state.get("global_env_step", 0))
-        best_key = state.get("best_eval_key")
-        self.best_eval_key = tuple(best_key) if best_key is not None else None
+        self.best_eval_selection = state.get("best_eval_selection")
+        # Old reward-first tuples cannot be compared with the safety-first schema.
+        self.best_eval_key = None
+        if state.get("best_eval_key") is not None and self.best_eval_selection is None:
+            print("[checkpoint] Legacy best key reset; safety-first reevaluation required.")
         self._load_planner_counters(mpr_state)
         self.last_loaded_checkpoint_metadata = {
             "format": state.get("format"),

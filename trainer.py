@@ -161,17 +161,15 @@ class MPROnlineTrainer(OnlineTrainer):
         return enabled, ratio, updates
 
     def _handle_eval(self) -> dict[str, float]:
+        from .checkpoint_selection import select_checkpoint
         metrics = self.eval()
         metrics.update(self.common_metrics())
         self.logger.log(metrics, "eval")
-        key = (
-            float(metrics["success"]),
-            -float(metrics["offroad"]),
-            float(metrics["episode_reward"]),
-        )
-        if self._best_eval_key is None or key > self._best_eval_key:
-            self._best_eval_key = key
-            self.agent.best_eval_key = key
+        improved, selection, reason = select_checkpoint(metrics,
+            getattr(self.agent, "best_eval_selection", None), getattr(self.cfg, "checkpoint_selection", {}) or {})
+        print(f"[checkpoint] best selection: {reason}")
+        if improved:
+            self.agent.best_eval_selection = selection
             self._save_checkpoint("best")
         self._save_checkpoint("latest")
         return metrics
@@ -349,7 +347,7 @@ class MPROnlineTrainer(OnlineTrainer):
                         )
                     ),
                     "train/residual_active": float(stage.use_residual),
-                    "train/mppi_active": float(stage.use_mppi),
+                    "train/mppi_active": float(self.agent.last_plan.stage.use_mppi),
                 }
             )
             previous_step = self._step
@@ -369,6 +367,9 @@ class MPROnlineTrainer(OnlineTrainer):
         final_milestones = self._maybe_save_milestones(self._step - 1, self._step)
         if final_milestones:
             self.logger.log(final_milestones, "train")
+        # The loop exits before the next episode boundary; do not leave best.pt
+        # comparing only initialization when eval_freq equals the full 50K run.
+        self._handle_eval()
         self.logger.finish(self.agent)
 
 

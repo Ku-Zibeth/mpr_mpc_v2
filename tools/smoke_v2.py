@@ -75,6 +75,9 @@ def main():
             rew = torch.tensor(rewards[:h], device=device)[:, None, None].expand(-1, b, 1)
             cost = torch.tensor(costs[:h], device=device)[:, None, None].expand(-1, b, 1)
             training = agent.tdmpc_agent._update(obs, act, rew, torch.zeros_like(cost), cost=cost)
+            # Even a step beyond the deployment threshold must not enable training MPPI.
+            training_plan = agent.planner.plan(observation, vehicle, global_step=50000, t0=True, eval_mode=False)
+            assert not training_plan.stage.use_mppi
             plan = agent.planner.plan(observation, vehicle, global_step=50000, t0=True, eval_mode=True)
             assert plan.action.shape == (2,) and torch.isfinite(plan.action).all()
             assert plan.metrics["mpr/selected_safe"] == 1, "Spawn-road predecessor must cover the rear footprint."
@@ -90,6 +93,7 @@ def main():
                 "one_second_max_position_error_m": max(horizon_errors),
                 "cost_training_loss": float(training["cost_loss"]),
                 "cost_ready_after_one_update": agent.model.cost_ready,
+                "training_mppi_enabled": training_plan.stage.use_mppi,
                 "plan_action": plan.action.tolist(),
                 "selected_safe": plan.metrics.get("mpr/selected_safe"),
                 "safety_diagnostics": {key: value for key, value in plan.metrics.items() if

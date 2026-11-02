@@ -7,6 +7,15 @@ No trained checkpoint, training log directory, or Git/LFS database was copied.
 Start here: [V2 implementation, commands, compatibility and limitations](V2_IMPLEMENTATION.md).
 Run commands from this directory, not from the sibling original package.
 
+Third-round changes: absolute-time TTC, continuous road-boundary risk,
+per-mode/per-horizon cost calibration from real counterfactual replays,
+safety-first checkpoint selection, and a synchronized MPPI benchmark.
+The default schedule is now 20K world-model updates followed by frozen-WM
+Residual SAC until 50K. MPPI runs only in evaluation, never training actions.
+Uncalibrated modes still use geometry/value but never learned-cost ranking.
+Commands, measured results, file inventory and limitations are documented in
+[the third-round report](ROUND3_REPORT.md).
+
 ```bash
 cd /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2
 /home/kzb/anaconda3/envs/tdmpc2/bin/python -m pytest -q
@@ -45,7 +54,8 @@ python scripts/check_environment.py --full
 python -m pytest tests -q
 ```
 
-Start a short three-stage smoke run before a full experiment:
+Start a compressed two-stage training smoke before a full experiment
+(the final evaluation can enable MPPI):
 
 ```bash
 python train.py \

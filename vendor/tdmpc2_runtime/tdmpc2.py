@@ -107,9 +107,14 @@ class TDMPC2(torch.nn.Module):
 			state_dict = torch.load(fp, map_location=torch.get_default_device(), weights_only=False)
 		state_dict = state_dict["model"] if "model" in state_dict else state_dict
 		state_dict = api_model_conversion(self.model.state_dict(), state_dict)
-		for key in ("_cost_updates", "_cost_validated", "_cost_validated_horizons"):
+		calibration_keys = {"_cost_updates", "_cost_validated", "_cost_validated_horizons",
+			"_cost_validated_by_mode", "_cost_validated_by_horizon", "_cost_validation_samples_by_mode",
+			"_cost_validation_scenes_by_mode", "_cost_mode_validated_at"}
+		for key in calibration_keys:
 			if key not in state_dict:
 				getattr(self.model, key).zero_()
+		complete_mode_validation = all(key in state_dict for key in calibration_keys)
+		missing_cost_weights = any(key.startswith("_cost.") and key not in state_dict for key in self.model.state_dict())
 		cost_q_prefixes = (
 			"_cost_Qs.", "_detach_cost_Qs_params.", "_target_cost_Qs_params."
 		)
@@ -121,10 +126,14 @@ class TDMPC2(torch.nn.Module):
 			if key.startswith(cost_q_prefixes) and key not in state_dict:
 				state_dict[key] = value
 		missing_keys, unexpected_keys = self.model.load_state_dict(state_dict, strict=False)
+		if not complete_mode_validation or missing_cost_weights:
+			self.model.invalidate_cost_validation()
+		if missing_cost_weights:
+			self.model._cost_updates.zero_()
 		missing_keys = [
 			key for key in missing_keys
 			if not key.startswith("_cost.") and not key.startswith(cost_q_prefixes)
-			and key not in {"_cost_updates", "_cost_validated", "_cost_validated_horizons"}
+			and key not in calibration_keys
 		]
 		# Ignore weights from checkpoints produced before the unused score head was removed.
 		unexpected_keys = [
@@ -439,6 +448,8 @@ class TDMPC2(torch.nn.Module):
 		grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.cfg.grad_clip_norm)
 		self.optim.step()
 		self.optim.zero_grad(set_to_none=True)
+		# Any representation or cost-weight change invalidates held-out approvals.
+		self.model.invalidate_cost_validation()
 		if cost_enabled and cost is not None and torch.isfinite(cost).any():
 			self.model._cost_updates.add_(1)
 			if int(self.model._cost_updates) % max(1, int(cost_cfg.get("validation_interval", 1000))) == 0:

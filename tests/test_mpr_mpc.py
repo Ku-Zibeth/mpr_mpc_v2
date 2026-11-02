@@ -43,7 +43,7 @@ class RecordingEvaluator:
         self.calls = []
         self.constant = constant
 
-    def evaluate_mppi_candidates(self, _z, actions, task=None):
+    def evaluate_mppi_candidates(self, _z, actions, task=None, mode_ids=None):
         del task
         self.calls.append(actions.detach().clone())
         if self.constant:
@@ -57,7 +57,7 @@ class FixedValueEvaluator:
     def __init__(self, values):
         self.values = torch.as_tensor(values, dtype=torch.float32)
 
-    def evaluate_mppi_candidates(self, _z, actions, task=None):
+    def evaluate_mppi_candidates(self, _z, actions, task=None, mode_ids=None):
         del task
         values = self.values.to(actions.device)
         return SimpleNamespace(total_value=values, terminal_q_std=torch.zeros_like(values))
