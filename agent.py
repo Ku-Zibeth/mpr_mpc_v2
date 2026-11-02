@@ -400,6 +400,11 @@ class MPRMPCAgent:
             "env/risk_field_object_cost": "risk_field_object_cost",
             "env/safety_risk_cost": "safety_risk_cost",
             "env/safety_event_cost": "safety_event_cost",
+            "env/dynamic_collision_cost": "safety_dynamic_collision_cost",
+            "env/static_collision_cost": "safety_static_collision_cost",
+            "env/road_event_cost": "safety_road_event_cost",
+            "env/other_event_cost": "safety_other_event_cost",
+            "env/unallocated_event_cost": "safety_unallocated_event_cost",
             "env/route_completion": "route_completion",
         }
         last_env_info = self.env.last_info
@@ -415,6 +420,7 @@ class MPRMPCAgent:
         state = {
             "format": "mpr_mpc_v2_residual_sac",
             "algorithm_version": str(getattr(self.cfg, "algorithm_version", "unknown")),
+            "experiment_profile": getattr(self.cfg, "experiment_profile", None),
             "metadata": self._checkpoint_metadata(),
             "model": self.tdmpc_agent.model.state_dict(),
             "tdmpc_optim": self.tdmpc_agent.optim.state_dict(),
@@ -453,6 +459,7 @@ class MPRMPCAgent:
     def _checkpoint_metadata(self) -> dict:
         return {
             "algorithm_version": str(getattr(self.cfg, "algorithm_version", "unknown")),
+            "experiment_profile": getattr(self.cfg, "experiment_profile", None),
             "latent_dim": int(getattr(self.cfg, "latent_dim")),
             "model_size": int(getattr(self.cfg, "model_size")),
             "num_q": int(getattr(self.cfg, "num_q")),

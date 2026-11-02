@@ -1,5 +1,6 @@
 # @package _global_
 exp_name: mpr_mpc_v2_E0
+experiment_profile: E0
 cost:
   enabled: false
 residual_rl:

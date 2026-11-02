@@ -3,6 +3,7 @@ defaults:
   - E1
   - _self_
 exp_name: mpr_mpc_v2_E2
+experiment_profile: E2
 cost:
   enabled: true
 mpr_mpc:

@@ -22,6 +22,18 @@ METRICS = {
     "cost_limit_exceedance": ("episode_cost_over_limit", None),
     "mppi_baseline_selected": ("mppi_baseline_selected", None),
     "mppi_score_gain": ("mppi_score_gain", None),
+    "safe_candidate_ratio": ("safe_candidate_ratio", None),
+    "collision_reject_rate": ("collision_reject_rate", None),
+    "offroad_reject_rate": ("offroad_reject_rate", None),
+    "baseline_selected_rate": ("baseline_selected_rate", None),
+    "planner_score_gain": ("planner_score_gain", None),
+    "mppi_correction_magnitude": ("mppi_correction_magnitude", None),
+    "no_safe_candidate_rate": ("no_safe_candidate_rate", None),
+    "sac_predicted_cost": ("sac_predicted_cost", None),
+    "mppi_predicted_cost": ("mppi_predicted_cost", None),
+    "dynamic_collision_cost": ("dynamic_collision_cost", None),
+    "static_collision_cost": ("static_collision_cost", None),
+    "mean_speed_mps": ("mean_speed_mps", None),
 }
 BINARY_RATES = {
     "out_of_road", "crash", "success", "collision_and_success",
@@ -109,16 +121,24 @@ def summarize_runs(label: str, rows: list[dict], *, samples: int, seed: int) -> 
     )
     limits = [_number(r, "cost_limit") for r in rows]
     result["cost_limit"] = next((v for v in limits if math.isfinite(v)), None)
+    for source, target in (("success", "success_rate"), ("out_of_road", "out_of_road_rate"),
+                           ("crash", "collision_rate"), ("cost_per_episode", "average_safety_cost"),
+                           ("collision_and_success", "collision_and_success_rate"),
+                           ("collision_and_offroad", "collision_and_offroad_rate")):
+        result[target] = result[source]
+    clearance = [_number(row, "min_obstacle_clearance") for row in rows]
+    finite_clearance = [number for number in clearance if math.isfinite(number)]
+    result["min_obstacle_clearance"] = min(finite_clearance) if finite_clearance else None
     return result
 
 
-def paired_comparisons(rows: list[dict], *, samples: int, seed: int) -> list[dict]:
+def paired_comparisons(rows: list[dict], *, samples: int, seed: int, pairs=None) -> list[dict]:
     groups = {}
     for row in rows:
         groups.setdefault(row["configuration"], {})[
             (int(row["scenario"]), int(row["test_seed"]))
         ] = row
-    pairs = (
+    pairs = pairs if pairs is not None else (
         ("A_lattice", "B_lattice_sac"),
         ("A_lattice", "C_lattice_mppi"),
         ("B_lattice_sac", "D_lattice_sac_mppi"),

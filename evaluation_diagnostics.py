@@ -9,6 +9,20 @@ import numpy as np
 import torch
 from omegaconf import OmegaConf
 from mpr_mpc.evaluation_statistics import cluster_intervals
+from mpr_mpc.planning.local_mppi import MPPI_DIAGNOSTIC_KEYS
+
+
+PLAN_ALIASES = {
+    "sac_predicted_cost": "mpr/sac_predicted_cost",
+    "mppi_predicted_cost": "mpr/mppi_predicted_cost",
+    "safe_candidate_ratio": "mpr/safe_candidate_ratio",
+    "collision_reject_rate": "mpr/collision_reject_rate",
+    "offroad_reject_rate": "mpr/offroad_reject_rate",
+    "baseline_selected_rate": "mpr/baseline_selected",
+    "planner_score_gain": "mpr/planner_score_gain",
+    "mppi_correction_magnitude": "mpr/mppi_correction_magnitude",
+    "no_safe_candidate_rate": "mpr/no_safe_candidate",
+}
 
 
 def fixed_scenarios(cfg):
@@ -34,7 +48,7 @@ class EpisodeDiagnostics:
     def __init__(self):
         self.crash = self.offroad = False
         self.ttcs, self.clearances = [], []
-        self.plans = defaultdict(list)
+        self.plans = defaultdict(list, {f"mpr/{key}": [] for key in MPPI_DIAGNOSTIC_KEYS})
         self.sums = defaultdict(float)
         self.observations, self.actions, self.costs = [], [], []
         self.speeds = []
@@ -56,8 +70,15 @@ class EpisodeDiagnostics:
             self.ttcs.append(ttc)
         for key in ("risk_field_boundary_cost", "risk_field_vehicle_cost", "risk_field_object_cost"):
             self.sums[key] += float(info.get(key, 0))
+        for key in ("dynamic_collision", "static_collision", "road_event", "other_event", "unallocated_event"):
+            self.sums[f"safety_{key}_cost"] += float(info.get(f"safety_{key}_cost", 0))
         if result is not None:
             for key, value in result.metrics.items():
+                self.plans.setdefault(key, [])
+                if key == "mpr/sac_predicted_cost" and not result.stage.use_residual:
+                    continue
+                if key in set(PLAN_ALIASES.values()) - {"mpr/sac_predicted_cost"} and not result.stage.use_mppi:
+                    continue
                 if np.isfinite(value):
                     self.plans[key].append(float(value))
             clearance = result.metrics.get("mpr/mppi_min_clearance", float("nan"))
@@ -72,15 +93,22 @@ class EpisodeDiagnostics:
         sac = getattr(agent, "residual_sac", None)
         return {
             **{f"mean_{key.replace('/', '_')}": mean(values) for key, values in self.plans.items()},
+            **{name: mean(self.plans[key]) for name, key in PLAN_ALIASES.items()},
             "collision": float(self.crash), "offroad": float(self.offroad),
             "collision_and_success_rate": float(self.crash and bool(info.get("success", False))),
             "collision_and_offroad_rate": float(self.crash and self.offroad),
             "mean_ttc": mean(self.ttcs), "min_ttc": min(self.ttcs) if self.ttcs else float("nan"),
             "ttc_valid_steps": len(self.ttcs),
             "min_predicted_obstacle_clearance": min(self.clearances) if self.clearances else float("nan"),
+            "min_obstacle_clearance": min(self.clearances) if self.clearances else float("nan"),
             "road_boundary_cost": self.sums["risk_field_boundary_cost"],
-            "dynamic_collision_cost": self.sums["risk_field_vehicle_cost"],
-            "static_collision_cost": self.sums["risk_field_object_cost"],
+            "dynamic_risk_field_cost": self.sums["risk_field_vehicle_cost"],
+            "static_risk_field_cost": self.sums["risk_field_object_cost"],
+            "dynamic_collision_cost": self.sums["safety_dynamic_collision_cost"],
+            "static_collision_cost": self.sums["safety_static_collision_cost"],
+            "road_event_cost": self.sums["safety_road_event_cost"],
+            "other_event_cost": self.sums["safety_other_event_cost"],
+            "unallocated_event_cost": self.sums["safety_unallocated_event_cost"],
             "episode_cost": float(sum(self.costs)),
             "mean_speed_mps": mean(self.speeds), "distance_travelled_m": self.distance,
             "lagrangian_value": float(sac.lagrangian_multiplier) if sac is not None else float("nan"),
@@ -121,6 +149,9 @@ def write_report(raw_cfg, scenarios, rows, cost_metrics=None):
     finite_ttc = [float(row["min_ttc"]) for row in rows if np.isfinite(row.get("min_ttc", float("nan")))]
     summary["mean_episode_min_ttc"] = summary.get("min_ttc")
     summary["min_ttc"] = min(finite_ttc) if finite_ttc else None
+    clearances = [float(row["min_obstacle_clearance"]) for row in rows
+                  if np.isfinite(row.get("min_obstacle_clearance", float("nan")))]
+    summary["min_obstacle_clearance"] = min(clearances) if clearances else None
     valid_steps = sum(int(row.get("ttc_valid_steps", 0)) for row in rows)
     summary["ttc_valid_step_fraction"] = valid_steps / max(sum(int(row["length"]) for row in rows), 1)
     summary["mean_episode_mean_ttc"] = summary.get("mean_ttc")

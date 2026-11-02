@@ -29,6 +29,7 @@ discount_max: 0.995
 buffer_size: 1000000
 seed_steps: 0
 exp_name: mpr_mpc_v2
+experiment_profile: null
 data_dir: null
 
 mpc: true
@@ -73,6 +74,13 @@ mpr_mpc:
     dynamic_safety: true
     multimodal: true
     mode_weights: [1, 1, 1, 1]
+    # Optional exact counts exclude the baseline and previous-best slots.
+    mode_counts: null
+    mode_std:
+      nominal: [0.025, 0.10]
+      braking: [0.025, 0.15]
+      lateral: [0.05, 0.10]
+      joint: [0.05, 0.15]
     braking_center: -0.6
     braking_std: 0.15
     braking_delta: 0.4
@@ -189,6 +197,18 @@ evaluation_scenarios: []
 evaluation_scenarios_file: null
 evaluation_output_dir: null
 restore_checkpoint_runtime: false
+
+improvements:
+  profiles: [E0, E1, E2, E3, E4, E5]
+  episodes: 100
+  repeat_seeds: [1, 2, 3]
+  training_seed: 1
+  models_root: null
+  checkpoint_name: milestone_50k_world_model_residual_rl.pt
+  checkpoints: {}
+  allow_unlabelled_checkpoints: false
+  output_dir: null
+  bootstrap_samples: 2000
 
 flow:
   enabled: false

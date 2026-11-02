@@ -2,6 +2,10 @@
 
 ## Scope And Status
 
+The prompt-alignment revision additionally completes independent per-mode MPPI
+updates, strict E0--E5 benchmark provenance, unambiguous contact-cost attribution,
+prompt-named summary metrics, and substep-complete lateral-acceleration checks.
+
 Source: `/home/kzb/kzb_code/tdmpc2/mpr_mpc`.
 Destination: `/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2`.
 All implementation changes are in the destination. The copy excludes `.git`,
@@ -143,6 +147,65 @@ Existing `evaluate_ablation.py` still supports the A--D Lattice/SAC/MPPI
 component ablations, fixed scenario files, repeated seeds and paired intervals.
 `evaluate_model_suite.py` also collects the new per-stage metrics.
 
+### Train And Compare All Six Profiles
+
+Each configuration must have its OWN trained model; changing YAML at inference
+does not retrain SAC or its critic. New checkpoints record `experiment_profile`.
+The following loop is an explicit opt-in to six separate training runs:
+
+```bash
+cd /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2
+set -euo pipefail
+mkdir -p logs/launch
+for profile in E0 E1 E2 E3 E4 E5; do
+  MUJOCO_GL=egl PYTHONUNBUFFERED=1 \
+  /home/kzb/anaconda3/envs/tdmpc2/bin/python -u train.py \
+    +experiment="$profile" +schedule=frozen_20k_50k \
+    seed=1 checkpoint=null resume_checkpoint=null \
+    enable_wandb=false save_video=false \
+    metadrive.simulator.start_seed=10000 \
+    metadrive.simulator.num_scenarios=2000 \
+    2>&1 | tee "logs/launch/train_${profile}_seed1.log"
+done
+```
+
+After all six training runs have completed:
+
+```bash
+cd /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2
+set -o pipefail
+out="$PWD/logs/benchmark/E0_E5_fixed100_$(date +%Y%m%d_%H%M%S)"
+mkdir -p "$out"
+MUJOCO_GL=egl PYTHONUNBUFFERED=1 \
+/home/kzb/anaconda3/envs/tdmpc2/bin/python -u evaluate_improvements.py \
+  improvements.profiles=[E0,E1,E2,E3,E4,E5] \
+  improvements.episodes=100 improvements.repeat_seeds=[1,2,3] \
+  improvements.training_seed=1 \
+  improvements.models_root="$PWD/logs/metadrive-risk/1" \
+  improvements.checkpoint_name=milestone_50k_world_model_residual_rl.pt \
+  improvements.output_dir="$out" \
+  evaluation_scenarios_file="$PWD/scenarios/fixed100.json" \
+  metadrive.simulator.start_seed=300 \
+  metadrive.simulator.num_scenarios=2000 \
+  enable_wandb=false save_video=false \
+  2>&1 | tee "$out/run.log"
+```
+
+This evaluates 100 independent maps x 3 evaluation seeds x 6 profiles (1800
+episodes), not 300 independent maps per profile. All models use the same map
+order, per-episode random seed and MPPI seed for each repeat. The evaluator
+checks all model files before starting, rejects a shared checkpoint relabelled
+as several profiles, checks trained SAC updates/constraint/input contracts,
+and rejects differing encoder architectures. It refuses to overwrite a prior
+`episodes.csv`. It saves `manifest.json`, effective configs per model/seed,
+per-seed episode CSVs, combined `episodes.csv`, `summary.csv/json`, and paired
+incremental E1-E0 through E5-E4 plus E5-E0 comparisons with scenario-cluster CIs.
+
+For manually chosen files use `+improvements.checkpoints.E0=/absolute/model.pt`
+etc. Historical checkpoints without profile labels require explicit
+`improvements.allow_unlabelled_checkpoints=true`; that warning does not certify
+their training provenance. Wrong known profile labels are never ignored.
+
 ## Actual Data Flow
 
 1. Observation [259] -> existing encoder -> latent [512]. No new encoder.
@@ -255,6 +318,14 @@ MPPI nominal samples remain in the original small trust region; braking and
 lateral/joint modes have their own configurable centers/limits. 64 samples,
 8 elites and 4 iterations remain defaults. Mode weights, braking std/center,
 lateral shift/limit, global nominal std and expanded delta are configurable.
+Each mode now updates its OWN Gaussian from its finite safe elites. Left/right
+lateral and joint distributions are separate internal components, so their
+means cannot cancel into straight driving. `mode_std` supplies two initial
+standard deviations per named mode. Optional `mode_counts=[14,16,16,16]`
+allocates 62 mode samples plus two reserved baseline/previous-best slots at
+N=64; its sum must equal `num_samples-2`. With `mode_counts=null`, mode weights
+automatically rescale allocations for 64/128/256 samples. Mode candidate counts
+and accepted fractions are logged independently.
 Broader modes use `mode_score_delta=[.25,1.5]` for deviation normalization;
 they are not penalized as if every braking action violated the tiny nominal
 trust region. E5 penalizes absolute control differences, not only differences
@@ -295,10 +366,14 @@ honestly be certified safe by changing a flag.
 - Episode: success, any collision/offroad, joint collision-success/offroad,
   actual episode cost, finite-TTC mean/minimum/coverage, predicted clearance,
   road/dynamic/static risk-field components, speed, distance and completion.
-  `dynamic_collision_cost`/`static_collision_cost` in episode CSV are aliases
-  for the respective risk-field potential sums, NOT separately attributable
-  physical contact charges. `episode_cost` is the actual supervised constraint
-  cost and must not be reconstructed by summing these diagnostic components.
+  `dynamic_collision_cost`/`static_collision_cost` now contain actual one-shot
+  contact charges from the existing environment cost calculator, not potential
+  field values. `dynamic_risk_field_cost`/`static_risk_field_cost` retain the
+  soft-risk sums. Cost totals and deduplication are unchanged. If simultaneous
+  equally dominant new event categories prevent unique attribution, the single
+  original charge goes to `unallocated_event_cost`; it is not duplicated across
+  contact and road categories. `episode_cost` remains the supervised constraint
+  total; risk-field potential components must not be added as extra events.
 - TTC NaN/infinity are not converted to zero seconds. Summary minimum TTC is
   the full-set minimum; mean TTC is finite-step weighted. Coverage is reported.
 - Scores against an invalid baseline may be unavailable instead of artificial
@@ -339,6 +414,7 @@ from scratch, or explicitly retain legacy semantics for a legacy resume.
 | `planning/cost_validation.py` | Held-out executed-control multi-horizon calibration |
 | `planning/safety.py` | Global footprint, road, dynamic/static collision, TTC/dynamics |
 | `planning/local_mppi.py` | Hard-first scores, multimodal search, explicit emergency path |
+| `planning/multimodal.py` | Independent bounded updates for nominal/braking/signed lateral/joint modes |
 | `planning/coordinator.py` | Preserve SAC intent, integrate safety, per-stage diagnostics |
 | `planning/structured_proposal.py` | Defer collision-only rejection to active safety MPPI |
 | `lattice/frenet_metadrive.py` | Optional obstacle-check deferral; retain geometry checks |
@@ -349,6 +425,9 @@ from scratch, or explicitly retain legacy semantics for a legacy resume.
 | `vendor/tdmpc2_runtime/tdmpc2.py` | Track genuine cost supervision and support legacy buffers |
 | `tdmpc2/core.py` | Correct the learner extension documentation |
 | `evaluation_diagnostics.py` | Shared event/trajectory recording, CSV/JSON/CI reports |
+| `evaluation_statistics.py` | Prompt-named metrics and configurable paired comparison groups |
+| `evaluate_improvements.py` | Paired six-model benchmark with checkpoint/profile contracts |
+| `env/env.py`, `lattice_tdmpc2/versions/v3/cost_v3.py` | Diagnostic attribution of unchanged actual event charges |
 | `evaluate.py` | Architecture-aware load, explicit full stack, unique scenes, diagnostics |
 | `evaluate_frozen_stack.py` | Composite weights, optional MPPI file, diagnostics/reports |
 | `evaluate_model_suite.py` | Architecture inference, seed-range checks and new metrics |
@@ -358,6 +437,7 @@ from scratch, or explicitly retain legacy semantics for a legacy resume.
 | `tests/test_v2_safety.py` | New safety/risk/replay/calibration/constraint tests |
 | `tests/test_v2_cost_training.py` | Real CUDA cost-head optimizer/rollout/legacy test |
 | `tests/test_v2_reporting.py` | Unique fixed scenarios, whole-episode events and strict JSON |
+| `tests/test_prompt_completion.py` | Per-mode updates, H=10/15/20, event attribution and paired E0--E5 runner |
 | `tests/test_residual_rl.py`, `tests/test_evaluation_ablation.py` | Update intentional new contracts/fixtures |
 | `pytest.ini` | Ensure tests import this V2 rather than the old sibling |
 | `tools/smoke_v2.py` | Actual MetaDrive controls, geometry and checkpoint roundtrips |
@@ -373,7 +453,8 @@ cd /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2
 
 Verified on the local CUDA/MetaDrive installation:
 
-- 80 tests passing, including a real cost-head optimizer step (not only mocks).
+- 94 tests passing across `tests` and `env/tests`, including a real cost-head
+  optimizer step (not only mocks).
 - Static and moving/crossing obstacle footprints, clearance, road-lane union,
   predecessor-road rear coverage, terminal-action timing and unsafe-baseline
   rejection; braking escape and all-invalid explicit emergency behavior.
@@ -387,6 +468,10 @@ Verified on the local CUDA/MetaDrive installation:
   evaluation on eight-step smoke scenes both completed and wrote results.
 - Old best checkpoint successfully loaded without modifying or copying it.
 - V2 module entry and Hydra E5/frozen schedule composition verified.
+- E0--E5 runner unit/integration test confirms six distinct files, identical
+  ordered scenario IDs and repeat seeds, and strict JSON/CSV paired outputs.
+  A real E5 checkpoint from the compressed training smoke additionally exercises
+  this runner; it is not relabelled as untrained E0--E4 models.
 
 These tiny truncated episodes are API/training/inference checks, not meaningful
 task-success measurements. Smoke artifacts are under `/tmp`, not copied into
@@ -412,7 +497,7 @@ in this headless session.
 6. MPPI can reach an unavoidable state with no verified-safe action. Emergency
    is labelled explicitly; future work may need a separately validated shield.
 7. The geometry/WM loops are not established real-time. A local smoke plan was
-   roughly .4 seconds on RTX 3070, above the .1-second simulation control period.
+   roughly .4--1.0 seconds across local RTX 3070 checks, above the .1-second simulation control period.
    Profile warm-up and sustained latency before live use; H=20 costs more.
 8. E5's risk auxiliary and extra input are experimental and need isolated
    training ablations. Do not interpret a masked/unready cost as zero danger.

@@ -15,6 +15,8 @@ cd /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2
 
 The sections below retain the upstream setup/layout documentation. V2-specific
 training, E0--E5 evaluation, and frozen-stack commands are in the document above.
+`evaluate_improvements.py` provides the paired E0--E5 entry point with a separate
+trained checkpoint per profile; it will not treat a YAML switch as retraining.
 
 ## Upstream Reference
 

@@ -451,6 +451,11 @@ class MetaDriveTDMPC2Env(gym.Env):
             safety_risk_cost=safety_risk_cost,
             safety_event_cost=safety_event_cost,
         )
+        components = getattr(self._safety_cost_calculator, "last_components", None)
+        if components is None:
+            components = {"unallocated_event": safety_event_cost}
+        for name in ("dynamic_collision", "static_collision", "road_event", "other_event", "unallocated_event"):
+            info[f"safety_{name}_cost"] = float(components.get(name, 0.0))
         self._last_info = info
         return (
             self._observation(observation),

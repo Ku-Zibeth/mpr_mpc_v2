@@ -7,6 +7,17 @@ from dataclasses import dataclass, field
 import torch
 
 from .kinematic_filter import BatchedKinematicCorridor, CorridorContext
+from .multimodal import MultiModalProposals
+
+
+MPPI_DIAGNOSTIC_KEYS = (
+    "no_safe_candidate", "selected_safe", "baseline_safe", "expanded_search",
+    "collision_reject_count", "offroad_reject_count", "collision_reject_rate",
+    "offroad_reject_rate", "kinematic_reject_count", "baseline_soft_risk",
+    "selected_soft_risk", "risk_reduction", "selected_min_clearance",
+    "selected_min_ttc", "selected_boundary_margin", "cost_validated",
+) + tuple(f"mode_{mode}_{metric}" for mode in ("nominal", "braking", "lateral", "joint")
+          for metric in ("samples", "safe_ratio"))
 
 
 def _action_vector(value, action_dim: int, name: str, device) -> torch.Tensor:
@@ -15,8 +26,8 @@ def _action_vector(value, action_dim: int, name: str, device) -> torch.Tensor:
         tensor = tensor.repeat(action_dim)
     if tensor.shape != (action_dim,):
         raise ValueError(f"{name} must be scalar or [{action_dim}], got {tuple(tensor.shape)}.")
-    if torch.any(tensor < 0):
-        raise ValueError(f"{name} values must be non-negative.")
+    if not torch.isfinite(tensor).all() or torch.any(tensor < 0):
+        raise ValueError(f"{name} values must be finite and non-negative.")
     return tensor
 
 
@@ -71,8 +82,10 @@ class LocalMPPI:
         self.uncertainty_coef = float(cfg.get("uncertainty_coef", 0.0))
         self.eval_seed = int(cfg.get("eval_seed", 0))
         self.multimodal = bool(cfg.get("multimodal", False))
+        self._sampling_cfg = dict(cfg)
+        self._mode_bank = None
         self.mode_weights = torch.tensor(cfg.get("mode_weights", [1, 1, 1, 1]), dtype=torch.float32)
-        if self.mode_weights.shape != (4,) or (self.mode_weights < 0).any() or self.mode_weights.sum() <= 0:
+        if self.mode_weights.shape != (4,) or not torch.isfinite(self.mode_weights).all() or (self.mode_weights < 0).any() or self.mode_weights.sum() <= 0:
             raise ValueError("mode_weights must contain four nonnegative weights with a positive sum.")
         self.braking_center = float(cfg.get("braking_center", -0.6))
         self.braking_std = float(cfg.get("braking_std", 0.15))
@@ -104,6 +117,7 @@ class LocalMPPI:
 
     def reset(self) -> None:
         self._prev_mean = None
+        self._mode_bank = None
 
     def _shift_previous(self, baseline: torch.Tensor) -> torch.Tensor:
         if self._prev_mean is None:
@@ -150,6 +164,12 @@ class LocalMPPI:
         return deviation, smoothness
 
     def _candidate_batch(self, mean, std, baseline, generator=None):
+        if self.multimodal:
+            if self._mode_bank is None:
+                self._mode_bank = MultiModalProposals(self._sampling_cfg, baseline, mean, std,
+                    num_samples=self.num_samples, num_elites=self.num_elites, temperature=self.temperature,
+                    min_std=self.min_std_vector, max_std=self.max_std_vector, max_delta=self.max_delta)
+            return self._mode_bank.sample(generator)
         noise = torch.randn(
             self.num_samples,
             self.horizon + 1,
@@ -160,26 +180,6 @@ class LocalMPPI:
         actions = self._project(mean.unsqueeze(0) + std.unsqueeze(0) * noise, baseline)
         actions[0] = baseline
         actions[1] = self._project(mean, baseline)
-        if self.multimodal:
-            # Keep mode centers separate: braking must not disappear into a nominal mean.
-            counts = ((self.num_samples - 2) * self.mode_weights / self.mode_weights.sum()).floor().long()
-            counts[0] += self.num_samples - 2 - int(counts.sum())
-            for mode, indices in enumerate(torch.split(torch.arange(2, self.num_samples, device=self.device), counts.tolist())):
-                if not len(indices):
-                    continue
-                center = baseline.clone()
-                limit = self.max_delta.clone()
-                if mode in (1, 3):
-                    center[:, 1] = self.braking_center
-                    limit[1] = self.braking_delta
-                if mode in (2, 3):
-                    signs = torch.where(torch.arange(len(indices), device=self.device) % 2 == 0, 1.0, -1.0)
-                    actions[indices, :, 0] += signs[:, None] * self.lateral_shift
-                    limit[0] = self.lateral_delta
-                delta = actions[indices] - center
-                actions[indices] = (center + delta.clamp(-limit, limit)).clamp(-1, 1)
-                if mode in (1, 3):
-                    actions[indices, :, 1] = (center[:, 1] + (noise[indices, :, 1] * self.braking_std).clamp(-limit[1], limit[1])).clamp(-1, 0)
         return actions
 
     @torch.no_grad()
@@ -194,6 +194,11 @@ class LocalMPPI:
         alternatives=None,
         task=None,
     ):
+        if not torch.isfinite(baseline).all():
+            raise ValueError("MPPI baseline must be finite.")
+        if self.safety_evaluator is not None and safety_context is None:
+            raise ValueError("Dynamic safety is enabled but live safety context is missing.")
+        self._mode_bank = None
         baseline = baseline.to(self.device).clamp(-1.0, 1.0)
         mean = self.initial_mean(baseline)
         initial_mean = mean.clone()
@@ -211,10 +216,14 @@ class LocalMPPI:
         actions = elite_actions = elite_values = elite_wm_values = weights = None
         baseline_wm_value = baseline_score = None
         previous_best = None
+        previous_best_mode = -1
         for _ in range(self.iterations):
             actions = self._candidate_batch(mean, std, baseline, generator)
+            mode_ids = self._mode_bank.ids.clone() if self._mode_bank is not None else None
             if previous_best is not None:
                 actions[1] = previous_best
+                if mode_ids is not None:
+                    mode_ids[1] = previous_best_mode
             safety = None
             if self.safety_evaluator is not None and safety_context is not None:
                 safety = self.safety_evaluator.check(actions, safety_context)
@@ -231,6 +240,8 @@ class LocalMPPI:
                     if alternative_actions is not None and len(alternative_actions):
                         extra.append(alternative_actions)
                     actions = torch.cat(extra)
+                    if mode_ids is not None:
+                        mode_ids = torch.cat((mode_ids, mode_ids.new_full((len(actions) - len(mode_ids),), -1)))
                     safety = self.safety_evaluator.check(actions, safety_context)
                     valid = safety.valid.clone()
             elif corridor_context is None:
@@ -267,6 +278,8 @@ class LocalMPPI:
             baseline_wm_value = wm_values[0]
             baseline_score = scores[0]
             if not valid.any():
+                if self._mode_bank is not None:
+                    self._mode_bank.update(actions, scores, valid, mode_ids)
                 # This is a minimum-risk emergency action, NOT a certified safe fallback.
                 emergency = safety.emergency_cost if safety is not None else (actions[:, :, 1].mean(-1) + 1)
                 elite_indices = emergency.argmin().reshape(1)
@@ -280,6 +293,9 @@ class LocalMPPI:
             elite_wm_values = wm_values[elite_indices]
             elite_actions = actions[elite_indices]
             previous_best = elite_actions[0].clone()
+            if mode_ids is not None:
+                previous_best_mode = int(mode_ids[elite_indices[0]])
+                self._mode_bank.update(actions, scores, valid, mode_ids)
             finite = torch.isfinite(elite_values)
             logits = self.temperature * (elite_values - elite_values[finite].max())
             weights = torch.where(finite, torch.exp(logits), torch.zeros_like(logits))
@@ -293,6 +309,8 @@ class LocalMPPI:
                 torch.minimum(variance.sqrt(), self.max_std_vector.view(1, -1)),
                 self.min_std_vector.view(1, -1),
             )
+            if self._mode_bank is not None:
+                mean, std = self._mode_bank.means[0].clone(), self._mode_bank.stds[0].clone()
         if eval_mode:
             selected_index = int(torch.argmax(elite_values).item())
         else:
@@ -336,6 +354,8 @@ class LocalMPPI:
                 "selected_boundary_margin": float(safety.boundary_margin[selected_batch_index]),
                 "cost_validated": float(costs_validated),
             }
+        if self._mode_bank is not None:
+            safety_metrics.update(self._mode_bank.metrics())
 
         self._prev_mean = mean.detach().clone()
         action_delta = (sequence - baseline).abs().amax(dim=0)

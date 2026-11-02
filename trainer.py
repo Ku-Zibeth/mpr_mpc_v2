@@ -11,6 +11,7 @@ import torch
 from mpr_mpc._bootstrap import bootstrap
 from mpr_mpc.planning.config import mapping, section
 from mpr_mpc.training_schedule import tdmpc_update_gate
+from mpr_mpc.evaluation_diagnostics import EpisodeDiagnostics
 
 
 bootstrap()
@@ -182,9 +183,10 @@ class MPROnlineTrainer(OnlineTrainer):
         base_rewards, risk_costs, normalized_risks, risk_penalties = [], [], [], []
         validation_episodes, collision_success, collision_offroad, ttc_values = [], [], [], []
         plan_metrics = {}
+        episode_diagnostics = []
         for episode in range(int(self.cfg.eval_episodes)):
             observation = self.env.reset(seed=int(self._eval_scenarios[episode]))
-            validation_obs, validation_actions, validation_costs = [], [], []
+            diagnostics = EpisodeDiagnostics()
             episode_collision = episode_offroad = False
             done = False
             episode_reward = episode_cost = episode_base_reward = 0.0
@@ -200,10 +202,9 @@ class MPROnlineTrainer(OnlineTrainer):
                     eval_mode=True,
                     global_step=self._step,
                 )
-                validation_obs.append(observation.detach().cpu().numpy().copy())
-                validation_actions.append(action.detach().cpu().numpy().copy())
+                previous_observation = observation
                 observation, reward, done, info = self.env.step(action)
-                validation_costs.append(float(info.get("cost", 0)))
+                diagnostics.observe(previous_observation, action, info, self.agent.last_plan, self.env.unwrapped_metadrive.agent)
                 episode_collision |= any(bool(info.get(k, False)) for k in
                     ("crash", "crash_vehicle", "crash_object", "crash_human", "crash_building", "crash_sidewalk"))
                 episode_offroad |= bool(info.get("out_of_road", False))
@@ -231,7 +232,8 @@ class MPROnlineTrainer(OnlineTrainer):
             offroads.append(float(episode_offroad))
             collision_success.append(float(episode_collision and bool(info.get("success", False))))
             collision_offroad.append(float(episode_collision and episode_offroad))
-            validation_episodes.append((np.asarray(validation_obs), np.asarray(validation_actions), np.asarray(validation_costs)))
+            validation_episodes.append(diagnostics.trajectory())
+            episode_diagnostics.append(diagnostics.summary(info, self.agent))
             route_completions.append(float(info.get("route_completion", 0.0)))
             base_rewards.append(episode_base_reward)
             risk_costs.append(episode_risk_cost)
@@ -240,7 +242,14 @@ class MPROnlineTrainer(OnlineTrainer):
             if self.cfg.save_video:
                 self.logger.video.save(self._step)
         mean = lambda values: float(np.nanmean(values))
+        diagnostics_mean = {}
+        for key in episode_diagnostics[0] if episode_diagnostics else []:
+            finite = [row[key] for row in episode_diagnostics if np.isfinite(row[key])]
+            diagnostics_mean[key] = mean(finite) if finite else float("nan")
+        clearances = [row["min_obstacle_clearance"] for row in episode_diagnostics if np.isfinite(row["min_obstacle_clearance"])]
+        diagnostics_mean["min_obstacle_clearance"] = min(clearances) if clearances else float("nan")
         return {
+            **diagnostics_mean,
             **self.agent.validate_cost_model(validation_episodes),
             **{key: mean(values) for key, values in plan_metrics.items()},
             "collision_and_success_rate": mean(collision_success),
@@ -249,6 +258,10 @@ class MPROnlineTrainer(OnlineTrainer):
             "min_ttc": min(ttc_values) if ttc_values else float("nan"),
             "episode_reward": mean(rewards),
             "episode_cost": mean(costs),
+            "average_safety_cost": mean(costs),
+            "success_rate": mean(successes),
+            "out_of_road_rate": mean(offroads),
+            "collision_rate": mean(collisions),
             "success": mean(successes),
             "offroad": mean(offroads),
             "collision": mean(collisions),

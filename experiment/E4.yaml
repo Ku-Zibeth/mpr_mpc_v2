@@ -3,6 +3,7 @@ defaults:
   - E3
   - _self_
 exp_name: mpr_mpc_v2_E4
+experiment_profile: E4
 mpr_mpc:
   mppi:
     multimodal: true

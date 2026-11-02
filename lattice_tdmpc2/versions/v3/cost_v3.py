@@ -8,9 +8,11 @@ class SafetyCostV3:
         self.config = config
         self.flag_fn = flag_fn
         self.active_events: set[str] = set()
+        self.last_components = {}
 
     def reset(self) -> None:
         self.active_events.clear()
+        self.last_components = {}
 
     def _events(self, info) -> dict[str, float]:
         weights = self.config.get("event_weights", {})
@@ -46,5 +48,14 @@ class SafetyCostV3:
         current_events = self._events(info)
         new_events = current_events.keys() - self.active_events
         event_cost = max((current_events[key] for key in new_events), default=0.0)
+        components = {name: 0.0 for name in ("dynamic_collision", "static_collision", "road_event", "other_event", "unallocated_event")}
+        if event_cost > 0:
+            categories = {("dynamic_collision" if key == "crash_vehicle" else
+                           "static_collision" if key == "crash_object" else
+                           "road_event" if key in {"out_of_road", "out_of_road_warning"} else "other_event")
+                          for key in new_events if current_events[key] == event_cost}
+            category = next(iter(categories)) if len(categories) == 1 else "unallocated_event"
+            components[category] = event_cost
+        self.last_components = components
         self.active_events = set(current_events)
         return risk_cost + event_cost, risk_cost, event_cost

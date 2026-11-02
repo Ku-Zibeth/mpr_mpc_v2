@@ -235,13 +235,14 @@ def _scenarios(raw_cfg: DictConfig) -> list[int]:
     if episodes <= 0:
         raise ValueError("benchmark.episodes must be positive.")
     scenario_seed = int(benchmark.get("scenario_seed", raw_cfg.seed))
-    fixed = []
-    scenario_file = benchmark.get("scenarios_file")
+    fixed = list(raw_cfg.get("evaluation_scenarios", []))
+    scenario_file = benchmark.get("scenarios_file") or raw_cfg.get("evaluation_scenarios_file")
     if scenario_file:
         payload = json.loads(Path(str(scenario_file)).expanduser().read_text(encoding="utf-8"))
         fixed = payload.get("scenarios") if isinstance(payload, dict) else payload
         if not isinstance(fixed, list) or not fixed:
             raise ValueError("scenarios_file must contain a nonempty scenario list.")
+    if fixed:
         if any(type(value) is not int or value < 0 for value in fixed):
             raise ValueError("Scenario IDs must be nonnegative integers.")
         if len(set(fixed)) != len(fixed):

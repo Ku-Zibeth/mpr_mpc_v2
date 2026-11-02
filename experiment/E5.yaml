@@ -3,6 +3,7 @@ defaults:
   - E4
   - _self_
 exp_name: mpr_mpc_v2_E5
+experiment_profile: E5
 residual_rl:
   risk_features: [cumulative_cost, min_ttc, min_clearance, boundary_margin]
   risk_auxiliary_weight: 0.1

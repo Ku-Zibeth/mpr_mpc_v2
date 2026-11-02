@@ -71,8 +71,10 @@ class TrajectorySafetyEvaluator:
         self.cfg = dict(cfg)
         self.dt = float(control_dt)
         self.device = torch.device(device)
-        self.substeps = max(1, int(cfg.get("substeps", 5)))
-        self.model_margin = max(0., float(cfg.get("model_margin", 0.0)))
+        self.substeps = int(cfg.get("substeps", 5))
+        self.model_margin = float(cfg.get("model_margin", 0.0))
+        if not np.isfinite([self.dt, self.model_margin]).all() or self.dt <= 0 or self.model_margin < 0 or self.substeps <= 0:
+            raise ValueError("Safety timestep/substeps must be positive and model_margin finite/nonnegative.")
         self._road_cache = {}
 
     def reset(self):
@@ -150,13 +152,22 @@ class TrajectorySafetyEvaluator:
     def check(self, actions, context: SafetyContext):
         if actions.ndim != 3 or actions.shape[-1] != 2 or actions.shape[1] < 2:
             raise ValueError("Safety actions must be [N,H+1,2].")
+        scalars = np.asarray([context.heading, context.speed, context.length, context.width,
+                              context.wheelbase, context.max_steering], dtype=float)
+        if (not np.isfinite(scalars).all() or not np.isfinite(context.position).all()
+                or not np.isfinite(context.previous_action).all() or context.speed < 0
+                or min(context.length, context.width, context.wheelbase) <= 0
+                or not 0 < context.max_steering < np.pi / 2):
+            raise ValueError("Live safety state and vehicle geometry must be finite and physically valid.")
         positions, headings, speeds = self.rollout(actions, context)
         n, steps, _ = positions.shape
         finite = torch.isfinite(actions).all(dim=(1, 2)) & (actions.abs() <= 1).all(dim=(1, 2))
         controls = actions[:, :-1]
         previous = actions.new_tensor(context.previous_action).view(1, 1, 2).expand(n, -1, -1)
         rate = torch.diff(torch.cat((previous, controls), 1)[:, :, 0], dim=1).abs() * context.max_steering / self.dt
-        lateral_acceleration = speeds[:, :-1:self.substeps].square() * (controls[:, :, 0] * context.max_steering).tan().abs() / context.wheelbase
+        curvature = (controls[:, :, 0] * context.max_steering).tan().abs() / context.wheelbase
+        peak_speed = torch.maximum(speeds[:, :-1], speeds[:, 1:])
+        lateral_acceleration = peak_speed.square() * curvature.repeat_interleave(self.substeps, dim=1)
         kinematic = (~finite | (rate > float(self.cfg.get("max_steering_rate", 2.5))).any(1)
                      | (lateral_acceleration > float(self.cfg.get("max_lateral_acceleration", 6.0))).any(1))
         ego_length, ego_width = context.length + 2*self.model_margin, context.width + 2*self.model_margin
