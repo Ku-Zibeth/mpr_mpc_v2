@@ -377,3 +377,20 @@ def test_checkpoint_cannot_silently_change_cost_feature_semantics():
     agent.residual_cfg["coarse_cost_feature"] = True
     with pytest.raises(ValueError, match="cost-feature semantics"):
         agent._check_checkpoint_compatibility(state, strict_planner_config=False)
+
+
+def test_kernel_trace_counts_real_kernels_not_gpu_annotation_spans():
+    from tools.planning_profiler import kernel_trace_summary
+    events = [dict(cat="user_annotation", name="total", ts=0, dur=100, pid=1, tid=1),
+        dict(cat="user_annotation", name="safety", ts=10, dur=20, pid=1, tid=1),
+        dict(cat="gpu_user_annotation", name="safety", ts=10, dur=9000, pid=0, tid=7),
+        dict(cat="cpu_op", ts=12, pid=1, tid=1, args={"External id": 42}),
+        dict(cat="kernel", ts=200, dur=3, args={"External id": 42}),
+        dict(cat="cuda_runtime", ts=60, pid=1, tid=1, args={"correlation": 9}),
+        dict(cat="kernel", ts=300, dur=4, args={"correlation": 9}),
+        dict(cat="kernel", ts=400, dur=5, args={"External id": 404})]
+    summary, audit = kernel_trace_summary(dict(traceEvents=events), ["safety", "total", "unused"])
+    assert summary["safety"] == dict(cpu_range_ms=.02, cuda_kernel_ms=.003)
+    assert summary["total"]["cuda_kernel_ms"] == .007
+    assert summary["unused"]["cuda_kernel_ms"] == 0
+    assert audit == dict(all_cuda_kernel_ms=.012, unattributed_kernels=1)

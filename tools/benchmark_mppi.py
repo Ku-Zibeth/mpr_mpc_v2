@@ -87,7 +87,7 @@ def main():
     set_seed(args.seed)
     env = make_env(cfg)
     durations, records, profiles, states, kernel_profile = [], [], [], [], {}
-    pending_trace = None
+    pending_trace, trace_phases = None, set()
     try:
         with contextlib.redirect_stdout(io.StringIO()):
             agent = _make_agent(cfg, env)
@@ -135,9 +135,7 @@ def main():
                     with PlanningProfiler(planner, record_ranges=True) as profiler:
                         planner.plan(observation, vehicle, global_step=planner.mppi_start_step, eval_mode=True)
                         profiler.report()
-                phases = phase_summary(profiles)
-                kernel_profile = {event.key: dict(cpu_range_ms=event.cpu_time_total/1000,
-                    cuda_kernel_ms=event.device_time_total/1000) for event in trace.key_averages() if event.key in phases}
+                trace_phases = profiler.phases
                 trace_path = args.output.with_suffix(".trace.json")
                 if trace_path.exists():
                     raise FileExistsError(trace_path)
@@ -176,7 +174,12 @@ def main():
         "Baseline scoring covers penalties only when _score_candidates is absent. No approved cost => cost time zero.")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     if pending_trace is not None:
-        pending_trace.export_chrome_trace(str(args.output.with_suffix(".trace.json")))
+        from planning_profiler import kernel_trace_summary
+        trace_path = args.output.with_suffix(".trace.json")
+        pending_trace.export_chrome_trace(str(trace_path))
+        kernel_profile, audit = kernel_trace_summary(json.loads(trace_path.read_text()), trace_phases)
+        result["kernel_profile_last_scene"] = kernel_profile
+        result["kernel_trace_audit"] = audit
     args.output.write_text(json.dumps(result, indent=2))
     with args.output.with_suffix(".csv").open("w", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=list(records[0]), lineterminator="\n")

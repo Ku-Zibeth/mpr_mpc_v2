@@ -327,10 +327,10 @@ actual measured mean meets it; a single fast smoke step is not a benchmark.
 ## Verification Before Benchmark
 
 - `python -m compileall .`: PASS, exit 0.
-- `python -m pytest tests -q`: **176 passed**, 0 failed, 0 skipped, 11.71s.
+- `python -m pytest tests -q`: **177 passed**, 0 failed, 0 skipped.
 - `python -m pytest env/tests -q`: **3 passed**, 0 failed, 0 skipped.
-- Combined: original **135** regression cases preserved/passing, **44** new
-  Round 4 cases passing, **179 total**, no failures/skips. Calibration fixtures
+- Combined: original **135** regression cases preserved/passing, **45** new
+  Round 4 cases passing, **180 total**, no failures/skips. Calibration fixtures
   were corrected to genuine matched counterfactual semantics, not weakened
   thresholds. New cases include sparse-pair bootstrap invariance and independent
   dense geometry oracles for linear, curved and accelerating motion.
@@ -359,3 +359,6 @@ actual measured mean meets it; a single fast smoke step is not a benchmark.
   and a test fixture missing checkpoint configuration. No outstanding test
   failure remains. No production-model readiness or task-success improvement
   is inferred from these tiny tests.
+- Final aggregate `python -m pytest -q`: **180 passed**, 0 failed, 0 skipped,
+  11.63s. An added trace-attribution regression prevents same-name GPU annotation
+  spans from overwriting CPU ranges or being misreported as actual kernels.
