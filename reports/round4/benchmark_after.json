@@ -1,0 +1,721 @@
+{
+  "mean_ms": 561.1450056289323,
+  "p50_ms": 356.0239268699661,
+  "p95_ms": 928.433366457466,
+  "p99_ms": 994.3388926656917,
+  "max_ms": 997.95799003914,
+  "planning_calls": 100,
+  "revision": "3cd7b5388a17fc50db7d1a800415c53590d69e17",
+  "source_root": "/tmp/mpr_v2_r4_after_verified",
+  "checkpoint": "/tmp/mpr_v2_r3_train_smoke/metadrive-risk/1/round3_smoke/models/final.pt",
+  "device": "NVIDIA GeForce RTX 3070",
+  "horizon": 10,
+  "samples": 64,
+  "iterations": 4,
+  "seed": 1,
+  "scenarios": [
+    1714,
+    539,
+    1525,
+    1084,
+    694
+  ],
+  "warmup_per_scene": 5,
+  "prefix_steps": 20,
+  "states": [
+    {
+      "scenario": 1714,
+      "position": [
+        10.315338134765625,
+        0.06203002855181694
+      ],
+      "velocity": [
+        5.478614330291748,
+        0.06822133809328079
+      ],
+      "heading": 0.012299676336476217
+    },
+    {
+      "scenario": 539,
+      "position": [
+        10.343459129333496,
+        0.9444801807403564
+      ],
+      "velocity": [
+        5.513374328613281,
+        1.0335501432418823
+      ],
+      "heading": 0.18314825132583934
+    },
+    {
+      "scenario": 1525,
+      "position": [
+        10.06427001953125,
+        1.7170004844665527
+      ],
+      "velocity": [
+        5.2313032150268555,
+        1.9260672330856323
+      ],
+      "heading": 0.3444552527616658
+    },
+    {
+      "scenario": 1084,
+      "position": [
+        10.308252334594727,
+        3.5
+      ],
+      "velocity": [
+        5.471286296844482,
+        9.175968784802535e-07
+      ],
+      "heading": 1.331580543606492e-07
+    },
+    {
+      "scenario": 694,
+      "position": [
+        10.9583740234375,
+        3.5
+      ],
+      "velocity": [
+        6.141409873962402,
+        8.495699148625135e-07
+      ],
+      "heading": 0.0
+    }
+  ],
+  "profiles": [
+    {
+      "context_construction": {
+        "cpu_wall_ms": 56.15180009044707,
+        "cuda_stream_elapsed_ms": 56.13740921020508
+      },
+      "candidate_generation": {
+        "cpu_wall_ms": 4.216643050312996,
+        "cuda_stream_elapsed_ms": 4.127647936344147
+      },
+      "safety_check": {
+        "cpu_wall_ms": 810.3607357479632,
+        "cuda_stream_elapsed_ms": 810.1380786895752
+      },
+      "world_model_evaluation": {
+        "cpu_wall_ms": 62.29418586008251,
+        "cuda_stream_elapsed_ms": 62.146559715270996
+      },
+      "cost_evaluation": {
+        "cpu_wall_ms": 0,
+        "cuda_stream_elapsed_ms": 0
+      },
+      "candidate_scoring": {
+        "cpu_wall_ms": 1.230748137459159,
+        "cuda_stream_elapsed_ms": 1.202560007572174
+      },
+      "distribution_update": {
+        "cpu_wall_ms": 12.200906639918685,
+        "cuda_stream_elapsed_ms": 12.128544092178345
+      },
+      "total_planning": {
+        "cpu_wall_ms": 931.9747998379171,
+        "cuda_stream_elapsed_ms": 931.9105224609375
+      },
+      "road_geometry": {
+        "cpu_wall_ms": 694.316110573709,
+        "cuda_stream_elapsed_ms": 694.0303883552551
+      },
+      "continuous_collision": {
+        "cpu_wall_ms": 7.463331567123532,
+        "cuda_stream_elapsed_ms": 7.289887964725494
+      }
+    },
+    {
+      "context_construction": {
+        "cpu_wall_ms": 63.990739872679114,
+        "cuda_stream_elapsed_ms": 63.97846221923828
+      },
+      "candidate_generation": {
+        "cpu_wall_ms": 4.483456956222653,
+        "cuda_stream_elapsed_ms": 4.222559928894043
+      },
+      "safety_check": {
+        "cpu_wall_ms": 820.1104160398245,
+        "cuda_stream_elapsed_ms": 819.9926681518555
+      },
+      "world_model_evaluation": {
+        "cpu_wall_ms": 62.042618403211236,
+        "cuda_stream_elapsed_ms": 61.86649513244629
+      },
+      "cost_evaluation": {
+        "cpu_wall_ms": 0,
+        "cuda_stream_elapsed_ms": 0
+      },
+      "candidate_scoring": {
+        "cpu_wall_ms": 1.1664631310850382,
+        "cuda_stream_elapsed_ms": 1.0184640139341354
+      },
+      "distribution_update": {
+        "cpu_wall_ms": 11.16280211135745,
+        "cuda_stream_elapsed_ms": 11.235391855239868
+      },
+      "total_planning": {
+        "cpu_wall_ms": 944.7425710968673,
+        "cuda_stream_elapsed_ms": 944.7454223632812
+      },
+      "road_geometry": {
+        "cpu_wall_ms": 702.9144919943064,
+        "cuda_stream_elapsed_ms": 702.8798878192902
+      },
+      "continuous_collision": {
+        "cpu_wall_ms": 7.937309797853231,
+        "cuda_stream_elapsed_ms": 7.654400050640106
+      }
+    },
+    {
+      "context_construction": {
+        "cpu_wall_ms": 50.52591394633055,
+        "cuda_stream_elapsed_ms": 50.5129280090332
+      },
+      "candidate_generation": {
+        "cpu_wall_ms": 4.155607894062996,
+        "cuda_stream_elapsed_ms": 4.068351924419403
+      },
+      "safety_check": {
+        "cpu_wall_ms": 191.2646188866347,
+        "cuda_stream_elapsed_ms": 191.14134407043457
+      },
+      "world_model_evaluation": {
+        "cpu_wall_ms": 60.92471280135214,
+        "cuda_stream_elapsed_ms": 60.80220699310303
+      },
+      "cost_evaluation": {
+        "cpu_wall_ms": 0,
+        "cuda_stream_elapsed_ms": 0
+      },
+      "candidate_scoring": {
+        "cpu_wall_ms": 1.1597145348787308,
+        "cuda_stream_elapsed_ms": 1.0867199897766113
+      },
+      "distribution_update": {
+        "cpu_wall_ms": 12.730034068226814,
+        "cuda_stream_elapsed_ms": 12.657535791397095
+      },
+      "total_planning": {
+        "cpu_wall_ms": 309.6449540462345,
+        "cuda_stream_elapsed_ms": 309.6242980957031
+      },
+      "road_geometry": {
+        "cpu_wall_ms": 79.62262351065874,
+        "cuda_stream_elapsed_ms": 79.47593539953232
+      },
+      "continuous_collision": {
+        "cpu_wall_ms": 7.486464222893119,
+        "cuda_stream_elapsed_ms": 7.400960087776184
+      }
+    },
+    {
+      "context_construction": {
+        "cpu_wall_ms": 51.29371606744826,
+        "cuda_stream_elapsed_ms": 51.276031494140625
+      },
+      "candidate_generation": {
+        "cpu_wall_ms": 4.161064745858312,
+        "cuda_stream_elapsed_ms": 3.8513600528240204
+      },
+      "safety_check": {
+        "cpu_wall_ms": 193.52854904718697,
+        "cuda_stream_elapsed_ms": 193.393217086792
+      },
+      "world_model_evaluation": {
+        "cpu_wall_ms": 61.82365631684661,
+        "cuda_stream_elapsed_ms": 61.687296867370605
+      },
+      "cost_evaluation": {
+        "cpu_wall_ms": 0,
+        "cuda_stream_elapsed_ms": 0
+      },
+      "candidate_scoring": {
+        "cpu_wall_ms": 1.2234349269419909,
+        "cuda_stream_elapsed_ms": 1.1445119976997375
+      },
+      "distribution_update": {
+        "cpu_wall_ms": 12.824990088120103,
+        "cuda_stream_elapsed_ms": 12.750623941421509
+      },
+      "total_planning": {
+        "cpu_wall_ms": 314.2395569011569,
+        "cuda_stream_elapsed_ms": 314.2306823730469
+      },
+      "road_geometry": {
+        "cpu_wall_ms": 80.4513308685273,
+        "cuda_stream_elapsed_ms": 80.20652854442596
+      },
+      "continuous_collision": {
+        "cpu_wall_ms": 7.4351520743221045,
+        "cuda_stream_elapsed_ms": 7.261344075202942
+      }
+    },
+    {
+      "context_construction": {
+        "cpu_wall_ms": 54.39905286766589,
+        "cuda_stream_elapsed_ms": 54.386878967285156
+      },
+      "candidate_generation": {
+        "cpu_wall_ms": 4.461341770365834,
+        "cuda_stream_elapsed_ms": 4.17059201002121
+      },
+      "safety_check": {
+        "cpu_wall_ms": 728.2650591805577,
+        "cuda_stream_elapsed_ms": 728.1578617095947
+      },
+      "world_model_evaluation": {
+        "cpu_wall_ms": 60.37757289595902,
+        "cuda_stream_elapsed_ms": 60.252705574035645
+      },
+      "cost_evaluation": {
+        "cpu_wall_ms": 0,
+        "cuda_stream_elapsed_ms": 0
+      },
+      "candidate_scoring": {
+        "cpu_wall_ms": 1.1678622104227543,
+        "cuda_stream_elapsed_ms": 1.3360640406608582
+      },
+      "distribution_update": {
+        "cpu_wall_ms": 12.410341063514352,
+        "cuda_stream_elapsed_ms": 12.338048219680786
+      },
+      "total_planning": {
+        "cpu_wall_ms": 848.3896700199693,
+        "cuda_stream_elapsed_ms": 848.3796997070312
+      },
+      "road_geometry": {
+        "cpu_wall_ms": 617.7119077183306,
+        "cuda_stream_elapsed_ms": 617.4178302288055
+      },
+      "continuous_collision": {
+        "cpu_wall_ms": 7.818176178261638,
+        "cuda_stream_elapsed_ms": 7.652320027351379
+      }
+    },
+    {
+      "context_construction": {
+        "cpu_wall_ms": 52.806303137913346,
+        "cuda_stream_elapsed_ms": 52.79391860961914
+      },
+      "candidate_generation": {
+        "cpu_wall_ms": 3.964510979130864,
+        "cuda_stream_elapsed_ms": 3.790015995502472
+      },
+      "safety_check": {
+        "cpu_wall_ms": 723.6528417561203,
+        "cuda_stream_elapsed_ms": 723.515718460083
+      },
+      "world_model_evaluation": {
+        "cpu_wall_ms": 59.759956086054444,
+        "cuda_stream_elapsed_ms": 59.63347244262695
+      },
+      "cost_evaluation": {
+        "cpu_wall_ms": 0,
+        "cuda_stream_elapsed_ms": 0
+      },
+      "candidate_scoring": {
+        "cpu_wall_ms": 1.1972743086516857,
+        "cuda_stream_elapsed_ms": 1.2246719896793365
+      },
+      "distribution_update": {
+        "cpu_wall_ms": 12.325193034484982,
+        "cuda_stream_elapsed_ms": 12.254016160964966
+      },
+      "total_planning": {
+        "cpu_wall_ms": 841.300968080759,
+        "cuda_stream_elapsed_ms": 841.3035278320312
+      },
+      "road_geometry": {
+        "cpu_wall_ms": 612.4734920449555,
+        "cuda_stream_elapsed_ms": 612.0802640914917
+      },
+      "continuous_collision": {
+        "cpu_wall_ms": 7.632390595972538,
+        "cuda_stream_elapsed_ms": 7.473280131816864
+      }
+    },
+    {
+      "context_construction": {
+        "cpu_wall_ms": 52.82312398776412,
+        "cuda_stream_elapsed_ms": 52.810367584228516
+      },
+      "candidate_generation": {
+        "cpu_wall_ms": 4.051159135997295,
+        "cuda_stream_elapsed_ms": 3.972287893295288
+      },
+      "safety_check": {
+        "cpu_wall_ms": 244.17669046670198,
+        "cuda_stream_elapsed_ms": 244.02131271362305
+      },
+      "world_model_evaluation": {
+        "cpu_wall_ms": 63.18819406442344,
+        "cuda_stream_elapsed_ms": 62.76249599456787
+      },
+      "cost_evaluation": {
+        "cpu_wall_ms": 0,
+        "cuda_stream_elapsed_ms": 0
+      },
+      "candidate_scoring": {
+        "cpu_wall_ms": 1.307561295107007,
+        "cuda_stream_elapsed_ms": 1.199103981256485
+      },
+      "distribution_update": {
+        "cpu_wall_ms": 13.857296202331781,
+        "cuda_stream_elapsed_ms": 13.779360055923462
+      },
+      "total_planning": {
+        "cpu_wall_ms": 371.1585788987577,
+        "cuda_stream_elapsed_ms": 371.140380859375
+      },
+      "road_geometry": {
+        "cpu_wall_ms": 125.85693388246,
+        "cuda_stream_elapsed_ms": 125.3397444486618
+      },
+      "continuous_collision": {
+        "cpu_wall_ms": 8.17229924723506,
+        "cuda_stream_elapsed_ms": 8.000063955783844
+      }
+    },
+    {
+      "context_construction": {
+        "cpu_wall_ms": 54.451606003567576,
+        "cuda_stream_elapsed_ms": 54.440704345703125
+      },
+      "candidate_generation": {
+        "cpu_wall_ms": 4.202400799840689,
+        "cuda_stream_elapsed_ms": 4.122943878173828
+      },
+      "safety_check": {
+        "cpu_wall_ms": 236.67199490591884,
+        "cuda_stream_elapsed_ms": 236.55437088012695
+      },
+      "world_model_evaluation": {
+        "cpu_wall_ms": 61.92177115008235,
+        "cuda_stream_elapsed_ms": 61.7838077545166
+      },
+      "cost_evaluation": {
+        "cpu_wall_ms": 0,
+        "cuda_stream_elapsed_ms": 0
+      },
+      "candidate_scoring": {
+        "cpu_wall_ms": 1.2356021907180548,
+        "cuda_stream_elapsed_ms": 1.161056011915207
+      },
+      "distribution_update": {
+        "cpu_wall_ms": 12.898571323603392,
+        "cuda_stream_elapsed_ms": 12.826656103134155
+      },
+      "total_planning": {
+        "cpu_wall_ms": 360.8130819629878,
+        "cuda_stream_elapsed_ms": 360.8053894042969
+      },
+      "road_geometry": {
+        "cpu_wall_ms": 123.10921493917704,
+        "cuda_stream_elapsed_ms": 122.78348672389984
+      },
+      "continuous_collision": {
+        "cpu_wall_ms": 7.4568758718669415,
+        "cuda_stream_elapsed_ms": 7.233023941516876
+      }
+    },
+    {
+      "context_construction": {
+        "cpu_wall_ms": 45.62122281640768,
+        "cuda_stream_elapsed_ms": 45.60831832885742
+      },
+      "candidate_generation": {
+        "cpu_wall_ms": 4.712686175480485,
+        "cuda_stream_elapsed_ms": 4.628351926803589
+      },
+      "safety_check": {
+        "cpu_wall_ms": 210.24842676706612,
+        "cuda_stream_elapsed_ms": 210.12998390197754
+      },
+      "world_model_evaluation": {
+        "cpu_wall_ms": 62.736584106460214,
+        "cuda_stream_elapsed_ms": 62.609055519104004
+      },
+      "cost_evaluation": {
+        "cpu_wall_ms": 0,
+        "cuda_stream_elapsed_ms": 0
+      },
+      "candidate_scoring": {
+        "cpu_wall_ms": 1.2363297864794731,
+        "cuda_stream_elapsed_ms": 1.1615359783172607
+      },
+      "distribution_update": {
+        "cpu_wall_ms": 14.4899170845747,
+        "cuda_stream_elapsed_ms": 14.420608043670654
+      },
+      "total_planning": {
+        "cpu_wall_ms": 330.20645403303206,
+        "cuda_stream_elapsed_ms": 330.18719482421875
+      },
+      "road_geometry": {
+        "cpu_wall_ms": 116.96797283366323,
+        "cuda_stream_elapsed_ms": 116.45744162797928
+      },
+      "continuous_collision": {
+        "cpu_wall_ms": 0,
+        "cuda_stream_elapsed_ms": 0
+      }
+    },
+    {
+      "context_construction": {
+        "cpu_wall_ms": 44.45923096500337,
+        "cuda_stream_elapsed_ms": 44.44819259643555
+      },
+      "candidate_generation": {
+        "cpu_wall_ms": 4.1544262785464525,
+        "cuda_stream_elapsed_ms": 4.046079993247986
+      },
+      "safety_check": {
+        "cpu_wall_ms": 209.8037099931389,
+        "cuda_stream_elapsed_ms": 209.67417526245117
+      },
+      "world_model_evaluation": {
+        "cpu_wall_ms": 62.77663935907185,
+        "cuda_stream_elapsed_ms": 62.65100860595703
+      },
+      "cost_evaluation": {
+        "cpu_wall_ms": 0,
+        "cuda_stream_elapsed_ms": 0
+      },
+      "candidate_scoring": {
+        "cpu_wall_ms": 1.2134828139096498,
+        "cuda_stream_elapsed_ms": 1.13673597574234
+      },
+      "distribution_update": {
+        "cpu_wall_ms": 14.00179835036397,
+        "cuda_stream_elapsed_ms": 13.943135738372803
+      },
+      "total_planning": {
+        "cpu_wall_ms": 328.42564512975514,
+        "cuda_stream_elapsed_ms": 328.41790771484375
+      },
+      "road_geometry": {
+        "cpu_wall_ms": 115.45883025974035,
+        "cuda_stream_elapsed_ms": 115.20573008060455
+      },
+      "continuous_collision": {
+        "cpu_wall_ms": 0,
+        "cuda_stream_elapsed_ms": 0
+      }
+    }
+  ],
+  "measurement": "Synchronized wall ms; repeated live states; selected controls are NOT executed.",
+  "cost_readiness": {
+    "updates": 4,
+    "ready": false,
+    "schema": 0,
+    "by_mode": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    "coarse": false
+  },
+  "effective_mppi_config": {
+    "dynamic_safety": true,
+    "multimodal": true,
+    "mode_weights": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "mode_counts": null,
+    "mode_std": {
+      "nominal": [
+        0.025,
+        0.1
+      ],
+      "braking": [
+        0.025,
+        0.15
+      ],
+      "lateral": [
+        0.05,
+        0.1
+      ],
+      "joint": [
+        0.05,
+        0.15
+      ]
+    },
+    "braking_center": -0.6,
+    "braking_std": 0.15,
+    "braking_delta": 0.4,
+    "mode_score_delta": [
+      0.25,
+      1.5
+    ],
+    "absolute_smoothness": true,
+    "lateral_shift": 0.12,
+    "lateral_delta": 0.25,
+    "cost_coef": 1.0,
+    "geometry_coef": 10.0,
+    "expanded_delta": [
+      0.3,
+      1.5
+    ],
+    "substeps": 5,
+    "road_margin": 0.15,
+    "model_margin": 0.3,
+    "swept_max_depth": 10,
+    "swept_angle_tolerance": 0.0001,
+    "swept_position_tolerance": 0.0001,
+    "max_acceleration": 4.0,
+    "max_deceleration": 6.0,
+    "max_steering_rate": 2.5,
+    "max_lateral_acceleration": 6.0,
+    "soft_clearance": 1.0,
+    "soft_ttc": 3.0,
+    "soft_boundary_margin": 0.5,
+    "boundary_risk_weight": 1.0,
+    "clearance_risk_weight": 1.0,
+    "ttc_risk_weight": 1.0,
+    "hard_clearance": 0.0,
+    "hard_ttc": 0.0,
+    "ttc_lookahead": 5.0,
+    "num_samples": 64,
+    "num_elites": 8,
+    "iterations": 4,
+    "initial_std": [
+      0.025,
+      0.1
+    ],
+    "min_std": [
+      0.005,
+      0.02
+    ],
+    "max_std": [
+      0.05,
+      0.2
+    ],
+    "max_delta": [
+      0.05,
+      0.2
+    ],
+    "temperature": 0.5,
+    "lateral_corridor_ratio": 0.5,
+    "lateral_safety_margin": 0.15,
+    "kinematic_vehicle_width": 1.852,
+    "kinematic_wheelbase": 2.46894,
+    "kinematic_max_steering_angle": 0.6981317,
+    "kinematic_max_acceleration": 4.0,
+    "kinematic_max_deceleration": 6.0,
+    "deviation_coef": 5.0,
+    "smoothness_coef": 1.0,
+    "throttle_deviation_weight": 0.25,
+    "min_improvement_abs": 1.0,
+    "min_improvement_ratio": 0.01,
+    "uncertainty_coef": 0.1,
+    "eval_seed": 1,
+    "proposal_init": "structured_baseline",
+    "blend_alpha": 0.8
+  },
+  "source_dirty": false,
+  "phase_summary_ms": {
+    "candidate_generation": {
+      "cpu_wall_ms": 4.256329778581858,
+      "cuda_stream_elapsed_ms": 4.100019153952599
+    },
+    "candidate_scoring": {
+      "cpu_wall_ms": 1.2138473335653543,
+      "cuda_stream_elapsed_ms": 1.1671423986554146
+    },
+    "context_construction": {
+      "cpu_wall_ms": 52.6522709755227,
+      "cuda_stream_elapsed_ms": 52.63932113647461
+    },
+    "continuous_collision": {
+      "cpu_wall_ms": 6.140199955552816,
+      "cuda_stream_elapsed_ms": 5.996528023481369
+    },
+    "cost_evaluation": {
+      "cpu_wall_ms": 0.0,
+      "cuda_stream_elapsed_ms": 0.0
+    },
+    "distribution_update": {
+      "cpu_wall_ms": 12.890184996649623,
+      "cuda_stream_elapsed_ms": 12.833392000198364
+    },
+    "road_geometry": {
+      "cpu_wall_ms": 326.8882908625528,
+      "cuda_stream_elapsed_ms": 326.58772373199463
+    },
+    "safety_check": {
+      "cpu_wall_ms": 436.8083042791113,
+      "cuda_stream_elapsed_ms": 436.67187309265137
+    },
+    "total_planning": {
+      "cpu_wall_ms": 558.0896280007437,
+      "cuda_stream_elapsed_ms": 558.0745025634766
+    },
+    "world_model_evaluation": {
+      "cpu_wall_ms": 61.78458910435438,
+      "cuda_stream_elapsed_ms": 61.6195104598999
+    }
+  },
+  "checkpoint_sha256": "f279b10ba83403abe33ff24acf91b1c86b3de66ced8ddc3159ac60075cfccd2f",
+  "kernel_profile_last_scene": {
+    "candidate_generation": {
+      "cpu_range_ms": 7.343523,
+      "cuda_kernel_ms": 0.3962149999999999
+    },
+    "candidate_scoring": {
+      "cpu_range_ms": 2.02826,
+      "cuda_kernel_ms": 0.12885700000000005
+    },
+    "context_construction": {
+      "cpu_range_ms": 64.802424,
+      "cuda_kernel_ms": 2.816939999999998
+    },
+    "continuous_collision": {
+      "cpu_range_ms": 0.0,
+      "cuda_kernel_ms": 0.0
+    },
+    "cost_evaluation": {
+      "cpu_range_ms": 0.0,
+      "cuda_kernel_ms": 0.0
+    },
+    "distribution_update": {
+      "cpu_range_ms": 22.897065,
+      "cuda_kernel_ms": 1.709053999999997
+    },
+    "road_geometry": {
+      "cpu_range_ms": 116.76694100000002,
+      "cuda_kernel_ms": 0.020319
+    },
+    "safety_check": {
+      "cpu_range_ms": 291.821847,
+      "cuda_kernel_ms": 9.7063030000001
+    },
+    "total_planning": {
+      "cpu_range_ms": 473.192558,
+      "cuda_kernel_ms": 23.686020999998807
+    },
+    "world_model_evaluation": {
+      "cpu_range_ms": 99.57728099999999,
+      "cuda_kernel_ms": 10.534696000000018
+    }
+  },
+  "control_dt": 0.1,
+  "planning_outcomes": {
+    "selected_safe_calls": 100,
+    "emergency_calls": 0,
+    "unverified_emergency_calls": 0
+  },
+  "profile_notes": "Separate instrumented pass; nested phase times are not additive. CPU wall includes waits. CUDA events measure stream elapsed including idle CPU gaps, NOT pure GPU kernel time. Context includes coarse planning/WM; WM includes cost. Distribution is per-mode update only. Baseline scoring covers penalties only when _score_candidates is absent. No approved cost => cost time zero.",
+  "kernel_trace_audit": {
+    "all_cuda_kernel_ms": 23.686020999998807,
+    "unattributed_kernels": 0
+  }
+}

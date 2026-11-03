@@ -311,6 +311,8 @@ Benchmark example (source tree must be clean):
 | `tests/test_v2_cost_training.py` | CUDA source/schema permissions and effective training diagnostics |
 | `config.yaml`, `schedule/frozen_20k_50k.yaml` | Consistent frozen 20K/50K budgets, collision/calibration settings |
 | `README.md`, `V2_IMPLEMENTATION.md`, `ROUND3_REPORT.md`, `ROUND4_REPORT.md` | Current workflow/commands; historical results explicitly archived |
+| `reports/round4/benchmark_before.json`, `benchmark_after.json` | This round's clean-commit timings, profiles, device/config/readiness/outcomes |
+| `reports/round4/benchmark_before.csv`, `benchmark_after.csv`, `benchmark_comparison.csv` | Raw call timings and module comparison, no model weights |
 
 ## Remaining Validation
 
@@ -362,3 +364,88 @@ actual measured mean meets it; a single fast smoke step is not a benchmark.
 - Final aggregate `python -m pytest -q`: **180 passed**, 0 failed, 0 skipped,
   11.63s. An added trace-attribution regression prevents same-name GPU annotation
   spans from overwriting CPU ranges or being misreported as actual kernels.
+
+## Final Benchmark Results
+
+Fresh before: `9d3d9d8b3d48c41f568366991966fc55f06cd914` in
+`/tmp/mpr_v2_r4_before`. Final after:
+`3cd7b5388a17fc50db7d1a800415c53590d69e17` in
+`/tmp/mpr_v2_r4_after_verified`. BOTH source_dirty=false throughout timing.
+The delivery commit after these measurements adds only this report/evidence;
+the measured runtime source is unchanged. Original Round 3 numbers were not
+used in this comparison. An intermediate after run was additionally repeated
+after correcting kernel-trace attribution; only the FINAL run is delivered.
+
+Hardware: NVIDIA GeForce RTX3070. Same checkpoint:
+`/tmp/mpr_v2_r3_train_smoke/metadrive-risk/1/round3_smoke/models/final.pt`.
+Same scene order1714/539/1525/1084/694, seed1, H10, N64, eight elites,
+four iterations, dt=.1s, five geometric substeps, model margin .3m, road inset
+.15m, five warmups per scene, 100 measured calls per version. CLI/effective
+workload and identical live-state comparison checks all passed.
+
+| Synchronized Wall Milliseconds | Fresh Before | Final After |
+| --- | ---: | ---: |
+| Mean | 1046.90 | 561.15 |
+| P50 | 738.80 | 356.02 |
+| P95 | 1703.80 | 928.43 |
+| P99 | 1756.80 | 994.34 |
+| Max | 1783.06 | 997.96 |
+| Planning calls | 100 | 100 |
+
+Mean decreased about **46.4%** on this fixed workload while adding continuous
+hard collision checking. This is an end-to-end comparison including correctness
+changes and normal runtime variation, not an isolated causal estimate of one
+cache optimization or a full-route latency guarantee. **561ms still exceeds
+100ms; the system is NOT established as a 100ms real-time planner.**
+
+Separate instrumented passes (average per-call milliseconds; nested/inclusive,
+not additive, not part of the main totals):
+
+| Phase | Before CPU Wall | After CPU Wall | After CUDA Stream Elapsed |
+| --- | ---: | ---: | ---: |
+| Context construction | 52.67 | 52.65 | 52.64 |
+| Candidate generation | 4.21 | 4.26 | 4.10 |
+| Safety check | 945.15 | 436.81 | 436.67 |
+| World model evaluation | 61.33 | 61.78 | 61.62 |
+| Cost evaluation | 0 | 0 | 0 |
+| Candidate scoring | 1.17 | 1.21 | 1.17 |
+| Distribution update | 12.55 | 12.89 | 12.83 |
+| Road geometry | Not separately instrumented | 326.89 | 326.59 |
+| Continuous collision | Not present in before | 6.14 | 6.00 |
+
+The safety phase fell about53.8%. Road geometry remains the largest host-side
+component. Stream elapsed includes idle CPU intervals and must NOT be called
+GPU compute time. The optional SINGLE Kineto call on the last scene694 gives
+473.19ms CPU total-range wall duration but **23.686ms of actual CUDA kernels**:
+safety9.706ms, WM10.535ms, road geometry.0203ms, distribution1.709ms,
+generation.396ms, scoring.129ms. These inclusive kernel ranges are also not
+additive. Every traced kernel was attributed (unattributed_kernels=0). This
+last-scene call does not enter every conditional path; the multi-scene continuous
+phase above is nonzero. Trace profiling overhead and workload differ from the
+formal 100-call mean, so this single call is not used for latency claims.
+
+The checkpoint has only four supervised cost updates; BOTH versions have cost
+readiness false. After-load schema0 and all mode/coarse permissions false are
+explicitly recorded. Thus cost evaluation0 means the gate is closed, NOT that
+a calibrated cost head is free. No gate was bypassed for this benchmark.
+Final after: 100/100 selected sequences passed predicted geometry, zero
+emergency calls. Selected controls were NOT executed during timing, so this is
+not a 100-scene success or real-collision-rate experiment. Long episodes,
+calibrated-head latency, other GPUs and late-episode interactions remain untested.
+
+Raw evidence is under `reports/round4/`. The optional27MB Chrome trace remains
+outside the repository at
+`/tmp/mpr_v2_r4_benchmark_verified/benchmark_after.trace.json`. No trained model
+or large simulator dataset was added to Git.
+
+## Delivery Status
+
+| Requested Area | Result |
+| --- | --- |
+| Same-state action-risk ranking | Implemented/tested; production-model calibration still requires sufficient independent data |
+| Continuous interval hard collision | Implemented/tested for translation/turning/acceleration and near misses |
+| Emergency control | Independent verified braking or explicitly unverified predetermined mitigation; events/reasons/durations tested |
+| E5 actual feature use | Geometric availability audited; unready cost masked; independently trained opt-in profile/source added |
+| Performance | Fresh clean-commit before/after plus kernel trace; substantial improvement, 100ms target NOT met |
+| Training/docs/checkpoint compatibility | Frozen20K/50K retained; old permissions fail closed; commands and milestone flows documented |
+| Regression | 135 original +45 new =180 passed, 0 failed/skipped; compile/CUDA/real MetaDrive smoke pass |
