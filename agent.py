@@ -314,7 +314,8 @@ class MPRMPCAgent:
         interval = max(1, int(section(self.cfg, "cost").get("validation_interval", 1000)))
         if hasattr(self.model, "_cost_updates") and int(self.model._cost_updates) % interval == 0:
             info.update(self.validate_cost_model())
-        for key in ("consistency_loss", "reward_loss", "value_loss", "termination_loss"):
+        for key in ("consistency_loss", "reward_loss", "value_loss", "termination_loss", "cost_loss",
+                    "cost_grad_norm", "cost_updates", "cost_supervised_samples", "cost_label_mean"):
             if key in info:
                 info[f"wm/{key}"] = info[key]
         info["wm/replay_ready"] = torch.tensor(1.0, device=self.device)
@@ -479,6 +480,7 @@ class MPRMPCAgent:
             "stage_config": self._plain(self.planner.mpr_cfg.get("stages", {})),
             "mppi_config": self._plain(self.planner.mppi_cfg),
             "risk_features": list(getattr(getattr(self.planner, "residual_state_builder", None), "risk_features", [])),
+            "coarse_cost_feature": bool(self.residual_cfg.get("coarse_cost_feature", False)),
             "encoder_config": self._plain(section(self.cfg, "state_encoder")),
             "residual_mapping": getattr(self.planner, "residual_mapping", "linear"),
             "residual_config": self._plain(self.residual_cfg),
@@ -530,6 +532,8 @@ class MPRMPCAgent:
         mismatches = []
         if check_residual and "risk_features" in metadata and metadata["risk_features"] != current["risk_features"]:
             raise ValueError("Checkpoint risk feature order differs from this run.")
+        if check_residual and bool(metadata.get("coarse_cost_feature", False)) != current["coarse_cost_feature"]:
+            raise ValueError("Checkpoint coarse cost-feature semantics differ; use its matching training profile.")
         if check_residual and "residual_mapping" in metadata and metadata["residual_mapping"] != current["residual_mapping"]:
             raise ValueError("Checkpoint residual action mapping differs from this run.")
         for field, checkpoint_value in checks:

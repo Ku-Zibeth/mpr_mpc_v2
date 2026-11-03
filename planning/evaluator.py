@@ -44,6 +44,7 @@ class TrajectoryWorldModelEvaluator:
         terminal_action_mode: str,
         task=None,
         mode_ids=None,
+        cost_source=None,
     ) -> TrajectoryConsequence:
         if actions.ndim != 3:
             raise ValueError(f"actions must be [B,S,A], got {tuple(actions.shape)}.")
@@ -80,12 +81,21 @@ class TrajectoryWorldModelEvaluator:
         cost_cfg = getattr(self.agent.cfg, "cost", {}) or {}
         cost_ready = cost_ready and bool(cost_cfg.get("enabled", False))
         cost_mask = torch.zeros(batch, dtype=torch.bool, device=actions.device)
+        if cost_source not in {None, "coarse_lattice"} or (cost_source is not None and mode_ids is not None):
+            raise ValueError("Cost source must be either real mode IDs or separately calibrated coarse_lattice.")
+        unavailable_reason = ("disabled" if not bool(cost_cfg.get("enabled", False)) else
+                              "unlabelled_trajectory" if mode_ids is None and cost_source is None else
+                              "calibration_not_ready")
+        if cost_ready and cost_source == "coarse_lattice" and self.horizon < 63:
+            cost_mask[:] = model._cost_validated_coarse[self.horizon]
         if cost_ready and mode_ids is not None and self.horizon < 63:
             ids = torch.as_tensor(mode_ids, device=actions.device, dtype=torch.long)
             if ids.shape != (batch,):
                 raise ValueError("mode_ids must have shape [B].")
             known = (ids >= 0) & (ids < 6)
             cost_mask[known] = model._cost_validated_by_mode[ids[known], self.horizon]
+        if cost_ready and (mode_ids is not None or cost_source is not None):
+            unavailable_reason = "mode_or_horizon_unvalidated"
         cost_ready = bool(cost_mask.any())
         cost_gamma = float(cost_cfg.get("gamma", float(discount_step.flatten()[0])))
         cost_total = actions.new_zeros((batch, 1))
@@ -125,6 +135,7 @@ class TrajectoryWorldModelEvaluator:
         total += discount * (1.0 - terminated) * terminal_q
         if costs:
             cost_mask &= torch.isfinite(cost_total.squeeze(-1))
+            unavailable_reason = "available" if bool(cost_mask.all()) else "nonfinite_or_partially_unvalidated"
         return TrajectoryConsequence(
             reward_sequence=torch.stack(rewards, dim=1).detach(),
             terminal_q=terminal_q.squeeze(-1).detach(),
@@ -135,13 +146,14 @@ class TrajectoryWorldModelEvaluator:
             cumulative_cost=cost_total.squeeze(-1).detach() if costs else None,
             cost_validated=bool(cost_mask.all()) and cost_ready,
             cost_validated_mask=cost_mask,
+            cost_unavailable_reason=unavailable_reason,
         )
 
     def evaluate_trajectory_consequence(
-        self, z_t: torch.Tensor, actions: torch.Tensor, task=None, mode_ids=None
+        self, z_t: torch.Tensor, actions: torch.Tensor, task=None, mode_ids=None, cost_source=None
     ) -> TrajectoryConsequence:
         return self.evaluate(
-            z_t, actions, terminal_action_mode="trajectory", task=task, mode_ids=mode_ids
+            z_t, actions, terminal_action_mode="trajectory", task=task, mode_ids=mode_ids, cost_source=cost_source
         )
 
     def evaluate_policy_terminal(

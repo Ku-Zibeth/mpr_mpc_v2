@@ -5,6 +5,7 @@ import contextlib
 import csv
 import io
 import json
+import hashlib
 from pathlib import Path
 import subprocess
 import sys
@@ -16,6 +17,13 @@ def statistics(values):
     return {"mean_ms": float(np.mean(values)), "p50_ms": float(np.percentile(values, 50)),
             "p95_ms": float(np.percentile(values, 95)), "p99_ms": float(np.percentile(values, 99)),
             "max_ms": float(np.max(values)), "planning_calls": len(values)}
+
+
+def phase_summary(profiles):
+    import numpy as np
+    keys = set().union(*(row.keys() for row in profiles))
+    return {key: {metric: float(np.mean([row[key][metric] for row in profiles if key in row]))
+                  for metric in ("cpu_wall_ms", "cuda_stream_elapsed_ms")} for key in sorted(keys)}
 
 
 def main():
@@ -32,6 +40,7 @@ def main():
     parser.add_argument("--iterations", type=int, default=4)
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--profile-calls", type=int, default=10)
+    parser.add_argument("--kernel-profile", action="store_true", help="Separate one-call Kineto CPU/CUDA kernel trace")
     parser.add_argument("--compare", type=Path)
     args = parser.parse_args()
     if args.calls < 100 or args.warmup < 1 or len(set(args.scenarios)) < 2:
@@ -39,6 +48,9 @@ def main():
     if args.output.exists():
         raise FileExistsError(args.output)
     root = args.source_root.resolve()
+    revision = subprocess.check_output(["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip()
+    if subprocess.check_output(["git", "-C", str(root), "status", "--porcelain"], text=True).strip():
+        raise RuntimeError("Benchmark requires a clean committed source tree; use an independent clean worktree.")
     sys.path.insert(0, str(root))
     import numpy as np
     import torch
@@ -74,7 +86,8 @@ def main():
     cfg = parse_cfg(raw)
     set_seed(args.seed)
     env = make_env(cfg)
-    durations, records, profiles, states = [], [], [], []
+    durations, records, profiles, states, kernel_profile = [], [], [], [], {}
+    pending_trace = None
     try:
         with contextlib.redirect_stdout(io.StringIO()):
             agent = _make_agent(cfg, env)
@@ -105,16 +118,34 @@ def main():
                 if not torch.isfinite(result.action).all() or not result.stage.use_mppi:
                     raise RuntimeError("Benchmark received an invalid or MPPI-disabled plan.")
                 durations.append(elapsed)
-                records.append({"scenario": scene, "call": call, "total_planning_ms": elapsed})
+                records.append({"scenario": scene, "call": call, "total_planning_ms": elapsed,
+                    "selected_safe": result.metrics.get("mpr/selected_safe"),
+                    "emergency": result.metrics.get("mpr/emergency_triggered"),
+                    "emergency_verified": result.metrics.get("mpr/emergency_verified")})
             if args.profile_calls:
                 from planning_profiler import PlanningProfiler
                 with PlanningProfiler(planner) as profiler:
                     for _ in range(max(1, args.profile_calls // len(args.scenarios))):
                         planner.plan(observation, vehicle, global_step=planner.mppi_start_step, eval_mode=True)
                         profiles.append(profiler.report())
+            if args.kernel_profile and index == len(args.scenarios)-1:
+                from planning_profiler import PlanningProfiler
+                with torch.profiler.profile(activities=[torch.profiler.ProfilerActivity.CPU,
+                                                       torch.profiler.ProfilerActivity.CUDA]) as trace:
+                    with PlanningProfiler(planner, record_ranges=True) as profiler:
+                        planner.plan(observation, vehicle, global_step=planner.mppi_start_step, eval_mode=True)
+                        profiler.report()
+                phases = phase_summary(profiles)
+                kernel_profile = {event.key: dict(cpu_range_ms=event.cpu_time_total/1000,
+                    cuda_kernel_ms=event.device_time_total/1000) for event in trace.key_averages() if event.key in phases}
+                trace_path = args.output.with_suffix(".trace.json")
+                if trace_path.exists():
+                    raise FileExistsError(trace_path)
+                pending_trace = trace
     finally:
         env.close()
-    revision = subprocess.check_output(["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip()
+    if subprocess.check_output(["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip() != revision:
+        raise RuntimeError("Source revision changed during the benchmark.")
     result = {**statistics(durations), "revision": revision, "source_root": str(root),
               "checkpoint": str(args.checkpoint.resolve()), "device": torch.cuda.get_device_name(),
               "horizon": args.horizon, "samples": args.samples, "iterations": args.iterations,
@@ -124,11 +155,28 @@ def main():
               "cost_readiness": {"updates": int(agent.model._cost_updates), "ready": agent.model.cost_ready}}
     result["effective_mppi_config"] = dict(planner.local_mppi._sampling_cfg)
     result["source_dirty"] = bool(subprocess.check_output(["git", "-C", str(root), "status", "--porcelain"], text=True).strip())
+    if result["source_dirty"]:
+        raise RuntimeError("Source tree was modified during the benchmark.")
+    result["phase_summary_ms"] = phase_summary(profiles)
+    result["checkpoint_sha256"] = hashlib.sha256(args.checkpoint.read_bytes()).hexdigest()
+    result["kernel_profile_last_scene"] = kernel_profile
+    result["control_dt"] = planner.control_dt
+    modes = getattr(agent.model, "_cost_validated_by_mode", None)
+    coarse = getattr(agent.model, "_cost_validated_coarse", None)
+    result["cost_readiness"].update(schema=int(getattr(agent.model, "_cost_validation_schema", 0)),
+        by_mode=modes[:, args.horizon].tolist() if modes is not None else None,
+        coarse=bool(coarse[args.horizon]) if coarse is not None else False)
+    result["planning_outcomes"] = dict(
+        selected_safe_calls=sum(row["selected_safe"] == 1 for row in records),
+        emergency_calls=sum(row["emergency"] == 1 for row in records),
+        unverified_emergency_calls=sum(row["emergency"] == 1 and row["emergency_verified"] == 0 for row in records))
     result["profile_notes"] = ("Separate instrumented pass; nested phase times are not additive. CPU wall includes waits. "
         "CUDA events measure stream elapsed including idle CPU gaps, NOT pure GPU kernel time. "
         "Context includes coarse planning/WM; WM includes cost. Distribution is per-mode update only. "
         "Baseline scoring covers penalties only when _score_candidates is absent. No approved cost => cost time zero.")
     args.output.parent.mkdir(parents=True, exist_ok=True)
+    if pending_trace is not None:
+        pending_trace.export_chrome_trace(str(args.output.with_suffix(".trace.json")))
     args.output.write_text(json.dumps(result, indent=2))
     with args.output.with_suffix(".csv").open("w", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=list(records[0]), lineterminator="\n")
@@ -136,14 +184,24 @@ def main():
         writer.writerows(records)
     if args.compare:
         before = json.loads(args.compare.read_text())
+        if before.get("source_dirty", True):
+            raise ValueError("Baseline was not measured from a clean commit.")
         for key in ("device", "checkpoint", "horizon", "samples", "iterations", "seed", "scenarios", "prefix_steps", "states"):
             if before[key] != result[key]:
                 raise ValueError(f"Unmatched comparison contract: {key}")
+        for key in ("num_elites", "substeps", "road_margin", "model_margin"):
+            if before["effective_mppi_config"][key] != result["effective_mppi_config"][key]:
+                raise ValueError(f"Unmatched effective workload: {key}")
         with (args.output.parent / "benchmark_comparison.csv").open("w", newline="") as stream:
             writer = csv.DictWriter(stream, fieldnames=["metric", "before_ms", "after_ms"], lineterminator="\n")
             writer.writeheader()
             for key in ("mean_ms", "p50_ms", "p95_ms", "p99_ms", "max_ms"):
                 writer.writerow({"metric": key, "before_ms": before[key], "after_ms": result[key]})
+            phases_before = before.get("phase_summary_ms", phase_summary(before["profiles"]))
+            for phase in sorted(set(phases_before) & set(result["phase_summary_ms"])):
+                for measure in ("cpu_wall_ms", "cuda_stream_elapsed_ms"):
+                    writer.writerow(dict(metric=f"{phase}_{measure}", before_ms=phases_before[phase][measure],
+                                         after_ms=result["phase_summary_ms"][phase][measure]))
     print(json.dumps({k: result[k] for k in ("mean_ms", "p50_ms", "p95_ms", "p99_ms", "max_ms", "planning_calls")}))
 
 

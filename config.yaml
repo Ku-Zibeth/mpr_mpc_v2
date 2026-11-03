@@ -10,7 +10,7 @@ resume_checkpoint: null
 checkpoint_freq: 50000
 resume_replay_warmup: true
 eval_episodes: 20
-eval_freq: 50000
+eval_freq: 10000
 
 steps: 50000
 checkpoint_selection:
@@ -100,6 +100,9 @@ mpr_mpc:
     substeps: 5
     road_margin: 0.15
     model_margin: 0.3
+    swept_max_depth: 10
+    swept_angle_tolerance: 0.0001
+    swept_position_tolerance: 0.0001
     max_acceleration: 4.0
     max_deceleration: 6.0
     max_steering_rate: 2.5
@@ -168,6 +171,7 @@ residual_rl:
   conservative_cost: true
   nonnegative_cost: true
   risk_features: []
+  coarse_cost_feature: false
   risk_feature_scales: {cumulative_cost: 10.0, min_ttc: 5.0, min_clearance: 20.0, boundary_margin: 4.0}
   risk_auxiliary_weight: 0.0
   risk_auxiliary_warmup: 1000
@@ -190,8 +194,8 @@ residual_rl:
 
 tdmpc_stage_training:
   stage_a_update_ratio: 1.0
-  stage_b_update_ratio: 1.0
-  stage_c_update_ratio: 0.25
+  stage_b_update_ratio: 0.0
+  stage_c_update_ratio: 0.0
 
 milestone_checkpoints:
   enabled: true
@@ -235,6 +239,8 @@ cost:
   horizons: [1, 5, 10, 15, 20]
   min_updates: 1000
   min_samples: 128
+  min_pairwise_pairs: 128
+  min_pairwise_anchors: 16
   max_windows: 512
   stride: 5
   max_mae: 0.1
@@ -339,6 +345,7 @@ metadrive:
     out_of_road_terminate_after_budget: true
     log_level: 50
     vehicle_config:
+      enable_reverse: false
       lidar:
         num_lasers: 240
         distance: 50

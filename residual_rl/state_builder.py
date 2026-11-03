@@ -31,6 +31,7 @@ class ResidualStateBuilder:
         self.feature_clip = float(cfg.get("path_feature_clip", 5.0))
         self.state_dim = self.latent_dim + len(FEATURE_NAMES) + 1 + 2 + 2 * len(self.risk_features)
         self.wm_cost_dim = int("cumulative_cost" in self.risk_features)
+        self.last_risk_status = {}
 
     def path_features(self, path) -> torch.Tensor:
         return extract_coarse_path_features(
@@ -79,6 +80,7 @@ class ResidualStateBuilder:
                 device=self.device,
             )
         )
+        self.last_risk_status = {}
         for name in self.risk_features:
             value = consequence.risk_summary.get(name) if hasattr(consequence, "risk_summary") else None
             if name == "cumulative_cost":
@@ -91,6 +93,9 @@ class ResidualStateBuilder:
                 raise ValueError("Risk feature scales must be positive.")
             if number == float("inf") and name in {"min_ttc", "min_clearance"}:
                 number, valid = 5 * scale, True
+            reason = "available" if valid else (getattr(consequence, "cost_unavailable_reason", "unvalidated")
+                                                if name == "cumulative_cost" else "missing_geometry")
+            self.last_risk_status[name] = {"valid": valid, "reason": reason}
             pieces.append(torch.tensor([max(-5.0, min(5.0, number / scale)) if valid else 0.0,
                                         float(valid)], device=self.device))
         state = torch.cat(pieces, dim=0)

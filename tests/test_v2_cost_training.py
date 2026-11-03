@@ -36,6 +36,12 @@ def test_environment_cost_supervision_and_legacy_readiness(tmp_path: Path):
     assert torch.isfinite(info["cost_loss"]) and info["cost_loss"] > 0
     assert any(not torch.equal(a, b) for a, b in zip(before, learner.model._cost.parameters()))
     assert learner.model._cost_updates.item() == 1
+    assert info["cost_grad_norm"] > 0 and info["cost_supervised_samples"] == h*b
+    cfg.cost["loss_coef"] = 0.
+    inactive = learner._update(observations, actions, torch.ones_like(costs), torch.zeros_like(costs), cost=costs)
+    assert inactive["cost_step_supervised"] == 0 and inactive["cost_supervised_samples"] == 0
+    assert learner.model._cost_updates.item() == 1
+    cfg.cost["loss_coef"] = 1.
     assert not learner.model.cost_ready
     validator = CostModelValidator({"horizons": [1, h], "stride": 1})
     validator.set_episodes([(observations[:-1, 0].cpu().numpy(), actions[:, 0].cpu().numpy(), costs[:, 0, 0].cpu().numpy())])
@@ -51,6 +57,7 @@ def test_environment_cost_supervision_and_legacy_readiness(tmp_path: Path):
     assert evaluator.evaluate_trajectory_consequence(z, controls, mode_ids=[0, 0]).cumulative_cost is None
     learner.model._cost_validated_by_mode[0, h] = True
     learner.model._cost_mode_validated_at.copy_(learner.model._cost_updates)
+    learner.model._cost_validation_schema.fill_(2)
     assert evaluator.evaluate_trajectory_consequence(z, controls).cumulative_cost is None
     result = evaluator.evaluate_trajectory_consequence(z, controls, mode_ids=[0, 0])
     assert result.cost_validated
@@ -63,11 +70,19 @@ def test_environment_cost_supervision_and_legacy_readiness(tmp_path: Path):
     mixed = evaluator.evaluate_mppi_candidates(z, controls, mode_ids=[0, 1])
     assert mixed.cost_validated_mask.tolist() == [True, False]
     assert torch.isnan(mixed.cumulative_cost[1])
+    assert evaluator.evaluate_trajectory_consequence(z, controls[:1], cost_source="coarse_lattice").cumulative_cost is None
+    learner.model._cost_validated_coarse[h] = True
+    coarse = evaluator.evaluate_trajectory_consequence(z, controls[:1], cost_source="coarse_lattice")
+    assert coarse.cost_validated and torch.isfinite(coarse.cumulative_cost).all()
     saved = deepcopy(learner.model.state_dict())
     learner.model.invalidate_cost_validation()
     learner.load({"model": saved})
     assert learner.model.cost_ready
     assert learner.model._cost_validated_by_mode[0, h]
+    round3 = {key: deepcopy(value) for key, value in saved.items()
+              if key not in {"_cost_validation_schema", "_cost_validated_coarse"}}
+    learner.load({"model": round3})
+    assert not learner.model.cost_ready and not learner.model._cost_validated_by_mode.any()
     legacy_global = {key: deepcopy(value) for key, value in saved.items()
                      if key not in {"_cost_validated_by_mode", "_cost_validated_by_horizon",
                          "_cost_validation_samples_by_mode", "_cost_validation_scenes_by_mode", "_cost_mode_validated_at"}}

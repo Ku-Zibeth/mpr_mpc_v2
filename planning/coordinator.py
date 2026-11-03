@@ -41,6 +41,8 @@ class MPRMPCPlanner:
             raise ValueError("Require 0 <= residual_start_step <= mppi_start_step.")
 
         simulator = mapping(section(cfg, "metadrive").get("simulator"))
+        if simulator.get("discrete_action", False) or simulator.get("vehicle_config", {}).get("enable_reverse", False):
+            raise ValueError("MPR safety requires continuous steering/throttle-brake actions and enable_reverse=false.")
         self.control_dt = float(simulator.get("physics_world_step_size", 0.02)) * float(
             simulator.get("decision_repeat", 5)
         )
@@ -188,6 +190,8 @@ class MPRMPCPlanner:
     def prepare(
         self, observation, vehicle, *, need_world_model_features: bool = True
     ) -> MPRPlanContext:
+        if bool(getattr(vehicle, "enable_reverse", False)):
+            raise ValueError("MPR safety requires enable_reverse=false for verified braking semantics.")
         observation = observation if torch.is_tensor(observation) else torch.as_tensor(
             observation, dtype=torch.float32
         )
@@ -215,7 +219,8 @@ class MPRMPCPlanner:
         if need_world_model_features:
             latent = self.evaluator.encode(observation).detach()
             consequence = self.evaluator.evaluate_trajectory_consequence(
-                latent, coarse_actions.unsqueeze(0)
+                latent, coarse_actions.unsqueeze(0),
+                cost_source="coarse_lattice" if self.residual_rl_cfg.get("coarse_cost_feature", False) else None,
             )
             if safety_context is not None:
                 consequence = replace(consequence, risk_summary=self.safety.check(coarse_actions.unsqueeze(0), safety_context).summary())
@@ -493,6 +498,14 @@ class MPRMPCPlanner:
             selected_actions = refined_actions
 
         diagnostics = {}
+        reason_codes = {"available": 0, "disabled": 1, "unlabelled_trajectory": 2, "calibration_not_ready": 3,
+                        "mode_or_horizon_unvalidated": 4, "nonfinite_or_partially_unvalidated": 5,
+                        "missing_geometry": 6, "unvalidated": 3, "no_residual_state": 7}
+        status = self.residual_state_builder.last_risk_status if context.residual_state is not None else {}
+        for name in ("cumulative_cost", "min_ttc", "min_clearance", "boundary_margin"):
+            item = status.get(name, {"valid": False, "reason": "no_residual_state"})
+            diagnostics[f"mpr/sac_state_{name}_valid"] = float(item["valid"])
+            diagnostics[f"mpr/sac_state_{name}_mask_reason"] = float(reason_codes.get(item["reason"], 5))
         stage_actions = torch.stack((context.coarse_actions, refined_actions, selected_actions))
         geometry = None
         if self.safety is not None and context.safety_context is not None:
@@ -508,6 +521,8 @@ class MPRMPCPlanner:
             cost = (float(stage_consequence.cumulative_cost[index])
                     if stage_consequence is not None and stage_consequence.cumulative_cost is not None
                     and bool(stage_consequence.cost_validated_mask[index]) else float("nan"))
+            if index == 0 and context.coarse_consequence is not None and context.coarse_consequence.cost_validated:
+                cost = float(context.coarse_consequence.cumulative_cost[0])
             diagnostics[f"mpr/{name}_predicted_cost"] = cost
             diagnostics[f"mpr/{name}_value"] = (float(stage_consequence.total_value[index])
                                                       if stage_consequence is not None else float("nan"))
@@ -526,9 +541,11 @@ class MPRMPCPlanner:
             diagnostics["mpr/risk_reduction_sac"] = diagnostics["mpr/risk_reduction_mppi"] = float("nan")
         if stage.use_mppi:
             diagnostics.update({f"mpr/{key}": value for key, value in mppi.safety_metrics.items()})
+            if mppi.emergency_fallback:
+                fallback_reason = "emergency:" + mppi.emergency_reason + (":verified_braking" if mppi.emergency_verified else ":unverified_conservative_control")
         diagnostics["mpr/safe_candidate_ratio"] = 1 - reject_rate
-        if geometry is not None and not bool(geometry.valid[2]) and stage.use_mppi:
-            fallback_reason = "no_verified_safe_candidate:minimum_risk_emergency"
+        if geometry is not None and not bool(geometry.valid[2]) and stage.use_mppi and not mppi.emergency_fallback:
+            raise RuntimeError("Selected ordinary MPPI sequence failed independent final geometry verification.")
 
         paths = list(context.selection.candidates)
         if not any(path is refined for path in paths):

@@ -53,6 +53,9 @@ class MPROnlineTrainer(OnlineTrainer):
         if len(self._eval_scenarios) != count or len(set(self._eval_scenarios)) != count or not set(self._eval_scenarios) <= set(pool):
             raise ValueError("Training evaluation requires unique in-pool scenario IDs matching eval_episodes.")
         self._training_scenarios = np.setdiff1d(pool, self._eval_scenarios)
+        calibration_scenes = {r["scene_id"] for r in self.agent.cost_validator.mode_episodes}
+        if calibration_scenes & set(self._training_scenarios.tolist()):
+            raise ValueError("Calibration scenes must never enter either training replay; change the training pool or held-out split.")
         if not len(self._training_scenarios):
             raise ValueError("num_scenarios must exceed eval_episodes to reserve held-out validation scenes.")
         self._scenario_rng = np.random.default_rng(int(self.cfg.seed))

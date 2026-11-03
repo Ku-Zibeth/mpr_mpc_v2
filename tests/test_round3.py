@@ -83,10 +83,13 @@ class ModeCostModel(ExactCostModel):
         self.register_buffer("_cost_validation_samples_by_mode", torch.zeros(6, 63, dtype=torch.long))
         self.register_buffer("_cost_validation_scenes_by_mode", torch.zeros(6, 63, dtype=torch.long))
         self.register_buffer("_cost_mode_validated_at", torch.tensor(0))
+        self.register_buffer("_cost_validation_schema", torch.tensor(0))
+        self.register_buffer("_cost_validated_coarse", torch.zeros(63, dtype=torch.bool))
 
     @property
     def cost_ready(self):
-        return bool(self._cost_validated_by_mode.any()) and self._cost_mode_validated_at == self._cost_updates
+        return (bool(self._cost_validated_by_mode.any() | self._cost_validated_coarse.any())
+                and self._cost_mode_validated_at == self._cost_updates and self._cost_validation_schema == 2)
 
     def invalidate_cost_validation(self):
         for name, value in self.named_buffers():
@@ -98,10 +101,10 @@ def mode_records():
     records = []
     for mode in [0, 1, 2]:
         for i in range(160):
-            value = (i//8)/20
+            value = (.01, .4, .8)[mode] + (i%2)*.06 + ((i%8)//2)*.005 + ((i//8)%3)*.001
             actions = np.tile([value, 0.], (10, 1)).astype("float32")
-            records.append(dict(source="metadrive_mode_replay_v1", replay_verified=True,
-                scene_id=i//8, mode_id=mode, observation=np.zeros(3), actions=actions,
+            records.append(dict(source="metadrive_mode_replay_v2", replay_verified=True,
+                scene_id=i//8, anchor_id=f"{i//8}:{(i%8)//2}", mode_id=mode, observation=np.zeros(3), actions=actions,
                 costs=np.full(10, value if mode == 0 else (1-value if mode == 1 else .2))))
     return records
 

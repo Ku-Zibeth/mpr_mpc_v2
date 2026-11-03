@@ -10,43 +10,77 @@ import numpy as np
 import torch
 
 from .multimodal import MODE_COMPONENT_NAMES
+from .calibration_anchor import verify_anchor
 
 
-def calibration_statistics(prediction, actual, scenes, cfg):
-    """Cluster bootstrap: resample scenes, never individual overlapping windows."""
+def calibration_statistics(prediction, actual, scenes, cfg, *, anchors=None, modes=None, focus_mode=None):
+    """Rank ONLY matched prediction origins; bootstrap whole scene clusters."""
     p, y = np.asarray(prediction, float), np.asarray(actual, float)
     unique, group = np.unique(scenes, return_inverse=True)
-    error = p - y
     n = len(unique)
-    counts = np.bincount(group, minlength=n)
-    absolute = np.bincount(group, weights=np.abs(error), minlength=n)
-    squared = np.bincount(group, weights=error**2, minlength=n)
-    difference = y[:, None] - y[None, :]
-    eligible = ((difference > float(cfg.get("ranking_min_gap", .05)))
-                & (group[:, None] != group[None, :]))
-    wins = eligible * (p[:, None] > p[None, :])
-    pair_group = group[:, None] * n + group[None, :]
-    pair_count = np.bincount(pair_group.ravel(), weights=eligible.ravel(), minlength=n*n).reshape(n, n)
-    pair_wins = np.bincount(pair_group.ravel(), weights=wins.ravel(), minlength=n*n).reshape(n, n)
-    identifiable = min(p.std(), y.std()) > 1e-8 and eligible.any()
-    rank = float(wins.sum() / eligible.sum()) if identifiable else float("nan")
+    if not len(y):
+        raise ValueError("Calibration statistics require at least one record.")
+    modes = np.asarray(modes if modes is not None else np.zeros(len(y)), int)
+    anchors = np.asarray(anchors if anchors is not None else [""] * len(y), str)
+    selected = np.ones(len(y), bool) if focus_mode is None else modes == focus_mode
+    error = p[selected] - y[selected]
+    selected_group = group[selected]
+    counts = np.bincount(selected_group, minlength=n)
+    absolute = np.bincount(selected_group, weights=np.abs(error), minlength=n)
+    squared = np.bincount(selected_group, weights=error**2, minlength=n)
+    origins = {}
+    for index, (scene, anchor) in enumerate(zip(group, anchors)):
+        if anchor:
+            origins.setdefault((int(scene), anchor), []).append(index)
+    pair_i, pair_j = [], []
+    for indices in origins.values():
+        indices = np.asarray(indices)
+        difference = y[indices, None] - y[indices][None, :]
+        eligible = ((difference > float(cfg.get("ranking_min_gap", .05)))
+                    & np.isfinite(p[indices, None]) & np.isfinite(p[indices][None, :]))
+        if focus_mode is not None:
+            eligible &= selected[indices, None] | selected[indices][None, :]
+        # Coarse Lattice is its own source, never relabelled as an MPPI mode.
+        if focus_mode != -1:
+            eligible &= (modes[indices, None] >= 0) & (modes[indices][None, :] >= 0)
+        i, j = eligible.nonzero()
+        pair_i.extend(indices[i])
+        pair_j.extend(indices[j])
+    pair_i, pair_j = np.asarray(pair_i, int), np.asarray(pair_j, int)
+    cross = modes[pair_i] != modes[pair_j]
     rng = np.random.default_rng(int(cfg.get("bootstrap_seed", 1)))
     weights = rng.multinomial(n, np.full(n, 1/n), size=int(cfg.get("bootstrap_samples", 1000)))
-    denominator = np.einsum("bi,ij,bj->b", weights, pair_count, weights)
-    numerator = np.einsum("bi,ij,bj->b", weights, pair_wins, weights)
-    bootstrap_rank = np.divide(numerator, denominator, out=np.full_like(numerator, np.nan), where=denominator > 0)
+
+    def ranking(mask):
+        i, j = pair_i[mask], pair_j[mask]
+        count = np.bincount(group[i], minlength=n)
+        wins = np.bincount(group[i], weights=(p[i] > p[j]), minlength=n).astype(float)
+        denominator, numerator = weights @ count, weights @ wins
+        draws = np.divide(numerator, denominator, out=np.full_like(numerator, np.nan), where=denominator > 0)
+        identified = bool(len(i) and np.isfinite(p[selected]).all()
+                          and np.ptp(p[selected]) > 1e-8 and np.ptp(y[selected]) > 1e-8)
+        # A mode may have constant risk within one anchor yet separate actions
+        # across anchors. No between-anchor pairs are ever used to prove this.
+        ci = (np.quantile(draws[np.isfinite(draws)], [.025, .975])
+              if identified and np.isfinite(draws).mean() >= .95 else [float("nan")]*2)
+        active = np.unique(np.r_[i, j])
+        return dict(accuracy=float(wins.sum()/count.sum()) if identified else float("nan"),
+                    ci_low=float(ci[0]), ci_high=float(ci[1]), pairs=len(i),
+                    anchors=len(set(anchors[active])), scenes=len(set(np.asarray(scenes)[active])), identifiable=identified)
+
+    all_rank, within_rank, cross_rank = ranking(np.ones(len(pair_i), bool)), ranking(~cross), ranking(cross)
     total = weights @ counts
-    bootstrap_mae = (weights @ absolute) / total
-    bootstrap_rmse = np.sqrt((weights @ squared) / total)
-    # Degenerate bootstrap draws do not silently disappear from the readiness gate.
-    rank_ci = (np.quantile(bootstrap_rank[np.isfinite(bootstrap_rank)], [.025, .975])
-               if identifiable and np.isfinite(bootstrap_rank).mean() >= .95 else [float("nan")]*2)
-    return dict(samples=len(y), scenes=n, prediction_mean=float(p.mean()), actual_mean=float(y.mean()),
+    bootstrap_mae = np.divide(weights @ absolute, total, out=np.full(len(weights), np.nan), where=total > 0)
+    bootstrap_rmse = np.sqrt(np.divide(weights @ squared, total, out=np.full(len(weights), np.nan), where=total > 0))
+    ps, ys = p[selected], y[selected]
+    return dict(samples=int(selected.sum()), scenes=len(set(np.asarray(scenes)[selected])),
+                prediction_mean=float(ps.mean()), actual_mean=float(ys.mean()),
                 mae=float(np.abs(error).mean()), rmse=float(np.sqrt(np.mean(error**2))),
-                correlation=float(np.corrcoef(p, y)[0, 1]) if identifiable else float("nan"),
-                ranking_accuracy=rank, ranking_ci_low=float(rank_ci[0]), ranking_ci_high=float(rank_ci[1]),
-                mae_ci=np.quantile(bootstrap_mae, [.025, .975]).tolist(),
-                rmse_ci=np.quantile(bootstrap_rmse, [.025, .975]).tolist(), identifiable=bool(identifiable))
+                correlation=float(np.corrcoef(ps, ys)[0, 1]) if min(ps.std(), ys.std()) > 1e-8 else float("nan"),
+                ranking_accuracy=all_rank["accuracy"], ranking_ci_low=all_rank["ci_low"], ranking_ci_high=all_rank["ci_high"],
+                within_mode_ranking=within_rank, cross_mode_ranking=cross_rank, overall_ranking=all_rank,
+                mae_ci=np.nanquantile(bootstrap_mae, [.025, .975]).tolist(),
+                rmse_ci=np.nanquantile(bootstrap_rmse, [.025, .975]).tolist(), identifiable=all_rank["identifiable"])
 
 
 class CostModelValidator:
@@ -56,17 +90,28 @@ class CostModelValidator:
         self.metrics = {}
         self.mode_episodes = []
         self.mode_report = {}
+        self.paired_report = {}
 
     def set_episodes(self, episodes):
         self.episodes = episodes
 
     def set_mode_episodes(self, records):
+        anchor_states = {}
         for row in records:
-            if (row.get("source") != "metadrive_mode_replay_v1" or not row.get("replay_verified")
-                    or not 0 <= int(row["mode_id"]) < len(MODE_COMPONENT_NAMES)):
+            mode = int(row["mode_id"])
+            coarse = mode == -1 and row.get("trajectory_kind") == "coarse_lattice"
+            if (row.get("source") not in {"metadrive_mode_replay_v1", "metadrive_mode_replay_v2"}
+                    or not row.get("replay_verified") or not (coarse or 0 <= mode < len(MODE_COMPONENT_NAMES))):
                 raise ValueError("Mode calibration requires verified real-environment candidate replays.")
-            if len(row["actions"]) != len(row["costs"]) or not np.isfinite(row["costs"]).all():
+            if (len(row["actions"]) != len(row["costs"]) or not np.isfinite(row["costs"]).all()
+                    or not np.isfinite(row["actions"]).all() or not np.isfinite(row["observation"]).all()):
                 raise ValueError("Invalid real cost/action sequence.")
+            anchor = row.get("anchor_id", "")
+            if anchor:
+                signature = (int(row["scene_id"]), np.asarray(row["observation"], dtype=float).tobytes())
+                if anchor in anchor_states and anchor_states[anchor] != signature:
+                    raise ValueError("One anchor_id cannot describe different scenes or observations.")
+                anchor_states[anchor] = signature
         self.mode_episodes = list(records)
 
     def load_dataset(self, path, *, cost_definition=None):
@@ -82,11 +127,21 @@ class CostModelValidator:
             raise ValueError("Calibration dataset lacks held-out scene provenance.")
         trained = set(range(int(start), int(start)+int(count))) - set(provenance.get("reserved", []))
         with np.load(path, allow_pickle=False) as data:
-            if str(data["source"]) != "metadrive_mode_replay_v1":
+            if str(data["source"]) not in {"metadrive_mode_replay_v1", "metadrive_mode_replay_v2"}:
                 raise ValueError("Unsupported mode calibration dataset.")
             if trained & set(data["scenes"].tolist()) or set(data["scenes"].tolist()) != set(manifest["scenes"]):
                 raise ValueError("Calibration dataset scene provenance mismatch.")
+            anchors = data["anchor_ids"] if "anchor_ids" in data else [""] * len(data["lengths"])
+            for anchor, payload in manifest.get("anchors", {}).items():
+                verify_anchor(anchor, payload)
+            for i, anchor in enumerate(anchors):
+                if anchor:
+                    payload = manifest.get("anchors", {}).get(str(anchor))
+                    if (payload is None or payload["scene_id"] != int(data["scenes"][i])
+                            or not np.array_equal(payload["observation"], data["observations"][i])):
+                        raise ValueError("Replay observation/scene differs from its anchor.")
             self.set_mode_episodes([dict(source=str(data["source"]), replay_verified=bool(data["verified"][i]),
+                anchor_id=str(anchors[i]), trajectory_kind="coarse_lattice" if int(data["modes"][i]) == -1 else "mppi_mode",
                 scene_id=int(data["scenes"][i]), mode_id=int(data["modes"][i]), observation=data["observations"][i],
                 actions=data["actions"][i, :int(length)], costs=data["costs"][i, :int(length)])
                 for i, length in enumerate(data["lengths"])])
@@ -100,59 +155,83 @@ class CostModelValidator:
         was_training = model.training
         model.eval()
         report = {}
+        self.paired_report = {}
         try:
             model.invalidate_cost_validation()
             horizons = sorted(set([1, horizon] + list(self.cfg.get("horizons", [1, 5, 10, 15, 20]))))
-            for mode, name in enumerate(MODE_COMPONENT_NAMES):
-                report[name] = {}
-                for h in horizons:
-                    if not 0 < h < 63:
+            if not 0 < horizon < 63:
+                raise ValueError("Cost calibration horizon must be in [1,62].")
+            sources = list(enumerate(MODE_COMPONENT_NAMES)) + [(-1, "coarse_lattice")]
+            report = {name: {} for _, name in sources}
+            for h in horizons:
+                if not 0 < h < 63:
+                    continue
+                rows = [r for r in self.mode_episodes if len(r["actions"]) >= h]
+                if not rows:
+                    continue
+                prediction, actual = [], []
+                gamma = float(self.cfg.get("gamma", .99))
+                for start in range(0, len(rows), 128):
+                    batch = rows[start:start+128]
+                    obs = torch.as_tensor(np.asarray([r["observation"] for r in batch]), device=device).float()
+                    actions = torch.as_tensor(np.asarray([r["actions"][:h] for r in batch]), device=device).float()
+                    z = model.encode(obs, None)
+                    value = torch.zeros((len(batch), 1), device=device)
+                    for t in range(h):
+                        value += gamma**t * model.cost(z, actions[:, t], None)
+                        z = model.next(z, actions[:, t], None)
+                    prediction.extend(value.flatten().cpu().tolist())
+                    actual.extend([float(np.dot(r["costs"][:h], gamma**np.arange(h))) for r in batch])
+                scenes, modes = [r["scene_id"] for r in rows], np.asarray([r["mode_id"] for r in rows])
+                anchors = [r.get("anchor_id", "") for r in rows]
+                self.paired_report[h] = calibration_statistics(prediction, actual, scenes, self.cfg, anchors=anchors, modes=modes)
+                for mode, name in sources:
+                    selected = modes == mode
+                    if not selected.any():
                         continue
-                    rows = [r for r in self.mode_episodes if r["mode_id"] == mode and len(r["actions"]) >= h]
-                    if not rows:
-                        continue
-                    prediction, actual = [], []
-                    gamma = float(self.cfg.get("gamma", .99))
-                    for start in range(0, len(rows), 128):
-                        batch = rows[start:start+128]
-                        obs = torch.as_tensor(np.asarray([r["observation"] for r in batch]), device=device).float()
-                        actions = torch.as_tensor(np.asarray([r["actions"][:h] for r in batch]), device=device).float()
-                        z = model.encode(obs, None)
-                        value = torch.zeros((len(batch), 1), device=device)
-                        for t in range(h):
-                            value += gamma**t * model.cost(z, actions[:, t], None)
-                            z = model.next(z, actions[:, t], None)
-                        prediction.extend(value.flatten().cpu().tolist())
-                        actual.extend([float(np.dot(r["costs"][:h], gamma**np.arange(h))) for r in batch])
-                    if not np.isfinite(prediction).all():
-                        report[name][h] = {"ready": False, "reason": "nonfinite prediction"}
-                        continue
-                    stats = calibration_statistics(prediction, actual, [r["scene_id"] for r in rows], self.cfg)
+                    stats = calibration_statistics(prediction, actual, scenes, self.cfg,
+                        anchors=anchors, modes=modes, focus_mode=mode)
+                    cross = stats["cross_mode_ranking"]
                     ready = (int(model._cost_updates) >= int(self.cfg.get("min_updates", 1000))
                         and stats["samples"] >= int(self.cfg.get("min_samples", 128))
                         and stats["scenes"] >= int(self.cfg.get("min_scenes", 10))
                         and stats["identifiable"]
+                        and cross["identifiable"]
+                        and cross["pairs"] >= int(self.cfg.get("min_pairwise_pairs", 128))
+                        and cross["anchors"] >= int(self.cfg.get("min_pairwise_anchors", 16))
+                        and cross["scenes"] >= int(self.cfg.get("min_scenes", 10))
                         and stats["mae"] <= h * float(self.cfg.get("max_mae", .1))
                         and stats["rmse"] <= h * float(self.cfg.get("max_rmse", .5))
                         and stats["ranking_accuracy"] >= float(self.cfg.get("min_ranking_accuracy", .60))
-                        and stats["ranking_ci_low"] >= float(self.cfg.get("min_ranking_ci_low", .50)))
+                        and stats["ranking_ci_low"] >= float(self.cfg.get("min_ranking_ci_low", .50))
+                        and cross["accuracy"] >= float(self.cfg.get("min_ranking_accuracy", .60))
+                        and cross["ci_low"] >= float(self.cfg.get("min_ranking_ci_low", .50)))
                     # Longer rollouts cannot hide poor one-step calibration.
-                    ready = ready and (h == 1 or bool(model._cost_validated_by_mode[mode, 1]))
+                    approval = model._cost_validated_by_mode[mode] if mode >= 0 else model._cost_validated_coarse
+                    ready = ready and (h == 1 or bool(approval[1]))
                     stats["ready"] = ready
-                    stats["predictions"] = prediction
-                    stats["actuals"] = actual
-                    stats["scene_ids"] = [int(r["scene_id"]) for r in rows]
+                    stats["reason"] = "passed" if ready else "insufficient supervised updates, errors, or identifiable matched-anchor pairs"
+                    stats["predictions"] = np.asarray(prediction)[selected].tolist()
+                    stats["actuals"] = np.asarray(actual)[selected].tolist()
+                    stats["scene_ids"] = np.asarray(scenes)[selected].tolist()
+                    stats["anchor_ids"] = np.asarray(anchors)[selected].tolist()
                     report[name][h] = stats
-                    model._cost_validated_by_mode[mode, h] = ready
-                    model._cost_validation_samples_by_mode[mode, h] = stats["samples"]
-                    model._cost_validation_scenes_by_mode[mode, h] = stats["scenes"]
+                    approval[h] = ready
+                    if mode >= 0:
+                        model._cost_validation_samples_by_mode[mode, h] = stats["samples"]
+                        model._cost_validation_scenes_by_mode[mode, h] = stats["scenes"]
                     for key in ("samples", "scenes", "mae", "rmse", "correlation", "ranking_accuracy", "ranking_ci_low", "ready"):
                         metrics[f"wm/cost_{name}_{key}_h{h}"] = float(stats[key])
-            model._cost_validated_by_horizon.copy_(model._cost_validated_by_mode.any(0))
+                    for category in ("within_mode_ranking", "cross_mode_ranking", "overall_ranking"):
+                        for key in ("accuracy", "ci_low", "pairs", "anchors", "scenes"):
+                            metrics[f"wm/cost_{name}_{category}_{key}_h{h}"] = stats[category][key]
+            model._cost_validated_by_horizon.copy_(model._cost_validated_by_mode.any(0) | model._cost_validated_coarse)
             model._cost_mode_validated_at.copy_(model._cost_updates)
-            model._cost_validated.fill_(bool(model._cost_validated_by_mode[:, horizon].any()))
+            model._cost_validation_schema.fill_(2)
+            model._cost_validated.fill_(bool(model._cost_validated_by_horizon[horizon]))
             model._cost_validated_horizons.fill_(sum(1 << h for h in horizons if 0 < h < 63 and model._cost_validated_by_horizon[h]))
             metrics["wm/cost_ready"] = float(model.cost_ready)
+            metrics["risk_ranking_accuracy"] = self.paired_report.get(horizon, {}).get("ranking_accuracy", float("nan"))
             self.mode_report = report
             self.metrics = metrics
             return metrics
@@ -211,7 +290,8 @@ class CostModelValidator:
         metrics.update({"wm/cost_ready": float(getattr(model, "cost_ready", False)), "cost_prediction_mae": one.get("mae", float("nan")),
                         "cost_prediction_rmse": one.get("rmse", float("nan")),
                         "predicted_vs_actual_cost": one.get("correlation", float("nan")),
-                        "risk_ranking_accuracy": long.get("ranking_accuracy", float("nan"))})
+                        "wm/legacy_unpaired_ranking_accuracy": long.get("ranking_accuracy", float("nan")),
+                        "risk_ranking_accuracy": float("nan")})
         self.metrics = metrics
         model.train(was_training)
         return metrics

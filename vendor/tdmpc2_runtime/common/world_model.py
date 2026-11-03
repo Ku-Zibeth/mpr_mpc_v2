@@ -60,13 +60,16 @@ class WorldModel(nn.Module):
 		self.register_buffer("_cost_validation_samples_by_mode", torch.zeros(6, 63, dtype=torch.long))
 		self.register_buffer("_cost_validation_scenes_by_mode", torch.zeros(6, 63, dtype=torch.long))
 		self.register_buffer("_cost_mode_validated_at", torch.tensor(0, dtype=torch.long))
+		self.register_buffer("_cost_validation_schema", torch.tensor(0, dtype=torch.long))
+		self.register_buffer("_cost_validated_coarse", torch.zeros(63, dtype=torch.bool))
 		self.init()
 
 	@property
 	def cost_ready(self):
 		return (int(self._cost_updates.item()) > 0
+			and int(self._cost_validation_schema.item()) == 2
 			and int(self._cost_mode_validated_at.item()) == int(self._cost_updates.item())
-			and bool(self._cost_validated_by_mode.any()))
+			and bool(self._cost_validated_by_mode.any() | self._cost_validated_coarse.any()))
 
 	def invalidate_cost_validation(self):
 		self._cost_validated.zero_()
@@ -76,6 +79,8 @@ class WorldModel(nn.Module):
 		self._cost_validation_samples_by_mode.zero_()
 		self._cost_validation_scenes_by_mode.zero_()
 		self._cost_mode_validated_at.zero_()
+		self._cost_validation_schema.zero_()
+		self._cost_validated_coarse.zero_()
 
 	def init(self):
 		# Create params

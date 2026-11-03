@@ -8,6 +8,7 @@ import torch
 
 from .kinematic_filter import BatchedKinematicCorridor, CorridorContext
 from .multimodal import MultiModalProposals, MODE_COMPONENT_NAMES
+from .emergency import emergency_braking
 
 
 MPPI_DIAGNOSTIC_KEYS = (
@@ -18,6 +19,9 @@ MPPI_DIAGNOSTIC_KEYS = (
     "selected_min_ttc", "selected_boundary_margin", "cost_validated",
     "boundary_risk", "boundary_margin", "baseline_boundary_risk", "selected_boundary_risk",
     "boundary_risk_reduction", "cost_validated_ratio",
+    "emergency_triggered", "emergency_new_event", "emergency_count", "emergency_streak_steps",
+    "emergency_duration_s", "emergency_step_duration_s", "emergency_verified", "emergency_reason_code",
+    "safe_candidate_selected", "interval_collision_reject_count",
 ) + tuple(f"cost_validated_{mode}" for mode in (*MODE_COMPONENT_NAMES, "lateral", "joint")) + tuple(f"mode_{mode}_{metric}" for mode in ("nominal", "braking", "lateral", "joint")
           for metric in ("samples", "safe_ratio"))
 
@@ -59,6 +63,9 @@ class LocalMPPIResult:
     max_action_delta: torch.Tensor
     safety_metrics: dict = field(default_factory=dict)
     selected_mode_id: int = -1
+    emergency_fallback: bool = False
+    emergency_verified: bool = False
+    emergency_reason: str = ""
 
 
 class LocalMPPI:
@@ -117,10 +124,51 @@ class LocalMPPI:
             raise ValueError("Unknown proposal_init mode.")
         self.corridor = BatchedKinematicCorridor(cfg, control_dt=control_dt, device=device)
         self._prev_mean: torch.Tensor | None = None
+        self.control_dt = float(control_dt)
+        self.emergency_count = 0
+        self.emergency_streak = 0
 
     def reset(self) -> None:
         self._prev_mean = None
         self._mode_bank = None
+        self.emergency_streak = 0
+
+    def _emergency_plan(self, baseline, initial_mean, initial_std, mean, std, safety_context,
+                        safety, total_rejected, total_checked, expanded, reason):
+        emergency = emergency_braking(baseline, safety_context, self.safety_evaluator, control_dt=self.control_dt)
+        new_event = self.emergency_streak == 0
+        self.emergency_count += int(new_event)
+        self.emergency_streak += 1
+        reason_names = {1: "all_collision", 2: "all_offroad", 3: "all_kinematic", 4: "nonfinite_scores",
+                        5: "no_verified_candidate", 6: "selected_hard_violation"}
+        metrics = {key: float("nan") for key in MPPI_DIAGNOSTIC_KEYS}
+        metrics.update(no_safe_candidate=1., selected_safe=float(emergency.verified), safe_candidate_selected=0.,
+            expanded_search=float(expanded), baseline_safe=0., emergency_triggered=1.,
+            emergency_new_event=float(new_event), emergency_count=float(self.emergency_count),
+            emergency_streak_steps=float(self.emergency_streak), emergency_duration_s=self.emergency_streak*self.control_dt,
+            emergency_step_duration_s=self.control_dt, emergency_verified=float(emergency.verified),
+            emergency_reason_code=float(reason), cost_validated=0., cost_validated_ratio=0.)
+        if safety is not None:
+            metrics.update(collision_reject_count=float(safety.collision.sum()), offroad_reject_count=float(safety.offroad.sum()),
+                collision_reject_rate=float(safety.collision.float().mean()), offroad_reject_rate=float(safety.offroad.float().mean()),
+                kinematic_reject_count=float(safety.kinematic_violation.sum()))
+        if emergency.safety is not None:
+            checked, index = emergency.safety, emergency.selected_index
+            metrics.update(selected_soft_risk=float(checked.soft_risk[index]), selected_min_clearance=float(checked.min_clearance[index]),
+                selected_min_ttc=float(checked.min_ttc[index]), selected_boundary_margin=float(checked.boundary_margin[index]),
+                selected_boundary_risk=float(checked.boundary_risk[index]))
+        if self._mode_bank is not None:
+            metrics.update(self._mode_bank.metrics())
+        nan = baseline.new_tensor(float("nan"))
+        self._prev_mean = None
+        return LocalMPPIResult(action=emergency.sequence[0], selected_sequence=emergency.sequence,
+            initial_mean=initial_mean, final_mean=mean, initial_std=initial_std, final_std=std,
+            baseline_wm_value=nan, selected_wm_value=nan, wm_value_gain=nan, baseline_score=nan,
+            selected_score=nan, planner_score_gain=nan, baseline_value=nan, final_value=nan, planner_gain=nan,
+            elite_values=nan.reshape(1), baseline_selected=False, corridor_reject_count=total_rejected,
+            corridor_reject_rate=total_rejected/max(total_checked, 1), max_lateral_deviation=float("nan"),
+            max_action_delta=(emergency.sequence-baseline).abs().amax(0), safety_metrics=metrics,
+            emergency_fallback=True, emergency_verified=emergency.verified, emergency_reason=reason_names[reason])
 
     def _shift_previous(self, baseline: torch.Tensor) -> torch.Tensor:
         if self._prev_mean is None:
@@ -286,14 +334,12 @@ class LocalMPPI:
             if not valid.any():
                 if self._mode_bank is not None:
                     self._mode_bank.update(actions, scores, valid, mode_ids)
-                # This is a minimum-risk emergency action, NOT a certified safe fallback.
-                emergency = safety.emergency_cost if safety is not None else (actions[:, :, 1].mean(-1) + 1)
-                elite_indices = emergency.argmin().reshape(1)
-                elite_values = torch.zeros(1, device=self.device)
-                elite_wm_values = wm_values[elite_indices]
-                elite_actions = actions[elite_indices]
-                weights = torch.ones(1, device=self.device)
-                break
+                reason = (1 if safety is not None and safety.collision.all() else
+                          2 if safety is not None and safety.offroad.all() else
+                          3 if safety is not None and safety.kinematic_violation.all() else
+                          4 if safety is None or safety.valid.any() else 5)
+                return self._emergency_plan(baseline, initial_mean, initial_std, mean, std, safety_context,
+                    safety, total_rejected, total_checked, expanded, reason)
             elite_indices = torch.topk(scores, min(self.num_elites, int(valid.sum())), dim=0).indices
             elite_values = scores[elite_indices]
             elite_wm_values = wm_values[elite_indices]
@@ -341,8 +387,17 @@ class LocalMPPI:
             planner_score_gain = selected_score - baseline_score
 
         selected_batch_index = 0 if baseline_selected else int(elite_indices[selected_index])
+        if self.safety_evaluator is not None:
+            rechecked = self.safety_evaluator.check(sequence[None], safety_context)
+            if not bool(rechecked.valid[0]):
+                return self._emergency_plan(baseline, initial_mean, initial_std, mean, std, safety_context,
+                    safety, total_rejected, total_checked, expanded, 6)
+        self.emergency_streak = 0
+        safety_metrics.update(emergency_triggered=0., emergency_new_event=0., emergency_count=float(self.emergency_count),
+            emergency_streak_steps=0., emergency_duration_s=0., emergency_step_duration_s=0., emergency_verified=0.,
+            emergency_reason_code=0., safe_candidate_selected=1.)
         if safety is not None:
-            safety_metrics = {
+            safety_metrics.update({
                 "no_safe_candidate": float(not valid.any()),
                 "selected_safe": float(valid[selected_batch_index]),
                 "baseline_safe": float(valid[0]),
@@ -359,7 +414,8 @@ class LocalMPPI:
                 "selected_min_ttc": float(safety.min_ttc[selected_batch_index]),
                 "selected_boundary_margin": float(safety.boundary_margin[selected_batch_index]),
                 "cost_validated": float(costs_validated),
-            }
+                "interval_collision_reject_count": float(safety.interval_collision.any(1).sum()) if safety.interval_collision is not None else 0.,
+            })
             boundary = getattr(safety, "boundary_risk", None)
             if boundary is not None:
                 safety_metrics.update(boundary_risk=float(boundary[selected_batch_index]),

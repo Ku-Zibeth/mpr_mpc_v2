@@ -73,6 +73,12 @@ class EpisodeDiagnostics:
         for key in ("dynamic_collision", "static_collision", "road_event", "other_event", "unallocated_event"):
             self.sums[f"safety_{key}_cost"] += float(info.get(f"safety_{key}_cost", 0))
         if result is not None:
+            self.sums["emergency_steps"] += float(result.metrics.get("mpr/emergency_triggered", 0))
+            self.sums["emergency_events"] += float(result.metrics.get("mpr/emergency_new_event", 0))
+            self.sums["emergency_duration_s"] += float(result.metrics.get("mpr/emergency_step_duration_s", 0))
+            if result.metrics.get("mpr/emergency_triggered", 0):
+                code = int(result.metrics.get("mpr/emergency_reason_code", 5))
+                self.sums[f"emergency_reason_{code}_steps"] += 1
             for key, value in result.metrics.items():
                 self.plans.setdefault(key, [])
                 if key == "mpr/sac_predicted_cost" and not result.stage.use_residual:
@@ -110,6 +116,9 @@ class EpisodeDiagnostics:
             "other_event_cost": self.sums["safety_other_event_cost"],
             "unallocated_event_cost": self.sums["safety_unallocated_event_cost"],
             "episode_cost": float(sum(self.costs)),
+            "emergency_steps": self.sums["emergency_steps"], "emergency_events": self.sums["emergency_events"],
+            "emergency_duration_s": self.sums["emergency_duration_s"],
+            **{f"emergency_reason_{code}_steps": self.sums[f"emergency_reason_{code}_steps"] for code in range(1, 7)},
             "mean_speed_mps": mean(self.speeds), "distance_travelled_m": self.distance,
             "lagrangian_value": float(sac.lagrangian_multiplier) if sac is not None else float("nan"),
             "cost_limit": float(sac.cost_limit) if sac is not None else float("nan"),

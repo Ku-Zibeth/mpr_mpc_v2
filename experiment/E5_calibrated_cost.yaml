@@ -1,0 +1,8 @@
+# @package _global_
+defaults:
+  - E5
+  - _self_
+exp_name: mpr_mpc_v2_E5_calibrated_cost
+experiment_profile: E5_calibrated_cost
+residual_rl:
+  coarse_cost_feature: true

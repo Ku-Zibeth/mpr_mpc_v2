@@ -308,6 +308,7 @@ def _apply_checkpoint_runtime_config(cfg_raw: DictConfig, checkpoint: Path) -> N
     features = metadata.get("risk_features", residual_config.get("risk_features", []))
     cfg_raw.residual_rl.risk_features = features
     cfg_raw.residual_rl.include_wm_cost_in_state = bool(residual_config.get("include_wm_cost_in_state", False))
+    cfg_raw.residual_rl.coarse_cost_feature = bool(metadata.get("coarse_cost_feature", residual_config.get("coarse_cost_feature", False)))
     if not bool(cfg_raw.get("restore_checkpoint_runtime", True)):
         return
 

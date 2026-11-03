@@ -1,7 +1,8 @@
 # MPR-MPC V2 Delivery
 
-The current third-round changes and verification are in [ROUND3_REPORT.md](ROUND3_REPORT.md).
-Earlier verification below is historical and does not supersede that report.
+The current changes, commands and verification are in [ROUND4_REPORT.md](ROUND4_REPORT.md).
+[ROUND3_REPORT.md](ROUND3_REPORT.md) preserves historical measurements. Its old
+cross-scene ranking approval and least-risk emergency fallback are superseded.
 
 ## Scope And Status
 
@@ -286,13 +287,15 @@ not an extra explicit safety step.
 Before cost may affect state/scoring/auxiliary labels, each actual candidate
 mode must pass at the requested horizon: at least 1000 cost-supervised updates,
 128 real candidate replays from at least 10 held-out scenes, one-step MAE<=.1,
-RMSE<=.5, cumulative MAE<=H*.1, cumulative RMSE<=H*.5, cross-scene risk ranking
-accuracy>=.60 and scenario-cluster bootstrap 95% lower bound>=.50. Horizons
+RMSE<=.5, cumulative MAE<=H*.1, cumulative RMSE<=H*.5, matched-anchor action ranking
+accuracy>=.60 and scenario-cluster bootstrap 95% lower bound>=.50. At least 128
+cross-mode pairs on 16 verified anchors and 10 scenes are also required. Horizons
 1/5/10/15/20 and active H are validated independently. One-step approval is
-also required for longer horizons. Ties within .05 and within-scene pairs do
-not identify cross-scene ranking; constant/low-variance labels cannot pass.
+also required for longer horizons. Only SAME-anchor, SAME-horizon pairs enter
+action ranking; true cost gaps<=.05 are excluded. Within-mode, cross-mode and
+overall action ranking are separate; constant/low-variance labels cannot pass.
 Legacy executed Lattice/SAC windows remain diagnostics, never mode approvals.
-See the independent reset/replay collector and commands in ROUND3_REPORT.md.
+See the independent reset/replay collector and commands in ROUND4_REPORT.md.
 
 Predictions are revalidated every 1000 cost updates on cached held-out data,
 at evaluation, and before freezing. Mode approval is revoked immediately at
@@ -313,8 +316,10 @@ so adjacent-lane seams are not mistaken for road edges.
 Ego rollout is a bicycle approximation at 20ms substeps by default; obstacles
 use measured constant velocity/heading and their actual bounding dimensions.
 Time-synchronized oriented rectangles use separating axes for collision;
-vertex-to-edge distances provide footprint clearance. TTC uses swept relative
-velocity intervals on separating axes. Static objects naturally have zero
+vertex-to-edge distances provide footprint clearance. In addition to discrete
+footprints, interval hard filtering uses continuous swept SAT with conservative
+rotation/arc/acceleration bounds and adaptive subdivision of ambiguous intervals.
+TTC retains absolute-time swept relative-velocity intervals. Static objects have zero
 velocity. The current footprint is included. Hard constraints cover collision,
 road surface, finite/bounded controls, steering rate and lateral acceleration.
 Clearance<1m and TTC<3s are soft risks unless hard thresholds are configured.
@@ -350,11 +355,12 @@ Hard invalidity can never be compensated by a high learned value.
 If normal proposals are all unsafe, the optimizer tries wider perturbations,
 strong braking (including keeping nominal/previous steering), and other
 Lattice proposals. All alternatives go through the same checker. If none pass,
-it returns an explicitly labelled minimum-risk emergency control, with
-`selected_safe=0` and `no_safe_candidate=1`, NEVER an asserted safe baseline.
-Its risk ranking prioritizes predicted contact/offroad duration, kinematic
-violations, proximity, and terminal speed. An unavoidable situation cannot
-honestly be certified safe by changing a flag.
+an independent brake bank is generated with steering-rate-limited controls and
+checked through the same hard geometry. A verified brake is explicitly an
+emergency, not an ordinary safe candidate. If no brake passes, a predefined full
+brake/slew-to-neutral action is used with `selected_safe=0`; no least-bad normal
+MPPI candidate is substituted. Event count, reason and duration are logged.
+MetaDrive reverse mode is rejected because it changes negative throttle meaning.
 
 ## Logs And Interpretation
 

@@ -18,6 +18,7 @@ from common.parser import parse_cfg
 from common.seed import set_seed
 from env import make_env
 from mpr_mpc.evaluate_model_suite import _make_agent
+from mpr_mpc.planning.emergency import emergency_braking
 
 
 def main():
@@ -75,6 +76,7 @@ def main():
             rew = torch.tensor(rewards[:h], device=device)[:, None, None].expand(-1, b, 1)
             cost = torch.tensor(costs[:h], device=device)[:, None, None].expand(-1, b, 1)
             training = agent.tdmpc_agent._update(obs, act, rew, torch.zeros_like(cost), cost=cost)
+            assert training["cost_grad_norm"] > 0 and training["cost_supervised_samples"] == h*b
             # Even a step beyond the deployment threshold must not enable training MPPI.
             training_plan = agent.planner.plan(observation, vehicle, global_step=50000, t0=True, eval_mode=False)
             assert not training_plan.stage.use_mppi
@@ -85,6 +87,16 @@ def main():
                 path = Path(temporary) / f"{name}.pt"
                 agent.save_milestone(path, milestone_type=kind)
                 agent.load_milestone(path)
+            live = agent.planner.safety.context(agent.planner.structured.planner, vehicle,
+                width=width, wheelbase=wheelbase, max_steering=steering)
+            brake = emergency_braking(plan.refined_actions, live, agent.planner.safety, control_dt=agent.planner.control_dt)
+            speed_before = float(np.linalg.norm(vehicle.velocity))
+            assert not vehicle.enable_reverse
+            for action in brake.sequence[:5]:
+                observation, _, done, _ = env.step(action)
+                assert not done
+            speed_after = float(np.linalg.norm(vehicle.velocity))
+            assert vehicle.throttle_brake == -1 and speed_after < speed_before
             print("V2_SMOKE_RESULT", json.dumps({
                 "runtime": str(sys.modules["tdmpc2"].__file__),
                 "residual_state_dim": agent.planner.residual_state_dim,
@@ -92,6 +104,10 @@ def main():
                 "one_step_position_error_m": position_error,
                 "one_second_max_position_error_m": max(horizon_errors),
                 "cost_training_loss": float(training["cost_loss"]),
+                "cost_grad_norm": float(training["cost_grad_norm"]),
+                "cost_supervised_samples": float(training["cost_supervised_samples"]),
+                "braking_speed_before_mps": speed_before, "braking_speed_after_mps": speed_after,
+                "risk_feature_status": agent.planner.residual_state_builder.last_risk_status,
                 "cost_ready_after_one_update": agent.model.cost_ready,
                 "training_mppi_enabled": training_plan.stage.use_mppi,
                 "plan_action": plan.action.tolist(),

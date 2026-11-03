@@ -109,7 +109,7 @@ class TDMPC2(torch.nn.Module):
 		state_dict = api_model_conversion(self.model.state_dict(), state_dict)
 		calibration_keys = {"_cost_updates", "_cost_validated", "_cost_validated_horizons",
 			"_cost_validated_by_mode", "_cost_validated_by_horizon", "_cost_validation_samples_by_mode",
-			"_cost_validation_scenes_by_mode", "_cost_mode_validated_at"}
+			"_cost_validation_scenes_by_mode", "_cost_mode_validated_at", "_cost_validation_schema", "_cost_validated_coarse"}
 		for key in calibration_keys:
 			if key not in state_dict:
 				getattr(self.model, key).zero_()
@@ -445,12 +445,16 @@ class TDMPC2(torch.nn.Module):
 		)
 		# Update model
 		total_loss.backward()
+		cost_grads = [p.grad.detach().norm() for p in self.model._cost.parameters() if p.grad is not None]
+		cost_grad_norm = torch.stack(cost_grads).norm() if cost_grads else reward_loss.new_zeros(())
 		grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.cfg.grad_clip_norm)
 		self.optim.step()
 		self.optim.zero_grad(set_to_none=True)
 		# Any representation or cost-weight change invalidates held-out approvals.
 		self.model.invalidate_cost_validation()
-		if cost_enabled and cost is not None and torch.isfinite(cost).any():
+		cost_step_supervised = bool(cost_enabled and float(cost_cfg.get("loss_coef", 1.0)) > 0 and cost is not None
+			and torch.isfinite(cost).any() and cost_grads and torch.isfinite(cost_grad_norm))
+		if cost_step_supervised:
 			self.model._cost_updates.add_(1)
 			if int(self.model._cost_updates) % max(1, int(cost_cfg.get("validation_interval", 1000))) == 0:
 				self.model._cost_validated.fill_(False)
@@ -467,6 +471,11 @@ class TDMPC2(torch.nn.Module):
 			"consistency_loss": consistency_loss,
 			"reward_loss": reward_loss,
 			"cost_loss": cost_loss,
+			"cost_grad_norm": cost_grad_norm,
+			"cost_updates": self.model._cost_updates.float(),
+			"cost_supervised_samples": torch.isfinite(cost).sum().float() if cost_step_supervised else 0,
+			"cost_step_supervised": float(cost_step_supervised),
+			"cost_label_mean": cost[torch.isfinite(cost)].mean() if cost_enabled and cost is not None and torch.isfinite(cost).any() else float("nan"),
 			"cost_q_loss": cost_q_loss,
 			"value_loss": value_loss,
 			"termination_loss": termination_loss,

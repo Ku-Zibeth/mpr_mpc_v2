@@ -7,6 +7,12 @@ No trained checkpoint, training log directory, or Git/LFS database was copied.
 Start here: [V2 implementation, commands, compatibility and limitations](V2_IMPLEMENTATION.md).
 Run commands from this directory, not from the sibling original package.
 
+Current delivery: [Round 4 report and full training/evaluation commands](ROUND4_REPORT.md).
+Cost ranking now compares actions ONLY at a verified shared prediction anchor.
+Continuous interval collision checks cover translation, acceleration and turning;
+unresolved rotating contacts are conservatively rejected. Independent emergency
+braking is explicitly distinguished from an ordinary safe candidate.
+
 Third-round changes: absolute-time TTC, continuous road-boundary risk,
 per-mode/per-horizon cost calibration from real counterfactual replays,
 safety-first checkpoint selection, and a synchronized MPPI benchmark.
@@ -216,17 +222,17 @@ Stages:
 
 ```text
 Stage A [0, 20K):
-  Lattice + TD-MPC2
+  Lattice data collection + TD-MPC2 world-model/environment-cost supervision
   Residual OFF
   MPPI OFF
 
 Stage B [20K, 50K):
-  Lattice + Residual SAC + TD-MPC2
+  Lattice + Residual SAC; world model and cost head FROZEN
   MPPI OFF
 
-Stage C [50K, 1M]:
+Stage C (evaluation only):
   Lattice + Residual SAC + Local MPPI
-  TD-MPC2 slow adaptation
+  No optimizer updates; corresponding source/mode/horizon cost approval required
 ```
 
 TD-MPC2 update ratios:
@@ -234,8 +240,8 @@ TD-MPC2 update ratios:
 ```yaml
 tdmpc_stage_training:
   stage_a_update_ratio: 1.0
-  stage_b_update_ratio: 1.0
-  stage_c_update_ratio: 0.25
+  stage_b_update_ratio: 0.0
+  stage_c_update_ratio: 0.0
 ```
 
 State encoder:
@@ -357,8 +363,8 @@ Milestones:
   logs/metadrive-risk/1/<exp_name>/models/milestone_50k_world_model_residual_rl.pt
   Evaluation stack: Lattice ON, Residual SAC ON, Local MPPI OFF
 
-1M:
-  logs/metadrive-risk/1/<exp_name>/models/milestone_1m_full_mpr_mpc.pt
+50K deployment package (same frozen WM and trained SAC):
+  logs/metadrive-risk/1/<exp_name>/models/milestone_50k_full_mpr_mpc.pt
   Evaluation stack: Lattice ON, Residual SAC ON, Local MPPI ON
 ```
 

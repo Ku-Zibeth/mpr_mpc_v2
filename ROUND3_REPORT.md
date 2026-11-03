@@ -1,5 +1,10 @@
 # Third-Round Delivery
 
+Historical Round 3 snapshot. [Round 4](ROUND4_REPORT.md) supersedes its
+cross-scene cost-ranking permissions and least-risk emergency mechanism.
+Round 3 cost approvals must pass the new matched-anchor validation again.
+The performance/test figures below remain unchanged historical measurements.
+
 ## Scope
 
 Started from clean `main` at `d2cbefb6af4af5c7cef31dac13fc2651fd57c897`, after

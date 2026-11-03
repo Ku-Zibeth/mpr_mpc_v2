@@ -36,6 +36,7 @@ class TrajectoryConsequence:
     cumulative_cost: torch.Tensor | None = None
     cost_validated: bool = False
     cost_validated_mask: torch.Tensor | None = None
+    cost_unavailable_reason: str = "unvalidated"
     risk_summary: dict[str, Any] = field(default_factory=dict)
 
     @property

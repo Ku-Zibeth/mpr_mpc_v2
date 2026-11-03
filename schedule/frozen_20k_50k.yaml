@@ -12,3 +12,9 @@ milestone_checkpoints:
   world_model_residual_step: 50000
   full_model_step: 50000
 eval_freq: 10000
+eval_episodes: 20
+save_video: false
+tdmpc_stage_training:
+  stage_a_update_ratio: 1.0
+  stage_b_update_ratio: 0.0
+  stage_c_update_ratio: 0.0
