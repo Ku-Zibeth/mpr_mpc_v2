@@ -1,0 +1,370 @@
+{
+  "mean_ms": 146.80147643201053,
+  "p50_ms": 147.4118335172534,
+  "p95_ms": 155.15520093031228,
+  "p99_ms": 173.02468976005915,
+  "max_ms": 180.84961990825832,
+  "planning_calls": 100,
+  "revision": "5d10c9e14e06e79b65e8c039383cecda1138d248",
+  "source_root": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2",
+  "checkpoint": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt",
+  "device": "NVIDIA GeForce RTX 3070",
+  "horizon": 10,
+  "samples": 64,
+  "iterations": 4,
+  "seed": 1,
+  "scenarios": [
+    1714,
+    539,
+    1525,
+    1084,
+    694
+  ],
+  "warmup_per_scene": 5,
+  "prefix_steps": 20,
+  "states": [
+    {
+      "scenario": 1714,
+      "position": [
+        10.315338134765625,
+        0.06203002855181694
+      ],
+      "velocity": [
+        5.478614330291748,
+        0.06822133809328079
+      ],
+      "heading": 0.012299676336476217
+    },
+    {
+      "scenario": 539,
+      "position": [
+        10.343459129333496,
+        0.9444801807403564
+      ],
+      "velocity": [
+        5.513374328613281,
+        1.0335501432418823
+      ],
+      "heading": 0.18314825132583934
+    },
+    {
+      "scenario": 1525,
+      "position": [
+        10.06427001953125,
+        1.7170004844665527
+      ],
+      "velocity": [
+        5.2313032150268555,
+        1.9260672330856323
+      ],
+      "heading": 0.3444552527616658
+    },
+    {
+      "scenario": 1084,
+      "position": [
+        10.308252334594727,
+        3.5
+      ],
+      "velocity": [
+        5.471286296844482,
+        9.175968784802535e-07
+      ],
+      "heading": 1.331580543606492e-07
+    },
+    {
+      "scenario": 694,
+      "position": [
+        10.9583740234375,
+        3.5
+      ],
+      "velocity": [
+        6.141409873962402,
+        8.495699148625135e-07
+      ],
+      "heading": 0.0
+    }
+  ],
+  "profiles": [
+    {
+      "context_construction": {
+        "cpu_wall_ms": 58.75833588652313,
+        "cuda_stream_elapsed_ms": 58.74607849121094
+      },
+      "candidate_generation": {
+        "cpu_wall_ms": 0.7699937559664249,
+        "cuda_stream_elapsed_ms": 0.7290879935026169
+      },
+      "sac_feature_geometry": {
+        "cpu_wall_ms": 20.8120490424335,
+        "cuda_stream_elapsed_ms": 20.79952049255371
+      },
+      "world_model_evaluation": {
+        "cpu_wall_ms": 69.32290527038276,
+        "cuda_stream_elapsed_ms": 69.20243263244629
+      },
+      "cost_evaluation": {
+        "cpu_wall_ms": 12.729839887470007,
+        "cuda_stream_elapsed_ms": 12.43497596681118
+      },
+      "candidate_scoring": {
+        "cpu_wall_ms": 0.8213948458433151,
+        "cuda_stream_elapsed_ms": 0.7453439980745316
+      },
+      "total_planning": {
+        "cpu_wall_ms": 149.6000410988927,
+        "cuda_stream_elapsed_ms": 149.58201599121094
+      },
+      "road_geometry": {
+        "cpu_wall_ms": 2.843352034687996,
+        "cuda_stream_elapsed_ms": 2.8088319301605225
+      },
+      "continuous_collision": {
+        "cpu_wall_ms": 0.9941919706761837,
+        "cuda_stream_elapsed_ms": 0.9747200012207031
+      }
+    },
+    {
+      "context_construction": {
+        "cpu_wall_ms": 56.437423918396235,
+        "cuda_stream_elapsed_ms": 56.424991607666016
+      },
+      "candidate_generation": {
+        "cpu_wall_ms": 0.7815540302544832,
+        "cuda_stream_elapsed_ms": 0.7397439926862717
+      },
+      "sac_feature_geometry": {
+        "cpu_wall_ms": 16.952516976743937,
+        "cuda_stream_elapsed_ms": 16.939008712768555
+      },
+      "world_model_evaluation": {
+        "cpu_wall_ms": 70.63092500902712,
+        "cuda_stream_elapsed_ms": 70.502272605896
+      },
+      "cost_evaluation": {
+        "cpu_wall_ms": 12.869114987552166,
+        "cuda_stream_elapsed_ms": 12.271775901317596
+      },
+      "candidate_scoring": {
+        "cpu_wall_ms": 0.900621060281992,
+        "cuda_stream_elapsed_ms": 0.8139519989490509
+      },
+      "total_planning": {
+        "cpu_wall_ms": 149.88333615474403,
+        "cuda_stream_elapsed_ms": 149.86431884765625
+      },
+      "road_geometry": {
+        "cpu_wall_ms": 0.6675270851701498,
+        "cuda_stream_elapsed_ms": 0.6336640119552612
+      },
+      "continuous_collision": {
+        "cpu_wall_ms": 1.0289640631526709,
+        "cuda_stream_elapsed_ms": 1.0096640586853027
+      }
+    },
+    {
+      "context_construction": {
+        "cpu_wall_ms": 56.31607701070607,
+        "cuda_stream_elapsed_ms": 56.304256439208984
+      },
+      "candidate_generation": {
+        "cpu_wall_ms": 0.7940169889479876,
+        "cuda_stream_elapsed_ms": 0.7504640072584152
+      },
+      "sac_feature_geometry": {
+        "cpu_wall_ms": 18.62699701450765,
+        "cuda_stream_elapsed_ms": 18.613248825073242
+      },
+      "world_model_evaluation": {
+        "cpu_wall_ms": 69.0507257822901,
+        "cuda_stream_elapsed_ms": 68.93955326080322
+      },
+      "cost_evaluation": {
+        "cpu_wall_ms": 12.7287816721946,
+        "cuda_stream_elapsed_ms": 12.225088000297546
+      },
+      "candidate_scoring": {
+        "cpu_wall_ms": 0.8215289562940598,
+        "cuda_stream_elapsed_ms": 0.7444480061531067
+      },
+      "total_planning": {
+        "cpu_wall_ms": 147.55037589929998,
+        "cuda_stream_elapsed_ms": 147.53126525878906
+      },
+      "road_geometry": {
+        "cpu_wall_ms": 2.7171180117875338,
+        "cuda_stream_elapsed_ms": 2.6952319145202637
+      },
+      "continuous_collision": {
+        "cpu_wall_ms": 1.0110060684382915,
+        "cuda_stream_elapsed_ms": 0.9912319779396057
+      }
+    },
+    {
+      "context_construction": {
+        "cpu_wall_ms": 55.838019121438265,
+        "cuda_stream_elapsed_ms": 55.8256950378418
+      },
+      "candidate_generation": {
+        "cpu_wall_ms": 0.7597757503390312,
+        "cuda_stream_elapsed_ms": 0.7188159972429276
+      },
+      "sac_feature_geometry": {
+        "cpu_wall_ms": 17.17507792636752,
+        "cuda_stream_elapsed_ms": 17.132896423339844
+      },
+      "world_model_evaluation": {
+        "cpu_wall_ms": 68.71386105194688,
+        "cuda_stream_elapsed_ms": 68.61593532562256
+      },
+      "cost_evaluation": {
+        "cpu_wall_ms": 12.653903802856803,
+        "cuda_stream_elapsed_ms": 12.202784031629562
+      },
+      "candidate_scoring": {
+        "cpu_wall_ms": 0.8538446854799986,
+        "cuda_stream_elapsed_ms": 0.763743981719017
+      },
+      "total_planning": {
+        "cpu_wall_ms": 146.56428690068424,
+        "cuda_stream_elapsed_ms": 146.54383850097656
+      },
+      "road_geometry": {
+        "cpu_wall_ms": 0.8023118134588003,
+        "cuda_stream_elapsed_ms": 0.7762240171432495
+      },
+      "continuous_collision": {
+        "cpu_wall_ms": 1.0475150775164366,
+        "cuda_stream_elapsed_ms": 1.026047945022583
+      }
+    },
+    {
+      "context_construction": {
+        "cpu_wall_ms": 46.62802699021995,
+        "cuda_stream_elapsed_ms": 46.616127014160156
+      },
+      "candidate_generation": {
+        "cpu_wall_ms": 0.7663459982722998,
+        "cuda_stream_elapsed_ms": 0.7252480089664459
+      },
+      "sac_feature_geometry": {
+        "cpu_wall_ms": 13.363134115934372,
+        "cuda_stream_elapsed_ms": 13.34988784790039
+      },
+      "world_model_evaluation": {
+        "cpu_wall_ms": 68.45766794867814,
+        "cuda_stream_elapsed_ms": 68.3429126739502
+      },
+      "cost_evaluation": {
+        "cpu_wall_ms": 12.447140645235777,
+        "cuda_stream_elapsed_ms": 12.259039968252182
+      },
+      "candidate_scoring": {
+        "cpu_wall_ms": 0.8929097093641758,
+        "cuda_stream_elapsed_ms": 0.8066239953041077
+      },
+      "total_planning": {
+        "cpu_wall_ms": 136.8813388980925,
+        "cuda_stream_elapsed_ms": 136.86073303222656
+      },
+      "road_geometry": {
+        "cpu_wall_ms": 0.7884909864515066,
+        "cuda_stream_elapsed_ms": 0.7549120187759399
+      },
+      "continuous_collision": {
+        "cpu_wall_ms": 0,
+        "cuda_stream_elapsed_ms": 0
+      }
+    }
+  ],
+  "measurement": "Synchronized wall ms; repeated live states; selected controls are NOT executed.",
+  "cost_readiness": {
+    "updates": 196818,
+    "ready": false,
+    "schema": 0,
+    "validated_horizons": 0
+  },
+  "effective_mppi_config": {
+    "enabled": true,
+    "cost_enabled": true,
+    "cost_coef": 1.0,
+    "num_samples": 64,
+    "num_elites": 8,
+    "iterations": 4,
+    "initial_std": [
+      0.025,
+      0.1
+    ],
+    "min_std": [
+      0.005,
+      0.02
+    ],
+    "max_std": [
+      0.05,
+      0.2
+    ],
+    "max_delta": [
+      0.05,
+      0.2
+    ],
+    "temperature": 0.5,
+    "lateral_corridor_ratio": 0.5,
+    "lateral_safety_margin": 0.15,
+    "kinematic_vehicle_width": 1.852,
+    "kinematic_wheelbase": 2.46894,
+    "kinematic_max_steering_angle": 0.6981317,
+    "kinematic_max_acceleration": 4.0,
+    "kinematic_max_deceleration": 6.0,
+    "deviation_coef": 5.0,
+    "smoothness_coef": 1.0,
+    "throttle_deviation_weight": 0.25,
+    "min_improvement_abs": 1.0,
+    "min_improvement_ratio": 0.01,
+    "eval_seed": 1,
+    "proposal_init": "structured_baseline",
+    "blend_alpha": 0.8
+  },
+  "source_dirty": true,
+  "source_snapshot_sha256": "9ebf355f291f63bb8b6ff1ea56e702c09b2a133c0864bac78645afd506839b85",
+  "phase_summary_ms": {
+    "candidate_generation": {
+      "cpu_wall_ms": 0.7743373047560453,
+      "cuda_stream_elapsed_ms": 0.7326719999313355
+    },
+    "candidate_scoring": {
+      "cpu_wall_ms": 0.8580598514527082,
+      "cuda_stream_elapsed_ms": 0.7748223960399627
+    },
+    "context_construction": {
+      "cpu_wall_ms": 54.79557658545673,
+      "cuda_stream_elapsed_ms": 54.78342971801758
+    },
+    "continuous_collision": {
+      "cpu_wall_ms": 0.8163354359567165,
+      "cuda_stream_elapsed_ms": 0.8003327965736389
+    },
+    "cost_evaluation": {
+      "cpu_wall_ms": 12.68575619906187,
+      "cuda_stream_elapsed_ms": 12.278732773661613
+    },
+    "road_geometry": {
+      "cpu_wall_ms": 1.5637599863111973,
+      "cuda_stream_elapsed_ms": 1.5337727785110473
+    },
+    "sac_feature_geometry": {
+      "cpu_wall_ms": 17.385955015197396,
+      "cuda_stream_elapsed_ms": 17.36691246032715
+    },
+    "total_planning": {
+      "cpu_wall_ms": 146.0958757903427,
+      "cuda_stream_elapsed_ms": 146.07643432617186
+    },
+    "world_model_evaluation": {
+      "cpu_wall_ms": 69.235217012465,
+      "cuda_stream_elapsed_ms": 69.12062129974365
+    }
+  },
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "kernel_profile_last_scene": {},
+  "control_dt": 0.1,
+  "profile_notes": "Separate instrumented pass; nested phase times are not additive. CPU wall includes waits. CUDA events measure stream elapsed including idle CPU gaps, NOT pure GPU kernel time. Context includes coarse planning/WM; WM includes cost. Geometry is legacy SAC input only. Candidate scoring contains deviation/smoothness/WM cost, without geometric or uncertainty penalties."
+}
