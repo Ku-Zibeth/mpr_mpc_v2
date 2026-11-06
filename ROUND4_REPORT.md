@@ -1,5 +1,8 @@
 # Round 4 Targeted Repairs
 
+Historical report: its multimodal search, emergency planning and mode-calibration
+commands have been superseded by [NATIVE_MPPI_COST_REPORT.md](NATIVE_MPPI_COST_REPORT.md).
+
 ## Version And Scope
 
 Fetched and fast-forward-checked GitHub `main` before editing. Both local and

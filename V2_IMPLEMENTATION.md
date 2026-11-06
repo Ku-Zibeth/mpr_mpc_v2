@@ -1,6 +1,10 @@
 # MPR-MPC V2 Delivery
 
-The current changes, commands and verification are in [ROUND4_REPORT.md](ROUND4_REPORT.md).
+The current planner, cost scoring, measurements and executable commands are in
+[NATIVE_MPPI_COST_REPORT.md](NATIVE_MPPI_COST_REPORT.md). The MPPI and calibration
+sections below describe the historical V2 stack.
+
+The previous changes, commands and verification are in [ROUND4_REPORT.md](ROUND4_REPORT.md).
 [ROUND3_REPORT.md](ROUND3_REPORT.md) preserves historical measurements. Its old
 cross-scene ranking approval and least-risk emergency fallback are superseded.
 

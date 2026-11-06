@@ -260,6 +260,8 @@ def main(raw_cfg: DictConfig) -> None:
         if run is not None:
             if summaries:
                 for key in summaries[0]:
+                    if key == "end_reason":
+                        continue
                     run.summary[f"eval/mean_{key}"] = float(
                         np.mean([row[key] for row in summaries])
                     )

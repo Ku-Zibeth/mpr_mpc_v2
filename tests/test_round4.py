@@ -8,122 +8,29 @@ import shapely
 from shapely.geometry import Polygon, box
 import torch
 
-from mpr_mpc.planning.calibration_anchor import make_anchor, verify_anchor
-from mpr_mpc.planning.cost_validation import CostModelValidator, calibration_statistics
-from mpr_mpc.planning.emergency import emergency_braking
+from mpr_mpc.planning.cost_validation import CostModelValidator
 from mpr_mpc.planning.local_mppi import LocalMPPI
 from mpr_mpc.planning.safety import TrajectorySafetyEvaluator, _corners
 from mpr_mpc.planning.swept_collision import swept_collisions
 from mpr_mpc.residual_rl.state_builder import ResidualStateBuilder
 from tests.test_mpr_mpc import mppi_cfg, RecordingEvaluator, make_path
-from tests.test_round3 import ModeCostModel
 from tests.test_v2_safety import context, obstacle
 
 
-def paired_records(*, anchors=True, coarse=False):
-    rows = []
-    for scene in range(20):
-        for origin in range(4):
-            for mode in ([-1] if coarse else []) + list(range(6)):
-                for candidate in range(2):
-                    value = .02 + (mode+1)*.12 + candidate*.06 + origin*.005 + (scene%3)*.001
-                    rows.append(dict(source="metadrive_mode_replay_v2", replay_verified=True, scene_id=scene,
-                        anchor_id=f"s{scene}:t{origin}" if anchors else "", mode_id=mode,
-                        trajectory_kind="coarse_lattice" if mode == -1 else "mppi_mode", observation=np.zeros(3),
-                        actions=np.tile([value, 0.], (10, 1)).astype("float32"), costs=np.full(10, value)))
-    return rows
 
 
-def test_matched_anchor_cross_mode_calibration_passes_real_thresholds():
-    validator = CostModelValidator({"horizons": [1, 5, 10, 20]})
-    validator.set_mode_episodes(paired_records(coarse=True))
-    model = ModeCostModel()
-    validator.validate(model, "cpu", horizon=10)
-    assert model._cost_validated_by_mode[:, [1, 5, 10]].all()
-    assert model._cost_validated_coarse[[1, 5, 10]].all()
-    assert not model._cost_validated_by_mode[:, 20].any()
-    for name in validator.mode_report:
-        stats = validator.mode_report[name][10]
-        assert stats["within_mode_ranking"]["accuracy"] == 1
-        assert stats["cross_mode_ranking"]["accuracy"] == 1
-        assert stats["overall_ranking"]["ci_low"] == 1
-        assert stats["cross_mode_ranking"]["anchors"] == 80
-        assert stats["samples"] == 160 and stats["scenes"] == 20
-    assert model._cost_validation_schema == 2
 
 
-def test_between_scene_offset_predictor_cannot_pass_action_ranking():
-    class SceneOnly(ModeCostModel):
-        def cost(self, z, action, task):
-            return z[:, :1]
-
-        def next(self, z, action, task):
-            return z
-
-    rows = paired_records()
-    for row in rows:
-        offset = row["scene_id"] / 20
-        row["observation"] = np.array([offset, 0., 0.])
-        row["costs"] = np.full(10, offset + .06 * (row["mode_id"] % 2))
-    validator = CostModelValidator({"horizons": [1, 10]})
-    validator.set_mode_episodes(rows)
-    model = SceneOnly()
-    validator.validate(model, "cpu", horizon=10)
-    assert not model.cost_ready
-    assert validator.mode_report["nominal"][1]["mae"] < .1
-    assert validator.mode_report["nominal"][1]["correlation"] > .99
-    assert validator.mode_report["nominal"][1]["cross_mode_ranking"]["accuracy"] == 0
 
 
-def test_missing_anchors_cannot_retain_or_gain_permissions():
-    validator, model = CostModelValidator({}), ModeCostModel()
-    validator.set_mode_episodes(paired_records())
-    validator.validate(model, "cpu", horizon=10)
-    assert model.cost_ready
-    validator.set_mode_episodes(paired_records(anchors=False))
-    validator.validate(model, "cpu", horizon=10)
-    assert not model.cost_ready
-    assert validator.mode_report["nominal"][10]["cross_mode_ranking"]["pairs"] == 0
 
 
-def test_pairing_never_compares_different_prediction_origins():
-    p, y, scenes, modes = [0., 1., 1., 0.], [0., 1., 0., 1.], [1]*4, [0, 1, 0, 1]
-    stats = calibration_statistics(p, y, scenes, {}, anchors=["a", "a", "b", "b"], modes=modes)
-    assert stats["overall_ranking"]["pairs"] == 2
-    assert stats["cross_mode_ranking"]["accuracy"] == .5
-    assert stats["within_mode_ranking"]["pairs"] == 0
 
 
-def test_bootstrap_resamples_scenes_not_candidate_rows():
-    scenes = np.repeat(np.arange(20), 4)
-    anchors = [f"s{s}" for s in scenes]
-    modes = np.tile([0, 1, 2, 3], 20)
-    y = np.tile([.1, .3, .5, .7], 20)
-    p = y.copy()
-    p[scenes < 4] = 1 - p[scenes < 4]
-    first = calibration_statistics(p, y, scenes, {}, anchors=anchors, modes=modes)
-    duplicate = calibration_statistics(np.tile(p, 2), np.tile(y, 2), np.tile(scenes, 2), {},
-        anchors=anchors*2, modes=np.tile(modes, 2))
-    assert first["cross_mode_ranking"]["ci_low"] == duplicate["cross_mode_ranking"]["ci_low"]
-    assert first["cross_mode_ranking"]["ci_high"] == duplicate["cross_mode_ranking"]["ci_high"]
 
 
-def test_anchor_content_checks_pose_traffic_history_and_prediction_start():
-    args = [539, 540, [[0., 1.]], [1., 2.], [10., 0., 5., 1.], .1]
-    anchor, payload = make_anchor(*args)
-    verify_anchor(anchor, payload)
-    for key in ("scene_id", "prediction_step", "fingerprint", "prefix_actions"):
-        modified = deepcopy(payload)
-        modified[key] = 999 if isinstance(modified[key], int) else []
-        with pytest.raises(ValueError):
-            verify_anchor(anchor, modified)
 
 
-def test_same_anchor_cannot_mix_scenes_or_start_observations():
-    rows = paired_records()[:2]
-    rows[1]["observation"] = np.ones(3)
-    with pytest.raises(ValueError, match="anchor_id"):
-        CostModelValidator({}).set_mode_episodes(rows)
 
 
 @pytest.mark.parametrize("dt,substeps", [(1., 1), (.5, 1), (.1, 1), (.1, 5)])
@@ -259,38 +166,10 @@ def test_optimized_road_metrics_equal_original_geometry_formula():
     np.testing.assert_allclose(actual_margin, margin, atol=1e-12)
 
 
-def test_unavoidable_emergency_is_fixed_braking_not_an_ordinary_candidate():
-    planner = LocalMPPI(RecordingEvaluator(), mppi_cfg(num_samples=8), horizon=10, action_dim=2, device="cpu")
-    planner.safety_evaluator = TrajectorySafetyEvaluator({}, control_dt=.1, device="cpu")
-    ctx = context(obstacles=(obstacle(10, 10),))
-    baseline = torch.ones(11, 2)*.9
-    first = planner.plan(torch.zeros(1, 2), baseline, eval_mode=True, safety_context=ctx)
-    second = planner.plan(torch.zeros(1, 2), baseline, eval_mode=True, safety_context=ctx)
-    assert first.emergency_fallback and not first.emergency_verified
-    assert first.action.tolist() == [0., -1.]
-    assert first.safety_metrics["safe_candidate_selected"] == 0
-    assert first.safety_metrics["selected_safe"] == 0
-    assert first.safety_metrics["emergency_new_event"] == 1
-    assert second.safety_metrics["emergency_new_event"] == 0
-    assert second.safety_metrics["emergency_duration_s"] == .2
-    planner.reset()
-    assert planner.emergency_streak == 0
 
 
-def test_independent_braking_can_be_verified_and_respects_steering_rate():
-    safety = TrajectorySafetyEvaluator({}, control_dt=.1, device="cpu")
-    ctx = context(speed=2)
-    ctx.previous_action[0] = .8
-    result = emergency_braking(torch.ones(11, 2), ctx, safety, control_dt=.1)
-    assert result.verified
-    assert (result.sequence[:, 1] == -1).all()
-    assert abs(result.sequence[0, 0]-.8) * ctx.max_steering/.1 <= 2.5
 
 
-def test_missing_global_geometry_never_certifies_emergency_control():
-    result = emergency_braking(torch.ones(11, 2), None, None, control_dt=.1)
-    assert not result.verified
-    assert result.sequence[0].tolist() == [0., -1.]
 
 
 def test_safety_context_rejects_reverse_action_mapping():
@@ -315,47 +194,8 @@ def test_cost_feature_availability_is_reported_without_unmasking():
     assert state[528] == 1
 
 
-def test_horizons_cannot_share_counterfactual_labels():
-    rows = paired_records()
-    for row in rows:
-        if row["mode_id"] != 0:
-            row["actions"], row["costs"] = row["actions"][:1], row["costs"][:1]
-    validator, model = CostModelValidator({"horizons": [1, 10]}), ModeCostModel()
-    validator.set_mode_episodes(rows)
-    validator.validate(model, "cpu", horizon=10)
-    assert model._cost_validated_by_mode[:, 1].all()
-    assert not model._cost_validated_by_mode[:, 10].any()
 
 
-def test_verified_emergency_is_distinct_from_ordinary_selection_and_logs_events():
-    class BadValue:
-        fail = True
-
-        def evaluate_mppi_candidates(self, z, actions, task=None, mode_ids=None):
-            return SimpleNamespace(total_value=torch.full((len(actions),), float("nan") if self.fail else 0.),
-                                   terminal_q_std=torch.zeros(len(actions)))
-
-    evaluator = BadValue()
-    planner = LocalMPPI(evaluator, mppi_cfg(num_samples=8), horizon=10, action_dim=2, device="cpu")
-    planner.safety_evaluator = TrajectorySafetyEvaluator({}, control_dt=.1, device="cpu")
-    first = planner.plan(torch.zeros(1, 2), torch.zeros(11, 2), eval_mode=True, safety_context=context())
-    assert first.emergency_fallback and first.emergency_verified
-    assert first.safety_metrics["selected_safe"] == 1 and first.safety_metrics["safe_candidate_selected"] == 0
-    assert first.emergency_reason == "nonfinite_scores" and first.action[1] == -1
-    from mpr_mpc.evaluation_diagnostics import EpisodeDiagnostics
-    diagnostics = EpisodeDiagnostics()
-    result = SimpleNamespace(metrics={f"mpr/{k}": v for k, v in first.safety_metrics.items()},
-                             stage=SimpleNamespace(use_residual=True, use_mppi=True))
-    diagnostics.observe(torch.zeros(3), first.action, {"cost": .5}, result)
-    summary = diagnostics.summary({})
-    assert summary["emergency_events"] == 1 and summary["emergency_steps"] == 1
-    assert summary["emergency_duration_s"] == .1 and summary["emergency_reason_4_steps"] == 1
-    evaluator.fail = False
-    normal = planner.plan(torch.zeros(1, 2), torch.zeros(11, 2), eval_mode=True, safety_context=context())
-    assert not normal.emergency_fallback and planner.emergency_streak == 0
-    evaluator.fail = True
-    again = planner.plan(torch.zeros(1, 2), torch.zeros(11, 2), eval_mode=True, safety_context=context())
-    assert again.safety_metrics["emergency_new_event"] == 1 and planner.emergency_count == 2
 
 
 def test_calibrated_cost_profile_preserves_535_layout_but_is_explicitly_separate():

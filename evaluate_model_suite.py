@@ -47,6 +47,7 @@ from mpr_mpc.lattice.frenet_metadrive import (
     MetaDriveFrenetController,
 )
 from mpr_mpc.planning.coordinator import MPRMPCPlanner
+from mpr_mpc.planning.native_config import native_mppi_config
 from mpr_mpc.tdmpc2.core import MPRTDMPC2
 from mpr_mpc.evaluation_diagnostics import EpisodeDiagnostics
 
@@ -318,11 +319,18 @@ def _apply_checkpoint_runtime_config(cfg_raw: DictConfig, checkpoint: Path) -> N
 
     mppi_config = planner_state.get("mppi_config") or metadata.get("mppi_config")
     if isinstance(mppi_config, dict):
-        _merge_section(cfg_raw.mpr_mpc.mppi, mppi_config)
+        _merge_section(cfg_raw.mpr_mpc.mppi, native_mppi_config(mppi_config))
 
     residual_config = planner_state.get("residual_config")
     if isinstance(residual_config, dict):
         _merge_section(cfg_raw.residual_rl, residual_config)
+    # Only old SAC feature geometry uses these legacy settings, never MPPI.
+    if features and isinstance(mppi_config, dict):
+        geometry = {key: mppi_config[key] for key in (
+            "substeps", "model_margin", "road_margin", "max_acceleration", "max_deceleration",
+            "ttc_lookahead", "swept_max_depth", "swept_angle_tolerance", "swept_position_tolerance",
+        ) if key in mppi_config}
+        cfg_raw.residual_rl.risk_geometry = geometry
 
 
 def _make_cfg(raw_cfg: DictConfig, version: str, checkpoint: Path, scenarios: list[int]):
@@ -330,6 +338,10 @@ def _make_cfg(raw_cfg: DictConfig, version: str, checkpoint: Path, scenarios: li
     with open_dict(cfg_raw):
         _configure_checkpoint_architecture(cfg_raw, version)
         _apply_checkpoint_runtime_config(cfg_raw, checkpoint)
+        benchmark = cfg_raw.get("benchmark", {})
+        if benchmark.get("mppi_cost_coef") is not None:
+            cfg_raw.mpr_mpc.mppi.cost_enabled = True
+            cfg_raw.mpr_mpc.mppi.cost_coef = float(benchmark["mppi_cost_coef"])
         cfg_raw.checkpoint = str(checkpoint)
         cfg_raw.eval_episodes = len(scenarios)
         cfg_raw.compile = False
@@ -402,6 +414,7 @@ def _evaluate_checkpoint(
         cost_limit = _as_float(cfg_raw.get("residual_rl", {}).get("cost_limit"), float("nan"))
 
         for episode_index, scenario in enumerate(scenarios, start=1):
+            print(f"[{episode_index:03d}/{len(scenarios):03d}] seed={scenario} reset", flush=True)
             diagnostics = EpisodeDiagnostics()
             agent.planner.reset()
             episode_seed = (int(cfg.seed) + int(scenario)) % 2**32
@@ -440,6 +453,9 @@ def _evaluate_checkpoint(
                     _as_float(info.get("out_of_road", 0.0)) > 0.0
                 )
                 step += 1
+                if step == 1 or step % 100 == 0:
+                    print(f"[progress] seed={scenario} step={step} "
+                          f"route={float(info.get('route_completion', 0)):.3f}", flush=True)
                 if episode_crash and not first_crash_step:
                     first_crash_step = step
                 if episode_out_of_road and not first_out_of_road_step:
@@ -524,14 +540,15 @@ def _summarize(version: str, checkpoint: Path, rows: list[dict[str, Any]]) -> di
         "checkpoint": str(checkpoint),
         "episodes": len(rows),
     }
-    numeric_keys = [
+    numeric_keys = dict.fromkeys(
         key
-        for key, value in rows[0].items()
+        for row in rows
+        for key, value in row.items()
         if isinstance(value, (int, float, np.integer, np.floating))
         and key not in {"episode", "scenario", "episode_seed", "test_seed"}
-    ] if rows else []
+    )
     for key in numeric_keys:
-        values = [float(row[key]) for row in rows]
+        values = [float(row.get(key, float("nan"))) for row in rows]
         summary[f"mean_{key}"] = _nanmean(values)
         finite = [value for value in values if math.isfinite(value)]
         summary[f"std_{key}"] = float(np.std(finite)) if finite else float("nan")

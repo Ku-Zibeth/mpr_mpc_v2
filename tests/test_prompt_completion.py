@@ -13,66 +13,30 @@ from mpr_mpc._bootstrap import PACKAGE_ROOT
 from mpr_mpc.evaluation_diagnostics import EpisodeDiagnostics
 from mpr_mpc.lattice_tdmpc2.versions.v3.cost_v3 import SafetyCostV3
 from mpr_mpc.planning.local_mppi import LocalMPPI
-from mpr_mpc.planning.multimodal import MultiModalProposals
 from mpr_mpc.planning.safety import TrajectorySafetyEvaluator
 from tests.test_v2_safety import context
 from tests.test_mpr_mpc import RecordingEvaluator, mppi_cfg
 from tests.test_evaluation_ablation import FakeAgent, FakeEnv
 
 
-def bank(**options):
-    baseline = torch.zeros(11, 2)
-    return MultiModalProposals(options, baseline, baseline.clone(), torch.tensor([.025, .1]).expand_as(baseline),
-        num_samples=64, num_elites=4, temperature=.5,
-        min_std=torch.tensor([.005, .02]), max_std=torch.tensor([.05, .2]), max_delta=torch.tensor([.05, .2]))
 
 
-def test_each_mode_updates_its_own_distribution_without_left_right_cancellation():
-    proposal = bank(mode_counts=[14, 16, 16, 16])
-    actions = proposal.sample(torch.Generator().manual_seed(5))
-    assert len(actions) == 64
-    assert [(proposal.ids == i).sum().item() for i in range(6)] == [16, 16, 8, 8, 8, 8]
-    brake = proposal.ids == 1
-    actions[brake, :, 1] = -.85
-    before = proposal.means.clone()
-    scores = torch.zeros(64)
-    valid = brake.clone()
-    proposal.update(actions, scores, valid, proposal.ids)
-    assert proposal.means[1, :, 1].mean().item() == pytest.approx(-.85)
-    torch.testing.assert_close(proposal.means[0], before[0])
-    assert (proposal.means[2, :, 0] < 0).all()
-    assert (proposal.means[3, :, 0] > 0).all()
-    next_actions = proposal.sample(torch.Generator().manual_seed(5))
-    assert next_actions[proposal.ids == 1, :, 1].mean() < -.8
-    assert (next_actions >= proposal.lower[proposal.ids]).all()
-    assert (next_actions <= proposal.upper[proposal.ids]).all()
 
 
-def test_mode_counts_and_nonfinite_config_fail_loudly():
-    with pytest.raises(ValueError, match="mode_counts"):
-        bank(mode_counts=[16, 16, 16, 16])
-    with pytest.raises(ValueError, match="mode_std"):
-        bank(mode_std={"braking": [float("nan"), .1]})
-    with pytest.raises(ValueError, match="finite"):
-        LocalMPPI(RecordingEvaluator(), mppi_cfg(max_delta=[float("nan"), .1]), horizon=10, action_dim=2, device="cpu")
 
 
 @pytest.mark.parametrize("horizon", [10, 15, 20])
-def test_multimodal_planning_horizon_contract(horizon):
-    planner = LocalMPPI(RecordingEvaluator(), mppi_cfg(multimodal=True, num_samples=64),
+def test_native_planning_horizon_contract(horizon):
+    planner = LocalMPPI(RecordingEvaluator(), mppi_cfg(num_samples=64),
                         horizon=horizon, action_dim=2, device="cpu")
-    planner.safety_evaluator = TrajectorySafetyEvaluator({}, control_dt=.1, device="cpu")
-    result = planner.plan(torch.zeros(1, 8), torch.zeros(horizon + 1, 2), eval_mode=True, safety_context=context())
+    result = planner.plan(torch.zeros(1, 8), torch.zeros(horizon + 1, 2), eval_mode=True)
     assert result.selected_sequence.shape == (horizon + 1, 2)
-    assert result.safety_metrics["selected_safe"] == 1
+    assert not hasattr(planner, "_mode_bank") and not hasattr(planner, "safety_evaluator")
     assert torch.isfinite(result.action).all()
 
 
-def test_missing_live_safety_context_cannot_silently_disable_checks():
+def test_native_mppi_rejects_nonfinite_baseline():
     planner = LocalMPPI(RecordingEvaluator(), mppi_cfg(), horizon=10, action_dim=2, device="cpu")
-    planner.safety_evaluator = object()
-    with pytest.raises(ValueError, match="context is missing"):
-        planner.plan(torch.zeros(1, 8), torch.zeros(11, 2), eval_mode=True)
     with pytest.raises(ValueError, match="baseline must be finite"):
         planner.plan(torch.zeros(1, 8), torch.full((11, 2), float("nan")), eval_mode=True)
 

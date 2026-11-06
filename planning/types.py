@@ -38,6 +38,8 @@ class TrajectoryConsequence:
     cost_validated_mask: torch.Tensor | None = None
     cost_unavailable_reason: str = "unvalidated"
     risk_summary: dict[str, Any] = field(default_factory=dict)
+    discounted_reward: torch.Tensor | None = None
+    timings: dict[str, float] = field(default_factory=dict)
 
     @property
     def reward_sum(self) -> torch.Tensor:

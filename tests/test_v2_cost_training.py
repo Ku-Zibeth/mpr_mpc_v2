@@ -51,49 +51,32 @@ def test_environment_cost_supervision_and_legacy_readiness(tmp_path: Path):
     evaluator = TrajectoryWorldModelEvaluator(learner, h)
     z = evaluator.encode(observations[0, :1])
     controls = torch.zeros(2, h + 1, 2, device=device)
-    assert evaluator.evaluate_trajectory_consequence(z, controls).cumulative_cost is None
+    prediction = evaluator.evaluate_trajectory_consequence(z, controls)
+    assert prediction.cumulative_cost is not None and not prediction.cost_validated
+    expected = sum(cfg.cost["gamma"] ** t * prediction.predicted_cost[:, t] for t in range(h))
+    torch.testing.assert_close(prediction.cumulative_cost, expected)
+    assert (prediction.predicted_cost >= 0).all()
+    with patch.object(learner.model, "cost", return_value=torch.full((2, 1), float("nan"), device=device)):
+        with pytest.raises(RuntimeError, match="Cost Head"):
+            evaluator.evaluate_mppi_candidates(z, controls)
+    # The new schema persists simple validation, never six-mode permissions.
     learner.model._cost_validated.fill_(True)
     learner.model._cost_validated_horizons.fill_(1 << h)
-    assert evaluator.evaluate_trajectory_consequence(z, controls, mode_ids=[0, 0]).cumulative_cost is None
-    learner.model._cost_validated_by_mode[0, h] = True
-    learner.model._cost_mode_validated_at.copy_(learner.model._cost_updates)
-    learner.model._cost_validation_schema.fill_(2)
-    assert evaluator.evaluate_trajectory_consequence(z, controls).cumulative_cost is None
-    result = evaluator.evaluate_trajectory_consequence(z, controls, mode_ids=[0, 0])
-    assert result.cost_validated
-    expected = sum(cfg.cost["gamma"] ** t * result.predicted_cost[:, t] for t in range(h))
-    torch.testing.assert_close(result.cumulative_cost, expected)
-    assert (result.predicted_cost >= 0).all()
-    with patch.object(learner.model, "cost", return_value=torch.full((2, 1), float("nan"), device=device)):
-        nonfinite = evaluator.evaluate_mppi_candidates(z, controls, mode_ids=[0, 0])
-    assert not nonfinite.cost_validated and not nonfinite.cost_validated_mask.any()
-    mixed = evaluator.evaluate_mppi_candidates(z, controls, mode_ids=[0, 1])
-    assert mixed.cost_validated_mask.tolist() == [True, False]
-    assert torch.isnan(mixed.cumulative_cost[1])
-    assert evaluator.evaluate_trajectory_consequence(z, controls[:1], cost_source="coarse_lattice").cumulative_cost is None
-    learner.model._cost_validated_coarse[h] = True
-    coarse = evaluator.evaluate_trajectory_consequence(z, controls[:1], cost_source="coarse_lattice")
-    assert coarse.cost_validated and torch.isfinite(coarse.cumulative_cost).all()
+    learner.model._cost_validated_at.copy_(learner.model._cost_updates)
+    learner.model._cost_validation_schema.fill_(3)
     saved = deepcopy(learner.model.state_dict())
     learner.model.invalidate_cost_validation()
     learner.load({"model": saved})
     assert learner.model.cost_ready
-    assert learner.model._cost_validated_by_mode[0, h]
-    round3 = {key: deepcopy(value) for key, value in saved.items()
-              if key not in {"_cost_validation_schema", "_cost_validated_coarse"}}
-    learner.load({"model": round3})
-    assert not learner.model.cost_ready and not learner.model._cost_validated_by_mode.any()
-    legacy_global = {key: deepcopy(value) for key, value in saved.items()
-                     if key not in {"_cost_validated_by_mode", "_cost_validated_by_horizon",
-                         "_cost_validation_samples_by_mode", "_cost_validation_scenes_by_mode", "_cost_mode_validated_at"}}
-    learner.load({"model": legacy_global})
-    assert learner.model._cost_updates.item() == 1
-    assert not learner.model.cost_ready
-    assert not learner.model._cost_validated_by_mode.any()
-    evaluator.horizon = h + 1
-    assert not evaluator.evaluate_trajectory_consequence(z, torch.zeros(1, h + 2, 2, device=device)).cost_validated
-    legacy = {key: deepcopy(value) for key, value in learner.model.state_dict().items()
-              if not key.startswith("_cost_valid") and key not in {"_cost_updates", "_cost_mode_validated_at"}}
+    torch.testing.assert_close(learner.model._cost[0].weight, saved["_cost.0.weight"])
+    legacy = deepcopy(saved)
+    legacy.pop("_cost_validated_at")
+    legacy["_cost_validation_schema"].fill_(2)
+    legacy["_cost_validated_by_mode"] = torch.ones(6, 63, dtype=torch.bool)
     learner.load({"model": legacy})
-    assert not learner.model.cost_ready
-    assert learner.model._cost_updates.item() == 0
+    assert not learner.model.cost_ready and learner.model._cost_updates.item() == 1
+    assert evaluator.evaluate_mppi_candidates(z, controls).cumulative_cost is not None
+    legacy_without_cost = {k: v for k, v in saved.items()
+                           if not k.startswith("_cost.") and not k.startswith("_cost_")}
+    learner.load({"model": legacy_without_cost})
+    assert learner.model._cost_updates.item() == 0 and not learner.model.cost_ready

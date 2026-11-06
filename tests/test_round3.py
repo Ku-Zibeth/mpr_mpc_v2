@@ -7,7 +7,7 @@ import torch
 from shapely.geometry import box
 
 from mpr_mpc.checkpoint_selection import select_checkpoint
-from mpr_mpc.planning.cost_validation import CostModelValidator, calibration_statistics
+from mpr_mpc.planning.cost_validation import CostModelValidator
 from mpr_mpc.planning.local_mppi import LocalMPPI
 from mpr_mpc.planning.safety import TrajectorySafetyEvaluator
 from tests.test_v2_safety import context, obstacle, ExactCostModel
@@ -51,97 +51,18 @@ def test_boundary_risk_continuity_and_signed_margin():
     assert risks[5] > 1
 
 
-class ZeroValue:
-    def evaluate_mppi_candidates(self, z, actions, task=None, mode_ids=None):
-        value = torch.zeros(len(actions))
-        return SimpleNamespace(total_value=value, terminal_q_std=value)
 
 
-def test_boundary_penalty_really_changes_mppi_selection():
-    candidates = torch.zeros(4, 11, 2)
-    candidates[0, :, 0] = .15
-    candidates[1:, :, 0] = -.1
-    ctx = context()
-    ctx.position[1] = 12.5
-    selections = []
-    for weight in [0, 1]:
-        planner = LocalMPPI(ZeroValue(), mppi_cfg(num_samples=4, num_elites=2, iterations=1,
-            deviation_coef=0, smoothness_coef=0, geometry_coef=100), horizon=10, action_dim=2, device="cpu")
-        planner._candidate_batch = lambda *args: candidates.clone()
-        planner.safety_evaluator = TrajectorySafetyEvaluator({"soft_boundary_margin": 2., "boundary_risk_weight": weight}, control_dt=.1, device="cpu")
-        result = planner.plan(torch.zeros(1, 2), candidates[0], eval_mode=True, safety_context=ctx)
-        selections.append(float(result.action[0]))
-        assert result.safety_metrics["selected_safe"] == 1
-    assert selections == pytest.approx([.15, -.1])
 
 
-class ModeCostModel(ExactCostModel):
-    def __init__(self):
-        super().__init__()
-        self.register_buffer("_cost_validated_by_mode", torch.zeros(6, 63, dtype=torch.bool))
-        self.register_buffer("_cost_validated_by_horizon", torch.zeros(63, dtype=torch.bool))
-        self.register_buffer("_cost_validation_samples_by_mode", torch.zeros(6, 63, dtype=torch.long))
-        self.register_buffer("_cost_validation_scenes_by_mode", torch.zeros(6, 63, dtype=torch.long))
-        self.register_buffer("_cost_mode_validated_at", torch.tensor(0))
-        self.register_buffer("_cost_validation_schema", torch.tensor(0))
-        self.register_buffer("_cost_validated_coarse", torch.zeros(63, dtype=torch.bool))
-
-    @property
-    def cost_ready(self):
-        return (bool(self._cost_validated_by_mode.any() | self._cost_validated_coarse.any())
-                and self._cost_mode_validated_at == self._cost_updates and self._cost_validation_schema == 2)
-
-    def invalidate_cost_validation(self):
-        for name, value in self.named_buffers():
-            if name != "_cost_updates":
-                value.zero_()
 
 
-def mode_records():
-    records = []
-    for mode in [0, 1, 2]:
-        for i in range(160):
-            value = (.01, .4, .8)[mode] + (i%2)*.06 + ((i%8)//2)*.005 + ((i//8)%3)*.001
-            actions = np.tile([value, 0.], (10, 1)).astype("float32")
-            records.append(dict(source="metadrive_mode_replay_v2", replay_verified=True,
-                scene_id=i//8, anchor_id=f"{i//8}:{(i%8)//2}", mode_id=mode, observation=np.zeros(3), actions=actions,
-                costs=np.full(10, value if mode == 0 else (1-value if mode == 1 else .2))))
-    return records
 
 
-def test_mode_calibration_independence_scene_bootstrap_and_horizons():
-    validator = CostModelValidator({"horizons": [1, 5, 10, 20]})
-    validator.set_mode_episodes(mode_records())
-    model = ModeCostModel()
-    metrics = validator.validate(model, "cpu", horizon=10)
-    assert model._cost_validated_by_mode[0, [1, 5, 10]].all()
-    assert not model._cost_validated_by_mode[0, 20]
-    assert not model._cost_validated_by_mode[1:].any()
-    assert metrics["wm/cost_nominal_scenes_h10"] == 20
-    assert metrics["wm/cost_nominal_samples_h10"] == 160
-    assert validator.mode_report["nominal"][10]["ranking_ci_low"] == 1
-    assert not validator.mode_report["right_lateral"][10]["identifiable"]
-    clone = ModeCostModel()
-    clone.load_state_dict(deepcopy(model.state_dict()))
-    assert torch.equal(clone._cost_validated_by_mode, model._cost_validated_by_mode)
-    validator.set_mode_episodes(mode_records()[:40])
-    validator.validate(model, "cpu", horizon=10)
-    assert not model._cost_validated_by_mode.any()
 
 
-def test_mode_labels_must_come_from_verified_replays():
-    validator = CostModelValidator({})
-    rows = mode_records()[:1]
-    rows[0]["replay_verified"] = False
-    with pytest.raises(ValueError, match="verified"):
-        validator.set_mode_episodes(rows)
 
 
-def test_cluster_bootstrap_rejects_constant_or_single_scene_ranking():
-    for labels, scenes in [(np.ones(128), np.arange(128)), (np.arange(128), np.zeros(128))]:
-        result = calibration_statistics(np.arange(128), labels, scenes, {})
-        assert not result["identifiable"]
-        assert not np.isfinite(result["ranking_ci_low"])
 
 
 def test_safety_first_and_progress_feasibility():
@@ -197,61 +118,10 @@ def test_default_training_schedule_and_six_profiles():
         assert cfg.residual_rl.freeze_tdmpc2_on_start
 
 
-def test_collector_rejects_training_overlap_or_unproven_old_checkpoints():
-    from tools.calibrate_cost_modes import assert_heldout
-    with pytest.raises(ValueError, match="provenance"):
-        assert_heldout([101], {})
-    metadata = dict(training_scene_range=dict(start_seed=100, num_scenarios=50), validation_scene_ids=[149])
-    with pytest.raises(ValueError, match="overlap"):
-        assert_heldout([101], metadata)
-    assert_heldout([149, 200], metadata)
 
 
-def test_mppi_real_component_ids_gate_cost_without_rejecting_other_modes():
-    class Evaluator:
-        approved = False
-        seen = None
-
-        def evaluate_mppi_candidates(self, z, actions, task=None, mode_ids=None):
-            self.seen = mode_ids.clone()
-            brake = mode_ids == 1
-            mask = brake & self.approved
-            return SimpleNamespace(total_value=brake.float(), terminal_q_std=torch.zeros(len(actions)),
-                cost_validated_mask=mask, cumulative_cost=torch.where(mask, 100., float("nan")))
-
-    evaluator = Evaluator()
-    planner = LocalMPPI(evaluator, mppi_cfg(multimodal=True, iterations=1, num_samples=64),
-                        horizon=10, action_dim=2, device="cpu")
-    baseline = torch.zeros(11, 2)
-    before = planner.plan(torch.zeros(1, 3), baseline, eval_mode=True)
-    assert before.selected_mode_id == 1
-    assert set(evaluator.seen.tolist()) == set(range(6))
-    evaluator.approved = True
-    after = planner.plan(torch.zeros(1, 3), baseline, eval_mode=True)
-    assert after.selected_mode_id != 1
-    assert 0 < after.safety_metrics["cost_validated_ratio"] < 1
-    assert torch.isfinite(after.selected_score)
 
 
-def test_dataset_checksum_cost_definition_and_heldout_provenance(tmp_path):
-    import hashlib
-    import json
-    path = tmp_path / "mode_replays.npz"
-    np.savez_compressed(path, source="metadrive_mode_replay_v1", observations=np.zeros((1, 3)),
-        actions=np.zeros((1, 10, 2)), costs=np.zeros((1, 10)), lengths=[10], modes=[0], scenes=[539], verified=[True])
-    manifest = dict(dataset_sha256=hashlib.sha256(path.read_bytes()).hexdigest(), cost_definition={"gamma": .99},
-                    scenes=[539], training_provenance=dict(start_seed=100, num_scenarios=3, reserved=[]))
-    metadata = tmp_path / "calibration.json"
-    metadata.write_text(json.dumps(manifest))
-    validator = CostModelValidator({})
-    validator.load_dataset(path, cost_definition={"gamma": .99})
-    assert len(validator.mode_episodes) == 1
-    with pytest.raises(ValueError, match="cost definition"):
-        validator.load_dataset(path, cost_definition={"gamma": .9})
-    manifest["dataset_sha256"] = "wrong"
-    metadata.write_text(json.dumps(manifest))
-    with pytest.raises(ValueError, match="checksum"):
-        validator.load_dataset(path)
 
 
 def test_safety_cache_reuses_only_static_road_and_current_context_snapshot():

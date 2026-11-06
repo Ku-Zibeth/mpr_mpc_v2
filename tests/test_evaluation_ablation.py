@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import io
 import json
 import math
 from pathlib import Path
@@ -224,6 +225,42 @@ def diagnostic_row(scenario, test_seed, success, *, configuration="A_lattice"):
     }
 
 
+def test_episode_csv_expands_schema_without_losing_values():
+    stream = io.StringIO(newline="")
+    writer = ablation._EpisodeCSVWriter(stream)
+    rows = [
+        {"configuration": "A", "scenario": 1714, "end_reason": "arrive_dest"},
+        {"configuration": "B", "scenario": 1714, "mean_mpr_sac_inference_cpu_wall_ms": 1.25},
+        {"configuration": "C", "scenario": 1714, "mean_mpr_mppi_cpu_wall_ms": 75.0},
+        {"configuration": "D", "scenario": 1714, "mean_mpr_sac_inference_cpu_wall_ms": 2.0,
+         "mean_mpr_mppi_cpu_wall_ms": 80.0},
+        {"configuration": "D", "scenario": 1525, "late_metric": 3.0},
+        {"configuration": "D", "scenario": 539},
+    ]
+    for index, row in enumerate(rows, 1):
+        writer.writerow(row)
+        saved = list(csv.DictReader(io.StringIO(stream.getvalue())))
+        assert len(saved) == index
+        assert all(None not in entry for entry in saved)
+        for original, entry in zip(rows[:index], saved):
+            assert all(entry[key] == str(value) for key, value in original.items())
+    assert saved[0]["mean_mpr_sac_inference_cpu_wall_ms"] == ""
+    assert saved[0]["end_reason"] == "arrive_dest"
+    assert saved[-1]["late_metric"] == ""
+
+
+def test_summary_includes_late_metrics_and_ignores_missing_values():
+    summary = suite._summarize("model", Path("checkpoint.pt"), [
+        {"episode": 1, "value": 2.0, "optional": 4.0},
+        {"episode": 2, "value": 4.0, "late": 8.0},
+        {"episode": 3, "value": 6.0, "optional": 6.0, "late": 12.0},
+    ])
+    assert summary["mean_value"] == 4.0
+    assert summary["mean_optional"] == 5.0
+    assert summary["mean_late"] == 10.0
+    assert summary["std_late"] == 2.0
+
+
 def test_cluster_intervals_do_not_treat_repeats_as_new_scenarios():
     rows = [diagnostic_row(i, 1, float(i % 2)) for i in range(10)]
     repeated = [{**row, "test_seed": seed} for seed in (1, 2, 3) for row in rows]
@@ -286,6 +323,11 @@ def test_multiseed_entry_writes_diagnostics_and_reuses_fixed_ids(tmp_path):
         rows = [diagnostic_row(scenario, raw.seed, float(i % 2),
                                configuration=labels[raw.evaluation_stack])
                 for i, scenario in enumerate(scenarios)]
+        if raw.evaluation_stack in {"world_model_residual_rl", "full_mpr_mpc"}:
+            for row in rows:
+                row["mean_mpr_sac_inference_cpu_wall_ms"] = 1.25
+        if raw.evaluation_stack in {"lattice_mppi", "full_mpr_mpc"}:
+            rows[1]["mean_mpr_mppi_cpu_wall_ms"] = 75.0
         for row in rows:
             on_episode(row)
         return rows, suite._summarize(version, path, rows)
@@ -303,7 +345,15 @@ def test_multiseed_entry_writes_diagnostics_and_reuses_fixed_ids(tmp_path):
     assert len(summaries) == 4
     assert all(r["unique_scenarios"] == "2" and r["episodes"] == "4" for r in summaries)
     assert len(list(csv.DictReader((output / "seed_summary.csv").open()))) == 8
-    assert len(list(csv.DictReader((output / "episodes.csv").open()))) == 16
+    episodes = list(csv.DictReader((output / "episodes.csv").open()))
+    assert len(episodes) == 16
+    assert all(None not in row for row in episodes)
+    assert episodes[0]["mean_mpr_sac_inference_cpu_wall_ms"] == ""
+    assert episodes[4]["mean_mpr_sac_inference_cpu_wall_ms"] == "1.25"
+    assert episodes[9]["mean_mpr_mppi_cpu_wall_ms"] == "75.0"
+    mppi_rows = list(csv.DictReader((output / "episodes_C_lattice_mppi_seed1.csv").open()))
+    assert mppi_rows[0]["mean_mpr_mppi_cpu_wall_ms"] == ""
+    assert mppi_rows[1]["mean_mpr_mppi_cpu_wall_ms"] == "75.0"
     assert len(list(csv.DictReader((output / "paired_comparisons.csv").open()))) == 3
     assert json.loads((output / "scenarios.json").read_text())["scenarios"] == [1714, 1525]
 

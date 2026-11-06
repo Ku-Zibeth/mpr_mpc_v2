@@ -730,6 +730,8 @@ def main(raw_cfg: DictConfig) -> None:
             if summaries:
 
                 for key in summaries[0]:
+                    if key == "end_reason":
+                        continue
 
                     run.summary[
                         f"eval/mean_{key}"

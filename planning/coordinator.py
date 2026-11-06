@@ -12,7 +12,7 @@ from .config import mapping, section
 from .evaluator import TrajectoryWorldModelEvaluator
 from .kinematic_filter import CorridorContext
 from .local_mppi import LocalMPPI
-from .safety import TrajectorySafetyEvaluator
+from .timing import PhaseTimings
 from mpr_mpc.residual_rl import ResidualActionAdapter, ResidualStateBuilder
 from mpr_mpc.residual_rl.types import ResidualPolicyOutput
 from .structured_proposal import StructuredProposalGenerator
@@ -82,6 +82,7 @@ class MPRMPCPlanner:
         self.min_horizon = float(refinement.get("min_horizon", 1.5))
         self.max_horizon = float(refinement.get("max_horizon", 3.5))
         mppi_cfg = mapping(self.mpr_cfg.get("mppi"))
+        self.allow_mppi = self.allow_mppi and bool(mppi_cfg.get("enabled", True))
         self.mppi_cfg = mppi_cfg
         self.local_mppi = LocalMPPI(
             self.evaluator,
@@ -91,9 +92,15 @@ class MPRMPCPlanner:
             device=self.device,
             control_dt=self.control_dt,
         )
-        self.safety = (TrajectorySafetyEvaluator(mppi_cfg, control_dt=self.control_dt, device=self.device)
-                       if mppi_cfg.get("dynamic_safety", False) else None)
-        self.local_mppi.safety_evaluator = self.safety
+        # Existing E5 policies consume these three geometric state features.
+        # Preserve their input semantics once for the coarse SAC state only;
+        # no MPPI candidate passes through this legacy feature extractor.
+        self.safety = None
+        if set(self.residual_state_builder.risk_features) & {"min_ttc", "min_clearance", "boundary_margin"}:
+            from .safety import TrajectorySafetyEvaluator
+            geometry_cfg = {"model_margin": .3, "road_margin": .15}
+            geometry_cfg.update(self.residual_rl_cfg.get("risk_geometry", {}))
+            self.safety = TrajectorySafetyEvaluator(geometry_cfg, control_dt=self.control_dt, device=self.device)
         self._print_startup_diagnostics(mppi_cfg)
         self.last_context: MPRPlanContext | None = None
         self.last_result: MPRPlanResult | None = None
@@ -131,7 +138,10 @@ class MPRMPCPlanner:
             "Local MPPI:\n"
             f"samples={int(mppi_cfg.get('num_samples', 64))} "
             f"elites={int(mppi_cfg.get('num_elites', 8))} "
-            f"iterations={int(mppi_cfg.get('iterations', 4))}"
+            f"iterations={int(mppi_cfg.get('iterations', 4))}\n"
+            f"single_gaussian=True cost_enabled={self.local_mppi.cost_enabled} "
+            f"cost_coef={self.local_mppi.cost_coef}\n"
+            f"legacy_SAC_geometry_features={self.safety is not None} (never candidate scoring)"
         )
 
     def stage_for_step(self, global_step: int) -> PlanningStage:
@@ -211,7 +221,7 @@ class MPRMPCPlanner:
         )
         residual_bounds = self.residual_bounds(coarse_path)
         safety_context = None
-        if self.safety is not None:
+        if self.safety is not None and need_world_model_features:
             width, wheelbase, steering = self._vehicle_geometry(vehicle)
             safety_context = self.safety.context(self.structured.planner, vehicle,
                                                   width=width, wheelbase=wheelbase, max_steering=steering)
@@ -220,15 +230,20 @@ class MPRMPCPlanner:
             latent = self.evaluator.encode(observation).detach()
             consequence = self.evaluator.evaluate_trajectory_consequence(
                 latent, coarse_actions.unsqueeze(0),
-                cost_source="coarse_lattice" if self.residual_rl_cfg.get("coarse_cost_feature", False) else None,
             )
             if safety_context is not None:
                 consequence = replace(consequence, risk_summary=self.safety.check(coarse_actions.unsqueeze(0), safety_context).summary())
             wm_features = consequence.features.detach()
+            state_consequence = consequence
+            if not bool(self.residual_rl_cfg.get("coarse_cost_feature", False)):
+                # Keep the trained E5 policy's cost input masked independently
+                # of MPPI's new use of raw Cost Head predictions.
+                state_consequence = replace(consequence, cost_validated=False,
+                                            cost_unavailable_reason="coarse_cost_feature_disabled")
             residual_state = self.residual_state_builder.build(
                 latent=latent,
                 coarse_path=coarse_path,
-                consequence=consequence,
+                consequence=state_consequence,
                 feasible_ratio=len(selection.feasible) / max(len(selection.candidates), 1),
                 used_fallback=selection.used_fallback,
             )
@@ -343,16 +358,6 @@ class MPRMPCPlanner:
         return np.vstack((aligned.positions[0], predicted))
 
     @torch.no_grad()
-    def _verified_alternatives(self, context, vehicle):
-        paths = list(context.selection.feasible)[:4]
-        actions = [context.coarse_actions]
-        for path in paths:
-            if path is not context.selection.coarse_path:
-                actions.append(self.action_adapter.path_to_actions(path, vehicle,
-                    required_steps=self.horizon + 1, control_dt=self.control_dt, device=self.device))
-        return torch.stack(actions)
-
-    @torch.no_grad()
     def refine_and_plan(
         self,
         context: MPRPlanContext,
@@ -363,6 +368,7 @@ class MPRMPCPlanner:
         force_zero_residual: bool = False,
     ) -> MPRPlanResult:
         started = time.perf_counter()
+        sac_timing = PhaseTimings(self.device)
         stage = self.stage_for_step(global_step)
         if not eval_mode:
             stage = PlanningStage(stage.name, stage.use_residual, False)
@@ -382,10 +388,10 @@ class MPRMPCPlanner:
                 raise RuntimeError("Stage C requires current residual SAC state.")
             if self.residual_action_provider is None:
                 raise RuntimeError("Stage C requires a residual SAC action provider.")
-            policy_output: ResidualPolicyOutput = self.residual_action_provider(
-                context.residual_state,
-                eval_mode=eval_mode,
-            )
+            with sac_timing.measure("sac_inference"):
+                policy_output: ResidualPolicyOutput = self.residual_action_provider(
+                    context.residual_state, eval_mode=eval_mode,
+                )
             normalized_residual = policy_output.action.to(self.device, dtype=torch.float32)
             if normalized_residual.ndim == 1:
                 normalized_residual = normalized_residual.unsqueeze(0)
@@ -431,10 +437,7 @@ class MPRMPCPlanner:
         residual_valid = True
         fallback_reason = ""
         if np.any(np.abs(effective_residual) > 1e-8):
-            if self.safety is not None and stage.use_mppi:
-                generated, fallback_reason = self.structured.regenerate(refined_parameters, defer_collision_to_mppi=True)
-            else:
-                generated, fallback_reason = self.structured.regenerate(refined_parameters)
+            generated, fallback_reason = self.structured.regenerate(refined_parameters)
             if generated is None:
                 residual_valid = False
                 self.residual_invalid_count += 1
@@ -458,8 +461,6 @@ class MPRMPCPlanner:
                 refined_actions,
                 eval_mode=eval_mode,
                 corridor_context=corridor_context,
-                safety_context=context.safety_context,
-                alternatives=(lambda: self._verified_alternatives(context, vehicle)),
             )
             self.mppi_call_count += 1
             self.baseline_selected_count += int(mppi.baseline_selected)
@@ -486,10 +487,9 @@ class MPRMPCPlanner:
                 # Stage A is Lattice-only: no planning-time encoder/WM rollout.
                 baseline_wm_value = selected_wm_value = float("nan")
             else:
-                refined_value = self.evaluator.evaluate_trajectory_consequence(
-                    context.latent, refined_actions.unsqueeze(0), mode_ids=[0]
-                ).total_value[0]
-                baseline_wm_value = selected_wm_value = float(refined_value.cpu())
+                refined_consequence = (context.coarse_consequence if refined is coarse else
+                    self.evaluator.evaluate_trajectory_consequence(context.latent, refined_actions.unsqueeze(0)))
+                baseline_wm_value = selected_wm_value = float(refined_consequence.total_value[0])
             baseline_score = selected_score = baseline_wm_value
             wm_value_gain = planner_score_gain = 0.0
             baseline_selected = 1.0
@@ -498,54 +498,50 @@ class MPRMPCPlanner:
             selected_actions = refined_actions
 
         diagnostics = {}
-        reason_codes = {"available": 0, "disabled": 1, "unlabelled_trajectory": 2, "calibration_not_ready": 3,
-                        "mode_or_horizon_unvalidated": 4, "nonfinite_or_partially_unvalidated": 5,
-                        "missing_geometry": 6, "unvalidated": 3, "no_residual_state": 7}
+        reason_codes = {"available": 0, "disabled": 1, "unvalidated": 3,
+                        "coarse_cost_feature_disabled": 1, "missing_geometry": 6, "no_residual_state": 7}
         status = self.residual_state_builder.last_risk_status if context.residual_state is not None else {}
         for name in ("cumulative_cost", "min_ttc", "min_clearance", "boundary_margin"):
             item = status.get(name, {"valid": False, "reason": "no_residual_state"})
             diagnostics[f"mpr/sac_state_{name}_valid"] = float(item["valid"])
-            diagnostics[f"mpr/sac_state_{name}_mask_reason"] = float(reason_codes.get(item["reason"], 5))
-        stage_actions = torch.stack((context.coarse_actions, refined_actions, selected_actions))
-        geometry = None
-        if self.safety is not None and context.safety_context is not None:
-            geometry = self.safety.check(stage_actions, context.safety_context)
-            final_mppi_xy = geometry.positions[2].detach().cpu().numpy()
+            diagnostics[f"mpr/sac_state_{name}_mask_reason"] = float(reason_codes.get(item["reason"], 3))
+
+        def consequence_row(consequence):
+            if consequence is None:
+                return {"value": float("nan"), "cost": float("nan"), "validated": False}
+            return {"value": float(consequence.total_value[0]),
+                    "cost": float(consequence.cumulative_cost[0]) if consequence.cumulative_cost is not None else float("nan"),
+                    "validated": consequence.cost_validated}
+
+        coarse_row = consequence_row(context.coarse_consequence)
+        if stage.use_mppi:
+            sac_row, selected_row = mppi.baseline_consequence, mppi.selected_consequence
+            diagnostics.update({f"mppi/{key}": value for key, value in mppi.metrics.items()})
+            diagnostics.update({f"mpr/{key}": value for key, value in mppi.metrics.items()})
         else:
-            final_mppi_xy = self._selected_sequence_xy(refined, refined_actions, selected_actions, corridor_context)
-        stage_consequence = None
-        if context.latent is not None:
-            stage_consequence = self.evaluator.evaluate_trajectory_consequence(
-                context.latent, stage_actions, mode_ids=[-1, 0, mppi.selected_mode_id if stage.use_mppi else 0])
-        for index, name in enumerate(("lattice", "sac", "mppi")):
-            cost = (float(stage_consequence.cumulative_cost[index])
-                    if stage_consequence is not None and stage_consequence.cumulative_cost is not None
-                    and bool(stage_consequence.cost_validated_mask[index]) else float("nan"))
-            if index == 0 and context.coarse_consequence is not None and context.coarse_consequence.cost_validated:
-                cost = float(context.coarse_consequence.cumulative_cost[0])
-            diagnostics[f"mpr/{name}_predicted_cost"] = cost
-            diagnostics[f"mpr/{name}_value"] = (float(stage_consequence.total_value[index])
-                                                      if stage_consequence is not None else float("nan"))
-            if geometry is not None:
-                diagnostics[f"mpr/{name}_safe"] = float(geometry.valid[index])
-                for key, value in geometry.summary(index).items():
-                    diagnostics[f"mpr/{name}_{key}"] = value
-        diagnostics["mpr/risk_reduction_sac"] = diagnostics["mpr/lattice_predicted_cost"] - diagnostics["mpr/sac_predicted_cost"]
-        diagnostics["mpr/risk_reduction_mppi"] = diagnostics["mpr/sac_predicted_cost"] - diagnostics["mpr/mppi_predicted_cost"]
-        diagnostics["mpr/mppi_correction_magnitude"] = float((selected_actions - refined_actions).square().mean().sqrt())
-        diagnostics["mpr/sac_risk_valid"] = float(residual_valid and stage_consequence is not None
-            and stage_consequence.cost_validated_mask is not None and stage_consequence.cost_validated_mask[1])
+            sac_row = selected_row = consequence_row(refined_consequence if context.latent is not None else None)
+        for name, row in (("lattice", coarse_row), ("sac", sac_row), ("mppi", selected_row)):
+            diagnostics[f"mpr/{name}_predicted_cost"] = float(row["cost"])
+            diagnostics[f"mpr/{name}_value"] = float(row["value"])
+        diagnostics["mpr/risk_reduction_sac"] = float(coarse_row["cost"])-float(sac_row["cost"])
+        diagnostics["mpr/risk_reduction_mppi"] = float(sac_row["cost"])-float(selected_row["cost"])
+        diagnostics["mpr/sac_risk_valid"] = float(residual_valid and sac_row["validated"])
         diagnostics["mpr/sac_trajectory_is_fallback"] = float(not residual_valid)
         if not residual_valid:
             diagnostics["mpr/sac_predicted_cost"] = float("nan")
-            diagnostics["mpr/risk_reduction_sac"] = diagnostics["mpr/risk_reduction_mppi"] = float("nan")
-        if stage.use_mppi:
-            diagnostics.update({f"mpr/{key}": value for key, value in mppi.safety_metrics.items()})
-            if mppi.emergency_fallback:
-                fallback_reason = "emergency:" + mppi.emergency_reason + (":verified_braking" if mppi.emergency_verified else ":unverified_conservative_control")
-        diagnostics["mpr/safe_candidate_ratio"] = 1 - reject_rate
-        if geometry is not None and not bool(geometry.valid[2]) and stage.use_mppi and not mppi.emergency_fallback:
-            raise RuntimeError("Selected ordinary MPPI sequence failed independent final geometry verification.")
+        diagnostics["mpr/mppi_correction_magnitude"] = float((selected_actions-refined_actions).square().mean().sqrt())
+        diagnostics["mpr/safe_candidate_ratio"] = 1-reject_rate  # simple native corridor only
+        diagnostics["mpr/coarse_target_speed_mps"] = float(coarse.target_speed)
+        diagnostics["mpr/refined_target_speed_mps"] = float(refined.target_speed)
+        diagnostics["mpr/actual_speed_mps"] = float(np.linalg.norm(np.asarray(vehicle.velocity)[:2]))
+        diagnostics.update({f"mpr/{key}": value for key, value in sac_timing.finish().items()})
+        diagnostics.setdefault("mpr/sac_inference_ms", 0.)
+        for phase_name in ("world_model_rollout_ms", "cost_prediction_ms"):
+            coarse_time = getattr(context.coarse_consequence, "timings", {}).get(phase_name, 0.)
+            refined_time = (getattr(refined_consequence, "timings", {}).get(phase_name, 0.)
+                            if not stage.use_mppi and context.latent is not None and refined is not coarse else 0.)
+            diagnostics[f"mpr/{phase_name}"] = diagnostics.get(f"mpr/{phase_name}", 0.)+coarse_time+refined_time
+        final_mppi_xy = self._selected_sequence_xy(refined, refined_actions, selected_actions, corridor_context)
 
         paths = list(context.selection.candidates)
         if not any(path is refined for path in paths):
@@ -644,21 +640,29 @@ class MPRMPCPlanner:
         eval_mode=False,
         force_zero_residual=False,
     ):
+        started = time.perf_counter()
         if t0:
             self.reset()
         stage = self.stage_for_step(global_step)
         context = self.prepare(
             observation,
             vehicle,
-            need_world_model_features=stage.use_residual or stage.use_mppi,
+            need_world_model_features=stage.use_residual or (eval_mode and stage.use_mppi),
         )
-        return self.refine_and_plan(
+        result = self.refine_and_plan(
             context,
             vehicle,
             eval_mode=eval_mode,
             global_step=global_step,
             force_zero_residual=force_zero_residual,
         )
+        # action is on CPU already, so this wall interval includes GPU completion,
+        # prepare/Lattice, SAC, model rollouts and final action construction.
+        elapsed = 1000*(time.perf_counter()-started)
+        result.metrics["mpr/planning_ms"] = elapsed
+        result.metrics["mpr/total_planning_ms"] = elapsed
+        result.metrics["total_planning_ms"] = elapsed
+        return result
 
 
 __all__ = ["MPRMPCPlanner"]

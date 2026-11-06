@@ -1,0 +1,477 @@
+task: metadrive-risk
+obs: state
+episodic: true
+algorithm_version: mpr_mpc_residual_sac_mppi_v2
+checkpoint: /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt
+resume_checkpoint: null
+checkpoint_freq: 50000
+resume_replay_warmup: true
+eval_episodes: 100
+eval_freq: 10000
+steps: 50000
+checkpoint_selection:
+  priority:
+  - collision_rate
+  - out_of_road_rate
+  - average_safety_cost
+  - success_rate
+  - route_completion
+  - episode_reward
+  min_success_rate: 0.05
+  min_route_completion: 0.1
+  max_success_drop: 0.1
+  max_route_completion_drop: 0.1
+batch_size: 256
+reward_coef: 0.1
+value_coef: 0.1
+termination_coef: 1.0
+consistency_coef: 20.0
+rho: 0.5
+lr: 0.0003
+enc_lr_scale: 0.3
+grad_clip_norm: 20.0
+tau: 0.01
+discount_denom: 5
+discount_min: 0.95
+discount_max: 0.995
+buffer_size: 1000000
+seed_steps: 0
+exp_name: mpr_mpc_v2_E5
+experiment_profile: E5
+data_dir: null
+mpc: true
+iterations: 6
+num_samples: 512
+num_elites: 64
+num_pi_trajs: 24
+horizon: 10
+min_std: 0.05
+max_std: 2.0
+temperature: 0.5
+planner:
+  type: mpr_mpc
+  final_cost_lambda: 0.0
+  num_candidates: 64
+lattice:
+  frenet_target_speed: 13.89
+  frenet_dt: 0.1
+  frenet_time_horizon: 3.0
+  frenet_time_horizons:
+  - 2.0
+  - 3.0
+  frenet_speed_offsets:
+  - 0.0
+  - -4.0
+  - -8.0
+  frenet_lateral_sample_count: 5
+  frenet_obstacle_check: true
+  frenet_filter_off_lane_paths: true
+  frenet_show_in_window: true
+mpr_mpc:
+  enabled: true
+  use_residual: true
+  use_mppi: true
+  stages:
+    residual_start_step: 200000
+    mppi_start_step: 500000
+  refinement:
+    min_speed: 0.5
+    max_speed: 20.0
+    min_horizon: 1.5
+    max_horizon: 3.5
+  mppi:
+    dynamic_safety: true
+    multimodal: true
+    mode_weights:
+    - 1
+    - 1
+    - 1
+    - 1
+    mode_counts: null
+    mode_std:
+      nominal:
+      - 0.025
+      - 0.1
+      braking:
+      - 0.025
+      - 0.15
+      lateral:
+      - 0.05
+      - 0.1
+      joint:
+      - 0.05
+      - 0.15
+    braking_center: -0.6
+    braking_std: 0.15
+    braking_delta: 0.4
+    mode_score_delta:
+    - 0.25
+    - 1.5
+    absolute_smoothness: true
+    lateral_shift: 0.12
+    lateral_delta: 0.25
+    cost_coef: 1.0
+    geometry_coef: 10.0
+    expanded_delta:
+    - 0.3
+    - 1.5
+    substeps: 5
+    road_margin: 0.15
+    model_margin: 0.3
+    swept_max_depth: 10
+    swept_angle_tolerance: 0.0001
+    swept_position_tolerance: 0.0001
+    max_acceleration: 4.0
+    max_deceleration: 6.0
+    max_steering_rate: 2.5
+    max_lateral_acceleration: 6.0
+    soft_clearance: 1.0
+    soft_ttc: 3.0
+    soft_boundary_margin: 0.5
+    boundary_risk_weight: 1.0
+    clearance_risk_weight: 1.0
+    ttc_risk_weight: 1.0
+    hard_clearance: 0.0
+    hard_ttc: 0.0
+    ttc_lookahead: 5.0
+    num_samples: 64
+    num_elites: 8
+    iterations: 4
+    initial_std:
+    - 0.025
+    - 0.1
+    min_std:
+    - 0.005
+    - 0.02
+    max_std:
+    - 0.05
+    - 0.2
+    max_delta:
+    - 0.05
+    - 0.2
+    temperature: 0.5
+    lateral_corridor_ratio: 0.5
+    lateral_safety_margin: 0.15
+    kinematic_vehicle_width: 1.852
+    kinematic_wheelbase: 2.46894
+    kinematic_max_steering_angle: 0.6981317
+    kinematic_max_acceleration: 4.0
+    kinematic_max_deceleration: 6.0
+    deviation_coef: 5.0
+    smoothness_coef: 1.0
+    throttle_deviation_weight: 0.25
+    min_improvement_abs: 1.0
+    min_improvement_ratio: 0.01
+    uncertainty_coef: 0.1
+    eval_seed: 0
+    proposal_init: structured_baseline
+    blend_alpha: 0.8
+  debug:
+    enabled: false
+    every: 100
+residual_rl:
+  enabled: true
+  residual_mapping: latent_tanh
+  latent_tanh_scale:
+  - 1.0
+  - 1.0
+  latent_tanh_eps: 1.0e-06
+  hidden_dims:
+  - 256
+  - 256
+  buffer_size: 200000
+  batch_size: 256
+  gamma: 0.99
+  tau: 0.05
+  lr: 0.0003
+  actor_lr: 0.0005
+  critic_lr: 0.001
+  alpha_lr: 0.0003
+  alpha: 0.005
+  auto_alpha: true
+  target_entropy: -2.0
+  log_std_min: -20.0
+  log_std_max: 2.0
+  use_lagrangian: true
+  cost_limit: 5.0
+  constraint_alignment: true
+  constraint_mode: episode
+  conservative_cost: true
+  nonnegative_cost: true
+  risk_features:
+  - cumulative_cost
+  - min_ttc
+  - min_clearance
+  - boundary_margin
+  coarse_cost_feature: false
+  risk_feature_scales:
+    cumulative_cost: 10.0
+    min_ttc: 5.0
+    min_clearance: 20.0
+    boundary_margin: 4.0
+  risk_auxiliary_weight: 0.1
+  risk_auxiliary_warmup: 1000
+  lagrangian_lr: 0.01
+  lagrangian_initial: 0.0
+  lagrangian_rescaling: true
+  freeze_tdmpc2_on_start: true
+  seed_steps: 5000
+  warmup_action_scale: 0.5
+  learning_starts: 5000
+  update_per_step: 0.2
+  invalid_residual_penalty: 0.2
+  include_wm_cost_in_state: false
+  wm_return_scale: 50.0
+  wm_cost_scale: 10.0
+  path_feature_clip: 5.0
+  residual_stats_window: 1000
+  zero_like_action_threshold: 0.05
+tdmpc_stage_training:
+  stage_a_update_ratio: 1.0
+  stage_b_update_ratio: 0.0
+  stage_c_update_ratio: 0.0
+milestone_checkpoints:
+  enabled: true
+  world_model_step: 20000
+  world_model_residual_step: 50000
+  full_model_step: 50000
+  save_world_model: true
+  save_world_model_residual: true
+  save_full_model: true
+evaluation_stack: world_model_residual_rl
+evaluation_scenarios: []
+evaluation_scenarios_file: null
+evaluation_output_dir: null
+restore_checkpoint_runtime: true
+improvements:
+  profiles:
+  - E0
+  - E1
+  - E2
+  - E3
+  - E4
+  - E5
+  episodes: 100
+  repeat_seeds:
+  - 1
+  - 2
+  - 3
+  training_seed: 1
+  models_root: null
+  checkpoint_name: milestone_50k_world_model_residual_rl.pt
+  checkpoints: {}
+  allow_unlabelled_checkpoints: false
+  output_dir: null
+  bootstrap_samples: 2000
+flow:
+  enabled: false
+self_improve:
+  enabled: false
+cost:
+  enabled: true
+  gamma: 0.99
+  loss_coef: 1.0
+  q_enabled: false
+  num_q: 2
+  q_loss_coef: 1.0
+  validation_interval: 1000
+  horizons:
+  - 1
+  - 5
+  - 10
+  - 15
+  - 20
+  min_updates: 1000
+  min_samples: 128
+  min_pairwise_pairs: 128
+  min_pairwise_anchors: 16
+  max_windows: 512
+  stride: 5
+  max_mae: 0.1
+  max_rmse: 0.5
+  ranking_min_gap: 0.05
+  min_ranking_accuracy: 0.6
+  min_scenes: 10
+  bootstrap_samples: 1000
+  bootstrap_seed: 1
+  min_ranking_ci_low: 0.5
+  mode_validation_dataset: null
+log_std_min: -10.0
+log_std_max: 2.0
+entropy_coef: 0.0001
+num_bins: 101
+vmin: -10.0
+vmax: 10.0
+model_size: 5
+num_enc_layers: 2
+enc_dim: 256
+num_channels: 32
+mlp_dim: 512
+latent_dim: 512
+task_dim: 0
+num_q: 5
+dropout: 0.01
+simnorm_dim: 8
+state_encoder:
+  grouped: true
+  ego_dim: 9
+  nav_dim: 10
+  lidar_dim: 240
+  group_embed_dim: 128
+wandb_project: mpr_mpc_metadrive
+wandb_entity: null
+wandb_run_name: mpr_mpc_residual_sac_v1
+wandb_silent: false
+enable_wandb: false
+save_csv: false
+save_video: false
+save_agent: false
+compile: false
+seed: 1
+work_dir: !!python/object/apply:pathlib.PosixPath
+- /
+- home
+- kzb
+- kzb_code
+- tdmpc2
+- mpr_mpc_v2
+- logs
+- metadrive-risk
+- '1'
+- mpr_mpc_v2_E5
+log_root: !!python/object/apply:pathlib.PosixPath
+- /
+- home
+- kzb
+- kzb_code
+- tdmpc2
+- mpr_mpc_v2
+- logs
+task_title: Metadrive Risk
+multitask: false
+tasks:
+- metadrive-risk
+obs_shape: null
+action_dim: null
+episode_length: null
+obs_shapes: null
+action_dims: null
+episode_lengths: null
+bin_size: 0.2
+metadrive:
+  simulator:
+    use_render: false
+    image_observation: false
+    manual_control: false
+    discrete_action: false
+    action_check: false
+    start_seed: 338
+    num_scenarios: 2000
+    map: 3
+    traffic_density: 0.1
+    random_traffic: false
+    accident_prob: 0.8
+    remove_crashed_traffic_vehicle: false
+    horizon: 1000
+    truncate_as_terminate: false
+    physics_world_step_size: 0.02
+    decision_repeat: 5
+    out_of_road_done: true
+    crash_vehicle_done: false
+    crash_object_done: false
+    cost_to_reward: false
+    success_reward: 10.0
+    out_of_road_penalty: 8.0
+    crash_vehicle_penalty: 1.0
+    crash_object_penalty: 1.0
+    crash_vehicle_cost: 1.0
+    crash_object_cost: 1.0
+    out_of_road_cost: 1.0
+    driving_reward: 1.0
+    speed_reward: 0.12
+    use_risk_field_reward: true
+    risk_field_reward_scale: 25.0
+    enable_idm_lane_change: true
+    disable_idm_deceleration: false
+    out_of_road_mode: legacy
+    out_of_road_warning_limit: 5
+    out_of_road_warning_penalty: 1.0
+    out_of_road_warning_cost: 1.0
+    out_of_road_recovery_steps: 15
+    out_of_road_terminate_after_budget: true
+    log_level: 50
+    vehicle_config:
+      enable_reverse: false
+      lidar:
+        num_lasers: 240
+        distance: 50
+        num_others: 0
+        gaussian_noise: 0.0
+        dropout_prob: 0.0
+        add_others_navi: false
+  reward:
+    base_reward_weight: 1.0
+    risk_field_reward_scale: 25.0
+    reward_min: -10.0
+    reward_max: 10.0
+  risk_field:
+    risk_field_max_distance: 50.0
+    risk_field_boundary_weight: 2.0
+    risk_field_lane_weight: 0.1
+    risk_field_offroad_weight: 2.0
+    risk_field_vehicle_weight: 2.0
+    risk_field_object_weight: 1.0
+    risk_field_headway_weight: 0.0
+    risk_field_ttc_weight: 0.0
+    risk_field_boundary_sigma: 0.75
+    risk_field_lane_edge_sigma: 0.75
+    risk_field_broken_line_sigma: 0.1
+    risk_field_lane_core_sigma_scale: 2.2
+    risk_field_lane_shoulder_sigma_scale: 1.5
+    risk_field_lane_shoulder_weight: 0.9
+    risk_field_broken_line_factor: 0.1
+    risk_field_solid_line_factor: 1.0
+    risk_field_boundary_line_factor: 1.0
+    risk_field_oncoming_line_factor: 1.5
+    risk_field_offroad_cost: 1.0
+    risk_field_offroad_sigma: 1.0
+    risk_field_on_lane_margin: 0.05
+    risk_field_vehicle_longitudinal_sigma: 6.8
+    risk_field_vehicle_lateral_sigma: 2.0
+    risk_field_vehicle_beta: 2.0
+    risk_field_vehicle_dynamic_sigma_scale: 1.2
+    risk_field_vehicle_dynamic_alpha: 0.35
+    risk_field_vehicle_min_dynamic_sigma: 0.5
+    risk_field_object_longitudinal_sigma: 5.5
+    risk_field_object_lateral_sigma: 2.0
+    risk_field_object_beta: 2.0
+    risk_field_lane_beta: 2.0
+    risk_field_headway_time_threshold: 1.2
+    risk_field_ttc_threshold: 3.0
+    risk_field_min_speed: 0.5
+    risk_field_headway_cost_clip: 1.0
+    risk_field_ttc_cost_clip: 1.0
+    risk_field_raw_clip: 10.0
+  cost:
+    enabled: true
+    risk_field_weight: 1.0
+    event_weights:
+      cost: 1.0
+      crash: 1.0
+      crash_vehicle: 1.0
+      crash_object: 1.0
+      out_of_road: 1.0
+      out_of_road_warning: 1.0
+benchmark:
+  episodes: 100
+  scenarios_file: /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/scenarios/fixed100.json
+  repeat_seeds:
+  - 1
+  scenario_start: 300
+  scenario_pool_count: 2000
+  scenario_seed: 1
+  bootstrap_samples: 2000
+  bootstrap_seed: 1
+  output_dir: /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/benchmark/mpr_mpc_v2_1.0_ablation_fixed100_20261105_110307
+  paired_episode_seeds: true
+  mppi_eval_seed: 1

@@ -4,7 +4,4 @@ defaults:
   - _self_
 exp_name: mpr_mpc_v2_E3
 experiment_profile: E3
-mpr_mpc:
-  mppi:
-    dynamic_safety: true
-    geometry_coef: 10.0
+# Historical profile alias; candidate geometry scoring has been removed.

@@ -1,170 +1,123 @@
-"""Trajectory-consistent TD-MPC2 World Model evaluation."""
+"""Batched H-step reward, terminal-Q and one-step-cost model rollouts."""
 
 from __future__ import annotations
 
+import math
 import torch
 
 from mpr_mpc._bootstrap import bootstrap
+from .timing import PhaseTimings
 from .types import TrajectoryConsequence
-
 
 bootstrap()
 from common import math as td_math  # noqa: E402
 
 
 class TrajectoryWorldModelEvaluator:
-    """Evaluate H-step rollouts with either policy or trajectory terminal action."""
-
-    def __init__(self, agent, horizon: int):
+    def __init__(self, agent, horizon):
         self.agent = agent
         self.horizon = int(horizon)
         if self.horizon <= 0:
             raise ValueError("World Model horizon must be positive.")
 
     @torch.no_grad()
-    def encode(self, observation: torch.Tensor, task=None) -> torch.Tensor:
+    def encode(self, observation, task=None):
         observation = observation.to(self.agent.device, non_blocking=True)
         if observation.ndim == 1:
             observation = observation.unsqueeze(0)
         self.agent.model.eval()
         return self.agent.model.encode(observation, task)
 
-    def _discount(self, task, actions: torch.Tensor):
-        discount = self.agent.discount
+    def _discount(self, task, actions):
         if self.agent.cfg.multitask:
-            return discount[torch.as_tensor(task, device=actions.device)].reshape(-1, 1)
-        return actions.new_tensor(float(discount))
+            return self.agent.discount[torch.as_tensor(task, device=actions.device)].reshape(-1, 1)
+        return actions.new_tensor(float(self.agent.discount))
 
     @torch.no_grad()
-    def evaluate(
-        self,
-        z_t: torch.Tensor,
-        actions: torch.Tensor,
-        *,
-        terminal_action_mode: str,
-        task=None,
-        mode_ids=None,
-        cost_source=None,
-    ) -> TrajectoryConsequence:
-        if actions.ndim != 3:
-            raise ValueError(f"actions must be [B,S,A], got {tuple(actions.shape)}.")
-        batch, steps, action_dim = actions.shape
-        if action_dim != int(self.agent.cfg.action_dim):
-            raise ValueError(f"Action dim {action_dim} != configured {self.agent.cfg.action_dim}.")
-        expected_steps = self.horizon + (terminal_action_mode == "trajectory")
+    def evaluate(self, z_t, actions, *, terminal_action_mode, task=None, compute_cost=None):
         if terminal_action_mode not in {"policy", "trajectory"}:
             raise ValueError("terminal_action_mode must be 'policy' or 'trajectory'.")
-        if steps != expected_steps:
-            raise ValueError(
-                f"{terminal_action_mode} mode expects {expected_steps} actions, got {steps}."
-            )
-
-        actions = actions.to(self.agent.device).clamp(-1.0, 1.0)
-        z = z_t.to(self.agent.device)
-        if z.ndim == 1:
-            z = z.unsqueeze(0)
-        if z.shape[0] == 1 and batch > 1:
+        if actions.ndim != 3 or actions.shape[-1] != int(self.agent.cfg.action_dim):
+            raise ValueError("Actions must have shape [B,S,action_dim].")
+        batch, steps, _ = actions.shape
+        if steps != self.horizon + (terminal_action_mode == "trajectory"):
+            raise ValueError(f"{terminal_action_mode} mode has the wrong number of actions.")
+        if not torch.isfinite(actions).all():
+            raise ValueError("World Model actions must be finite.")
+        actions = actions.to(self.agent.device).clamp(-1, 1)
+        z = z_t.to(self.agent.device).reshape(-1, int(self.agent.cfg.latent_dim))
+        if z.shape[0] == 1:
             z = z.expand(batch, -1)
-        if z.shape != (batch, int(self.agent.cfg.latent_dim)):
-            raise ValueError(
-                f"Latent shape {tuple(z.shape)} does not match {(batch, int(self.agent.cfg.latent_dim))}."
-            )
-
+        if z.shape[0] != batch:
+            raise ValueError("Latent batch does not match candidate batch.")
         model = self.agent.model
         model.eval()
+        cfg = getattr(self.agent.cfg, "cost", {}) or {}
+        enabled = bool(cfg.get("enabled", False))
+        compute_cost = enabled if compute_cost is None else bool(compute_cost)
+        if compute_cost and (not enabled or not callable(getattr(model, "cost", None))):
+            raise RuntimeError("MPPI WM Cost requires cost.enabled=true and a Cost Head.")
+        gamma_c = float(cfg.get("gamma", .99))
+        if not math.isfinite(gamma_c) or not 0 <= gamma_c <= 1:
+            raise ValueError("cost.gamma must be finite and in [0,1].")
         discount_step = self._discount(task, actions)
         discount = actions.new_ones((batch, 1))
         terminated = actions.new_zeros((batch, 1))
-        rewards = []
         total = actions.new_zeros((batch, 1))
-        cost_ready = bool(getattr(model, "cost_ready", False))
-        cost_cfg = getattr(self.agent.cfg, "cost", {}) or {}
-        cost_ready = cost_ready and bool(cost_cfg.get("enabled", False))
-        cost_mask = torch.zeros(batch, dtype=torch.bool, device=actions.device)
-        if cost_source not in {None, "coarse_lattice"} or (cost_source is not None and mode_ids is not None):
-            raise ValueError("Cost source must be either real mode IDs or separately calibrated coarse_lattice.")
-        unavailable_reason = ("disabled" if not bool(cost_cfg.get("enabled", False)) else
-                              "unlabelled_trajectory" if mode_ids is None and cost_source is None else
-                              "calibration_not_ready")
-        if cost_ready and cost_source == "coarse_lattice" and self.horizon < 63:
-            cost_mask[:] = model._cost_validated_coarse[self.horizon]
-        if cost_ready and mode_ids is not None and self.horizon < 63:
-            ids = torch.as_tensor(mode_ids, device=actions.device, dtype=torch.long)
-            if ids.shape != (batch,):
-                raise ValueError("mode_ids must have shape [B].")
-            known = (ids >= 0) & (ids < 6)
-            cost_mask[known] = model._cost_validated_by_mode[ids[known], self.horizon]
-        if cost_ready and (mode_ids is not None or cost_source is not None):
-            unavailable_reason = "mode_or_horizon_unvalidated"
-        cost_ready = bool(cost_mask.any())
-        cost_gamma = float(cost_cfg.get("gamma", float(discount_step.flatten()[0])))
-        cost_total = actions.new_zeros((batch, 1))
-        costs = []
-        for step in range(self.horizon):
-            action = actions[:, step]
-            reward = td_math.two_hot_inv(model.reward(z, action, task), self.agent.cfg)
-            rewards.append(reward.squeeze(-1))
-            total += discount * (1.0 - terminated) * reward
-            if cost_ready:
-                cost = actions.new_full((batch, 1), float("nan"))
-                cost_task = task
-                if torch.is_tensor(task) and task.ndim and task.shape[0] == batch:
-                    cost_task = task[cost_mask]
-                cost[cost_mask] = model.cost(z[cost_mask], action[cost_mask], cost_task)
-                costs.append(cost.squeeze(-1))
-                # A learned early termination must not hide later predicted danger.
-                cost_total += cost_gamma**step * cost
-            z = model.next(z, action, task)
-            discount = discount * discount_step
-            if bool(self.agent.cfg.episodic) and getattr(model, "_termination", None) is not None:
-                terminated = torch.clamp(
-                    terminated + (model.termination(z, task) > 0.5).to(actions.dtype), max=1.0
-                )
-
-        if terminal_action_mode == "trajectory":
-            terminal_action = actions[:, self.horizon]
-        else:
-            terminal_action, _ = model.pi(z, task)
-        # Use the full ensemble instead of TD-MPC2's random two-Q subsample. This
-        # makes evaluation deterministic and exposes epistemic spread to MPPI.
-        terminal_q_all = td_math.two_hot_inv(
-            model.Q(z, terminal_action, task, return_type="all"), self.agent.cfg
-        )
-        terminal_q = terminal_q_all.mean(dim=0)
-        terminal_q_std = terminal_q_all.std(dim=0, unbiased=False)
-        total += discount * (1.0 - terminated) * terminal_q
-        if costs:
-            cost_mask &= torch.isfinite(cost_total.squeeze(-1))
-            unavailable_reason = "available" if bool(cost_mask.all()) else "nonfinite_or_partially_unvalidated"
+        cost_total = torch.zeros_like(total)
+        rewards, costs = [], []
+        timing = PhaseTimings(actions.device)
+        with timing.measure("world_model_rollout"):
+            for step in range(self.horizon):
+                action = actions[:, step]
+                # Cost is instantaneous; discount and accumulate exactly once.
+                reward = td_math.two_hot_inv(model.reward(z, action, task), self.agent.cfg)
+                rewards.append(reward.squeeze(-1))
+                total += discount * (1-terminated) * reward
+                if compute_cost:
+                    with timing.measure("cost_prediction"):
+                        cost = model.cost(z, action, task)
+                    costs.append(cost.squeeze(-1))
+                    cost_total += gamma_c**step * cost
+                z = model.next(z, action, task)
+                discount *= discount_step
+                if bool(self.agent.cfg.episodic) and getattr(model, "_termination", None) is not None:
+                    terminated = (terminated + (model.termination(z, task) > .5)).clamp_max(1)
+            terminal_action = actions[:, self.horizon] if terminal_action_mode == "trajectory" else model.pi(z, task)[0]
+            # Preserve the historical evaluator's deterministic full-ensemble Q mean.
+            qs = td_math.two_hot_inv(model.Q(z, terminal_action, task, return_type="all"), self.agent.cfg)
+            terminal_q = qs.mean(0)
+            discounted_reward = total.clone()
+            total += discount * (1-terminated) * terminal_q
+        timing_values = timing.finish()
+        timing_values.setdefault("cost_prediction_ms", 0.0)
+        prediction = torch.stack(costs, 1) if costs else None
+        if prediction is not None and (not torch.isfinite(prediction).all() or (prediction < 0).any()):
+            raise RuntimeError("WM Cost Head produced non-finite or negative step costs; check weights and label scale.")
+        if prediction is not None and not torch.isfinite(cost_total).all():
+            raise RuntimeError("WM cumulative Cost overflowed; check horizon and prediction scale.")
+        validated = bool(compute_cost and getattr(model, "cost_ready", False)
+                         and self.horizon < 63
+                         and int(model._cost_validated_horizons) & (1 << self.horizon))
         return TrajectoryConsequence(
-            reward_sequence=torch.stack(rewards, dim=1).detach(),
-            terminal_q=terminal_q.squeeze(-1).detach(),
-            terminal_q_std=terminal_q_std.squeeze(-1).detach(),
-            total_value=total.squeeze(-1).detach(),
-            terminal_latent=z.detach(),
-            predicted_cost=torch.stack(costs, dim=1).detach() if costs else None,
-            cumulative_cost=cost_total.squeeze(-1).detach() if costs else None,
-            cost_validated=bool(cost_mask.all()) and cost_ready,
-            cost_validated_mask=cost_mask,
-            cost_unavailable_reason=unavailable_reason,
+            reward_sequence=torch.stack(rewards, 1), terminal_q=terminal_q.squeeze(-1),
+            terminal_q_std=qs.std(0, unbiased=False).squeeze(-1), total_value=total.squeeze(-1),
+            terminal_latent=z, predicted_cost=prediction,
+            cumulative_cost=cost_total.squeeze(-1) if compute_cost else None,
+            cost_validated=validated,
+            cost_validated_mask=torch.full((batch,), validated, device=actions.device, dtype=torch.bool),
+            cost_unavailable_reason="disabled" if not compute_cost else "available" if validated else "unvalidated",
+            discounted_reward=discounted_reward.squeeze(-1), timings=timing_values,
         )
 
-    def evaluate_trajectory_consequence(
-        self, z_t: torch.Tensor, actions: torch.Tensor, task=None, mode_ids=None, cost_source=None
-    ) -> TrajectoryConsequence:
-        return self.evaluate(
-            z_t, actions, terminal_action_mode="trajectory", task=task, mode_ids=mode_ids, cost_source=cost_source
-        )
+    def evaluate_trajectory_consequence(self, z_t, actions, task=None, *, compute_cost=None):
+        return self.evaluate(z_t, actions, terminal_action_mode="trajectory", task=task, compute_cost=compute_cost)
 
-    def evaluate_policy_terminal(
-        self, z_t: torch.Tensor, actions: torch.Tensor, task=None
-    ) -> TrajectoryConsequence:
+    def evaluate_policy_terminal(self, z_t, actions, task=None):
         return self.evaluate(z_t, actions, terminal_action_mode="policy", task=task)
 
-    def evaluate_mppi_candidates(
-        self, z_t: torch.Tensor, actions: torch.Tensor, task=None, mode_ids=None
-    ) -> TrajectoryConsequence:
-        return self.evaluate_trajectory_consequence(z_t, actions, task=task, mode_ids=mode_ids)
+    def evaluate_mppi_candidates(self, z_t, actions, task=None, *, compute_cost=None):
+        return self.evaluate_trajectory_consequence(z_t, actions, task=task, compute_cost=compute_cost)
 
 
 __all__ = ["TrajectoryWorldModelEvaluator"]

@@ -18,7 +18,6 @@ from common.parser import parse_cfg
 from common.seed import set_seed
 from env import make_env
 from mpr_mpc.evaluate_model_suite import _make_agent
-from mpr_mpc.planning.emergency import emergency_braking
 
 
 def main():
@@ -82,21 +81,14 @@ def main():
             assert not training_plan.stage.use_mppi
             plan = agent.planner.plan(observation, vehicle, global_step=50000, t0=True, eval_mode=True)
             assert plan.action.shape == (2,) and torch.isfinite(plan.action).all()
-            assert plan.metrics["mpr/selected_safe"] == 1, "Spawn-road predecessor must cover the rear footprint."
+            assert plan.metrics["mppi/cost_enabled"] == 1
+            assert np.isfinite(plan.metrics["mppi/predicted_cost"])
+            assert torch.all((plan.debug["selected_mppi_actions"]-plan.refined_actions.cpu()).abs()
+                             <= agent.planner.local_mppi.max_delta.cpu()+1e-6)
             for name, kind in (("wm", "world_model"), ("sac", "world_model_residual_rl"), ("full", "full_mpr_mpc")):
                 path = Path(temporary) / f"{name}.pt"
                 agent.save_milestone(path, milestone_type=kind)
                 agent.load_milestone(path)
-            live = agent.planner.safety.context(agent.planner.structured.planner, vehicle,
-                width=width, wheelbase=wheelbase, max_steering=steering)
-            brake = emergency_braking(plan.refined_actions, live, agent.planner.safety, control_dt=agent.planner.control_dt)
-            speed_before = float(np.linalg.norm(vehicle.velocity))
-            assert not vehicle.enable_reverse
-            for action in brake.sequence[:5]:
-                observation, _, done, _ = env.step(action)
-                assert not done
-            speed_after = float(np.linalg.norm(vehicle.velocity))
-            assert vehicle.throttle_brake == -1 and speed_after < speed_before
             print("V2_SMOKE_RESULT", json.dumps({
                 "runtime": str(sys.modules["tdmpc2"].__file__),
                 "residual_state_dim": agent.planner.residual_state_dim,
@@ -106,12 +98,11 @@ def main():
                 "cost_training_loss": float(training["cost_loss"]),
                 "cost_grad_norm": float(training["cost_grad_norm"]),
                 "cost_supervised_samples": float(training["cost_supervised_samples"]),
-                "braking_speed_before_mps": speed_before, "braking_speed_after_mps": speed_after,
                 "risk_feature_status": agent.planner.residual_state_builder.last_risk_status,
                 "cost_ready_after_one_update": agent.model.cost_ready,
                 "training_mppi_enabled": training_plan.stage.use_mppi,
                 "plan_action": plan.action.tolist(),
-                "selected_safe": plan.metrics.get("mpr/selected_safe"),
+                "native_cost_diagnostics": {key: value for key, value in plan.metrics.items() if key.startswith("mppi/")},
                 "safety_diagnostics": {key: value for key, value in plan.metrics.items() if
                     any(word in key for word in ("reject", "boundary_margin", "no_safe", "_safe", "min_clearance", "min_ttc"))},
                 "geometry": {"position": vehicle.position.tolist(), "road_bounds": context.road.bounds,

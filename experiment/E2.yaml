@@ -8,4 +8,5 @@ cost:
   enabled: true
 mpr_mpc:
   mppi:
+    cost_enabled: true
     cost_coef: 1.0

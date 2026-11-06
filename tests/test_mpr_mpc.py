@@ -43,7 +43,7 @@ class RecordingEvaluator:
         self.calls = []
         self.constant = constant
 
-    def evaluate_mppi_candidates(self, _z, actions, task=None, mode_ids=None):
+    def evaluate_mppi_candidates(self, _z, actions, task=None, compute_cost=None):
         del task
         self.calls.append(actions.detach().clone())
         if self.constant:
@@ -57,7 +57,7 @@ class FixedValueEvaluator:
     def __init__(self, values):
         self.values = torch.as_tensor(values, dtype=torch.float32)
 
-    def evaluate_mppi_candidates(self, _z, actions, task=None, mode_ids=None):
+    def evaluate_mppi_candidates(self, _z, actions, task=None, compute_cost=None):
         del task
         values = self.values.to(actions.device)
         return SimpleNamespace(total_value=values, terminal_q_std=torch.zeros_like(values))
@@ -65,6 +65,7 @@ class FixedValueEvaluator:
 
 def mppi_cfg(**updates):
     cfg = {
+        "cost_enabled": False,
         "num_samples": 24,
         "num_elites": 6,
         "iterations": 3,
@@ -139,8 +140,9 @@ class MPRMPCUnitTests(unittest.TestCase):
         baseline = torch.linspace(-0.2, 0.2, 8).reshape(4, 2)
         planner.plan(torch.zeros((1, 2)), baseline, eval_mode=True)
         self.assertEqual(len(evaluator.calls), 3)
-        for candidates in evaluator.calls:
-            torch.testing.assert_close(candidates[0], baseline)
+        torch.testing.assert_close(evaluator.calls[0][0], baseline)
+        # Subsequent baseline candidates reuse the same prediction.
+        assert all(not torch.equal(row, baseline) for batch in evaluator.calls[1:] for row in batch)
 
     def test_6_training_has_no_post_selection_noise(self):
         planner = LocalMPPI(RecordingEvaluator(), mppi_cfg(), horizon=3, action_dim=2, device="cpu")

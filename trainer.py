@@ -53,9 +53,6 @@ class MPROnlineTrainer(OnlineTrainer):
         if len(self._eval_scenarios) != count or len(set(self._eval_scenarios)) != count or not set(self._eval_scenarios) <= set(pool):
             raise ValueError("Training evaluation requires unique in-pool scenario IDs matching eval_episodes.")
         self._training_scenarios = np.setdiff1d(pool, self._eval_scenarios)
-        calibration_scenes = {r["scene_id"] for r in self.agent.cost_validator.mode_episodes}
-        if calibration_scenes & set(self._training_scenarios.tolist()):
-            raise ValueError("Calibration scenes must never enter either training replay; change the training pool or held-out split.")
         if not len(self._training_scenarios):
             raise ValueError("num_scenarios must exceed eval_episodes to reserve held-out validation scenes.")
         self._scenario_rng = np.random.default_rng(int(self.cfg.seed))
@@ -243,11 +240,20 @@ class MPROnlineTrainer(OnlineTrainer):
             if self.cfg.save_video:
                 self.logger.video.save(self._step)
         mean = lambda values: float(np.nanmean(values))
-        diagnostics_mean = {}
-        for key in episode_diagnostics[0] if episode_diagnostics else []:
-            finite = [row[key] for row in episode_diagnostics if np.isfinite(row[key])]
-            diagnostics_mean[key] = mean(finite) if finite else float("nan")
-        clearances = [row["min_obstacle_clearance"] for row in episode_diagnostics if np.isfinite(row["min_obstacle_clearance"])]
+        diagnostic_values = {}
+        for row in episode_diagnostics:
+            for key, value in row.items():
+                # Episode summaries also contain text such as end_reason.
+                if not isinstance(value, (int, float, np.integer, np.floating, np.bool_)):
+                    continue
+                finite = diagnostic_values.setdefault(key, [])
+                if np.isfinite(value):
+                    finite.append(float(value))
+        diagnostics_mean = {
+            key: mean(values) if values else float("nan")
+            for key, values in diagnostic_values.items()
+        }
+        clearances = diagnostic_values.get("min_obstacle_clearance", [])
         diagnostics_mean["min_obstacle_clearance"] = min(clearances) if clearances else float("nan")
         return {
             **diagnostics_mean,

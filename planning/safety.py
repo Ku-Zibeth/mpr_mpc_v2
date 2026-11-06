@@ -1,4 +1,4 @@
-"""Time-aligned footprint checks using MetaDrive road polygons and live obstacles.
+"""Legacy SAC geometric input features, not a native-MPPI candidate filter.
 
 Ego motion uses a configurable kinematic bicycle approximation; surrounding
 objects use their measured constant velocities and headings. This is a model
@@ -13,9 +13,11 @@ from typing import Any
 import numpy as np
 import torch
 import shapely
+from shapely.errors import GEOSException
 from shapely.geometry import Point, Polygon
 from shapely.ops import unary_union
 from shapely.prepared import prep
+from shapely.validation import make_valid
 
 from .swept_collision import swept_collisions
 
@@ -45,7 +47,6 @@ class SafetyResult:
     min_ttc: torch.Tensor
     boundary_margin: torch.Tensor
     soft_risk: torch.Tensor
-    emergency_cost: torch.Tensor
     positions: torch.Tensor
     boundary_risk: torch.Tensor | None = None
     interval_collision: torch.Tensor | None = None
@@ -69,6 +70,29 @@ def _vertex_edge_distance(vertices, edges):
     ratio = (delta * direction).sum(-1) / direction.square().sum(-1).clamp_min(1e-12)
     error = delta - ratio.clamp(0, 1).unsqueeze(-1) * direction
     return error.square().sum(-1).amin(dim=(-1, -2)).sqrt()
+
+
+def _road_polygon_parts(geometry):
+    if geometry is None or geometry.is_empty:
+        raise RuntimeError("MetaDrive supplied an empty or missing lane road geometry.")
+    if not np.isfinite(shapely.get_coordinates(geometry)).all():
+        raise RuntimeError("MetaDrive supplied non-finite lane road coordinates.")
+    try:
+        repaired = geometry if geometry.is_valid else make_valid(geometry)
+    except GEOSException as error:
+        raise RuntimeError("Unable to repair MetaDrive lane road geometry.") from error
+    # make_valid can return polygon lobes together with collapsed line artifacts.
+    # Retain every area component, but never treat those lines as drivable road.
+    pending, polygons = [repaired], []
+    while pending:
+        part = pending.pop()
+        if part.geom_type == "Polygon" and not part.is_empty:
+            polygons.append(part)
+        elif part.geom_type in ("MultiPolygon", "GeometryCollection"):
+            pending.extend(part.geoms)
+    if not polygons:
+        raise RuntimeError("MetaDrive lane road geometry has no drivable polygon area.")
+    return polygons
 
 
 class TrajectorySafetyEvaluator:
@@ -124,14 +148,15 @@ class TrajectorySafetyEvaluator:
         lanes = list({id(lane): lane for lane in lanes if lane is not None}.values())
         key = tuple(sorted(id(lane) for lane in lanes))
         if key not in self._road_cache:
-            polygons = [lane.shapely_polygon for lane in lanes]
+            polygons = [polygon for lane in lanes
+                        for polygon in _road_polygon_parts(lane.shapely_polygon)]
             if not polygons:
                 raise RuntimeError("Dynamic safety requires MetaDrive navigation lane polygons.")
             road = unary_union(polygons)
             if not road.is_valid:
-                road = road.buffer(0)
-            if road.is_empty:
-                raise RuntimeError("MetaDrive supplied an empty drivable road polygon.")
+                road = unary_union(_road_polygon_parts(road))
+            if road.is_empty or not road.is_valid or road.geom_type not in ("Polygon", "MultiPolygon"):
+                raise RuntimeError("MetaDrive supplied an invalid or empty drivable road polygon.")
             self._road_cache[key] = road
         previous = np.asarray(getattr(vehicle, "current_action", [0.0, 0.0]), dtype=float).reshape(2)
         return SafetyContext(
@@ -300,7 +325,5 @@ class TrajectorySafetyEvaluator:
         valid = (~hit & ~offroad & ~kinematic
                  & (clearance >= float(self.cfg.get("hard_clearance", 0.0)))
                  & (ttc >= float(self.cfg.get("hard_ttc", 0.0))))
-        emergency = (collision.float().sum(1)*10000 + (~road_valid).float().sum(1)*10000
-                     + kinematic.float()*1000 + soft*100 + speeds[:, -1].square())
-        return SafetyResult(valid, hit, offroad, kinematic, clearance, ttc, margin, soft, emergency, positions,
+        return SafetyResult(valid, hit, offroad, kinematic, clearance, ttc, margin, soft, positions,
                             boundary_risk, interval_collision)

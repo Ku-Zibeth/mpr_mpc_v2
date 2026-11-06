@@ -35,3 +35,13 @@ videos/
 
 # OS
 .DS_Store
+
+# Trained model weights
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+
+# Model checkpoint directories
+checkpoints/
+checkpoint/

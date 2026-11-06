@@ -7,20 +7,22 @@ No trained checkpoint, training log directory, or Git/LFS database was copied.
 Start here: [V2 implementation, commands, compatibility and limitations](V2_IMPLEMENTATION.md).
 Run commands from this directory, not from the sibling original package.
 
-Current delivery: [Round 4 report and full training/evaluation commands](ROUND4_REPORT.md).
-Cost ranking now compares actions ONLY at a verified shared prediction anchor.
-Continuous interval collision checks cover translation, acceleration and turning;
-unresolved rotating contacts are conservatively rejected. Independent emergency
-braking is explicitly distinguished from an ordinary safe candidate.
+Current delivery: [Native MPPI + WM Cost report, measurements and commands](NATIVE_MPPI_COST_REPORT.md).
+MPPI now uses the historical single Gaussian (64 samples, 8 elites, 4 iterations).
+Reward/terminal-Q value is penalized only by WM-predicted cost, baseline deviation,
+and relative-action smoothness. Multimodal search, candidate footprint/swept checks,
+emergency search, uncertainty penalties and per-mode cost approvals are removed.
+Unvalidated cost predictions are explicitly labelled and still participate in ranking.
+Basic held-out cost validation is a diagnostic, not a safety certificate.
 
-Third-round changes: absolute-time TTC, continuous road-boundary risk,
-per-mode/per-horizon cost calibration from real counterfactual replays,
-safety-first checkpoint selection, and a synchronized MPPI benchmark.
-The default schedule is now 20K world-model updates followed by frozen-WM
-Residual SAC until 50K. MPPI runs only in evaluation, never training actions.
-Uncalibrated modes still use geometry/value but never learned-cost ranking.
-Commands, measured results, file inventory and limitations are documented in
-[the third-round report](ROUND3_REPORT.md).
+The default schedule remains 20K world-model steps, including Cost Head supervision,
+then frozen-WM Residual SAC until 50K. MPPI runs only in evaluation. Existing 535-D
+SAC checkpoints retain their geometric input features once per coarse trajectory;
+these legacy features do not filter or score MPPI candidates. See the current report
+for this compatibility exception and the remaining 100 ms performance gap.
+
+[Round 4](ROUND4_REPORT.md) and [Round 3](ROUND3_REPORT.md) are historical reports;
+their multimodal/emergency calibration commands no longer describe the current planner.
 
 ```bash
 cd /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2

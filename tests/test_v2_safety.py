@@ -78,58 +78,10 @@ def test_navigation_road_join_includes_predecessor_for_rear_footprint():
     assert evaluator.check(torch.zeros(1, 11, 2), ctx).valid.item()
 
 
-def test_only_validated_cost_changes_soft_ranking():
-    class Evaluator:
-        ready = False
-
-        def evaluate_mppi_candidates(self, z, actions, task=None, mode_ids=None):
-            value = actions[:, :, 1].mean(-1)
-            return SimpleNamespace(total_value=value, terminal_q_std=torch.zeros_like(value),
-                cumulative_cost=100 * value.clamp_min(0), cost_validated=self.ready,
-                cost_validated_mask=torch.full_like(value, self.ready, dtype=torch.bool))
-
-    evaluator = Evaluator()
-    planner = LocalMPPI(evaluator, mppi_cfg(num_samples=4, iterations=1, num_elites=2, cost_coef=10),
-                        horizon=10, action_dim=2, device="cpu")
-    candidates = torch.zeros(4, 11, 2)
-    candidates[1, :, 1] = 1
-    candidates[2, :, 1] = .5
-    candidates[3, :, 1] = -1
-    planner._candidate_batch = lambda *args: candidates.clone()
-    result = planner.plan(torch.zeros(1, 8), candidates[0], eval_mode=True)
-    assert result.action[1] == 1
-    evaluator.ready = True
-    result = planner.plan(torch.zeros(1, 8), candidates[0], eval_mode=True)
-    assert result.action[1] == 0
 
 
-def test_high_value_unsafe_baseline_is_not_evaluated_or_selected():
-    evaluator = RecordingEvaluator()
-    planner = LocalMPPI(evaluator, mppi_cfg(multimodal=True, num_samples=64),
-                        horizon=10, action_dim=2, device="cpu")
-    planner.safety_evaluator = TrajectorySafetyEvaluator({}, control_dt=.1, device="cpu")
-    baseline = torch.zeros(11, 2)
-    baseline[:, 1] = 1
-    ctx = context(obstacles=(obstacle(20, 10),))
-    assert not planner.safety_evaluator.check(baseline[None], ctx).valid.item()
-    result = planner.plan(torch.zeros(1, 8), baseline, eval_mode=True, safety_context=ctx)
-    assert not result.baseline_selected
-    assert result.safety_metrics["selected_safe"] == 1
-    assert result.action[1] < 0
-    assert all(planner.safety_evaluator.check(batch, ctx).valid.all() for batch in evaluator.calls)
 
 
-def test_no_safe_candidate_is_explicit_and_never_certified():
-    evaluator = RecordingEvaluator()
-    planner = LocalMPPI(evaluator, mppi_cfg(num_samples=8), horizon=10, action_dim=2, device="cpu")
-    planner.safety_evaluator = TrajectorySafetyEvaluator({}, control_dt=.1, device="cpu")
-    result = planner.plan(torch.zeros(1, 8), torch.zeros(11, 2), eval_mode=True,
-                          safety_context=context(obstacles=(obstacle(10, 10),)))
-    assert result.safety_metrics["no_safe_candidate"] == 1
-    assert result.safety_metrics["selected_safe"] == 0
-    assert not result.baseline_selected
-    assert torch.isfinite(result.action).all()
-    assert evaluator.calls == []
 
 
 def test_risk_features_are_masked_until_validated():
@@ -160,6 +112,17 @@ class ExactCostModel(torch.nn.Module):
         self.register_buffer("_cost_updates", torch.tensor(2000))
         self.register_buffer("_cost_validated", torch.tensor(False))
         self.register_buffer("_cost_validated_horizons", torch.tensor(0))
+        self.register_buffer("_cost_validated_at", torch.tensor(0))
+        self.register_buffer("_cost_validation_schema", torch.tensor(0))
+
+    @property
+    def cost_ready(self):
+        return bool(self._cost_validated and self._cost_validated_at == self._cost_updates)
+
+    def invalidate_cost_validation(self):
+        for name, value in self.named_buffers():
+            if name != "_cost_updates":
+                value.zero_()
 
     def encode(self, x, task):
         return x
@@ -177,9 +140,10 @@ def test_cost_validation_uses_actual_executed_controls_and_horizon_mask():
     validator = CostModelValidator({"min_samples": 8, "stride": 1, "horizons": [1, 5, 10], "max_mae": .001})
     validator.set_episodes([(np.zeros((80, 3)), actions, actions[:, 0])])
     metrics = validator.validate(model, "cpu", horizon=10)
-    # Unlabelled executed sequences cannot authorize any counterfactual mode.
-    assert metrics["wm/cost_ready"] == 0
-    assert not model._cost_validated_horizons.item() & (1 << 10)
+    # Basic held-out validation is separate from same-origin candidate ranking.
+    assert metrics["wm/cost_ready"] == 1
+    assert model._cost_validated_horizons.item() & (1 << 10)
+    assert np.isnan(metrics["risk_ranking_accuracy"])
     assert not model._cost_validated_horizons.item() & (1 << 20)
     assert metrics["wm/cost_mae_h10"] < 1e-5
     model._cost_updates.zero_()

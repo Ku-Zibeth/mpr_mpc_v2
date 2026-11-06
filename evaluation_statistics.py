@@ -34,10 +34,14 @@ METRICS = {
     "dynamic_collision_cost": ("dynamic_collision_cost", None),
     "static_collision_cost": ("static_collision_cost", None),
     "mean_speed_mps": ("mean_speed_mps", None),
+    "timeout_rate": ("timeout", None),
+    "planning_time_ms": ("mean_mpr_total_planning_ms", None),
+    "predicted_cost": ("total_predicted_cost", None),
+    "actual_cost": ("total_actual_cost", None),
 }
 BINARY_RATES = {
     "out_of_road", "crash", "success", "collision_and_success",
-    "collision_and_offroad", "cost_limit_exceedance",
+    "collision_and_offroad", "cost_limit_exceedance", "timeout_rate",
 }
 
 

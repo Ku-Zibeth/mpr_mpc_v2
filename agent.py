@@ -84,9 +84,6 @@ class MPRMPCAgent:
         self._tdmpc_frozen = False
         self.last_loaded_checkpoint_metadata: dict = {}
         self.cost_validator = CostModelValidator(mapping(section(cfg, "cost")))
-        dataset = section(cfg, "cost").get("mode_validation_dataset")
-        if dataset:
-            self.cost_validator.load_dataset(dataset, cost_definition=self._cost_definition())
         self.cost_validation_metrics = {}
 
     def _print_residual_startup_diagnostics(self) -> None:
@@ -576,7 +573,7 @@ class MPRMPCAgent:
         model = getattr(self, "model", self.tdmpc_agent.model)
         if saved != self._cost_definition() and hasattr(model, "_cost_validated"):
             model.invalidate_cost_validation()
-            print("[cost] No matching cost-definition validation; learned cost disabled until revalidated.")
+            print("[cost] Cost definition changed: validation revoked. MPPI predictions remain explicitly UNVALIDATED.")
 
     def _planner_state(self) -> dict:
         return {

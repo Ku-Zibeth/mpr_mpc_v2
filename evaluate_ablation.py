@@ -20,11 +20,40 @@ VARIANTS = (
     ("C_lattice_mppi", "lattice_mppi"),
     ("D_lattice_sac_mppi", "full_mpr_mpc"),
 )
+COST_VARIANTS = (("native_mppi", "full_mpr_mpc"), ("native_mppi_wm_cost", "full_mpr_mpc"))
 DEFAULT_CHECKPOINT = (
     suite.DEFAULT_MODELS_ROOT
     / "mpr_mpc_frozen_wm200k_rl500k_seed1_v2"
     / "models/milestone_500k_world_model_residual_rl.pt"
 )
+
+
+class _EpisodeCSVWriter:
+    """Flush each episode and expand the schema when optional metrics appear."""
+
+    def __init__(self, stream):
+        self.stream = stream
+        self.rows = []
+        self.fieldnames = []
+        self.writer = None
+
+    def writerow(self, row: dict) -> None:
+        row = dict(row)
+        new_fields = [key for key in row if key not in self.fieldnames]
+        if new_fields:
+            self.fieldnames.extend(new_fields)
+            # Prior rows need blank cells for newly observed SAC/MPPI metrics.
+            self.stream.seek(0)
+            self.stream.truncate()
+            self.writer = csv.DictWriter(self.stream, fieldnames=self.fieldnames)
+            self.writer.writeheader()
+            self.writer.writerows(self.rows)
+        if self.writer is None:
+            self.writer = csv.DictWriter(self.stream, fieldnames=self.fieldnames)
+            self.writer.writeheader()
+        self.writer.writerow(row)
+        self.rows.append(row)
+        self.stream.flush()
 
 
 def _repeat_seeds(benchmark: DictConfig, default: int) -> list[int]:
@@ -58,6 +87,8 @@ def main(raw_cfg: DictConfig) -> None:
         ))
     scenarios = suite._scenarios(raw_cfg)
     repeat_seeds = _repeat_seeds(benchmark, int(raw_cfg.seed))
+    cost_ablation = bool(benchmark.get("cost_ablation", False))
+    variants = COST_VARIANTS if cost_ablation else VARIANTS
     bootstrap_samples = int(benchmark.get("bootstrap_samples", 2000))
     bootstrap_seed = int(benchmark.get("bootstrap_seed", benchmark.scenario_seed))
     if bootstrap_samples <= 0 or bootstrap_seed < 0:
@@ -85,7 +116,8 @@ def main(raw_cfg: DictConfig) -> None:
         "episode_seed_rule": "(test_seed + scenario) modulo 2**32",
         "mppi_eval_seed_rule": "test_seed; same local MPPI noise seed for C and D",
         "horizon": int(effective_cfg.horizon),
-        "variants": dict(VARIANTS),
+        "variants": dict(variants),
+        "cost_ablation": cost_ablation,
         "event_metrics": "fraction of episodes with an event at any step",
         "joint_event_denominator": "all evaluated episodes",
         "ttc_definition": "environment risk_field_min_ttc: longitudinal gap / closing speed to a front vehicle in the same corridor",
@@ -101,33 +133,27 @@ def main(raw_cfg: DictConfig) -> None:
 
     all_rows, comparisons, summaries, seed_summaries = [], [], [], []
     with (output_dir / "episodes.csv").open("w", newline="") as all_file:
-        all_writer = None
-        for label, stack in VARIANTS:
+        all_writer = _EpisodeCSVWriter(all_file)
+        for label, stack in variants:
             for test_seed in repeat_seeds:
                 print(f"\n=== {label}, test_seed={test_seed} ===")
                 variant_cfg = OmegaConf.create(OmegaConf.to_container(effective_cfg, resolve=True))
                 variant_cfg.evaluation_stack = stack
                 variant_cfg.seed = test_seed
                 variant_cfg.benchmark.mppi_eval_seed = test_seed
+                if cost_ablation:
+                    variant_cfg.benchmark.mppi_cost_coef = (0.0 if label == "native_mppi" else
+                        float(benchmark.get("cost_coef", 1.0)))
                 OmegaConf.save(variant_cfg, output_dir / f"config_{label}_seed{test_seed}.yaml")
                 with (output_dir / f"episodes_{label}_seed{test_seed}.csv").open("w", newline="") as file:
-                    writer = None
+                    writer = _EpisodeCSVWriter(file)
 
                     def save_episode(row: dict) -> None:
-                        nonlocal writer, all_writer
                         row["configuration"] = label
                         row["test_seed"] = test_seed
-                        if writer is None:
-                            writer = csv.DictWriter(file, fieldnames=list(row))
-                            writer.writeheader()
-                        if all_writer is None:
-                            all_writer = csv.DictWriter(all_file, fieldnames=list(row))
-                            all_writer.writeheader()
                         writer.writerow(row)
                         all_writer.writerow(row)
                         all_rows.append(row)
-                        file.flush()
-                        all_file.flush()
 
                     rows, summary = suite._evaluate_checkpoint(
                         variant_cfg, version, checkpoint, scenarios, on_episode=save_episode
@@ -138,7 +164,7 @@ def main(raw_cfg: DictConfig) -> None:
                 seed_summary["test_seed"] = test_seed
                 seed_summaries.append(seed_summary)
                 comparisons = []
-                for configuration, _ in VARIANTS:
+                for configuration, _ in variants:
                     group = [r for r in all_rows if r["configuration"] == configuration]
                     if group:
                         comparisons.append(summarize_runs(

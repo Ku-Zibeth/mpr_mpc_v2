@@ -11,9 +11,5 @@ residual_rl:
   risk_auxiliary_weight: 0.0
 mpr_mpc:
   mppi:
-    dynamic_safety: false
-    multimodal: false
-    absolute_smoothness: false
-    uncertainty_coef: 0.0
-    geometry_coef: 0.0
+    cost_enabled: false
     cost_coef: 0.0
