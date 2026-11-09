@@ -322,6 +322,8 @@ def _apply_checkpoint_runtime_config(cfg_raw: DictConfig, checkpoint: Path) -> N
         _merge_section(cfg_raw.mpr_mpc.mppi, native_mppi_config(mppi_config))
         if "safety" not in mppi_config:
             cfg_raw.mpr_mpc.mppi.safety.enabled = False
+        if "recovery" not in mppi_config:
+            cfg_raw.mpr_mpc.mppi.recovery.enabled = False
 
     residual_config = planner_state.get("residual_config")
     if isinstance(residual_config, dict):
@@ -462,7 +464,7 @@ def _evaluate_checkpoint(
                     _as_float(info.get("out_of_road", 0.0)) > 0.0
                 )
                 step += 1
-                step_log.log(scenario, step, action, agent.last_plan)
+                step_log.log(scenario, step, action, agent.last_plan, info=info)
                 if on_step is not None:
                     on_step(int(scenario), step, env, agent.last_plan, bool(done))
                 if step == 1 or step % 100 == 0:

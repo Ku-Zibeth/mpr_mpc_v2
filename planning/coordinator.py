@@ -475,7 +475,7 @@ class MPRMPCPlanner:
                 corridor_context=corridor_context,
                 safety_context=context.mppi_safety_context,
                 lattice_actions=context.coarse_actions,
-                lattice_corridor_context=self._corridor_context(coarse, vehicle),
+                lattice_corridor_context=(corridor_context if refined is coarse else self._corridor_context(coarse, vehicle)),
             )
             self.mppi_call_count += 1
             self.baseline_selected_count += int(mppi.baseline_selected)
@@ -551,7 +551,7 @@ class MPRMPCPlanner:
         if stage.use_mppi:
             diagnostics["mpr/selected_safe"] = mppi.metrics["selected_safety_valid"]
             diagnostics["mpr/baseline_safe"] = mppi.metrics["baseline_safety_valid"]
-            diagnostics["mpr/no_safe_candidate"] = float(bool(mppi.metrics["lattice_fallback"] or mppi.metrics["emergency_fallback"]))
+            diagnostics["mpr/no_safe_candidate"] = float(bool(mppi.metrics["emergency_fallback"]))
             diagnostics["mpr/collision_reject_count"] = mppi.metrics["collision_reject_count"]
             diagnostics["mpr/offroad_reject_count"] = mppi.metrics["road_boundary_reject_count"]
             diagnostics["mpr/kinematic_reject_count"] = mppi.metrics["kinematic_reject_count"]
@@ -653,6 +653,8 @@ class MPRMPCPlanner:
                 "initial_mppi_std": initial_std.detach().cpu(),
                 "final_mppi_std": final_std.detach().cpu(),
             },
+            planning_mode=mppi.planning_mode if stage.use_mppi else "baseline",
+            recovery_reason=mppi.recovery_reason if stage.use_mppi else "none",
         )
         self.last_result = result
         return result

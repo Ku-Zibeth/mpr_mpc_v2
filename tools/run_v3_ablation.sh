@@ -4,7 +4,7 @@ root="$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")"
 cd "$root"
 python="${PYTHON:-/home/kzb/anaconda3/envs/tdmpc2/bin/python}"
 checkpoint="${CHECKPOINT:-$root/logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt}"
-name="${EXP_NAME:-mpr_mpc_v3_ablation_fixed100_$(TZ=Asia/Shanghai date +%Y%m%d_%H%M%S)}"
+name="${EXP_NAME:-mpr_mpc_v31_ablation_fixed100_$(TZ=Asia/Shanghai date +%Y%m%d_%H%M%S)}"
 out="$root/logs/benchmark/$name"
 dry_run=false
 if [[ $# -gt 0 ]]; then
@@ -25,6 +25,8 @@ command=("$python" -u evaluate_ablation.py +experiment=E5 "checkpoint=$checkpoin
     restore_checkpoint_runtime=true restore_mppi_runtime=false
     seed=1 eval_episodes=100 enable_wandb=false save_video=false
     mpr_mpc.mppi.safety.enabled=true
+    mpr_mpc.mppi.recovery.enabled=true
+    "mpr_mpc.mppi.allow_unvalidated_cost=${ALLOW_UNVALIDATED_COST:-false}"
     wandb_entity=shihuangggggg-southeastern-university wandb_project=mpr_mpc_metadrive
     +benchmark.cost_ablation=false +benchmark.episodes=100
     "+benchmark.repeat_seeds=${REPEAT_SEEDS:-[1]}"
@@ -41,7 +43,7 @@ fi
 mkdir -p "$out"
 printf '%q ' "${command[@]}" > "$out/command.sh"
 printf '\n' >> "$out/command.sh"
-printf '[launcher] V3 A/B/C/D: same frozen checkpoint, fixed 100 scenes, no training.\n' > "$out/run.log"
+printf '[launcher] V3.1 A/B/C/D: same frozen checkpoint, fixed 100 scenes, no training.\n' > "$out/run.log"
 nohup "${command[@]}" </dev/null >>"$out/run.log" 2>&1 &
 printf '%s\n' "$!" > "$out/evaluation.pid"
 printf 'Evaluation PID: %s\nResults: %s\nCtrl+C stops this log viewer, not evaluation.\n' "$(<"$out/evaluation.pid")" "$out"

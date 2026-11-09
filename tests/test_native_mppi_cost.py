@@ -27,12 +27,12 @@ class CostEvaluator:
         return SimpleNamespace(total_value=value, terminal_q=value*0,
             discounted_reward=value, cumulative_cost=cost if compute_cost else None,
             predicted_cost=cost[:, None].expand(-1, actions.shape[1]-1) if compute_cost else None,
-            cost_validated=self.validated, timings={})
+            cost_validated=self.validated, cost_ranking_validated=self.validated, timings={})
 
 
 def fixed_planner(coef=1., *, cost_enabled=True, **kwargs):
     evaluator = CostEvaluator(**kwargs)
-    planner = LocalMPPI(evaluator, mppi_cfg(cost_enabled=cost_enabled, cost_coef=coef,
+    planner = LocalMPPI(evaluator, mppi_cfg(cost_enabled=cost_enabled, cost_coef=coef, allow_unvalidated_cost=True,
         num_samples=4, num_elites=2, iterations=3), horizon=3, action_dim=2, device="cpu")
     baseline = torch.zeros(4, 2)
     baseline[:, 1] = .5
@@ -41,7 +41,7 @@ def fixed_planner(coef=1., *, cost_enabled=True, **kwargs):
     return planner, evaluator, baseline
 
 
-def test_equal_reward_and_q_lower_cost_wins_without_validation_gate():
+def test_explicit_experiment_allows_unvalidated_cost_without_safety_claim():
     planner, _, baseline = fixed_planner()
     with pytest.warns(RuntimeWarning, match="NOT passed"):
         result = planner.plan(torch.zeros(1, 2), baseline, eval_mode=True)

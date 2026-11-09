@@ -63,7 +63,11 @@ def _position_bound(chord, span, u0, u1, speed0, speed1, curved):
 
 def swept_collisions(positions, headings, other_xy, other_v, other_heading, lengths, widths,
                      *, ego_length, ego_width, dt, max_depth=10, angle_tolerance=1e-4,
-                     position_tolerance=1e-4, skip=None, curved=False, speeds=None):
+                     position_tolerance=1e-4, skip=None, curved=False, speeds=None,
+                     obstacle_acceleration_bound=0., obstacle_velocity_error=0.):
+    if (not math.isfinite(obstacle_acceleration_bound) or obstacle_acceleration_bound < 0
+            or not math.isfinite(obstacle_velocity_error) or obstacle_velocity_error < 0):
+        raise ValueError("Obstacle uncertainty bounds must be finite and nonnegative.")
     tensors = (positions, headings, other_xy, other_v, other_heading, lengths, widths)
     dtype = torch.promote_types(positions.dtype, torch.float32)
     for tensor in (*tensors, *((speeds,) if speeds is not None else ())):
@@ -87,8 +91,14 @@ def swept_collisions(positions, headings, other_xy, other_v, other_heading, leng
         torch.ones_like(yaw_delta), speed0, speed1, curve_mask)
     fraction = (-(r0*change).sum(-1)/change.square().sum(-1).clamp_min(1e-12)).clamp(0, 1)
     closest = r0 + fraction[..., None] * change
-    circles = math.hypot(ego_length, ego_width)/2 + torch.sqrt(lengths.square()+widths.square())/2
-    possible = closest.square().sum(-1) <= (circles[None, None]+position_bound[..., None]+1e-6).square()
+    # A bounded acceleration/velocity error adds an isotropic position tube
+    # around CV. Use the interval-end radius throughout the swept interval,
+    # including recursive leaves: never interpolate a smaller unsafe bound.
+    uncertainty = obstacle_velocity_error*(times+dt)+.5*obstacle_acceleration_bound*(times+dt).square()
+    inflated_lengths = lengths[None]+2*uncertainty[:, None]
+    inflated_widths = widths[None]+2*uncertainty[:, None]
+    circles = math.hypot(ego_length, ego_width)/2 + torch.sqrt(inflated_lengths.square()+inflated_widths.square())/2
+    possible = closest.square().sum(-1) <= (circles[None]+position_bound[..., None]+1e-6).square()
     if skip is not None:
         possible &= ~skip[:, None, None]
     indices = possible.nonzero()
@@ -102,7 +112,7 @@ def swept_collisions(positions, headings, other_xy, other_v, other_heading, leng
     root_other, root_other_delta = a.clone(), other_v[oi]*dt
     root_ego, root_yaw, root_turn = ego_delta[ni, ti], y0.clone(), yaw_delta[ni, ti]
     root_v0, root_v1, root_curve = speed0[ni, ti], speed1[ni, ti], curve_mask[ni, ti]
-    o, length, width = other_heading[oi], lengths[oi], widths[oi]
+    o, length, width = other_heading[oi], inflated_lengths[ti, oi], inflated_widths[ti, oi]
     u0, u1 = torch.zeros_like(y0), torch.ones_like(y0)
     for depth in range(max_depth+1):
         chord = (root_other_delta*(u1-u0)[:, None]-(b-a)).norm(dim=-1)

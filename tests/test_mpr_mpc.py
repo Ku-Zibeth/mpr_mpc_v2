@@ -83,6 +83,8 @@ def mppi_cfg(**updates):
         # Legacy algorithm-only fixtures opt out explicitly; V3 integration
         # tests supply live geometry and keep safety enabled.
         "safety": {"enabled": False},
+        # Normal-search unit fixtures; V3.1 regressions enable recovery explicitly.
+        "recovery": {"enabled": False},
     }
     cfg.update(updates)
     return cfg

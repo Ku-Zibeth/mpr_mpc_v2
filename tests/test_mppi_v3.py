@@ -39,7 +39,7 @@ class RankedEvaluator:
         return SimpleNamespace(total_value=values, discounted_reward=values, terminal_q=values*0,
             cumulative_cost=cost if compute_cost else None,
             predicted_cost=cost[:, None].expand(-1, actions.shape[1]-1) if compute_cost else None,
-            cost_validated=True, timings={})
+            cost_validated=True, cost_ranking_validated=True, timings={})
 
 
 def safety_cfg(**changes):
@@ -226,6 +226,8 @@ def test_lattice_fallback_uses_same_independent_safety_filter():
                     safety_context=braking_context(), lattice_actions=lattice)
     assert len(checks) == 2
     assert result.metrics["lattice_fallback"] == 1
+    assert result.metrics["recovery_search_delta"] == 0
+    assert result.metrics["lattice_fallback_delta"] > 0
     assert result.metrics["emergency_fallback"] == 0
     torch.testing.assert_close(result.action, lattice[0])
 

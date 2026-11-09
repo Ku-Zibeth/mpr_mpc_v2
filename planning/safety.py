@@ -50,6 +50,8 @@ class SafetyResult:
     positions: torch.Tensor
     boundary_risk: torch.Tensor | None = None
     interval_collision: torch.Tensor | None = None
+    first_collision: torch.Tensor | None = None
+    first_offroad: torch.Tensor | None = None
 
     def summary(self, index=0):
         return {key: float(getattr(self, key)[index].cpu())

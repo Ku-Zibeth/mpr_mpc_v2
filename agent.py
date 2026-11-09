@@ -10,7 +10,7 @@ import torch
 from omegaconf import OmegaConf
 
 from .planning.config import mapping, section
-from .planning.cost_validation import CostModelValidator
+from .planning.cost_validation import CostModelValidator, cost_definition
 from .residual_rl import ResidualReplayBuffer, ResidualSACAgent
 from .residual_rl.types import ResidualPolicyOutput
 
@@ -83,7 +83,7 @@ class MPRMPCAgent:
         self._residual_episode_complete = False
         self._tdmpc_frozen = False
         self.last_loaded_checkpoint_metadata: dict = {}
-        self.cost_validator = CostModelValidator(mapping(section(cfg, "cost")))
+        self.cost_validator = CostModelValidator(mapping(section(cfg, "cost")), label_definition=cost_definition(cfg))
         self.cost_validation_metrics = {}
 
     def _print_residual_startup_diagnostics(self) -> None:

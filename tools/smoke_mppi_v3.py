@@ -19,6 +19,7 @@ bootstrap()
 from common.seed import set_seed
 from env import make_env
 from mpr_mpc.evaluate_model_suite import _make_cfg, _make_agent, _apply_evaluation_stack
+from mpr_mpc.evaluation_diagnostics import prediction_outcomes
 
 
 def main():
@@ -27,6 +28,8 @@ def main():
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--steps", type=int, default=5)
     parser.add_argument("--scenarios", nargs="+", type=int, default=[1714, 539])
+    parser.add_argument("--recovery-probe", action="store_true",
+                        help="One artificial unsafe-baseline probe in a real live state, not a success benchmark")
     args = parser.parse_args()
     if args.steps <= 0 or args.output.exists():
         parser.error("Require positive steps and a fresh output file.")
@@ -38,7 +41,7 @@ def main():
     effective, cfg = _make_cfg(raw, args.checkpoint.parent.parent.name, args.checkpoint, args.scenarios)
     cfg.residual_rl["buffer_size"] = 8
     env = make_env(cfg)
-    records = []
+    records, recovery_probe = [], None
     try:
         with contextlib.redirect_stdout(io.StringIO()):
             agent = _make_agent(cfg, env)
@@ -66,9 +69,38 @@ def main():
                                executed_action=action.tolist(), baseline_action=baseline.tolist(),
                                actual_first_delta=delta.tolist(), **result.metrics)
                     records.append(row)
-                    observation, _, done, _ = env.step(action)
+                    observation, _, done, info = env.step(action)
+                    row.update(prediction_outcomes(info, result))
                     if done:
                         break
+        if args.recovery_probe:
+            scene = args.scenarios[-1]
+            _apply_evaluation_stack(agent.planner, "world_model", loaded)
+            observation = env.reset(seed=scene)
+            for step in range(20):
+                action = agent.act(observation, t0=step == 0, eval_mode=True)
+                observation, _, done, _ = env.step(action)
+                if done:
+                    raise RuntimeError("Recovery probe prefix ended before the shared live state.")
+            planner, vehicle = agent.planner, env.unwrapped_metadrive.agent
+            context = planner.prepare(observation, vehicle, need_world_model_features=True,
+                                      need_mppi_safety=True, need_residual_state=False)
+            unsafe = torch.ones_like(context.coarse_actions)
+            result = planner.local_mppi.plan(context.latent, unsafe, eval_mode=True,
+                safety_context=context.mppi_safety_context, lattice_actions=context.coarse_actions,
+                lattice_corridor_context=planner._corridor_context(context.selection.coarse_path, vehicle))
+            assert result.metrics["baseline_safety_valid"] == 0 and result.metrics["recovery_search"] == 1
+            assert result.metrics["lattice_baseline_safety_valid"] == 1
+            assert result.metrics["selected_safety_valid"] == 1 and result.metrics["emergency_fallback"] == 0
+            assert result.planning_mode == "recovery_lattice"
+            _, _, _, info = env.step(result.action.cpu())
+            recovery_probe = dict(scenario=scene, injected_baseline="all steering=1/throttle=1; not a SAC output",
+                planning_mode_name=result.planning_mode, executed_action=result.action.cpu().tolist(),
+                actual_collision=any(bool(info.get(k, False)) for k in ("crash", "crash_vehicle", "crash_object")),
+                actual_offroad=bool(info.get("out_of_road", False)),
+                vehicle_parameters={k: vehicle.config.get(k) for k in
+                    ("max_engine_force", "max_brake_force", "max_steering", "mass", "wheel_friction")},
+                **result.metrics)
         assert agent.planner.residual_state_dim == 535
     finally:
         env.close()
@@ -77,7 +109,7 @@ def main():
     args.output.write_text(json.dumps(dict(
         checkpoint=str(args.checkpoint.resolve()), checkpoint_sha256=checksum,
         note="Partial inference/physics smoke only; no training and no episode success claim.",
-        records=records), indent=2))
+        records=records, recovery_probe=recovery_probe), indent=2))
     active = [row for row in records if row["stack"] != "world_model_residual_rl"]
     print(json.dumps(dict(steps=len(records), mppi_steps=len(active),
         nonzero_first_corrections=sum(row["mppi/first_action_delta_norm"] > 1e-6 for row in active),
@@ -85,7 +117,8 @@ def main():
         unverified_fallbacks=sum(row["mppi/safety_fallback_unverified"] for row in active),
         mean_full_planning_ms=float(np.mean([row["mpr/total_planning_ms"] for row in active])),
         mean_safety_ms=float(np.mean([row["mppi/safety_check_ms"] for row in active])),
-        residual_state_dim=535, checkpoint_unchanged=True), indent=2), flush=True)
+        residual_state_dim=535, checkpoint_unchanged=True,
+        recovery_probe_mode=recovery_probe["planning_mode_name"] if recovery_probe else None), indent=2), flush=True)
 
 
 if __name__ == "__main__":

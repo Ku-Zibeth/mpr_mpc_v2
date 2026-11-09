@@ -35,6 +35,7 @@ class TrajectoryConsequence:
     predicted_cost: torch.Tensor | None = None
     cumulative_cost: torch.Tensor | None = None
     cost_validated: bool = False
+    cost_ranking_validated: bool = False
     cost_validated_mask: torch.Tensor | None = None
     cost_unavailable_reason: str = "unvalidated"
     risk_summary: dict[str, Any] = field(default_factory=dict)
@@ -93,6 +94,8 @@ class MPRPlanResult:
     stage: PlanningStage
     metrics: dict[str, float] = field(default_factory=dict)
     debug: dict[str, Any] = field(default_factory=dict)
+    planning_mode: str = "baseline"
+    recovery_reason: str = "none"
 
     @property
     def coarse_parameters(self) -> np.ndarray:

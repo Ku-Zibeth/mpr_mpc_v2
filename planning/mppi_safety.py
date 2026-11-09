@@ -13,6 +13,7 @@ import torch
 
 from .safety import SafetyContext, SafetyResult, TrajectorySafetyEvaluator, _corners
 from .swept_collision import _position_bound
+from .swept_collision import swept_collisions
 
 
 @dataclass
@@ -33,6 +34,10 @@ class MPPISafetyFilter:
             if not math.isfinite(value) or value <= 0:
                 raise ValueError(f"MPPI safety {name} must be positive and finite.")
         for name in ("hard_ttc", "hard_clearance"):
+            value = float(cfg.get(name, 0.))
+            if not math.isfinite(value) or value < 0:
+                raise ValueError(f"MPPI safety {name} must be finite and nonnegative.")
+        for name in ("obstacle_acceleration_bound", "obstacle_velocity_error", "braking_distance_deceleration"):
             value = float(cfg.get(name, 0.))
             if not math.isfinite(value) or value < 0:
                 raise ValueError(f"MPPI safety {name} must be finite and nonnegative.")
@@ -109,6 +114,7 @@ class MPPISafetyFilter:
         # interval's exact conservative swept-envelope test below.
         whole = torch.cat((lower.amin(1), upper.amax(1)), -1).numpy()
         whole_inside = np.asarray(shapely.covers(safe_road, shapely.box(*whole.T)))
+        first_offroad = np.zeros(len(actions), dtype=bool)
         paths = np.flatnonzero(~whole_inside)
         if len(paths):
             bounds = torch.cat((lower[paths], upper[paths]), -1).numpy().reshape(-1, 4)
@@ -121,6 +127,7 @@ class MPPISafetyFilter:
                 swept = shapely.buffer(hulls, pad[paths].numpy().reshape(-1)[ambiguous]/math.cos(math.pi/32)+1e-6, quad_segs=8)
                 inside[ambiguous] = shapely.covers(safe_road, swept)
             whole_inside[paths] = inside.reshape(len(paths), -1).all(1)
+            first_offroad[paths] = ~inside.reshape(len(paths), -1)[:, :self.geometry.substeps].all(1)
         offroad = torch.from_numpy(~whole_inside)
         interval = controls.new_full((len(actions), positions.shape[1]-1), torch.inf)
         if context.obstacles:
@@ -131,12 +138,37 @@ class MPPISafetyFilter:
                     [o.heading for o in context.obstacles], [o.length for o in context.obstacles],
                     [o.width for o in context.obstacles]))
             other_xy, other_v, other_heading, lengths, widths = context.cache[tensor_key]
-            interval = self.geometry._swept_check(positions, headings, speeds, other_xy, other_v,
-                other_heading, lengths, widths, length, width, skip=None)
+            acceleration_bound = float(self.cfg.get("obstacle_acceleration_bound", 0.))
+            velocity_error = float(self.cfg.get("obstacle_velocity_error", 0.))
+            if acceleration_bound or velocity_error:
+                interval = swept_collisions(positions, headings, other_xy, other_v, other_heading, lengths, widths,
+                    ego_length=length, ego_width=width, dt=self.geometry.dt/self.geometry.substeps,
+                    max_depth=self.geometry.swept_max_depth, angle_tolerance=self.geometry.swept_angle_tolerance,
+                    position_tolerance=self.geometry.swept_position_tolerance, curved=True, speeds=speeds,
+                    obstacle_acceleration_bound=acceleration_bound, obstacle_velocity_error=velocity_error)
+            else:
+                interval = self.geometry._swept_check(positions, headings, speeds, other_xy, other_v,
+                    other_heading, lengths, widths, length, width, skip=None)
         collision = torch.isfinite(interval).any(1)
         times = torch.arange(interval.shape[1])*self.geometry.dt/self.geometry.substeps
         ttc = (times[None]+interval*self.geometry.dt/self.geometry.substeps).amin(1)
         valid = ~offroad & ~kinematic & ~collision
+        # Optional additional same-lane longitudinal stopping envelope. A
+        # positive value must be a calibrated LOWER braking bound, not the
+        # kinematic point estimate. Default stays diagnostic-only.
+        deceleration = float(self.cfg.get("braking_distance_deceleration", 0.))
+        if deceleration and context.obstacles:
+            direction = positions.new_tensor([math.cos(context.heading), math.sin(context.heading)])
+            normal = torch.stack((-direction[1], direction[0]))
+            relative = other_xy-context.position
+            gap = relative@direction-(length+lengths)/2
+            lateral = (relative@normal).abs()
+            closing = (context.speed-other_v@direction).clamp_min(0)
+            required = closing*self.geometry.dt+closing.square()/(2*deceleration)
+            blocked = (gap >= 0) & (gap < required) & (lateral < (width+widths)/2)
+            # Reject unbraked sequences; full braking still goes through all
+            # road/collision checks and may be explicitly unverified.
+            valid &= ~blocked.any() | (explicit[:, 0, 1] <= self.emergency_throttle)
         unavailable = controls.new_full((len(controls),), float("nan"))
         clearance = unavailable.masked_fill(collision, 0.)
         if float(self.cfg.get("hard_ttc", 0.)) > 0 or float(self.cfg.get("hard_clearance", 0.)) > 0:
@@ -144,7 +176,19 @@ class MPPISafetyFilter:
             valid &= details.valid
             clearance, ttc = details.min_clearance, details.min_ttc
         return SafetyResult(valid, collision, offroad, kinematic, clearance, ttc,
-                            unavailable, torch.zeros_like(ttc), positions, unavailable, torch.isfinite(interval))
+                            unavailable, torch.zeros_like(ttc), positions, unavailable, torch.isfinite(interval),
+                            torch.isfinite(interval[:, :self.geometry.substeps]).any(1), torch.from_numpy(first_offroad))
+
+    def stopping_diagnostics(self, context, horizon):
+        # Model estimate only: MetaDrive Bullet brake force/mass/tire friction
+        # are not a measured deceleration bound. Report uncovered stop horizon.
+        deceleration = float(self.cfg.get("braking_distance_deceleration", 0.) or self.cfg.get("max_deceleration", 6.))
+        stop_time = context.speed/deceleration
+        t = horizon*self.geometry.dt
+        return dict(stopping_distance_m=context.speed*self.geometry.dt+context.speed**2/(2*deceleration),
+                    stopping_time_s=stop_time, stopping_horizon_insufficient=float(stop_time > t),
+                    obstacle_uncertainty_radius_m=float(self.cfg.get("obstacle_velocity_error", 0.))*t
+                        +.5*float(self.cfg.get("obstacle_acceleration_bound", 0.))*t*t)
 
     def braking_sequence(self, context, *, horizon, device, dtype):
         if not getattr(context, "braking_verified", False):

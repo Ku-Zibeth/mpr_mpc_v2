@@ -25,6 +25,26 @@ PLAN_ALIASES = {
 }
 
 
+def prediction_outcomes(info, result):
+    """Compare the executed transition to the first-control prediction only.
+
+    A collision anywhere in the H-step forecast is a different statistic and
+    must not be used as the predicted label for the next environment step.
+    """
+    if result is None or not result.stage.use_mppi:
+        return {}
+    crash = any(bool(info.get(k, False)) for k in
+                ("crash", "crash_vehicle", "crash_object", "crash_building", "crash_human", "crash_sidewalk"))
+    offroad = bool(info.get("out_of_road", False))
+    metrics = {"mppi/actual_collision": float(crash), "mppi/actual_offroad": float(offroad)}
+    for name, actual in (("collision", crash), ("offroad", offroad)):
+        prediction = result.metrics.get(f"mppi/predicted_first_{name}", float("nan"))
+        known = prediction is not None and np.isfinite(prediction)
+        metrics[f"mppi/predicted_safe_actual_{name}"] = float(not prediction and actual) if known else float("nan")
+        metrics[f"mppi/prediction_{name}_known"] = float(known)
+    return metrics
+
+
 class StepDiagnosticsLogger:
     """Optional per-step evidence for the existing evaluation entry points."""
 
@@ -45,14 +65,17 @@ class StepDiagnosticsLogger:
             except Exception as error:
                 print(f"[evaluation] W&B unavailable: {error}; local step evidence continues.", flush=True)
 
-    def log(self, scenario, step, action, result):
+    def log(self, scenario, step, action, result, info=None):
         if self.stream is None and self.run is None:
             return
         row = dict(scenario=int(scenario), episode_step=int(step),
                    executed_action=np.asarray(action.detach().cpu() if torch.is_tensor(action) else action).tolist())
         if result is not None:
             row.update(result.metrics)
+            row.update(prediction_outcomes(info, result) if info is not None else {})
             row.update(residual_enabled=bool(result.stage.use_residual), mppi_enabled=bool(result.stage.use_mppi))
+            row["planning_mode"] = getattr(result, "planning_mode", "unknown")
+            row["recovery_reason"] = getattr(result, "recovery_reason", "unknown")
         row = {key: None if isinstance(value, (float, np.floating)) and not np.isfinite(value) else value
                for key, value in row.items()}
         if self.stream is not None:
@@ -124,6 +147,7 @@ class EpisodeDiagnostics:
         for key in ("dynamic_collision", "static_collision", "road_event", "other_event", "unallocated_event"):
             self.sums[f"safety_{key}_cost"] += float(info.get(f"safety_{key}_cost", 0))
         if result is not None:
+            result.metrics.update(prediction_outcomes(info, result))
             predicted_step = float(result.metrics.get("mppi/predicted_step_cost", float("nan")))
             if result.stage.use_mppi and np.isfinite(predicted_step):
                 self.sums["predicted_step_cost"] += predicted_step
@@ -157,6 +181,12 @@ class EpisodeDiagnostics:
             **{name: mean(self.plans[key]) for name, key in PLAN_ALIASES.items()},
             **{name: mean(self.plans[key] or self.plans.get(legacy.get(name, ""), []))
                for name, key in MPPI_EPISODE_METRICS.items()},
+            **{f"mppi_{name}": mean(self.plans[f"mppi/{name}"]) for name in
+                ("actual_collision", "actual_offroad", "predicted_safe_actual_collision", "predicted_safe_actual_offroad",
+                 "prediction_collision_known", "prediction_offroad_known")},
+            **{f"mppi_mode_{name}_rate": mean([float(v == code) for v in self.plans["mppi/planning_mode"]])
+                for code, name in enumerate(("baseline", "normal", "recovery_lattice", "recovery_controlled",
+                                             "lattice_fallback", "emergency_verified", "emergency_unverified"))},
             "collision": float(self.crash), "offroad": float(self.offroad),
             "collision_and_success_rate": float(self.crash and bool(info.get("success", False))),
             "collision_and_offroad_rate": float(self.crash and self.offroad),

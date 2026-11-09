@@ -8,6 +8,7 @@ import torch
 from mpr_mpc._bootstrap import bootstrap
 from .timing import PhaseTimings
 from .types import TrajectoryConsequence
+from .cost_validation import candidate_ranking_ready, cost_definition
 
 bootstrap()
 from common import math as td_math  # noqa: E402
@@ -65,7 +66,7 @@ class TrajectoryWorldModelEvaluator:
         terminated = actions.new_zeros((batch, 1))
         total = actions.new_zeros((batch, 1))
         cost_total = torch.zeros_like(total)
-        rewards, costs = [], []
+        rewards, cost_latents = [], []
         timing = PhaseTimings(actions.device)
         with timing.measure("world_model_rollout"):
             for step in range(self.horizon):
@@ -75,10 +76,7 @@ class TrajectoryWorldModelEvaluator:
                 rewards.append(reward.squeeze(-1))
                 total += discount * (1-terminated) * reward
                 if compute_cost:
-                    with timing.measure("cost_prediction"):
-                        cost = model.cost(z, action, task)
-                    costs.append(cost.squeeze(-1))
-                    cost_total += gamma_c**step * cost
+                    cost_latents.append(z)
                 z = model.next(z, action, task)
                 discount *= discount_step
                 if bool(self.agent.cfg.episodic) and getattr(model, "_termination", None) is not None:
@@ -89,9 +87,25 @@ class TrajectoryWorldModelEvaluator:
             terminal_q = qs.mean(0)
             discounted_reward = total.clone()
             total += discount * (1-terminated) * terminal_q
+            prediction = None
+            if compute_cost:
+                # Cost has no recurrent dependency. One H*B batch preserves
+                # the same latent/action pairs and discount semantics while
+                # avoiding H small MLP launches and CUDA timing event pairs.
+                with timing.measure("cost_prediction"):
+                    latent_batch = torch.stack(cost_latents, 1).reshape(batch*self.horizon, -1)
+                    action_batch = actions[:, :self.horizon].reshape(batch*self.horizon, -1)
+                    cost_task = task
+                    if task is not None and torch.is_tensor(task) and task.numel() == batch:
+                        cost_task = task.reshape(-1).repeat_interleave(self.horizon)
+                    raw_cost = model.cost(latent_batch, action_batch, cost_task)
+                    if raw_cost.shape != (batch*self.horizon, 1):
+                        raise RuntimeError("WM Cost Head returned the wrong batched prediction shape.")
+                    prediction = raw_cost.reshape(batch, self.horizon)
+                    weights = gamma_c**torch.arange(self.horizon, device=actions.device, dtype=actions.dtype)
+                    cost_total = (prediction*weights).sum(1, keepdim=True)
         timing_values = timing.finish()
         timing_values.setdefault("cost_prediction_ms", 0.0)
-        prediction = torch.stack(costs, 1) if costs else None
         if prediction is not None and (not torch.isfinite(prediction).all() or (prediction < 0).any()):
             raise RuntimeError("WM Cost Head produced non-finite or negative step costs; check weights and label scale.")
         if prediction is not None and not torch.isfinite(cost_total).all():
@@ -105,6 +119,8 @@ class TrajectoryWorldModelEvaluator:
             terminal_latent=z, predicted_cost=prediction,
             cumulative_cost=cost_total.squeeze(-1) if compute_cost else None,
             cost_validated=validated,
+            cost_ranking_validated=bool(compute_cost and candidate_ranking_ready(
+                model, self.horizon, cost_definition(self.agent.cfg))),
             cost_validated_mask=torch.full((batch,), validated, device=actions.device, dtype=torch.bool),
             cost_unavailable_reason="disabled" if not compute_cost else "available" if validated else "unvalidated",
             discounted_reward=discounted_reward.squeeze(-1), timings=timing_values,
