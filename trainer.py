@@ -282,6 +282,7 @@ class MPROnlineTrainer(OnlineTrainer):
 
     def train(self):
         train_metrics, done, info = {}, True, {}
+        episode_started = False
         eval_next = self._step == 0
         eval_freq = max(1, int(self.cfg.eval_freq))
         next_eval = ((self._step // eval_freq) + 1) * eval_freq
@@ -293,7 +294,7 @@ class MPROnlineTrainer(OnlineTrainer):
                 if eval_next:
                     self._handle_eval()
                     eval_next = False
-                if self._step > 0:
+                if episode_started:
                     if info["terminated"] and not self.cfg.episodic:
                         raise ValueError("Termination detected but episodic=false.")
                     episode = torch.cat(self._tds)
@@ -314,6 +315,7 @@ class MPROnlineTrainer(OnlineTrainer):
                     self.logger.log(train_metrics, "train")
                 observation = self.env.reset(seed=int(self._scenario_rng.choice(self._training_scenarios)))
                 self._tds = [self.to_td(observation)]
+                episode_started = True
 
             # No random seed policy: Stage A is Lattice-controlled from the first step.
             self.agent.set_global_step(self._step)

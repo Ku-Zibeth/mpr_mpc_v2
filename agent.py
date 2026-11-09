@@ -197,6 +197,9 @@ class MPRMPCAgent:
         step = self.global_env_step if global_step is None else int(global_step)
         self.set_global_step(step)
         self._maybe_freeze_tdmpc2(step)
+        if t0 and eval_mode:
+            scenario = int(self.env.unwrapped_metadrive.current_seed)
+            self.planner.reset(seed=(int(self.cfg.seed) + scenario) % 2**32)
         result = self.planner.plan(
             obs,
             self.env.unwrapped_metadrive.agent,
@@ -504,6 +507,8 @@ class MPRMPCAgent:
         checks = [
             ("algorithm_version", state.get("algorithm_version", metadata.get("algorithm_version"))),
             ("latent_dim", metadata.get("latent_dim")),
+            ("model_size", metadata.get("model_size")),
+            ("num_q", metadata.get("num_q")),
         ]
         if check_residual:
             checks.extend([("residual_state_dim", metadata.get("residual_state_dim")),
@@ -512,20 +517,16 @@ class MPRMPCAgent:
             planner_state = state.get("planner") or state.get("mpr_mpc") or {}
             checks.extend(
                 [
-                    ("model_size", metadata.get("model_size")),
-                    ("num_q", metadata.get("num_q")),
                     ("horizon", metadata.get("horizon")),
                     ("use_lagrangian", metadata.get("use_lagrangian")),
                     (
                         "stage_config",
                         planner_state.get("stage_config", metadata.get("stage_config")),
                     ),
-                    (
-                        "mppi_config",
-                        planner_state.get("mppi_config", metadata.get("mppi_config")),
-                    ),
                 ]
             )
+            if bool(getattr(self.cfg, "restore_mppi_runtime", True)):
+                checks.append(("mppi_config", planner_state.get("mppi_config", metadata.get("mppi_config"))))
         mismatches = []
         if check_residual and "risk_features" in metadata and metadata["risk_features"] != current["risk_features"]:
             raise ValueError("Checkpoint risk feature order differs from this run.")

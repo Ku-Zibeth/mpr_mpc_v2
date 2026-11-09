@@ -594,6 +594,9 @@ def main(raw_cfg: DictConfig) -> None:
                 diagnostics.observe(previous_obs, action, info, agent.last_plan, env.unwrapped_metadrive.agent)
 
                 step += 1
+                if run is not None and agent.last_plan is not None:
+                    run.log({"planner/scenario": int(scenario), "planner/episode_step": step,
+                             **agent.last_plan.metrics})
 
                 episode_return += float(reward)
 
@@ -700,7 +703,6 @@ def main(raw_cfg: DictConfig) -> None:
                         for key, value
                         in row.items()
                     },
-                    step=episode,
                 )
 
             # ---------------------------------------------------------

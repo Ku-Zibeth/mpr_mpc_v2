@@ -22,8 +22,8 @@ class FakePlanner:
     allow_residual = True
     allow_mppi = True
 
-    def reset(self):
-        pass
+    def reset(self, seed=None):
+        self.episode_seed = seed
 
     def stage_for_step(self, step):
         return SimpleNamespace(
@@ -101,7 +101,7 @@ def test_ablation_executes_requested_stack_and_counts_mid_episode_events(label, 
         "benchmark": {"paired_episode_seeds": True, "mppi_eval_seed": 7},
         "residual_rl": {"cost_limit": 5.0},
     })
-    env, agent, saved, random_seeds = FakeEnv(), FakeAgent(), [], []
+    env, agent, saved, random_seeds, steps = FakeEnv(), FakeAgent(), [], [], []
     with (
         patch.object(suite, "_make_cfg", return_value=(cfg, cfg)),
         patch.object(suite, "make_env", return_value=env),
@@ -109,15 +109,21 @@ def test_ablation_executes_requested_stack_and_counts_mid_episode_events(label, 
         patch.object(suite, "set_seed", side_effect=random_seeds.append),
     ):
         rows, summary = suite._evaluate_checkpoint(
-            cfg, "old_model", Path("checkpoint.pt"), [1714, 1525], on_episode=saved.append
+            cfg, "old_model", Path("checkpoint.pt"), [1714, 1525], on_episode=saved.append,
+            on_step=lambda scenario, step, env, result, done: steps.append(
+                (scenario, step, done, result.stage.use_residual, result.stage.use_mppi)
+            ),
         )
     assert agent.executed == [expected] * 4
     assert agent.global_env_step == 500001
     assert agent.planner.local_mppi.eval_seed == 7
+    assert agent.planner.episode_seed == 1526
     assert random_seeds == [1, 1715, 1526]
     assert [r["episode_seed"] for r in rows] == [1715, 1526]
     assert [r["scenario"] for r in rows] == [1714, 1525]
     assert saved == rows
+    assert steps == [(scenario, step, step == 2, *expected)
+                     for scenario in (1714, 1525) for step in (1, 2)]
     assert all(r["final_crash_vehicle"] == 0.0 for r in rows)
     assert all(r["final_out_of_road"] == 0.0 for r in rows)
     assert summary["mean_episode_crash"] == 1.0

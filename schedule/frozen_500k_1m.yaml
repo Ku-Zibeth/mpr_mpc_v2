@@ -1,0 +1,20 @@
+# @package _global_
+# Load the 500k world-model milestone, then train SAC for 500k environment steps.
+steps: 1000000
+residual_rl:
+  freeze_tdmpc2_on_start: true
+mpr_mpc:
+  stages:
+    residual_start_step: 500000
+    mppi_start_step: 1000000
+milestone_checkpoints:
+  world_model_step: 500000
+  world_model_residual_step: 1000000
+  full_model_step: 1000000
+eval_freq: 10000
+eval_episodes: 20
+save_video: false
+tdmpc_stage_training:
+  stage_a_update_ratio: 1.0
+  stage_b_update_ratio: 0.0
+  stage_c_update_ratio: 0.0

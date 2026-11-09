@@ -49,7 +49,7 @@ from mpr_mpc.lattice.frenet_metadrive import (
 from mpr_mpc.planning.coordinator import MPRMPCPlanner
 from mpr_mpc.planning.native_config import native_mppi_config
 from mpr_mpc.tdmpc2.core import MPRTDMPC2
-from mpr_mpc.evaluation_diagnostics import EpisodeDiagnostics
+from mpr_mpc.evaluation_diagnostics import EpisodeDiagnostics, StepDiagnosticsLogger
 
 
 DEFAULT_MODELS_ROOT = (
@@ -318,8 +318,10 @@ def _apply_checkpoint_runtime_config(cfg_raw: DictConfig, checkpoint: Path) -> N
         _merge_section(cfg_raw.mpr_mpc.stages, stage_config)
 
     mppi_config = planner_state.get("mppi_config") or metadata.get("mppi_config")
-    if isinstance(mppi_config, dict):
+    if isinstance(mppi_config, dict) and bool(cfg_raw.get("restore_mppi_runtime", False)):
         _merge_section(cfg_raw.mpr_mpc.mppi, native_mppi_config(mppi_config))
+        if "safety" not in mppi_config:
+            cfg_raw.mpr_mpc.mppi.safety.enabled = False
 
     residual_config = planner_state.get("residual_config")
     if isinstance(residual_config, dict):
@@ -382,6 +384,7 @@ def _evaluate_checkpoint(
     scenarios: list[int],
     *,
     on_episode: Callable[[dict[str, Any]], None] | None = None,
+    on_step: Callable[[int, int, Any, Any, bool], None] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     cfg_raw, cfg = _make_cfg(raw_cfg, version, checkpoint, scenarios)
     set_seed(int(cfg.seed))
@@ -389,6 +392,12 @@ def _evaluate_checkpoint(
     env = make_env(cfg)
     rows: list[dict[str, Any]] = []
     validation_episodes = []
+    benchmark = cfg_raw.get("benchmark", {})
+    save_steps = bool(benchmark.get("save_step_diagnostics", False))
+    step_dir = (Path(str(benchmark.get("output_dir", SCRIPT_ROOT / "logs/benchmark"))) / "steps"
+                if save_steps or benchmark.get("enable_wandb", False) else None)
+    step_log = StepDiagnosticsLogger(step_dir, f"{version}_{cfg_raw.get('evaluation_stack', 'checkpoint')}_seed{cfg.seed}",
+        wandb_cfg=cfg_raw if benchmark.get("enable_wandb", False) else None)
     try:
         agent = _make_agent(cfg, env)
         checkpoint_state = agent.load(checkpoint)
@@ -416,8 +425,8 @@ def _evaluate_checkpoint(
         for episode_index, scenario in enumerate(scenarios, start=1):
             print(f"[{episode_index:03d}/{len(scenarios):03d}] seed={scenario} reset", flush=True)
             diagnostics = EpisodeDiagnostics()
-            agent.planner.reset()
             episode_seed = (int(cfg.seed) + int(scenario)) % 2**32
+            agent.planner.reset(seed=episode_seed)
             if paired_seeds:
                 set_seed(episode_seed)
             obs = env.reset(seed=int(scenario))
@@ -453,6 +462,9 @@ def _evaluate_checkpoint(
                     _as_float(info.get("out_of_road", 0.0)) > 0.0
                 )
                 step += 1
+                step_log.log(scenario, step, action, agent.last_plan)
+                if on_step is not None:
+                    on_step(int(scenario), step, env, agent.last_plan, bool(done))
                 if step == 1 or step % 100 == 0:
                     print(f"[progress] seed={scenario} step={step} "
                           f"route={float(info.get('route_completion', 0)):.3f}", flush=True)
@@ -528,6 +540,7 @@ def _evaluate_checkpoint(
             )
     finally:
         env.close()
+        step_log.close()
 
     summary = _summarize(version, checkpoint, rows)
     summary.update(agent.validate_cost_model(validation_episodes))

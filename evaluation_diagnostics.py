@@ -9,7 +9,7 @@ import numpy as np
 import torch
 from omegaconf import OmegaConf
 from mpr_mpc.evaluation_statistics import cluster_intervals
-from mpr_mpc.planning.local_mppi import MPPI_DIAGNOSTIC_KEYS
+from mpr_mpc.planning.local_mppi import MPPI_DIAGNOSTIC_KEYS, MPPI_EPISODE_METRICS
 
 
 PLAN_ALIASES = {
@@ -23,6 +23,56 @@ PLAN_ALIASES = {
     "mppi_correction_magnitude": "mpr/mppi_correction_magnitude",
     "no_safe_candidate_rate": "mpr/no_safe_candidate",
 }
+
+
+class StepDiagnosticsLogger:
+    """Optional per-step evidence for the existing evaluation entry points."""
+
+    def __init__(self, directory, name, *, wandb_cfg=None):
+        self.stream = self.run = None
+        self.upload_failed = False
+        if directory is not None:
+            directory = Path(directory)
+            directory.mkdir(parents=True, exist_ok=True)
+            self.stream = (directory / f"{name}.jsonl").open("a", encoding="utf-8")
+        if wandb_cfg is not None:
+            try:
+                import wandb
+                self.run = wandb.init(project=str(wandb_cfg.wandb_project), entity=wandb_cfg.wandb_entity,
+                    name=name, job_type="evaluation", dir=str(directory),
+                    config=OmegaConf.to_container(wandb_cfg, resolve=True),
+                    settings=wandb.Settings(console="off", init_timeout=60))
+            except Exception as error:
+                print(f"[evaluation] W&B unavailable: {error}; local step evidence continues.", flush=True)
+
+    def log(self, scenario, step, action, result):
+        if self.stream is None and self.run is None:
+            return
+        row = dict(scenario=int(scenario), episode_step=int(step),
+                   executed_action=np.asarray(action.detach().cpu() if torch.is_tensor(action) else action).tolist())
+        if result is not None:
+            row.update(result.metrics)
+            row.update(residual_enabled=bool(result.stage.use_residual), mppi_enabled=bool(result.stage.use_mppi))
+        row = {key: None if isinstance(value, (float, np.floating)) and not np.isfinite(value) else value
+               for key, value in row.items()}
+        if self.stream is not None:
+            self.stream.write(json.dumps(row, allow_nan=False) + "\n")
+            self.stream.flush()
+        if self.run is not None and not self.upload_failed:
+            try:
+                self.run.log(row)
+            except Exception as error:
+                print(f"[evaluation] W&B step upload failed: {error}; local step evidence continues.", flush=True)
+                self.upload_failed = True
+
+    def close(self):
+        if self.stream is not None:
+            self.stream.close()
+        if self.run is not None:
+            try:
+                self.run.finish()
+            except Exception as error:
+                print(f"[evaluation] W&B final sync failed: {error}", flush=True)
 
 
 def fixed_scenarios(cfg):
@@ -49,6 +99,7 @@ class EpisodeDiagnostics:
         self.crash = self.offroad = False
         self.ttcs, self.clearances = [], []
         self.plans = defaultdict(list, {f"mpr/{key}": [] for key in MPPI_DIAGNOSTIC_KEYS})
+        self.plans.update({key: [] for key in MPPI_EPISODE_METRICS.values()})
         self.sums = defaultdict(float)
         self.observations, self.actions, self.costs = [], [], []
         self.speeds = []
@@ -79,6 +130,8 @@ class EpisodeDiagnostics:
                 self.sums["predicted_cost_steps"] += 1
             for key, value in result.metrics.items():
                 self.plans.setdefault(key, [])
+                if key.startswith("mppi/") and not result.stage.use_mppi:
+                    continue
                 if key == "mpr/sac_predicted_cost" and not result.stage.use_residual:
                     continue
                 if key in set(PLAN_ALIASES.values()) - {"mpr/sac_predicted_cost"} and not result.stage.use_mppi:
@@ -96,11 +149,14 @@ class EpisodeDiagnostics:
         mean = lambda values: float(np.mean(values)) if values else float("nan")
         sac = getattr(agent, "residual_sac", None)
         planning = self.plans.get("mpr/total_planning_ms", [])
+        legacy = {"mppi_baseline_selected": "mpr/baseline_selected", "mppi_score_gain": "mpr/planner_score_gain"}
         return {
             **{f"planning_p{q}_ms": float(np.percentile(planning, q)) if planning else float("nan")
                for q in (50, 95, 99)},
             **{f"mean_{key.replace('/', '_')}": mean(values) for key, values in self.plans.items()},
             **{name: mean(self.plans[key]) for name, key in PLAN_ALIASES.items()},
+            **{name: mean(self.plans[key] or self.plans.get(legacy.get(name, ""), []))
+               for name, key in MPPI_EPISODE_METRICS.items()},
             "collision": float(self.crash), "offroad": float(self.offroad),
             "collision_and_success_rate": float(self.crash and bool(info.get("success", False))),
             "collision_and_offroad_rate": float(self.crash and self.offroad),

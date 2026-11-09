@@ -80,6 +80,9 @@ def mppi_cfg(**updates):
         "min_improvement_abs": 0.0,
         "min_improvement_ratio": 0.0,
         "eval_seed": 7,
+        # Legacy algorithm-only fixtures opt out explicitly; V3 integration
+        # tests supply live geometry and keep safety enabled.
+        "safety": {"enabled": False},
     }
     cfg.update(updates)
     return cfg
@@ -153,6 +156,7 @@ class MPRMPCUnitTests(unittest.TestCase):
         planner = LocalMPPI(RecordingEvaluator(), mppi_cfg(), horizon=3, action_dim=2, device="cpu")
         baseline = torch.zeros((4, 2))
         first = planner.plan(torch.zeros((1, 2)), baseline, eval_mode=True).action
+        planner.reset(seed=7)
         second = planner.plan(torch.zeros((1, 2)), baseline, eval_mode=True).action
         torch.testing.assert_close(first, second)
 

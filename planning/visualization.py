@@ -15,6 +15,8 @@ FINAL_MPPI_COLOR_RGB = (30, 210, 235)
 def draw_refinement_overlay(raw_env, result, *, draw_refined: bool = True) -> None:
     """Draw Lattice yellow, residual red, and selected MPPI rollout cyan."""
     _draw_refinement_overlay(raw_env, result, draw_refined=draw_refined)
+    if not getattr(getattr(result, "stage", None), "use_mppi", False):
+        return
     renderer = getattr(raw_env, "top_down_renderer", None)
     debug = getattr(result, "debug", {}) if result is not None else {}
     final_xy = debug.get("final_mppi_xy") if isinstance(debug, dict) else None

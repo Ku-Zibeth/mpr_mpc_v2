@@ -1,0 +1,29 @@
+{
+  "checkpoint": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt",
+  "seed": 1,
+  "repeat_seeds": [
+    1
+  ],
+  "unique_scenarios": 1,
+  "episodes_per_configuration": 1,
+  "episode_seed_rule": "(test_seed + scenario) modulo 2**32",
+  "mppi_eval_seed_rule": "(test_seed + scenario) modulo 2**32; persistent generator within each episode",
+  "horizon": 10,
+  "variants": {
+    "A_lattice": "world_model",
+    "B_lattice_sac": "world_model_residual_rl",
+    "C_lattice_mppi": "lattice_mppi",
+    "D_lattice_sac_mppi": "full_mpr_mpc"
+  },
+  "cost_ablation": false,
+  "event_metrics": "fraction of episodes with an event at any step",
+  "joint_event_denominator": "all evaluated episodes",
+  "ttc_definition": "environment risk_field_min_ttc: longitudinal gap / closing speed to a front vehicle in the same corridor",
+  "mean_ttc": "episode mean of finite nonnegative step TTC values, then mean across valid episodes",
+  "minimum_ttc": "minimum finite TTC across all evaluated steps; no CI for this extreme statistic",
+  "missing_ttc": "no finite closing-front-vehicle TTC; excluded, never converted to zero",
+  "mppi_metrics": "only steps with actual MPPI execution; null for A/B",
+  "ci95_method": "scenario-cluster percentile bootstrap; conservative exact boundary bounds for all-zero/all-one binary rates using unique scenario count",
+  "bootstrap_samples": 100,
+  "bootstrap_seed": 1
+}

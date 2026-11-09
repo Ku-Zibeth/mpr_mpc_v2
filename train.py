@@ -71,8 +71,12 @@ def main(raw_cfg: DictConfig) -> None:
         )
         agent = MPRMPCAgent(cfg, tdmpc_agent, planner, env)
         if cfg.resume_checkpoint:
-            agent.load(cfg.resume_checkpoint, load_optimizer=True)
+            loaded = agent.load(cfg.resume_checkpoint, load_optimizer=True)
+            agent._maybe_freeze_tdmpc2(agent.global_env_step)
             print(f"Resumed MPR-MPC checkpoint: {cfg.resume_checkpoint}")
+            if loaded.get("milestone_type") == "world_model":
+                print(f"Frozen world model at step {agent.global_env_step:,}; "
+                      f"fresh SAC starts with {agent.residual_sac.update_steps} updates.", flush=True)
         trainer = MPROnlineTrainer(
             cfg=cfg,
             env=env,

@@ -54,6 +54,12 @@ def _nullable(value: float) -> float | None:
     return float(value) if math.isfinite(value) else None
 
 
+def _metric_definitions(rows):
+    diagnostics = {key: (key, None) for row in rows for key, value in row.items()
+                   if key.startswith("mppi_") and isinstance(value, (int, float, np.number))}
+    return {**METRICS, **diagnostics}
+
+
 def cluster_intervals(rows: list[dict], metrics: dict, *, samples: int, seed: int) -> dict:
     if not rows or samples <= 0:
         raise ValueError("Confidence intervals require observations and positive bootstrap_samples.")
@@ -108,7 +114,7 @@ def summarize_runs(label: str, rows: list[dict], *, samples: int, seed: int) -> 
         "episodes": len(rows),
         "unique_scenarios": len({k[0] for k in keys}),
         "test_seeds": ",".join(str(s) for s in sorted({k[1] for k in keys})),
-        **cluster_intervals(rows, METRICS, samples=samples, seed=seed),
+        **cluster_intervals(rows, _metric_definitions(rows), samples=samples, seed=seed),
     }
     for name in ("collision_and_success", "collision_and_offroad"):
         result[f"{name}_count"] = int(sum(_number(r, name) for r in rows))
@@ -147,7 +153,7 @@ def paired_comparisons(rows: list[dict], *, samples: int, seed: int, pairs=None)
         ("A_lattice", "C_lattice_mppi"),
         ("B_lattice_sac", "D_lattice_sac_mppi"),
     )
-    metrics = {name: source for name, (source, denominator) in METRICS.items() if denominator is None}
+    metrics = {name: source for name, (source, denominator) in _metric_definitions(rows).items() if denominator is None}
     results = []
     for baseline, candidate in pairs:
         a, b = groups.get(baseline, {}), groups.get(candidate, {})

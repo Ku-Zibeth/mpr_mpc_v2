@@ -124,13 +124,16 @@ def _apply_evaluation_stack(planner, requested: str, checkpoint_state: dict | No
     elif stack == "world_model_residual_rl":
         planner.allow_residual = True
         planner.allow_mppi = False
+    elif stack == "lattice_mppi":
+        planner.allow_residual = False
+        planner.allow_mppi = True
     elif stack == "full_mpr_mpc":
         planner.allow_residual = True
         planner.allow_mppi = True
     elif stack != "stage":
         raise ValueError(
             "evaluation_stack must be one of checkpoint, world_model, "
-            "world_model_residual_rl, full_mpr_mpc."
+            "world_model_residual_rl, lattice_mppi, full_mpr_mpc."
         )
     return {
         "milestone_type": milestone_type or "n/a",
@@ -216,6 +219,9 @@ def main(raw_cfg: DictConfig) -> None:
                 obs, reward, done, info = env.step(action)
                 diagnostics.observe(previous_obs, action, info, agent.last_plan, env.unwrapped_metadrive.agent)
                 step += 1
+                if run is not None and agent.last_plan is not None:
+                    run.log({"planner/scenario": int(scenario), "planner/episode_step": step,
+                             **agent.last_plan.metrics})
                 episode_return += float(reward)
                 episode_cost += float(info.get("cost", 0.0))
                 episode_base_reward += float(info.get("metadrive_reward", 0.0))
@@ -246,7 +252,6 @@ def main(raw_cfg: DictConfig) -> None:
             if run is not None:
                 run.log(
                     {f"eval/{key}": value for key, value in row.items()},
-                    step=episode,
                 )
             print(
                 f"[{episode:02d}/{len(scenes):02d}] seed={int(scenario)} "

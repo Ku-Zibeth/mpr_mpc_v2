@@ -2,12 +2,31 @@ import dataclasses
 import os
 import datetime
 import re
+import json
 
 import numpy as np
 import pandas as pd
 from termcolor import colored
 
 from common import TASK_SET
+
+
+def _local_metric(value):
+	if isinstance(value, dict):
+		return {key: _local_metric(item) for key, item in value.items()}
+	if isinstance(value, (list, tuple)):
+		return [_local_metric(item) for item in value]
+	if hasattr(value, "detach"):
+		return _local_metric(value.detach().cpu().tolist())
+	if isinstance(value, np.ndarray):
+		return _local_metric(value.tolist())
+	if isinstance(value, np.generic):
+		return _local_metric(value.item())
+	if isinstance(value, float) and not np.isfinite(value):
+		return None
+	if value is None or isinstance(value, (str, int, float, bool)):
+		return value
+	return str(value)
 
 
 CONSOLE_FORMAT = [
@@ -112,9 +131,12 @@ class Logger:
 		self._model_dir = make_dir(self._log_dir / "models")
 		self._save_csv = cfg.save_csv
 		self._save_agent = cfg.save_agent
+		self._artifact_logging_enabled = bool(cfg.get("wandb_log_artifacts", True))
 		self._group = cfg_to_group(cfg)
 		self._seed = cfg.seed
 		self._eval = []
+		self._metrics_path = self._log_dir / "metrics.jsonl"
+		self._wandb_metrics_enabled = True
 		print_run(cfg)
 		self.project = cfg.get("wandb_project", "none")
 		self.entity = cfg.get("wandb_entity", "none")
@@ -129,15 +151,26 @@ class Logger:
 		import wandb
 		run_name = cfg.get("wandb_run_name") or f"{cfg.exp_name}-seed{cfg.seed}"
 
-		wandb.init(
-			project=self.project,
-			entity=self.entity,
-			name=str(run_name),
-			group=self._group,
+		options = dict(
+			project=self.project, entity=self.entity, name=str(run_name), group=self._group,
 			tags=cfg_to_group(cfg, return_list=True) + [f"seed:{cfg.seed}"],
-			dir=self._log_dir,
-			config=dataclasses.asdict(cfg),
+			dir=self._log_dir, config=dataclasses.asdict(cfg),
+			settings=wandb.Settings(console="off", init_timeout=60),
 		)
+		try:
+			wandb.init(**options)
+		except Exception as error:
+			print(f"[wandb] Online initialization failed: {error}; trying offline logging.", flush=True)
+			try:
+				wandb.finish(quiet=True)
+			except Exception:
+				pass
+			try:
+				wandb.init(**options, mode="offline")
+			except Exception as offline_error:
+				print(f"[wandb] Offline initialization failed: {offline_error}; using local metrics.jsonl.", flush=True)
+				self._wandb = self._video = None
+				return
 		print(colored("Logs will be synced with wandb.", "blue", attrs=["bold"]))
 		self._wandb = wandb
 		self._video = (
@@ -157,14 +190,25 @@ class Logger:
 	def save_agent(self, agent=None, identifier='final'):
 		if self._save_agent and agent:
 			fp = self._model_dir / f'{str(identifier)}.pt'
-			agent.save(fp)
-			if self._wandb:
-				artifact = self._wandb.Artifact(
-					self._group + '-' + str(self._seed) + '-' + str(identifier),
-					type='model',
-				)
-				artifact.add_file(fp)
-				self._wandb.log_artifact(artifact)
+			temporary = fp.with_suffix(".pt.tmp")
+			agent.save(temporary)
+			os.replace(temporary, fp)
+			if self._wandb and self._artifact_logging_enabled:
+				try:
+					artifact = self._wandb.Artifact(
+						self._group + '-' + str(self._seed) + '-' + str(identifier),
+						type='model',
+					)
+					artifact.add_file(fp)
+					self._wandb.log_artifact(artifact)
+				except Exception as error:
+					self._artifact_logging_enabled = False
+					print(colored(
+						f"[wandb] Model artifact upload failed: {error}. "
+						f"Local checkpoint is saved at {fp}. "
+						"Further artifact uploads disabled; training and metric logging continue.",
+						"yellow",
+					), flush=True)
 
 	def finish(self, agent=None):
 		try:
@@ -172,7 +216,10 @@ class Logger:
 		except Exception as e:
 			print(colored(f"Failed to save model: {e}", "red"))
 		if self._wandb:
-			self._wandb.finish()
+			try:
+				self._wandb.finish()
+			except Exception as error:
+				print(f"[wandb] Final sync failed: {error}; local results are preserved.", flush=True)
 
 	def _format(self, key, value, ty):
 		if ty == "int":
@@ -193,7 +240,7 @@ class Logger:
 		for k, disp_k, ty in CONSOLE_FORMAT:
 			if k in d:
 				pieces.append(f"{self._format(disp_k, d[k], ty):<22}")
-		print("   ".join(pieces))
+		print("   ".join(pieces), flush=True)
 
 	def pprint_multitask(self, d, cfg):
 		"""Pretty-print evaluation metrics for multi-task training."""
@@ -227,7 +274,9 @@ class Logger:
 
 	def log(self, d, category="train"):
 		assert category in CAT_TO_COLOR.keys(), f"invalid category: {category}"
-		if self._wandb:
+		with self._metrics_path.open("a", encoding="utf-8") as stream:
+			stream.write(json.dumps(_local_metric({"category": category, **d}), allow_nan=False) + "\n")
+		if self._wandb and self._wandb_metrics_enabled:
 			if category in {"train", "eval"}:
 				xkey = "step"
 			elif category == "pretrain":
@@ -235,7 +284,13 @@ class Logger:
 			_d = dict()
 			for k, v in d.items():
 				_d[category + "/" + k] = v
-			self._wandb.log(_d, step=d[xkey])
+			try:
+				self._wandb.log(_d, step=d[xkey])
+			except Exception as error:
+				self._wandb_metrics_enabled = False
+				if self._video is not None:
+					self._video._wandb = None
+				print(f"[wandb] Metric upload failed: {error}; continuing with local metrics.jsonl.", flush=True)
 		if category == "eval" and self._save_csv:
 			keys = ["step", "episode_reward"]
 			self._eval.append(np.array([d[keys[0]], d[keys[1]]]))

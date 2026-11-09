@@ -381,6 +381,10 @@ def test_milestone_evaluation_stack():
     assert planner.allow_residual
     assert not planner.allow_mppi
 
+    info = _apply_evaluation_stack(planner, "lattice_mppi", {"milestone_type": "full_mpr_mpc"})
+    assert info["stack"] == "lattice_mppi"
+    assert not planner.allow_residual and planner.allow_mppi
+
     info = _apply_evaluation_stack(
         planner,
         "checkpoint",

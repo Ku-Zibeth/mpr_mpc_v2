@@ -45,3 +45,18 @@ videos/
 # Model checkpoint directories
 checkpoints/
 checkpoint/
+
+# Training logs
+logs/
+**/logs/
+
+# Model checkpoints
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+
+# Checkpoint directories
+checkpoints/
+checkpoint/
+model_checkpoints/

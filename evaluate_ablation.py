@@ -114,7 +114,7 @@ def main(raw_cfg: DictConfig) -> None:
         "unique_scenarios": len(scenarios),
         "episodes_per_configuration": len(scenarios) * len(repeat_seeds),
         "episode_seed_rule": "(test_seed + scenario) modulo 2**32",
-        "mppi_eval_seed_rule": "test_seed; same local MPPI noise seed for C and D",
+        "mppi_eval_seed_rule": "(test_seed + scenario) modulo 2**32; persistent generator within each episode",
         "horizon": int(effective_cfg.horizon),
         "variants": dict(variants),
         "cost_ablation": cost_ablation,

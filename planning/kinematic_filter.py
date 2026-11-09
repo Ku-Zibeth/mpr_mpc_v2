@@ -111,14 +111,11 @@ class BatchedKinematicCorridor:
         }
         # actions[:, H] is only the terminal-Q action. Geometry integrates a_t
         # through a_{t+H-1}, producing states at t+1 through t+H.
-        candidate_y = self.rollout(
-            actions[:, :explicit_steps], context.initial_speed, **rollout_kwargs
-        )
-        baseline_y = self.rollout(
-            baseline[:explicit_steps].unsqueeze(0),
-            context.initial_speed,
-            **rollout_kwargs,
-        )[0]
+        # The reference follows the exact same equations; include it as one
+        # extra batch row instead of launching a second H-step rollout.
+        lateral = self.rollout(torch.cat((actions[:, :explicit_steps], baseline[None, :explicit_steps]), 0),
+                               context.initial_speed, **rollout_kwargs)
+        candidate_y, baseline_y = lateral[:-1], lateral[-1]
         lateral_deviation = candidate_y - baseline_y.unsqueeze(0)
         predicted_d = refined_d.unsqueeze(0) + lateral_deviation
 

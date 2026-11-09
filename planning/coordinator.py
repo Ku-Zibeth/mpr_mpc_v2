@@ -152,9 +152,11 @@ class MPRMPCPlanner:
             return PlanningStage("B", self.allow_residual, False)
         return PlanningStage("C", self.allow_residual, self.allow_mppi)
 
-    def reset(self) -> None:
+    def reset(self, seed=None) -> None:
+        if seed is not None:
+            self._episode_seed = int(seed) % 2**32
         self.structured.reset()
-        self.local_mppi.reset()
+        self.local_mppi.reset(seed=getattr(self, "_episode_seed", None))
         if self.safety is not None:
             self.safety.reset()
         self.last_context = None
@@ -198,7 +200,8 @@ class MPRMPCPlanner:
 
     @torch.no_grad()
     def prepare(
-        self, observation, vehicle, *, need_world_model_features: bool = True
+        self, observation, vehicle, *, need_world_model_features: bool = True,
+        need_mppi_safety: bool = False, need_residual_state: bool = True
     ) -> MPRPlanContext:
         if bool(getattr(vehicle, "enable_reverse", False)):
             raise ValueError("MPR safety requires enable_reverse=false for verified braking semantics.")
@@ -221,13 +224,14 @@ class MPRMPCPlanner:
         )
         residual_bounds = self.residual_bounds(coarse_path)
         safety_context = None
-        if self.safety is not None and need_world_model_features:
+        if self.safety is not None and need_world_model_features and need_residual_state:
             width, wheelbase, steering = self._vehicle_geometry(vehicle)
             safety_context = self.safety.context(self.structured.planner, vehicle,
                                                   width=width, wheelbase=wheelbase, max_steering=steering)
         latent = consequence = wm_features = residual_state = None
         if need_world_model_features:
             latent = self.evaluator.encode(observation).detach()
+        if need_world_model_features and need_residual_state:
             consequence = self.evaluator.evaluate_trajectory_consequence(
                 latent, coarse_actions.unsqueeze(0),
             )
@@ -247,6 +251,13 @@ class MPRMPCPlanner:
                 feasible_ratio=len(selection.feasible) / max(len(selection.candidates), 1),
                 used_fallback=selection.used_fallback,
             )
+        mppi_safety_context = None
+        if need_mppi_safety and self.local_mppi.safety_enabled:
+            width, wheelbase, steering = self._vehicle_geometry(vehicle)
+            mppi_safety_context = self.local_mppi.candidate_safety.context(
+                self.structured.planner, vehicle, width=width, wheelbase=wheelbase,
+                max_steering=steering, snapshot=safety_context,
+            )
         context = MPRPlanContext(
             observation=observation,
             latent=latent,
@@ -258,6 +269,7 @@ class MPRMPCPlanner:
             residual_bounds=residual_bounds,
             residual_state=residual_state,
             safety_context=safety_context,
+            mppi_safety_context=mppi_safety_context,
         )
         self.last_context = context
         return context
@@ -461,6 +473,9 @@ class MPRMPCPlanner:
                 refined_actions,
                 eval_mode=eval_mode,
                 corridor_context=corridor_context,
+                safety_context=context.mppi_safety_context,
+                lattice_actions=context.coarse_actions,
+                lattice_corridor_context=self._corridor_context(coarse, vehicle),
             )
             self.mppi_call_count += 1
             self.baseline_selected_count += int(mppi.baseline_selected)
@@ -516,6 +531,8 @@ class MPRMPCPlanner:
         coarse_row = consequence_row(context.coarse_consequence)
         if stage.use_mppi:
             sac_row, selected_row = mppi.baseline_consequence, mppi.selected_consequence
+            if not stage.use_residual:
+                coarse_row = sac_row
             diagnostics.update({f"mppi/{key}": value for key, value in mppi.metrics.items()})
             diagnostics.update({f"mpr/{key}": value for key, value in mppi.metrics.items()})
         else:
@@ -530,7 +547,14 @@ class MPRMPCPlanner:
         if not residual_valid:
             diagnostics["mpr/sac_predicted_cost"] = float("nan")
         diagnostics["mpr/mppi_correction_magnitude"] = float((selected_actions-refined_actions).square().mean().sqrt())
-        diagnostics["mpr/safe_candidate_ratio"] = 1-reject_rate  # simple native corridor only
+        diagnostics["mpr/safe_candidate_ratio"] = mppi.metrics["safety_valid_ratio"] if stage.use_mppi else float("nan")
+        if stage.use_mppi:
+            diagnostics["mpr/selected_safe"] = mppi.metrics["selected_safety_valid"]
+            diagnostics["mpr/baseline_safe"] = mppi.metrics["baseline_safety_valid"]
+            diagnostics["mpr/no_safe_candidate"] = float(bool(mppi.metrics["lattice_fallback"] or mppi.metrics["emergency_fallback"]))
+            diagnostics["mpr/collision_reject_count"] = mppi.metrics["collision_reject_count"]
+            diagnostics["mpr/offroad_reject_count"] = mppi.metrics["road_boundary_reject_count"]
+            diagnostics["mpr/kinematic_reject_count"] = mppi.metrics["kinematic_reject_count"]
         diagnostics["mpr/coarse_target_speed_mps"] = float(coarse.target_speed)
         diagnostics["mpr/refined_target_speed_mps"] = float(refined.target_speed)
         diagnostics["mpr/actual_speed_mps"] = float(np.linalg.norm(np.asarray(vehicle.velocity)[:2]))
@@ -541,7 +565,10 @@ class MPRMPCPlanner:
             refined_time = (getattr(refined_consequence, "timings", {}).get(phase_name, 0.)
                             if not stage.use_mppi and context.latent is not None and refined is not coarse else 0.)
             diagnostics[f"mpr/{phase_name}"] = diagnostics.get(f"mpr/{phase_name}", 0.)+coarse_time+refined_time
-        final_mppi_xy = self._selected_sequence_xy(refined, refined_actions, selected_actions, corridor_context)
+        final_mppi_xy = None
+        if stage.use_mppi:
+            final_mppi_xy = (mppi.selected_positions.numpy() if mppi.selected_positions is not None else
+                self._selected_sequence_xy(refined, refined_actions, selected_actions, corridor_context))
 
         paths = list(context.selection.candidates)
         if not any(path is refined for path in paths):
@@ -648,6 +675,8 @@ class MPRMPCPlanner:
             observation,
             vehicle,
             need_world_model_features=stage.use_residual or (eval_mode and stage.use_mppi),
+            need_mppi_safety=eval_mode and stage.use_mppi,
+            need_residual_state=stage.use_residual,
         )
         result = self.refine_and_plan(
             context,
@@ -662,6 +691,9 @@ class MPRMPCPlanner:
         result.metrics["mpr/planning_ms"] = elapsed
         result.metrics["mpr/total_planning_ms"] = elapsed
         result.metrics["total_planning_ms"] = elapsed
+        if result.stage.use_mppi:
+            result.metrics["mppi/total_planning_ms"] = elapsed
+            result.metrics["mpr/total_planning_ms"] = elapsed
         return result
 
 

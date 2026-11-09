@@ -83,8 +83,9 @@ def main():
             assert plan.action.shape == (2,) and torch.isfinite(plan.action).all()
             assert plan.metrics["mppi/cost_enabled"] == 1
             assert np.isfinite(plan.metrics["mppi/predicted_cost"])
-            assert torch.all((plan.debug["selected_mppi_actions"]-plan.refined_actions.cpu()).abs()
-                             <= agent.planner.local_mppi.max_delta.cpu()+1e-6)
+            if not (plan.metrics.get("mppi/lattice_fallback") or plan.metrics.get("mppi/emergency_fallback")):
+                assert torch.all((plan.debug["selected_mppi_actions"]-plan.refined_actions.cpu()).abs()
+                                 <= agent.planner.local_mppi.max_delta.cpu()+1e-6)
             for name, kind in (("wm", "world_model"), ("sac", "world_model_residual_rl"), ("full", "full_mpr_mpc")):
                 path = Path(temporary) / f"{name}.pt"
                 agent.save_milestone(path, milestone_type=kind)

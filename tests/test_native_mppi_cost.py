@@ -109,9 +109,10 @@ def test_historical_native_settings_and_checkpoint_migration():
         cfg = compose(config_name="config", overrides=["+experiment=E5"])
     mppi = cfg.mpr_mpc.mppi
     assert (mppi.num_samples, mppi.num_elites, mppi.iterations) == (64, 8, 4)
-    assert list(mppi.initial_std) == [.025, .1]
-    assert list(mppi.max_delta) == [.05, .2]
-    assert mppi.temperature == .5 and mppi.deviation_coef == 5 and mppi.smoothness_coef == 1
+    assert list(mppi.initial_std) == [.04, .12]
+    assert list(mppi.max_delta) == [.10, .25]
+    assert mppi.temperature == .5 and mppi.deviation_coef == 1 and mppi.smoothness_coef == .3
+    assert mppi.safety.enabled
     assert cfg.cost.enabled and cfg.metadrive.cost.enabled
     assert cfg.steps == 50000 and cfg.mpr_mpc.stages.residual_start_step == 20000
     saved = dict(mppi, multimodal=True, dynamic_safety=True, uncertainty_coef=1000., mode_weights=[1, 2, 3, 4])

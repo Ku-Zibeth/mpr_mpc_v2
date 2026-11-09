@@ -60,6 +60,11 @@ class PlanningProfiler:
         self.wrap(p, "plan", "total_planning")
         self.wrap(p, "prepare", "context_construction")
         self.wrap(p.local_mppi, "_candidate_batch", "candidate_generation")
+        candidate_safety = getattr(p.local_mppi, "candidate_safety", None)
+        if candidate_safety is not None and p.local_mppi.safety_enabled:
+            self.wrap(candidate_safety, "check", "mppi_independent_safety")
+            self.wrap(candidate_safety.geometry, "_swept_check", "mppi_continuous_collision")
+            self.wrap(candidate_safety.geometry, "rollout", "mppi_kinematic_rollout")
         if p.safety is not None:
             self.wrap(p.safety, "check", "sac_feature_geometry")
         for method, phase in (("_road_metrics", "road_geometry"), ("_swept_check", "continuous_collision")):
@@ -75,6 +80,7 @@ class PlanningProfiler:
         phases = ("context_construction", "candidate_generation", "sac_feature_geometry", "world_model_evaluation",
                   "cost_evaluation", "candidate_scoring", "distribution_update", "total_planning",
                   "road_geometry", "continuous_collision")
+        phases += ("mppi_independent_safety", "mppi_continuous_collision", "mppi_kinematic_rollout")
         result = {name: dict(cpu_wall_ms=sum(r[0] for r in self.records.get(name, [])),
                             cuda_stream_elapsed_ms=sum(r[1].elapsed_time(r[2]) for r in self.records.get(name, [])))
                   for name in phases if name in self.phases}

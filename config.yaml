@@ -80,14 +80,14 @@ mpr_mpc:
     enabled: true
     cost_enabled: true
     cost_coef: 1.0
-    # Original residual-SAC MPPI: mpr_mpc Git f09b64f/config.yaml.
+    # V3 first-round search settings; not claimed to be optimal.
     num_samples: 64
     num_elites: 8
     iterations: 4
-    initial_std: [0.025, 0.10]
-    min_std: [0.005, 0.02]
-    max_std: [0.05, 0.20]
-    max_delta: [0.05, 0.20]
+    initial_std: [0.04, 0.12]
+    min_std: [0.01, 0.03]
+    max_std: [0.08, 0.25]
+    max_delta: [0.10, 0.25]
     temperature: 0.5
     lateral_corridor_ratio: 0.5
     lateral_safety_margin: 0.15
@@ -97,14 +97,29 @@ mpr_mpc:
     kinematic_max_steering_angle: 0.6981317
     kinematic_max_acceleration: 4.0
     kinematic_max_deceleration: 6.0
-    deviation_coef: 5.0
-    smoothness_coef: 1.0
+    deviation_coef: 1.0
+    smoothness_coef: 0.3
     throttle_deviation_weight: 0.25
-    min_improvement_abs: 1.0
-    min_improvement_ratio: 0.01
+    min_improvement_abs: 0.05
+    min_improvement_ratio: 0.001
     eval_seed: 0
     proposal_init: structured_baseline
     blend_alpha: 0.8
+    safety:
+      enabled: true
+      substeps: 2
+      model_margin: 0.05
+      road_margin: 0.05
+      max_acceleration: 4.0
+      max_deceleration: 6.0
+      max_steering_rate: 7.0
+      max_lateral_acceleration: 6.0
+      swept_max_depth: 6
+      swept_angle_tolerance: 0.005
+      swept_position_tolerance: 0.002
+      hard_clearance: 0.0
+      hard_ttc: 0.0
+      emergency_throttle: -1.0
   debug:
     enabled: false
     every: 100
@@ -135,6 +150,7 @@ residual_rl:
   conservative_cost: true
   nonnegative_cost: true
   risk_features: []
+  risk_geometry: {}
   coarse_cost_feature: false
   risk_feature_scales: {cumulative_cost: 10.0, min_ttc: 5.0, min_clearance: 20.0, boundary_margin: 4.0}
   risk_auxiliary_weight: 0.0
@@ -174,7 +190,8 @@ evaluation_stack: checkpoint
 evaluation_scenarios: []
 evaluation_scenarios_file: null
 evaluation_output_dir: null
-restore_checkpoint_runtime: false
+restore_checkpoint_runtime: true
+restore_mppi_runtime: false
 
 improvements:
   profiles: [E0, E1, E2, E3, E4, E5]
@@ -238,6 +255,7 @@ wandb_project: mpr_mpc_metadrive
 wandb_entity: null
 wandb_run_name: mpr_mpc_residual_sac_v1
 wandb_silent: false
+wandb_log_artifacts: true
 enable_wandb: true
 save_csv: true
 save_video: false
