@@ -21,6 +21,39 @@ RECOVERY = dict(enabled=True, num_samples=4, iterations=2,
                 initial_std=[.06, .2], max_delta=[.2, .5])
 
 
+@pytest.mark.parametrize("recovery_value,expected_mode", [(3., "normal"), (20., "recovery_lattice")])
+def test_normal_and_recovery_use_common_final_scores_and_direct_lattice_is_not_optimization(
+        monkeypatch, recovery_value, expected_mode):
+    p = planner(recovery=RECOVERY, cost_enabled=True, cost_coef=2.,
+                deviation_coef=1., smoothness_coef=.3)
+    baseline, normal, lattice = torch.zeros(4, 2), torch.zeros(4, 2), torch.zeros(4, 2)
+    normal[:] = torch.tensor([.04, .05])
+    lattice[:, 0], lattice[:, 1] = torch.tensor([.2, .1, .2, .1]), .2
+    fixed_batch(p, baseline, normal)
+    fake_filter(p, lambda a: a[:, 0, 0] > 0)
+    p.evaluator.value = lambda a: torch.where(a[:, 0, 0] < .1, 2., recovery_value)
+    # Recovery proposals stay at Lattice; its local deviation/smoothness are
+    # zero, but its SAC-referenced final penalties are much larger. A raw
+    # comparison would incorrectly choose recovery in the low-value case.
+    monkeypatch.setattr(torch, "randn", lambda *shape, **kw: torch.zeros(*shape, device=kw.get("device")))
+    result = p.plan(torch.zeros(1, 2), baseline, eval_mode=True,
+                    safety_context=braking_context(speed=0), lattice_actions=lattice)
+    assert not p.allow_unvalidated_cost
+    assert result.planning_mode == expected_mode
+    assert result.metrics["recovery_search"] == 1
+    expected = normal if expected_mode == "normal" else lattice
+    torch.testing.assert_close(result.selected_sequence, expected)
+    deviation, smoothness = p._penalties(expected[None], baseline, p.max_delta)
+    value = 2. if expected_mode == "normal" else recovery_value
+    expected_score = value-2*float(expected[0, 1])-float(deviation[0])-.3*float(smoothness[0])
+    assert result.selected_score == pytest.approx(expected_score)
+    assert result.metrics["final_score"] == pytest.approx(expected_score)
+    assert result.metrics["recovery_search_delta"] == 0
+    assert result.metrics["recovery_lattice_baseline_selected"] == float(expected_mode == "recovery_lattice")
+    assert result.metrics["sac_to_selected_delta"] == pytest.approx(float((expected[0]-baseline[0]).norm()))
+    assert result.metrics["first_action_delta_norm"] == result.metrics["sac_to_selected_delta"]
+
+
 def test_recovery_recenters_on_checked_lattice_outside_sac_trust_region():
     p = planner(recovery=RECOVERY)
     baseline, lattice = torch.full((4, 2), .6), torch.zeros(4, 2)
@@ -32,7 +65,8 @@ def test_recovery_recenters_on_checked_lattice_outside_sac_trust_region():
     assert result.recovery_reason == "unsafe_sac_baseline"
     assert result.metrics["lattice_baseline_safety_valid"] == 1
     assert result.metrics["normal_search_delta"] == result.metrics["emergency_fallback_delta"] == 0
-    assert result.metrics["recovery_search_delta"] == pytest.approx(float((result.action-baseline[0]).norm()))
+    assert result.metrics["recovery_search_delta"] == pytest.approx(float((result.action-lattice[0]).norm()))
+    assert result.metrics["sac_to_selected_delta"] == pytest.approx(float((result.action-baseline[0]).norm()))
     assert (result.selected_sequence-baseline).abs().max() > p.max_delta.max()
     assert ((result.selected_sequence-lattice).abs() <= p.recovery_delta+1e-6).all()
     assert ((result.final_mean-lattice).abs() <= p.recovery_delta+1e-6).all()
@@ -55,10 +89,13 @@ def test_controlled_recovery_and_unverified_brake_have_distinct_attribution():
     assert result.metrics["lattice_baseline_safety_valid"] == 0
     assert result.metrics["emergency_fallback_delta"] == 0
     assert result.metrics["recovery_search_delta"] > 0
+    reference = p.candidate_safety.braking_sequence(ctx, horizon=3, device="cpu", dtype=baseline.dtype)
+    assert result.metrics["recovery_search_delta"] == pytest.approx(float((result.action-reference[0]).norm()))
+    assert result.metrics["sac_to_selected_delta"] == pytest.approx(float((result.action-baseline[0]).norm()))
     fake_filter(p, lambda a: torch.zeros(len(a), dtype=torch.bool))
     result = p.plan(torch.zeros(1, 2), baseline, eval_mode=True,
                     safety_context=braking_context(), lattice_actions=baseline)
-    assert result.planning_mode == "emergency_unverified"
+    assert result.planning_mode == "emergency_model_check_failed"
     assert result.metrics["safety_fallback_unverified"] == 1
     assert result.metrics["normal_search_delta"] == result.metrics["recovery_search_delta"] == 0
     assert result.metrics["emergency_fallback_delta"] > 0
@@ -73,7 +110,7 @@ def test_healthy_baseline_never_consumes_recovery_budget_and_full_brake_is_not_s
     assert result.metrics["recovery_wm_evaluated_candidates"] == 0
     fake_filter(p, lambda a: a[:, 0, 1] <= -1)
     result = p.plan(torch.zeros(1, 2), baseline, eval_mode=True, safety_context=braking_context())
-    assert result.planning_mode == "emergency_verified"
+    assert result.planning_mode == "emergency_model_checked"
     assert result.metrics["emergency_fallback_delta"] > 0
     assert result.metrics["recovery_search_delta"] == 0
 
@@ -175,13 +212,17 @@ def test_recovery_and_prediction_outcomes_reach_step_episode_and_paired_outputs(
     assert summary["mppi_predicted_safe_actual_collision"] == 1
     assert summary["mppi_predicted_safe_actual_offroad"] == 1
     assert "mppi_normal_search_delta" in summary and "mppi_recovery_search_delta" in summary
+    for name in ("sac_to_selected_delta", "recovery_lattice_baseline_selected", "emergency_horizon_limited"):
+        assert f"mppi_{name}" in summary
     logger = StepDiagnosticsLogger(tmp_path, "v31")
     logger.log(539, 1, result.action, plan, info=info)
     logger.close()
     row = json.loads((tmp_path/"v31.jsonl").read_text())
     assert row["mppi/actual_collision"] == 1 and row["planning_mode"] == result.planning_mode
+    assert row["mppi/sac_to_selected_delta"] == result.metrics["sac_to_selected_delta"]
     a = diagnostic_row(539, 1, 1, configuration="B_lattice_sac")
     b = diagnostic_row(539, 1, 1, configuration="D_lattice_sac_mppi")
     a.update(summary); b.update(summary)
     assert "mppi_recovery_search_delta" in summarize_runs("A_lattice", [a], samples=8, seed=1)
     assert any("mppi_recovery_search_delta" in key for row in paired_comparisons([a, b], samples=8, seed=1) for key in row)
+    assert any("mppi_emergency_horizon_limited" in key for row in paired_comparisons([a, b], samples=8, seed=1) for key in row)

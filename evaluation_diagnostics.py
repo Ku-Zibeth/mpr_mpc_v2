@@ -186,7 +186,7 @@ class EpisodeDiagnostics:
                  "prediction_collision_known", "prediction_offroad_known")},
             **{f"mppi_mode_{name}_rate": mean([float(v == code) for v in self.plans["mppi/planning_mode"]])
                 for code, name in enumerate(("baseline", "normal", "recovery_lattice", "recovery_controlled",
-                                             "lattice_fallback", "emergency_verified", "emergency_unverified"))},
+                                             "lattice_fallback", "emergency_model_checked", "emergency_model_check_failed"))},
             "collision": float(self.crash), "offroad": float(self.offroad),
             "collision_and_success_rate": float(self.crash and bool(info.get("success", False))),
             "collision_and_offroad_rate": float(self.crash and self.offroad),

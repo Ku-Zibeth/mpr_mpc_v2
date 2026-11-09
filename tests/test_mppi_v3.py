@@ -55,7 +55,7 @@ def planner(**changes):
 
 def braking_context(**kwargs):
     original = context(**kwargs)
-    return MPPISafetyContext(**{key: value for key, value in vars(original).items()}, braking_verified=True)
+    return MPPISafetyContext(**{key: value for key, value in vars(original).items()}, brake_action_mapping_verified=True)
 
 
 def fake_filter(planner, rule):
@@ -245,6 +245,14 @@ def test_unsafe_lattice_and_baseline_use_verified_brake_mapping_and_honest_fallb
     assert result.metrics["lattice_fallback"] == 0
     assert result.metrics["safety_fallback_unverified"] == float(not brake_safe)
     assert result.metrics["wm_evaluated_candidates"] == int(brake_safe)
+    assert result.planning_mode == ("emergency_model_checked" if brake_safe else "emergency_model_check_failed")
+    assert result.metrics["stopping_time_s"] > p.horizon*p.candidate_safety.geometry.dt
+    assert result.metrics["emergency_horizon_limited"] == 1
+    if brake_safe:
+        result = p.plan(torch.zeros(1, 2), baseline, eval_mode=True,
+                        safety_context=braking_context(speed=0), lattice_actions=baseline)
+        assert result.planning_mode == "emergency_model_checked"
+        assert result.metrics["emergency_horizon_limited"] == 0
 
 
 def test_missing_safety_context_is_an_error_and_unknown_brake_mapping_is_not_assumed():

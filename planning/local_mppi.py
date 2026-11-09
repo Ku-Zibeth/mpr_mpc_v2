@@ -39,6 +39,8 @@ MPPI_DIAGNOSTIC_KEYS = (
     "selected_full_braking",
     "lattice_baseline_checked",
     "lattice_fallback_delta", "lattice_fallback_steer_delta", "lattice_fallback_throttle_delta",
+    "sac_to_selected_delta", "sac_to_selected_steer_delta", "sac_to_selected_throttle_delta",
+    "recovery_lattice_baseline_selected", "emergency_horizon_limited",
 )
 MPPI_EPISODE_METRICS = {
     (key if key.startswith("mppi_") else f"mppi_{key}"): f"mppi/{key}"
@@ -314,16 +316,19 @@ class LocalMPPI:
                 safety_rejected += int((~valid).sum())
             return valid, keys, corridor
 
+        def score(actions, values, reference=baseline, bounds=None):
+            deviation, smoothness = self._penalties(actions, reference, bounds)
+            cost_penalty = (torch.where(values["ranking_validated"] | self.allow_unvalidated_cost,
+                self.cost_coef*values["cost"], 0.) if enabled else torch.zeros_like(values["value"]))
+            scores = values["value"]-cost_penalty-self.deviation_coef*deviation-self.smoothness_coef*smoothness
+            return scores, deviation, smoothness, cost_penalty
+
         def evaluate(actions, keys, reference=baseline, bounds=None):
             nonlocal evaluated, wm_requested
             wm_requested += len(actions)
             rows, values, count = self._evaluate_cached(z_t, actions, cache, task, timing, keys)
             evaluated += count
-            deviation, smoothness = self._penalties(actions, reference, bounds)
-            cost_penalty = (torch.where(values["ranking_validated"] | self.allow_unvalidated_cost,
-                self.cost_coef*values["cost"], 0.) if enabled else torch.zeros_like(values["value"]))
-            scores = values["value"]-cost_penalty-self.deviation_coef*deviation-self.smoothness_coef*smoothness
-            return rows, scores, deviation, smoothness, cost_penalty
+            return rows, *score(actions, values, reference, bounds), values
 
         baseline_key = baseline.detach().cpu().numpy().tobytes()
         normal_checked_start = checked
@@ -340,7 +345,7 @@ class LocalMPPI:
                 continue
             candidate_actions = actions[original]
             candidate_keys = [keys[i] for i in original.cpu().tolist()]
-            rows, scores, deviation, smoothness, cost_penalty = evaluate(candidate_actions, candidate_keys)
+            rows, scores, deviation, smoothness, cost_penalty, _ = evaluate(candidate_actions, candidate_keys)
             finite = torch.isfinite(scores).nonzero().flatten()
             if not len(finite):
                 continue
@@ -371,6 +376,7 @@ class LocalMPPI:
             lattice_safe = baseline_safe
         recovery_reason = "none"
         score_reference, score_bounds = baseline, self.max_delta
+        recovery_reference = None
         mode = "baseline"
         recovery_checked = recovery_rejects = recovery_evaluated = 0
         recovery_best = None
@@ -399,7 +405,7 @@ class LocalMPPI:
                         if not len(indices):
                             continue
                         choices, candidate_keys = actions[indices], [keys[i] for i in indices.cpu().tolist()]
-                        rows, scores, *_ = evaluate(choices, candidate_keys, lattice, self.recovery_delta)
+                        rows, scores, _, _, _, values = evaluate(choices, candidate_keys, lattice, self.recovery_delta)
                         finite = torch.isfinite(scores).nonzero().flatten()
                         if not len(finite):
                             continue
@@ -410,11 +416,18 @@ class LocalMPPI:
                             rmean = project((weights[:, None, None]*choices[elite]).sum(0))
                             rstd = (weights[:, None, None]*(choices[elite]-rmean).square()).sum(0).sqrt()
                             rstd = rstd.clamp(self.min_std_vector, self.recovery_std)
-                        i = int(elite[0])
-                        if recovery_best is None or float(scores[i]) > recovery_best[0]:
-                            recovery_best = (float(scores[i]), choices[i].clone(), rows[i], candidate_keys[i])
+                        # Distribution updates keep their local objective. Final
+                        # selection ranks ALL safe recovery candidates against
+                        # the same SAC reference/bounds as normal search, using
+                        # cached WM values; do not compare unlike local scores.
+                        common_scores, *_ = score(choices, values)
+                        common_finite = torch.isfinite(common_scores).nonzero().flatten()
+                        if len(common_finite):
+                            i = int(common_finite[common_scores[common_finite].argmax()])
+                            if recovery_best is None or float(common_scores[i]) > recovery_best[0]:
+                                recovery_best = (float(common_scores[i]), choices[i].clone(), rows[i], candidate_keys[i])
                     if recovery_best is not None:
-                        score_reference, score_bounds, mode = lattice, self.recovery_delta, "recovery_lattice"
+                        recovery_reference, mode = lattice, "recovery_lattice"
                 else:
                     # Small deterministic controls, not another search mode
                     # bank/controller. Rate-limited first step uses measured
@@ -439,24 +452,26 @@ class LocalMPPI:
                         candidate_keys = [keys[i] for i in indices.cpu().tolist()]
                         reference = self.candidate_safety.braking_sequence(safety_context,
                             horizon=self.horizon, device=self.device, dtype=baseline.dtype)
-                        rows, scores, *_ = evaluate(choices, candidate_keys, reference, self.recovery_delta)
-                        finite = torch.isfinite(scores).nonzero().flatten()
+                        rows, _, _, _, _, values = evaluate(choices, candidate_keys, reference, self.recovery_delta)
+                        common_scores, *_ = score(choices, values)
+                        finite = torch.isfinite(common_scores).nonzero().flatten()
                         if len(finite):
-                            i = int(finite[scores[finite].argmax()])
-                            recovery_best = (float(scores[i]), choices[i].clone(), rows[i], candidate_keys[i])
-                            score_reference, score_bounds, mode = reference, self.recovery_delta, "recovery_controlled"
+                            i = int(finite[common_scores[finite].argmax()])
+                            recovery_best = (float(common_scores[i]), choices[i].clone(), rows[i], candidate_keys[i])
+                            recovery_reference, mode = reference, "recovery_controlled"
             recovery_checked, recovery_rejects = checked-start_checked, safety_rejected-start_rejects
             recovery_evaluated = evaluated-start_evaluated
-        baseline_selected = baseline_safe and (best is None or
-            (baseline_finite and best[0]-float(baseline_score) <= threshold))
-        if recovery_best is not None:
+        choose_recovery = recovery_best is not None and (best is None or recovery_best[0] > best[0])
+        winner = recovery_best if choose_recovery else best
+        baseline_selected = baseline_safe and (winner is None or
+            (baseline_finite and winner[0]-float(baseline_score) <= threshold))
+        if baseline_selected:
+            sequence, selected, selected_key, mode = baseline, base, baseline_key, "baseline"
+        elif choose_recovery:
             _, sequence, selected, selected_key = recovery_best
             baseline_selected = torch.equal(sequence, baseline)
             mean, std = ((rmean, rstd) if mode == "recovery_lattice" else
                          (sequence.clone(), torch.zeros_like(sequence)))
-        elif baseline_selected:
-            sequence, selected = baseline, base
-            selected_key = baseline_key
         elif best is not None:
             _, sequence, selected, selected_key = best
             baseline_selected = torch.equal(sequence, baseline)
@@ -479,7 +494,7 @@ class LocalMPPI:
                 # its trust region, but must pass the same physical safety check.
                 valid, keys, _ = check_actions(sequence.unsqueeze(0), sequence, None)
                 emergency_fallback, unverified = True, not bool(valid[0])
-                mode = "emergency_unverified" if unverified else "emergency_verified"
+                mode = "emergency_model_check_failed" if unverified else "emergency_model_checked"
                 mean, std = sequence.clone(), torch.zeros_like(sequence)
                 selected_key = keys[0]
                 if not unverified:
@@ -490,7 +505,7 @@ class LocalMPPI:
         if mode == "recovery_controlled" and full_braking:
             # Full braking discovered among recovery candidates is still a
             # braking action, not evidence of improved search corrections.
-            mode, emergency_fallback = "emergency_verified", True
+            mode, emergency_fallback = "emergency_model_checked", True
         deviation, smoothness = self._penalties(sequence.unsqueeze(0), score_reference, score_bounds)
         cost_scored = enabled and (selected["ranking_validated"] or self.allow_unvalidated_cost)
         cost_penalty = self.cost_coef*selected["cost"] if cost_scored else baseline.new_tensor(0.)
@@ -522,6 +537,10 @@ class LocalMPPI:
             "wm_cache_hits": float(wm_requested-evaluated), "baseline_corridor_valid": float(baseline_corridor_valid),
             "first_steer_delta": float(delta[0]), "first_throttle_delta": float(delta[1]),
             "first_action_delta_norm": float(delta.norm()), "baseline_selected": float(baseline_selected),
+            "sac_to_selected_delta": float(delta.norm()), "sac_to_selected_steer_delta": float(delta[0]),
+            "sac_to_selected_throttle_delta": float(delta[1]),
+            "recovery_lattice_baseline_selected": float(mode == "recovery_lattice" and
+                torch.equal(sequence, recovery_reference)),
             "score_gain": float(score_gain), "gate_threshold": threshold,
             "initial_std_steer": float(initial_std[:, 0].mean()), "initial_std_throttle": float(initial_std[:, 1].mean()),
             "final_std_steer": float(std[:, 0].mean()), "final_std_throttle": float(std[:, 1].mean()),
@@ -540,7 +559,7 @@ class LocalMPPI:
             "lattice_baseline_checked": float(math.isfinite(lattice_safe)),
             "recovery_search": float(recovery_used), "recovery_wm_evaluated_candidates": float(recovery_evaluated),
             "planning_mode": float({"baseline": 0, "normal": 1, "recovery_lattice": 2, "recovery_controlled": 3,
-                                     "lattice_fallback": 4, "emergency_verified": 5, "emergency_unverified": 6}[mode]),
+                                     "lattice_fallback": 4, "emergency_model_checked": 5, "emergency_model_check_failed": 6}[mode]),
             "recovery_reason": float({"none": 0, "unsafe_sac_baseline": 1, "no_usable_normal_candidate": 2}[recovery_reason]),
             "selected_full_braking": float(full_braking),
         }
@@ -548,7 +567,7 @@ class LocalMPPI:
                               ("recovery_search", mode.startswith("recovery_")),
                               ("lattice_fallback", mode == "lattice_fallback"),
                               ("emergency_fallback", emergency_fallback)):
-            part = delta if active else torch.zeros_like(delta)
+            part = (sequence[0]-recovery_reference[0] if label == "recovery_search" else delta) if active else torch.zeros_like(delta)
             metrics.update({f"{label}_delta": float(part.norm()), f"{label}_steer_delta": float(part[0]),
                             f"{label}_throttle_delta": float(part[1])})
         flags = safety_cache.get(selected_key, {})
@@ -557,6 +576,10 @@ class LocalMPPI:
             metrics[target] = float(flags.get(source, float("nan")))
         if self.safety_enabled:
             metrics.update(self.candidate_safety.stopping_diagnostics(safety_context, self.horizon))
+        # A passing finite-horizon model check neither verifies a complete
+        # stop nor guarantees safety in the real simulator/environment.
+        metrics["emergency_horizon_limited"] = float(emergency_fallback and
+            bool(metrics.get("stopping_horizon_insufficient", False)))
         self._prev_mean = mean.detach().clone()
         if corridor_context is None:
             lateral = 0.

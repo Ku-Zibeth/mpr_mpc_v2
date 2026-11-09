@@ -18,7 +18,7 @@ from .swept_collision import swept_collisions
 
 @dataclass
 class MPPISafetyContext(SafetyContext):
-    braking_verified: bool = False
+    brake_action_mapping_verified: bool = False
 
 
 class MPPISafetyFilter:
@@ -59,7 +59,7 @@ class MPPISafetyFilter:
         values["cache"] = {}
         # BaseVehicle._apply_throttle_brake: negative action[1] applies setBrake
         # (and zero engine force) exactly when enable_reverse is false.
-        return MPPISafetyContext(**values, braking_verified=True)
+        return MPPISafetyContext(**values, brake_action_mapping_verified=True)
 
     @torch.no_grad()
     def check(self, actions, context):
@@ -191,7 +191,9 @@ class MPPISafetyFilter:
                         +.5*float(self.cfg.get("obstacle_acceleration_bound", 0.))*t*t)
 
     def braking_sequence(self, context, *, horizon, device, dtype):
-        if not getattr(context, "braking_verified", False):
+        # This verifies the actuator convention only, not collision avoidance
+        # or the ability to stop within the model's finite prediction horizon.
+        if not getattr(context, "brake_action_mapping_verified", False):
             raise RuntimeError("Emergency braking action mapping has not been verified from the live MetaDrive vehicle.")
         action = torch.tensor([float(np.clip(context.previous_action[0], -1, 1)), self.emergency_throttle],
                               dtype=dtype, device=device)
