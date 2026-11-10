@@ -1,0 +1,253 @@
+{
+  "baseline_commit": "e8af086e97eb4a8a5e824e6e4c4c3123930cfce3",
+  "checkpoint": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt",
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "source_snapshot_sha256": "0598e896b4d45ad6c2b163fa589fa15eae2bf8d6a90294fcca877e428f54aea9",
+  "tests": {
+    "tests": 325,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "cases": {
+    "559": {
+      "before": {
+        "steps": 120,
+        "route_gain": 0.0013360558944826573,
+        "mean_speed": 0.10956095630779286,
+        "max_speed": 1.0677574789194062,
+        "stall_steps": 115,
+        "crash": false,
+        "offroad": false,
+        "planning": {
+          "mean": 288.75575399943045,
+          "p50": 204.56939250288997,
+          "p95": 718.808153505233,
+          "p99": 1729.5972376232387,
+          "max": 1761.0731049935566
+        },
+        "modes": {
+          "baseline": 4,
+          "emergency_model_check_failed": 13,
+          "emergency_model_checked": 6,
+          "normal": 1,
+          "recovery_controlled": 96
+        }
+      },
+      "after": {
+        "steps": 10,
+        "requested_steps": 120,
+        "planning_attempts": 11,
+        "safety_failure": true,
+        "unverified_action_executions": 0,
+        "emergency_steps": 3,
+        "emergency_unverified_attempts": 1,
+        "route_gain": 0.0013224629596451654,
+        "mean_speed": 0.41339297586756774,
+        "max_speed": 1.063948938538257,
+        "stall_steps": 6,
+        "crash": false,
+        "offroad": false,
+        "planning": {
+          "mean": 638.9366518176922,
+          "p50": 346.9898059993284,
+          "p95": 1757.390413498797,
+          "p99": 1817.647445901821,
+          "max": 1832.7117040025769
+        },
+        "modes": {
+          "baseline": 1,
+          "emergency_model_check_failed": 1,
+          "emergency_model_checked": 3,
+          "normal": 3,
+          "recovery_controlled": 3
+        }
+      },
+      "before_end_route": 0.4844776353846786,
+      "after_end_route": 0.4844640424498411,
+      "route_gain_retention": 0.9898260732252109,
+      "total_completion_retention": 0.9999719431118287,
+      "initial_alignment": {
+        "heading_before": 0.0,
+        "lateral_before": 0.0,
+        "route": 0.0
+      },
+      "before_unverified_executions": 13,
+      "before_emergency_steps": 19,
+      "after_unverified_executions": 0,
+      "prefix_planning_means_ms": {
+        "before": 864.3067447238453,
+        "after": 638.9366518176922
+      },
+      "phase_means_ms": {
+        "before": {
+          "safety_check_ms": 181.63971897512675,
+          "world_model_rollout_ms": 12.233779168128967,
+          "recovery_search_ms": 105.35713322957356,
+          "candidate_evaluation_ms": 16.289845681950563,
+          "final_safety_verification_ms": 71.9834329969096
+        },
+        "after": {
+          "safety_check_ms": 462.5251123905182,
+          "world_model_rollout_ms": 26.78907923264937,
+          "recovery_search_ms": 117.75505690141158,
+          "candidate_evaluation_ms": 42.9346883945982,
+          "final_safety_verification_ms": 419.9826440140605
+        }
+      },
+      "before_file": "before_559.json",
+      "after_file": "after_559_unprofiled.json"
+    },
+    "1714": {
+      "before": {
+        "steps": 60,
+        "route_gain": 0.06698124259613825,
+        "mean_speed": 4.515819056656733,
+        "max_speed": 8.730789429979659,
+        "stall_steps": 1,
+        "crash": false,
+        "offroad": false,
+        "planning": {
+          "mean": 447.3393665488402,
+          "p50": 327.7021789981518,
+          "p95": 787.6352024009972,
+          "p99": 1152.8102108085295,
+          "max": 1165.1293169998098
+        },
+        "modes": {
+          "baseline": 7,
+          "normal": 45,
+          "recovery_controlled": 5,
+          "recovery_lattice": 3
+        }
+      },
+      "after": {
+        "steps": 60,
+        "requested_steps": 60,
+        "planning_attempts": 60,
+        "safety_failure": false,
+        "unverified_action_executions": 0,
+        "emergency_steps": 0,
+        "emergency_unverified_attempts": 0,
+        "route_gain": 0.0645371457454244,
+        "mean_speed": 4.35006793245451,
+        "max_speed": 8.48379970500193,
+        "stall_steps": 1,
+        "crash": false,
+        "offroad": false,
+        "planning": {
+          "mean": 363.1325314330752,
+          "p50": 347.3441589885624,
+          "p95": 448.2641794988012,
+          "p99": 655.4890125883671,
+          "max": 888.4340509976028
+        },
+        "modes": {
+          "baseline": 3,
+          "normal": 57
+        }
+      },
+      "before_end_route": 0.5003198098781318,
+      "after_end_route": 0.497875713027418,
+      "route_gain_retention": 0.9635107269441019,
+      "total_completion_retention": 0.9951149308852888,
+      "initial_alignment": {
+        "heading_before": 0.0,
+        "lateral_before": 0.0,
+        "route": 0.0
+      },
+      "before_unverified_executions": 0,
+      "before_emergency_steps": 0,
+      "after_unverified_executions": 0,
+      "prefix_planning_means_ms": {
+        "before": 447.3393665488402,
+        "after": 363.1325314330752
+      },
+      "phase_means_ms": {
+        "before": {
+          "safety_check_ms": 281.94490814059975,
+          "world_model_rollout_ms": 56.63248422940572,
+          "recovery_search_ms": 104.74571050008139,
+          "candidate_evaluation_ms": 69.8024813667871,
+          "final_safety_verification_ms": 61.02804593443871
+        },
+        "after": {
+          "safety_check_ms": 197.6354812304179,
+          "world_model_rollout_ms": 48.152348295847574,
+          "recovery_search_ms": 0.0,
+          "candidate_evaluation_ms": 72.72525973409454,
+          "final_safety_verification_ms": 58.01453493436178
+        }
+      },
+      "before_file": "before_1714.json",
+      "after_file": "after_1714_final.json"
+    }
+  },
+  "checks": {
+    "559_complete_120_controls": false,
+    "559_mean_speed_ge_0_5": false,
+    "559_route_gain_ge_0_01": false,
+    "559_stall_le_20": false,
+    "559_emergency_le_10": false,
+    "559_zero_unverified_executions": true,
+    "559_no_safety_failure": false,
+    "559_no_crash_offroad": true,
+    "1714_complete_60_controls": true,
+    "1714_route_gain_retention_ge_98pct": false,
+    "1714_no_safety_failure": true,
+    "1714_no_crash_offroad": true,
+    "1714_zero_unverified_executions": true,
+    "1714_no_frequent_recovery": true,
+    "1714_mean_latency_below_508ms": true,
+    "1714_mean_latency_at_most_233ms": false,
+    "motion_validation_passed": false
+  },
+  "formal_evaluation_ready": false,
+  "blocking_reasons": [
+    "559_complete_120_controls",
+    "559_mean_speed_ge_0_5",
+    "559_route_gain_ge_0_01",
+    "559_stall_le_20",
+    "559_emergency_le_10",
+    "559_no_safety_failure",
+    "1714_route_gain_retention_ge_98pct",
+    "1714_mean_latency_at_most_233ms",
+    "motion_validation_passed"
+  ],
+  "protocol": {
+    "seed": 1,
+    "episode_seed": "(1+scenario)%2**32",
+    "normal_budget": [
+      64,
+      8,
+      4
+    ],
+    "recovery_budget": [
+      32,
+      2
+    ],
+    "controlled_max": 16,
+    "before_source": "initial working tree INCLUDING pre-existing uncommitted edits",
+    "closed_loop_termination": "safety failure abort before physics; never continue unverified actions to fill requested length",
+    "retention_metric": "closed-loop route increment, excluding identical recorded-action replay prefix",
+    "timing_note": "single-run descriptive wall times, not a multi-run latency confidence claim; phase timers overlap and cannot be summed"
+  },
+  "calibration": {
+    "file": "motion_calibration_final/validation.json",
+    "validated": false,
+    "fit_controls": 600,
+    "heldout_controls": 970,
+    "fit_windows": 60,
+    "heldout_windows": 97,
+    "valid_horizons": [
+      6
+    ],
+    "event_validation_supported": false
+  },
+  "unresolved": [
+    "559: no certified action at planning attempt 11; only 10 controls executed",
+    "1714: closed-loop route gain retention below 98%, latency still above 233ms/100ms",
+    "Primary motion model not empirically qualified to replace legacy veto",
+    "Recovery WM value and SAC-relative deviation penalty favor outward trajectory over checked geometric correction"
+  ]
+}

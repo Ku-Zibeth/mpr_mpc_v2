@@ -1,0 +1,184 @@
+diff --git a/config.yaml b/config.yaml
+index a32a3c4..4e55144 100644
+--- a/config.yaml
++++ b/config.yaml
+@@ -114,7 +114,6 @@ mpr_mpc:
+       min_progress_m: 0.05
+       normal_progress_ratio: 0.9
+       recovery_progress_ratio: 0.8
+-      recovery_lateral_ratio: 0.5
+       max_throttle_step: 0.25
+     recovery:
+       enabled: true
+diff --git a/planning/local_mppi.py b/planning/local_mppi.py
+index 7e0a0be..c96fc50 100644
+--- a/planning/local_mppi.py
++++ b/planning/local_mppi.py
+@@ -175,11 +175,10 @@ class LocalMPPI:
+         self.record_candidates = bool(selection.get("record_candidates", False))
+         self.min_progress = float(selection.get("min_progress_m", .05))
+         self.progress_ratio = float(selection.get("recovery_progress_ratio", .8))
+-        self.lateral_ratio = float(selection.get("recovery_lateral_ratio", .5))
+         self.normal_progress_ratio = float(selection.get("normal_progress_ratio", .9))
+         self.throttle_step = float(selection.get("max_throttle_step", .25))
+         if (not math.isfinite(self.min_progress) or self.min_progress <= 0 or
+-                not 0 < self.progress_ratio <= 1 or not 0 < self.normal_progress_ratio <= 1 or not 0 < self.lateral_ratio <= 1 or
++                not 0 < self.progress_ratio <= 1 or not 0 < self.normal_progress_ratio <= 1 or
+                 not math.isfinite(self.throttle_step) or not 0 < self.throttle_step <= 2):
+             raise ValueError("Invalid trajectory progress/continuity settings.")
+         if self.trajectory_selection and not self.safety_enabled:
+@@ -613,7 +612,7 @@ class LocalMPPI:
+                     # Full-safe and same-prefix-recoverable trajectories BOTH
+                     # passed the required exact certificate. Preferring even a
+                     # crawling full-safe tail here would recreate the deadlock.
+-                    feasible = recovery_direction_filter(keys, progress, admissible & torch.isfinite(scores))
++                    feasible = admissible & torch.isfinite(scores)
+                     eligible = self._progress_eligible(progress, feasible, recovery=True, recovery_target=recovery_progress_target)
+                     # Progress is an adequacy constraint, not a contest for
+                     # maximum predicted speed. Within that set prefer fewer
+@@ -651,66 +650,6 @@ class LocalMPPI:
+                     return (checked_score, actions[i].clone(), rows[i], keys[i])
+             return None
+ 
+-        def improves_interior(key):
+-            if not progress_active or not self._recovery_latched:
+-                return False
+-            reference = safety_context.road_reference
+-            lateral = reference.project(safety_context.position)[1]
+-            centers = getattr(safety_context, "lane_centers", ()) or (0.,)
+-            initial = min(abs(lateral-center) for center in centers)
+-            end = safety_cache[key].get("terminal_lateral_error", float("inf"))
+-            resolution = float(self.candidate_safety.cfg.get("swept_position_tolerance", .002))
+-            return end+resolution < initial
+-
+-        def interior_gain(key):
+-            if not progress_active or not self._recovery_latched:
+-                return 0.
+-            lateral = safety_context.road_reference.project(safety_context.position)[1]
+-            centers = getattr(safety_context, "lane_centers", ()) or (0.,)
+-            initial = min(abs(lateral-center) for center in centers)
+-            return max(0., initial-safety_cache[key].get("terminal_lateral_error", float("inf")))
+-
+-        def recovery_direction_filter(keys, progress, eligible):
+-            # Recovery quality constraint, NOT relaxed safety and NOT a command
+-            # to turn toward the center. Only exact-safe forward alternatives
+-            # may activate it; otherwise keep all existing feasible choices.
+-            nondegrading = torch.tensor([prefix_nondegrading(k) for k in keys], device=self.device)
+-            nondegrading &= eligible & (progress >= self.min_progress)
+-            if bool(nondegrading.any()):
+-                eligible = nondegrading
+-                gains = progress.new_tensor([prefix_gain(k) for k in keys])
+-                best_gain = float(gains[eligible].max())
+-                if best_gain > projection_tolerance():
+-                    eligible &= gains >= self.lateral_ratio*best_gain
+-            returning = torch.tensor([improves_interior(k) for k in keys], device=self.device)
+-            returning &= eligible & (progress >= self.min_progress)
+-            if bool(returning.any()):
+-                gain = progress.new_tensor([interior_gain(k) for k in keys])
+-                returning &= gain >= self.lateral_ratio*gain[returning].max()
+-            return returning if bool(returning.any()) else eligible
+-
+-        def prefix_nondegrading(key):
+-            if not progress_active or not self._recovery_latched:
+-                return False
+-            lateral = safety_context.road_reference.project(safety_context.position)[1]
+-            centers = getattr(safety_context, "lane_centers", ()) or (0.,)
+-            initial = min(abs(lateral-center) for center in centers)
+-            # Quantization tolerance of world positions, not a relaxed road
+-            # boundary. Do not reward a tail that promises to recenter later
+-            # while EACH committed prefix moves farther toward the edge.
+-            tolerance = projection_tolerance()
+-            return bool(safety_cache[key].get("committed_lateral_error", float("inf")) <= initial+tolerance)
+-
+-        def projection_tolerance():
+-            return 2*torch.finfo(baseline.dtype).eps*max(1., *map(abs, safety_context.position))
+-
+-        def prefix_gain(key):
+-            if not progress_active or not self._recovery_latched:
+-                return 0.
+-            lateral = safety_context.road_reference.project(safety_context.position)[1]
+-            centers = getattr(safety_context, "lane_centers", ()) or (0.,)
+-            return min(abs(lateral-center) for center in centers)-safety_cache[key].get("committed_lateral_error", float("inf"))
+-
+         def prefer(new, old):
+             if new is None:
+                 return False
+@@ -718,22 +657,6 @@ class LocalMPPI:
+                 return True
+             if progress_active:
+                 progress = baseline.new_tensor([safety_cache[c[3]].get("route_progress_estimate", float("nan")) for c in (old, new)])
+-                near_ok = [float(p) >= self.min_progress and prefix_nondegrading(c[3]) for c, p in zip((old, new), progress)]
+-                if near_ok[0] != near_ok[1]:
+-                    return near_ok[1]
+-                if all(near_ok):
+-                    gains = [prefix_gain(c[3]) for c in (old, new)]
+-                    gate = self.lateral_ratio*max(gains)
+-                    if max(gains) > projection_tolerance() and (gains[1] >= gate) != (gains[0] >= gate):
+-                        return gains[1] >= gate
+-                returning = [float(p) >= self.min_progress and improves_interior(c[3]) for c, p in zip((old, new), progress)]
+-                if returning[0] != returning[1]:
+-                    return returning[1]
+-                if all(returning):
+-                    gains = [interior_gain(c[3]) for c in (old, new)]
+-                    gate = self.lateral_ratio*max(gains)
+-                    if (gains[1] >= gate) != (gains[0] >= gate):
+-                        return gains[1] >= gate
+                 eligible = self._progress_eligible(progress, torch.ones(2, dtype=torch.bool, device=self.device), recovery=True,
+                     recovery_target=recovery_progress_target if self._recovery_latched else None)
+                 if bool(eligible[1]) != bool(eligible[0]):
+@@ -969,15 +892,7 @@ class LocalMPPI:
+         if progress_active and baseline_safe and winner is not None:
+             base_progress = safety_cache[baseline_key].get("route_progress_estimate", float("nan"))
+             winner_progress = safety_cache[winner[3]].get("route_progress_estimate", float("nan"))
+-            if self._recovery_latched and winner_progress >= self.min_progress and prefix_nondegrading(winner[3]) and not prefix_nondegrading(baseline_key):
+-                baseline_selected = False
+-            elif self._recovery_latched and winner_progress >= self.min_progress and prefix_gain(winner[3]) > projection_tolerance() and prefix_gain(baseline_key) < self.lateral_ratio*prefix_gain(winner[3]):
+-                baseline_selected = False
+-            elif self._recovery_latched and winner_progress >= self.min_progress and improves_interior(winner[3]) and interior_gain(baseline_key) < self.lateral_ratio*interior_gain(winner[3]):
+-                baseline_selected = False
+-            elif self._recovery_latched and winner_progress >= self.min_progress and improves_interior(winner[3]) and not improves_interior(baseline_key):
+-                baseline_selected = False
+-            elif winner_progress >= self.min_progress and base_progress < self.min_progress:
++            if winner_progress >= self.min_progress and base_progress < self.min_progress:
+                 baseline_selected = False
+             elif base_progress >= self.min_progress and winner_progress < self.normal_progress_ratio*base_progress:
+                 baseline_selected = True
+@@ -1261,12 +1176,6 @@ class LocalMPPI:
+                     reason = "not_finally_verified"
+                 elif key in decision_reasons:
+                     reason = decision_reasons[key]
+-                elif progress_active and self._recovery_latched and selected_progress >= self.min_progress and prefix_nondegrading(selected_key) and not prefix_nondegrading(key):
+-                    reason = "committed_prefix_outward"
+-                elif progress_active and self._recovery_latched and prefix_gain(selected_key) > projection_tolerance() and prefix_gain(key) < self.lateral_ratio*prefix_gain(selected_key):
+-                    reason = "insufficient_committed_recovery"
+-                elif progress_active and self._recovery_latched and improves_interior(selected_key) and interior_gain(key) < self.lateral_ratio*interior_gain(selected_key):
+-                    reason = "insufficient_lateral_recovery"
+                 elif progress_active and selected_progress >= self.min_progress and progress < max(self.min_progress,
+                         min(self.progress_ratio*selected_progress, recovery_progress_target) if self._recovery_latched else self.progress_ratio*selected_progress):
+                     reason = "insufficient_progress"
+diff --git a/planning/native_config.py b/planning/native_config.py
+index 66de2a5..2ed7c4a 100644
+--- a/planning/native_config.py
++++ b/planning/native_config.py
+@@ -12,7 +12,7 @@ MPPI_RECOVERY_KEYS = frozenset({"enabled", "num_samples", "iterations", "initial
+                                 "anti_stall", "stall_speed_mps", "stall_duration_s", "stall_progress_m", "stall_exit_s",
+                                 "progressive", "positive_throttles", "transition_fractions", "controlled_deceleration"})
+ MPPI_SELECTION_KEYS = frozenset({"enabled", "record_candidates", "min_progress_m", "normal_progress_ratio",
+-                                 "recovery_progress_ratio", "recovery_lateral_ratio", "max_throttle_step"})
++                                 "recovery_progress_ratio", "max_throttle_step"})
+ NATIVE_MPPI_KEYS = frozenset({
+     "enabled", "cost_enabled", "cost_coef", "num_samples", "num_elites", "iterations",
+     "initial_std", "min_std", "max_std", "max_delta", "temperature", "proposal_init",
+diff --git a/tools/run_trajectory_pair.sh b/tools/run_trajectory_pair.sh
+index 7f50492..36bbb38 100644
+--- a/tools/run_trajectory_pair.sh
++++ b/tools/run_trajectory_pair.sh
+@@ -35,7 +35,7 @@ fi
+ import hashlib, json, sys
+ from pathlib import Path
+ from tools.benchmark_mppi import source_fingerprint
+-report = Path('reports/trajectory_filter/acceptance.json')
++report = Path('reports/trajectory_filter/acceptance_final.json')
+ if not report.is_file():
+     raise SystemExit('No smoke acceptance report. Run and validate the prescribed unit/closed-loop tests first.')
+ data = json.loads(report.read_text())

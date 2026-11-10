@@ -6,6 +6,10 @@ but owns its settings, road cache and per-observation traffic snapshot.
 
 from dataclasses import dataclass, fields, replace
 import math
+import hashlib
+import inspect
+import json
+from pathlib import Path
 
 import numpy as np
 import shapely
@@ -35,6 +39,10 @@ class MPPISafetyContext(SafetyContext):
     measurement_step: int | None = None
     lane_centers: tuple = ()
     rear_axle_to_center: float | None = None
+    lattice_speed_limit: float | None = None
+    sac_target_speed: float | None = None
+    mppi_target_speed: float | None = None
+    motion_signature: dict | None = None
 
 
 def geometric_recovery_reference(context, reference, lane_centers, control_dt):
@@ -91,6 +99,12 @@ class MPPISafetyResult(SafetyResult):
     committed_lateral_error: torch.Tensor | None = None
     center_model_valid: torch.Tensor | None = None
     legacy_model_valid: torch.Tensor | None = None
+    primary_calibrated: torch.Tensor | None = None
+    legacy_shadow: torch.Tensor | None = None
+    center_near_collision: torch.Tensor | None = None
+    legacy_near_collision: torch.Tensor | None = None
+    center_near_offroad: torch.Tensor | None = None
+    legacy_near_offroad: torch.Tensor | None = None
 
 
 def projected_route_progress(positions, context, *, with_lateral=False):
@@ -137,6 +151,22 @@ class MPPISafetyFilter:
         self.staged = self.two_layer and bool(cfg.get("staged", False))
         self.center_bicycle = bool(cfg.get("center_bicycle", False))
         self.center_model_guard = bool(cfg.get("center_model_guard", False))
+        self.motion_evidence = None
+        self.motion_evidence_sha = None
+        evidence_path = cfg.get("motion_validation_path")
+        self.motion_evidence_path = Path(str(evidence_path)).expanduser() if evidence_path else None
+        if self.motion_evidence_path is not None and self.motion_evidence_path.is_file():
+            try:
+                payload = self.motion_evidence_path.read_bytes()
+                evidence = json.loads(payload)
+                data = Path(evidence.get("dataset", ""))
+                if (self.valid_motion_evidence(evidence) and data.is_file()
+                        and hashlib.sha256(data.read_bytes()).hexdigest() == evidence.get("dataset_sha256")):
+                    self.motion_evidence, self.motion_evidence_sha = evidence, hashlib.sha256(payload).hexdigest()
+                    self._evidence_stamp = (self.motion_evidence_path.stat().st_mtime_ns, data.stat().st_mtime_ns)
+                    self._evidence_data_path = data
+            except (OSError, ValueError, TypeError, KeyError, AttributeError):
+                pass  # Malformed/stale evidence retains the conservative dual check.
         self.action_delay_s = float(cfg.get("action_delay_s", 0.))
         if not math.isfinite(self.action_delay_s) or self.action_delay_s < 0:
             raise ValueError("Action delay must be finite and nonnegative.")
@@ -184,7 +214,86 @@ class MPPISafetyFilter:
         result.dynamics_parameters = {key: config.get(key) for key in ("mass", "max_engine_force", "max_brake_force")}
         result.dynamics_parameters.update(model_acceleration=float(self.cfg.get("max_acceleration", 4.)),
             model_deceleration=float(self.cfg.get("max_deceleration", 6.)), longitudinal_bounds_calibrated=False)
+        result.motion_signature = dict(length=result.length, width=result.width, wheelbase=result.wheelbase,
+            rear_axle=result.rear_axle_to_center, steering=result.max_steering,
+            mass=float(config.get("mass") or getattr(vehicle, "MASS", 0.)),
+            engine=float(config.get("max_engine_force", 0.)), brake=float(config.get("max_brake_force", 0.)),
+            friction=float(config.get("wheel_friction", 0.)))
+        physics = getattr(getattr(vehicle, "engine", None), "global_config", {})
+        result.motion_signature.update(physics_dt=physics.get("physics_world_step_size"), decision_repeat=physics.get("decision_repeat"))
         return result
+
+    @staticmethod
+    def valid_motion_evidence(e):
+        try:
+            if not (e["schema"] == 1 and e["predictor_schema"] == "center_bicycle_v1"
+                    and e["protocol"] == "disjoint_scene_physics_tick_v1"
+                    and e["fit_windows"] >= 20 and e["heldout_windows"] >= 20
+                    and e["fit_scenes"] and e["heldout_scenes"]
+                    and set(e["fit_scenes"]).isdisjoint(e["heldout_scenes"])):
+                return False
+            if e.get("validated", False) and not e.get("event_validation_supported", False):
+                return False
+            for horizon in e["valid_horizons"]:
+                if type(horizon) is not int or horizon <= 0:
+                    return False
+                bound = e["bounds"][str(horizon)]
+                if not all(math.isfinite(bound[k]) and bound[k] >= 0 for k in
+                           ("position_m", "heading_rad", "lateral_m", "speed_mps")):
+                    return False
+            for name, value in e.get("parameters", {}).items():
+                if name not in ("max_acceleration", "max_deceleration", "beta_gain", "yaw_gain") or not math.isfinite(value) or value <= 0:
+                    return False
+            domain = e["domain"]
+            return (len(domain["speed"]) == 2 and 0 <= domain["speed"][0] <= domain["speed"][1]
+                    and all(math.isfinite(v) for v in domain["speed"])
+                    and len(domain["action_min"]) == len(domain["action_max"]) == 2
+                    and all(-1 <= lo <= hi <= 1 for lo, hi in zip(domain["action_min"], domain["action_max"])))
+        except (ValueError, TypeError, KeyError):
+            return False
+
+    def calibrated_mask(self, actions, context):
+        """Evidence-gated operating domain; absent/stale data retains both checks."""
+        no = torch.zeros(len(actions), dtype=torch.bool)
+        e = self.motion_evidence
+        if not e or not e.get("validated", False) or context.rear_axle_to_center is None:
+            return no
+        if (not self.motion_evidence_path.is_file() or not self._evidence_data_path.is_file() or
+            (self.motion_evidence_path.stat().st_mtime_ns, self._evidence_data_path.stat().st_mtime_ns) != self._evidence_stamp):
+            return no
+        if (abs(e.get("control_dt", -1)-self.geometry.dt) > 1e-9 or
+                actions.shape[1]-1 not in e.get("valid_horizons", []) or
+                e.get("nominal_config") != self.motion_nominal_config() or
+                e.get("predictor_sha256") != self.motion_predictor_sha()):
+            return no
+        if not any(context.motion_signature == signature for signature in e.get("vehicle_signatures", [])):
+            return no
+        domain = e["domain"]
+        if not domain["speed"][0] <= context.speed <= domain["speed"][1]:
+            return no
+        controls = actions.detach().cpu()[:, :-1]
+        return (torch.isfinite(controls).all((1, 2)) &
+            (controls >= controls.new_tensor(domain["action_min"])).all((1, 2)) &
+            (controls <= controls.new_tensor(domain["action_max"])).all((1, 2)))
+
+    def motion_nominal_config(self):
+        return {"max_acceleration": float(self.cfg.get("max_acceleration", 4.)),
+                "max_deceleration": float(self.cfg.get("max_deceleration", 6.)), "substeps": self.geometry.substeps}
+
+    @staticmethod
+    def motion_predictor_sha():
+        return hashlib.sha256((inspect.getsource(MPPISafetyFilter._center_rollout)
+            +inspect.getsource(TrajectorySafetyEvaluator.rollout)).encode()).hexdigest()
+
+    def calibrated_extra_margin(self, actions, context):
+        ready = self.calibrated_mask(actions, context)
+        if not bool(ready.any()):
+            return 0.
+        bound = self.motion_evidence["bounds"][str(actions.shape[1]-1)]
+        # Convert orientation error into a body-corner displacement. Keep the
+        # original margin as the minimum; never subtract a road/collision bound.
+        pose = bound["position_m"]+math.hypot(context.length, context.width)*math.sin(min(math.pi, bound["heading_rad"])/2)
+        return max(0., pose-self.geometry.model_margin)
 
     def response_errors(self, vehicle):
         """Compare a stored executed-action model prediction after ONE env step.
@@ -208,11 +317,21 @@ class MPPISafetyFilter:
             "execution_action_error": float(np.linalg.norm(actual_action-pending["action"]))}
 
     def predict_response(self, actions, context, vehicle):
-        positions, headings, speeds = self._rollout(actions[None, :2].detach().cpu(), context)
+        # Use the same horizon/domain as the certified model, then take its
+        # first control. A prefix-only call could use a different evidence gate.
+        positions, headings, speeds = (value[:, :self.geometry.substeps+1]
+            for value in self._rollout(actions[None].detach().cpu(), context))
+        legacy_xy, legacy_yaw, legacy_speed = self.geometry.rollout(actions[None, :2].detach().cpu(), context)
         step = getattr(getattr(vehicle, "engine", None), "episode_step", None)
         if step is not None:
             self._response_prediction = dict(step=step, position=positions[0, -1].numpy(), heading=float(headings[0, -1]),
                 speed=float(speeds[0, -1]), action=actions[0].detach().cpu().numpy())
+        return dict(control_dt=self.geometry.dt, measured_speed=context.speed,
+            reference_points=getattr(context.road_reference, "points", np.empty((0, 2))).tolist(),
+            center=dict(position=positions[0, -1].tolist(), heading=float(headings[0, -1]), speed=float(speeds[0, -1])),
+            legacy=dict(position=legacy_xy[0, -1].tolist(), heading=float(legacy_yaw[0, -1]), speed=float(legacy_speed[0, -1])))
+
+
 
     def _rollout(self, controls, context):
         # Observation-local cache: exact promotion can reuse a preview rollout
@@ -221,6 +340,7 @@ class MPPISafetyFilter:
             context.wheelbase, context.max_steering, str(controls.dtype), self.geometry.dt,
             self.geometry.substeps, self.cfg.get("max_acceleration", 4.), self.cfg.get("max_deceleration", 6.),
             self.center_bicycle, getattr(context, "rear_axle_to_center", None))
+        signature += (self.motion_evidence_sha,)
         cache = context.cache.setdefault(("mppi_rollouts", signature), {})
         keys = [row.tobytes() for row in controls.contiguous().numpy()]
         missing = {key: i for i, key in enumerate(keys) if key not in cache}
@@ -232,7 +352,7 @@ class MPPISafetyFilter:
                 cache[key] = tuple(tensor[i] for tensor in packed)
         return tuple(torch.stack([cache[key][j] for key in keys]) for j in range(3))
 
-    def _center_rollout(self, actions, context):
+    def _center_rollout(self, actions, context, *, parameters=None):
         """Kinematic bicycle at the measured chassis CENTER, not rear axle.
 
         Bullet wheel locations are +FRONT_WHEELBASE/-REAR_WHEELBASE relative
@@ -247,16 +367,26 @@ class MPPISafetyFilter:
         speed = actions.new_full((len(actions),), context.speed)
         positions, headings, speeds = [xy.clone()], [yaw.clone()], [speed.clone()]
         dt = self.geometry.dt/self.geometry.substeps
+        if parameters is not None:
+            ready = torch.ones(len(actions), dtype=torch.bool)
+            fit = parameters
+        else:
+            ready = self.calibrated_mask(actions, context)
+            fit = self.motion_evidence.get("parameters", {}) if self.motion_evidence else {}
+        ready = ready.to(actions.device)
+        parameter = lambda name, nominal: torch.where(ready, actions.new_tensor(float(fit.get(name, nominal))), actions.new_tensor(nominal))
+        positive_acceleration = parameter("max_acceleration", float(self.cfg.get("max_acceleration", 4.)))
+        braking_acceleration = parameter("max_deceleration", float(self.cfg.get("max_deceleration", 6.)))
+        beta_gain, yaw_gain = parameter("beta_gain", 1.), parameter("yaw_gain", 1.)
         for action in controls.unbind(1):
             delta = action[:, 0]*context.max_steering
-            beta = (context.rear_axle_to_center/context.wheelbase*delta.tan()).atan()
+            beta = (context.rear_axle_to_center/context.wheelbase*delta.tan()).atan()*beta_gain
             acceleration = action[:, 1]*torch.where(action[:, 1] >= 0,
-                action.new_tensor(float(self.cfg.get("max_acceleration", 4.))),
-                action.new_tensor(float(self.cfg.get("max_deceleration", 6.))))
+                positive_acceleration, braking_acceleration)
             for _ in range(self.geometry.substeps):
                 next_speed = (speed+dt*acceleration).clamp_min(0)
                 middle = (speed+next_speed)/2
-                turn = dt*middle*beta.cos()*delta.tan()/context.wheelbase
+                turn = dt*middle*beta.cos()*delta.tan()/context.wheelbase*yaw_gain
                 direction = yaw+turn/2+beta
                 distance = dt*middle*torch.sinc(turn/(2*math.pi))
                 xy = xy+distance[:, None]*torch.stack((direction.cos(), direction.sin()), -1)
@@ -292,13 +422,20 @@ class MPPISafetyFilter:
         interval_kinematic = ((rate > float(self.cfg.get("max_steering_rate", 7.0))).repeat_interleave(self.geometry.substeps, 1)
             | (acceleration > float(self.cfg.get("max_lateral_acceleration", 6.)))
             | (headings.diff(dim=1).abs() >= math.pi))
+        speed_limit = getattr(context, "lattice_speed_limit", None)
+        if speed_limit is not None:
+            # An already overspeed state cannot brake instantaneously. Do not
+            # permit its speed to increase further; target/risk still demand
+            # deceleration toward the same physical ceiling.
+            interval_kinematic |= speeds[:, 1:] > max(float(speed_limit), context.speed)+1e-6
         kinematic = ~finite | interval_kinematic.any(1)
         # Enclose the full translation/rotation between adjacent substeps, not
         # just the center or endpoint corners. The same arc-error bound is used
         # by the continuous collision primitive.
         middle = (headings[:, :-1] + headings[:, 1:]) / 2
-        length = context.length + 2*self.geometry.model_margin
-        width = context.width + 2*self.geometry.model_margin
+        extra_margin = self.calibrated_extra_margin(controls, context) if self.center_bicycle and context.rear_axle_to_center is not None else 0.
+        length = context.length + 2*(self.geometry.model_margin+extra_margin)
+        width = context.width + 2*(self.geometry.model_margin+extra_margin)
         vertices = torch.cat((_corners(positions[:, :-1], middle, length, width),
                               _corners(positions[:, 1:], middle, length, width)), dim=-2)
         turn = headings[:, 1:] - headings[:, :-1]
@@ -433,10 +570,11 @@ class MPPISafetyFilter:
         result = self._strict_check(controls[:, :committed+1], context)
         if self.center_bicycle and self.center_model_guard and context.rear_axle_to_center is not None:
             guard = self._strict_check(controls[:, :committed+1], replace(context, rear_axle_to_center=None))
-            result.valid &= guard.valid
-            result.collision |= guard.collision
-            result.offroad |= guard.offroad
-            result.kinematic_violation |= guard.kinematic_violation
+            shadow = self.calibrated_mask(controls, context)
+            result.valid &= shadow | guard.valid
+            result.collision |= ~shadow & guard.collision
+            result.offroad |= ~shadow & guard.offroad
+            result.kinematic_violation |= ~shadow & guard.kinematic_violation
         result.near_valid = result.valid.clone()
         result.near_collision = result.collision.clone()
         result.near_offroad = result.offroad.clone()
@@ -512,6 +650,7 @@ class MPPISafetyFilter:
     def check(self, actions, context):
         result = self._check_nominal(actions, context)
         result.center_model_valid = result.valid.clone() if self.center_bicycle and context.rear_axle_to_center is not None else None
+        result.center_near_collision, result.center_near_offroad = result.near_collision, result.near_offroad
         if self.center_bicycle and self.center_model_guard and context.rear_axle_to_center is not None:
             # Preserve the original geometric standard as a second hypothesis.
             # Bullet tire transients need not instantly reach steady beta. Both
@@ -519,28 +658,32 @@ class MPPISafetyFilter:
             # neither a failed check nor missing evidence can be averaged away.
             guard = self._check_nominal(actions, replace(context, rear_axle_to_center=None))
             result.legacy_model_valid = guard.valid.clone()
+            result.legacy_near_collision, result.legacy_near_offroad = guard.near_collision, guard.near_offroad
+            shadow = result.primary_calibrated
+            result.legacy_shadow = shadow.clone()
             for name in ("valid", "near_valid", "full_valid"):
                 a, b = getattr(result, name), getattr(guard, name)
                 if a is not None and b is not None:
-                    setattr(result, name, a & b)
+                    setattr(result, name, a & (shadow | b))
             for name in ("collision", "offroad", "kinematic_violation", "near_collision", "near_offroad", "near_kinematic", "unrecoverable"):
                 a, b = getattr(result, name), getattr(guard, name)
                 if a is not None and b is not None:
-                    setattr(result, name, a | b)
+                    setattr(result, name, a | (~shadow & b))
             for name in ("risk_score", "road_risk", "collision_risk", "clearance_risk", "speed_risk", "lateral_risk", "kinematic_risk",
                          "terminal_lateral_error", "committed_lateral_error"):
                 a, b = getattr(result, name), getattr(guard, name)
                 if a is not None and b is not None:
-                    setattr(result, name, torch.maximum(a, b))
-            for name in ("route_progress_estimate", "boundary_margin", "min_clearance", "min_ttc"):
+                    setattr(result, name, torch.where(shadow, a, torch.maximum(a, b)))
+            for name in ("boundary_margin", "min_clearance", "min_ttc"):
                 a, b = getattr(result, name), getattr(guard, name)
                 if a is not None and b is not None:
-                    setattr(result, name, torch.minimum(a, b))
+                    setattr(result, name, torch.where(shadow, a, torch.minimum(a, b)))
         return result
 
     @torch.no_grad()
     def _check_nominal(self, actions, context):
         result = self._strict_check(actions, context)
+        result.primary_calibrated = self.calibrated_mask(actions, context)
         result.route_progress_estimate, result.terminal_lateral_error = projected_route_progress(result.positions, context, with_lateral=True)
         result.terminal_speed = result.speeds[:, -1]
         committed = self.committed_controls(actions.shape[1]-1)
@@ -573,6 +716,8 @@ class MPPISafetyFilter:
             checked = self._strict_check(witnesses, context)
             viable = checked.valid.reshape(-1, len(risky)).any(0)
             unrecoverable[risky] = ~viable
+            calibrated_viable = (checked.valid & self.calibrated_mask(witnesses, context)).reshape(-1, len(risky)).any(0)
+            result.primary_calibrated[risky] &= calibrated_viable
         result.near_valid, result.unrecoverable = near_valid, unrecoverable
         result.valid = near_valid & ~unrecoverable
         # Only the uncommitted tail contributes soft risk. Immediate violations
@@ -649,3 +794,40 @@ class MPPISafetyFilter:
         action = torch.tensor([float(np.clip(context.previous_action[0], -1, 1)), self.emergency_throttle],
                               dtype=dtype, device=device)
         return action.expand(horizon+1, -1).clone()
+
+
+def motion_response_errors(prediction, vehicle, info):
+    """Compare both forecasts against ONE actual control interval, never an abort."""
+    if not prediction or not bool(info.get("action_executed", True)):
+        return {}
+    actual_xy = np.asarray(vehicle.position)
+    speed, heading = float(np.linalg.norm(vehicle.velocity)), float(vehicle.heading_theta)
+    points = np.asarray(prediction.get("reference_points", []))
+    def lateral(xy):
+        if len(points) < 2:
+            return float("nan")
+        segments = points[1:]-points[:-1]
+        length2 = np.einsum("ij,ij->i", segments, segments).clip(1e-12)
+        delta = xy-points[:-1]
+        u = np.clip((delta*segments).sum(-1)/length2, 0, 1)
+        error = delta-u[:, None]*segments
+        index = (error*error).sum(-1).argmin()
+        normal = np.array([-segments[index, 1], segments[index, 0]])/np.sqrt(length2[index])
+        return float(error[index]@normal)
+    collision = any(bool(info.get(k, False)) for k in ("crash", "crash_vehicle", "crash_object", "crash_building", "crash_human", "crash_sidewalk"))
+    offroad = bool(info.get("out_of_road", False))
+    result = {}
+    for name in ("center", "legacy"):
+        model = prediction[name]
+        angle = heading-model["heading"]
+        prefix = f"motion_{name}_"
+        result.update({prefix+"position_error_m": float(np.linalg.norm(actual_xy-model["position"])),
+            prefix+"heading_error_rad": abs(math.atan2(math.sin(angle), math.cos(angle))),
+            prefix+"lateral_error_m": abs(lateral(actual_xy)-lateral(np.asarray(model["position"]))),
+            prefix+"speed_error_mps": abs(speed-model["speed"])})
+        for event, actual in (("collision", collision), ("offroad", offroad)):
+            predicted = model.get(event, float("nan"))
+            known = isinstance(predicted, (bool, int, float)) and math.isfinite(float(predicted))
+            result[prefix+event+"_false_positive"] = float(bool(predicted) and not actual) if known else float("nan")
+            result[prefix+event+"_false_negative"] = float(not bool(predicted) and actual) if known else float("nan")
+    return result

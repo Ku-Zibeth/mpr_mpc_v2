@@ -96,6 +96,7 @@ class MPRPlanResult:
     debug: dict[str, Any] = field(default_factory=dict)
     planning_mode: str = "baseline"
     recovery_reason: str = "none"
+    safety_failure: bool = False
 
     @property
     def coarse_parameters(self) -> np.ndarray:

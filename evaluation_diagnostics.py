@@ -11,6 +11,7 @@ import torch
 from omegaconf import OmegaConf
 from mpr_mpc.evaluation_statistics import cluster_intervals
 from mpr_mpc.planning.local_mppi import MPPI_DIAGNOSTIC_KEYS, MPPI_EPISODE_METRICS
+from mpr_mpc.planning.mppi_safety import motion_response_errors
 
 
 PLAN_ALIASES = {
@@ -34,6 +35,10 @@ def prediction_outcomes(info, result):
     """
     if result is None or not result.stage.use_mppi:
         return {}
+    if not bool(info.get("action_executed", True)):
+        return {**{f"mppi/{key}": float("nan") for key in
+            ("actual_collision", "actual_offroad", "predicted_safe_actual_collision", "predicted_safe_actual_offroad")},
+            "mppi/prediction_collision_known": 0., "mppi/prediction_offroad_known": 0.}
     crash = any(bool(info.get(k, False)) for k in
                 ("crash", "crash_vehicle", "crash_object", "crash_building", "crash_human", "crash_sidewalk"))
     offroad = bool(info.get("out_of_road", False))
@@ -74,13 +79,19 @@ class StepDiagnosticsLogger:
             return
         state = (int(scenario), getattr(result, "planning_mode", "unknown"))
         incident = info is not None and any(bool(info.get(k, False)) for k in
-            ("crash", "crash_vehicle", "crash_object", "out_of_road", "success", "truncated"))
+            ("crash", "crash_vehicle", "crash_object", "out_of_road", "success", "truncated", "safety_failure"))
         changed = state != self._last_state
         self._last_state = state
         if self.compact and not (changed or incident or step == 1 or step % self.stride == 0):
             return
         row = dict(scenario=int(scenario), episode_step=int(step),
                    executed_action=np.asarray(action.detach().cpu() if torch.is_tensor(action) else action).tolist())
+        if info is not None:
+            row["action_executed"] = bool(info.get("action_executed", True))
+            row["safety_failure"] = bool(info.get("safety_failure", False))
+            if not row["action_executed"]:
+                row["proposed_action"], row["executed_action"] = row["executed_action"], None
+                row["safety_failure_reason"] = info.get("safety_failure_reason", "")
         if result is not None:
             row.update({k: v for k, v in result.metrics.items() if not self.compact or
                 (k.startswith("mppi/") and not k.endswith("cpu_wall_ms")) or k in
@@ -147,6 +158,8 @@ def fixed_scenarios(cfg):
 class EpisodeDiagnostics:
     def __init__(self):
         self.crash = self.offroad = False
+        self.safety_failure = False
+        self.unverified_executions = 0
         self.ttcs, self.clearances = [], []
         self.plans = defaultdict(list, {f"mpr/{key}": [] for key in MPPI_DIAGNOSTIC_KEYS})
         self.plans.update({key: [] for key in MPPI_EPISODE_METRICS.values()})
@@ -156,10 +169,13 @@ class EpisodeDiagnostics:
         self.distance = 0.0
 
     def observe(self, observation, action, info, result, vehicle=None):
-        self.observations.append(np.asarray(observation.detach().cpu() if torch.is_tensor(observation) else observation, dtype=np.float32).copy())
-        self.actions.append(np.asarray(action.detach().cpu() if torch.is_tensor(action) else action, dtype=np.float32).copy())
-        self.costs.append(float(info.get("cost", 0)))
-        if vehicle is not None:
+        executed = bool(info.get("action_executed", True))
+        self.safety_failure |= bool(info.get("safety_failure", False))
+        if executed:
+            self.observations.append(np.asarray(observation.detach().cpu() if torch.is_tensor(observation) else observation, dtype=np.float32).copy())
+            self.actions.append(np.asarray(action.detach().cpu() if torch.is_tensor(action) else action, dtype=np.float32).copy())
+            self.costs.append(float(info.get("cost", 0)))
+        if vehicle is not None and executed:
             self.speeds.append(float(np.linalg.norm(np.asarray(vehicle.velocity)[:2])))
             if hasattr(vehicle, "last_position"):
                 self.distance += float(np.linalg.norm(np.asarray(vehicle.position)[:2] - np.asarray(vehicle.last_position)[:2]))
@@ -174,14 +190,18 @@ class EpisodeDiagnostics:
         for key in ("dynamic_collision", "static_collision", "road_event", "other_event", "unallocated_event"):
             self.sums[f"safety_{key}_cost"] += float(info.get(f"safety_{key}_cost", 0))
         if result is not None:
+            if vehicle is not None:
+                result.metrics.update({f"mppi/{key}": value for key, value in motion_response_errors(
+                    getattr(result, "debug", {}).get("motion_prediction"), vehicle, info).items()})
+            self.unverified_executions += int(executed and result.stage.use_mppi and bool(getattr(result, "safety_failure", False)))
             result.metrics.update(prediction_outcomes(info, result))
             code = result.metrics.get("mppi/planning_mode", float("nan"))
-            if result.stage.use_mppi and np.isfinite(code):
+            if result.stage.use_mppi and executed and np.isfinite(code):
                 self.sums[f"mode{int(code)}_steps"] += 1
                 self.sums[f"mode{int(code)}_collision_steps"] += result.metrics["mppi/actual_collision"]
                 self.sums[f"mode{int(code)}_offroad_steps"] += result.metrics["mppi/actual_offroad"]
             predicted_step = float(result.metrics.get("mppi/predicted_step_cost", float("nan")))
-            if result.stage.use_mppi and np.isfinite(predicted_step):
+            if result.stage.use_mppi and executed and np.isfinite(predicted_step):
                 self.sums["predicted_step_cost"] += predicted_step
                 self.sums["predicted_cost_steps"] += 1
             for key, value in result.metrics.items():
@@ -207,6 +227,8 @@ class EpisodeDiagnostics:
         planning = self.plans.get("mpr/total_planning_ms", [])
         legacy = {"mppi_baseline_selected": "mpr/baseline_selected", "mppi_score_gain": "mpr/planner_score_gain"}
         return {
+            "safety_failure": float(self.safety_failure), "physical_steps": len(self.actions),
+            "unverified_action_executions": self.unverified_executions,
             **{f"planning_p{q}_ms": float(np.percentile(planning, q)) if planning else float("nan")
                for q in (50, 95, 99)},
             "forward_progress_candidate_pass_count": sum(self.plans["mppi/forward_verified_candidates"]),
@@ -219,6 +241,10 @@ class EpisodeDiagnostics:
                 if self.plans[f"mppi/{name}"] else float("nan")
                for name in ("physics_position_error_m", "physics_speed_error_mps", "physics_heading_error_rad",
                     "physics_acceleration_bias_mps2", "physics_braking_response_bias_mps2", "execution_action_error")
+               for q in (50, 95, 99)},
+            **{f"motion_{model}_{name}_p{q}": float(np.percentile(self.plans[f"mppi/motion_{model}_{name}"], q))
+                if self.plans[f"mppi/motion_{model}_{name}"] else float("nan")
+               for model in ("center", "legacy") for name in ("position_error_m", "heading_error_rad", "lateral_error_m", "speed_error_mps")
                for q in (50, 95, 99)},
             **{f"mean_{key.replace('/', '_')}": mean(values) for key, values in self.plans.items()},
             **{name: mean(self.plans[key]) for name, key in PLAN_ALIASES.items()},

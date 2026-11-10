@@ -315,6 +315,28 @@ class MPRMPCPlanner:
         max_steering_angle = positive(max_steering_angle, fallback_steering)
         return vehicle_width, wheelbase, max_steering_angle
 
+    def _update_mppi_speed_context(self, context, refined, vehicle):
+        """Update AFTER SAC regeneration; never alter the frozen SAC features."""
+        settings = getattr(self.structured.planner, "config", {})
+        limit = min(self.max_speed, float(settings.get("frenet_rl_max_speed", self.max_speed)))
+        vehicle_limit = float(getattr(vehicle, "max_speed_km_h", float("inf")))/3.6
+        if np.isfinite(vehicle_limit) and vehicle_limit > 0:
+            limit = min(limit, vehicle_limit)
+        points = np.column_stack((refined.x, refined.y))
+        curvature_function = getattr(self.structured.controller, "_local_path_curvature", None)
+        if len(points) >= 4 and callable(curvature_function) and bool(settings.get("frenet_curve_speed_limit", True)):
+            arc = np.r_[0., np.cumsum(np.linalg.norm(np.diff(points, axis=0), axis=1))]
+            closest = int(np.linalg.norm(points-np.asarray(vehicle.position), axis=1).argmin())
+            curvature = float(curvature_function(points, arc, closest))
+            if curvature > 1e-6:
+                # Existing Lattice lateral-acceleration setting, without a
+                # minimum desired-speed floor overriding a physical ceiling.
+                limit = min(limit, np.sqrt(float(settings.get("frenet_max_lateral_accel", 2.8))/curvature))
+        context.lattice_speed_limit = max(0., float(limit))
+        context.sac_target_speed = float(refined.target_speed)
+        context.mppi_target_speed = float(np.clip(refined.target_speed, 0., context.lattice_speed_limit))
+        context.target_speed = context.mppi_target_speed  # compatibility alias
+
     def _corridor_context(self, refined, vehicle) -> CorridorContext:
         # H controls a_t...a_{t+H-1} produce H post-transition states. The
         # H+1-th control belongs only to terminal Q and is not integrated here.
@@ -481,6 +503,8 @@ class MPRMPCPlanner:
         if stage.use_mppi:
             if context.latent is None:
                 raise RuntimeError("Stage B/C MPPI requires an encoded current observation.")
+            if context.mppi_safety_context is not None:
+                self._update_mppi_speed_context(context.mppi_safety_context, refined, vehicle)
             mppi = self.local_mppi.plan(
                 context.latent,
                 refined_actions,
@@ -542,6 +566,7 @@ class MPRMPCPlanner:
                     "validated": consequence.cost_validated}
 
         coarse_row = consequence_row(context.coarse_consequence)
+        motion_prediction = None
         if stage.use_mppi:
             sac_row, selected_row = mppi.baseline_consequence, mppi.selected_consequence
             if not stage.use_residual:
@@ -551,7 +576,10 @@ class MPRMPCPlanner:
             response = self.local_mppi.candidate_safety.response_errors(vehicle)
             diagnostics.update({f"mppi/{key}": value for key, value in response.items()})
             if context.mppi_safety_context is not None:
-                self.local_mppi.candidate_safety.predict_response(selected_actions, context.mppi_safety_context, vehicle)
+                motion_prediction = self.local_mppi.candidate_safety.predict_response(selected_actions, context.mppi_safety_context, vehicle)
+                for name in ("center", "legacy"):
+                    motion_prediction[name].update(collision=mppi.metrics.get(f"{name}_near_collision", float("nan")),
+                        offroad=mppi.metrics.get(f"{name}_near_offroad", float("nan")))
         else:
             sac_row = selected_row = consequence_row(refined_consequence if context.latent is not None else None)
         for name, row in (("lattice", coarse_row), ("sac", sac_row), ("mppi", selected_row)):
@@ -663,6 +691,8 @@ class MPRMPCPlanner:
                 "mpr/planning_ms": elapsed_ms,
             },
             debug={
+                "motion_prediction": motion_prediction,
+                "safety_certificate": mppi.safety_certificate if stage.use_mppi else None,
                 "mppi_candidates": mppi.candidate_diagnostics if stage.use_mppi else [],
                 "selected_mppi_actions": selected_actions.detach().cpu(),
                 "final_mppi_xy": final_mppi_xy,
@@ -673,6 +703,7 @@ class MPRMPCPlanner:
             },
             planning_mode=mppi.planning_mode if stage.use_mppi else "baseline",
             recovery_reason=mppi.recovery_reason if stage.use_mppi else "none",
+            safety_failure=mppi.safety_failure if stage.use_mppi else False,
         )
         self.last_result = result
         return result

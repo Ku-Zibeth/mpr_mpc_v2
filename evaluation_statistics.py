@@ -38,10 +38,12 @@ METRICS = {
     "planning_time_ms": ("mean_mpr_total_planning_ms", None),
     "predicted_cost": ("total_predicted_cost", None),
     "actual_cost": ("total_actual_cost", None),
+    "safety_failure_rate": ("safety_failure", None),
+    "unverified_action_executions": ("unverified_action_executions", None),
 }
 BINARY_RATES = {
     "out_of_road", "crash", "success", "collision_and_success",
-    "collision_and_offroad", "cost_limit_exceedance", "timeout_rate",
+    "collision_and_offroad", "cost_limit_exceedance", "timeout_rate", "safety_failure_rate",
 }
 
 

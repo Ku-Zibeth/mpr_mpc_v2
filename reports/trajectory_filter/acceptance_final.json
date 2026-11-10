@@ -1,0 +1,5229 @@
+{
+  "baseline_commit": "a70d7ff4f001942728e4040e507cff21c440e9e4",
+  "checkpoint": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt",
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "source_snapshot_sha256": "50d696744e89ac34cd4d659393e8da9f38b431cb5c677392e8d184f0894e8d7e",
+  "tests": {
+    "passed": 300,
+    "failed": 0,
+    "new_cases": 15
+  },
+  "protocol": {
+    "steps": 60,
+    "episode_seed": "(1+scenario)%2**32",
+    "normal_budget": [
+      64,
+      8,
+      4
+    ],
+    "recovery_controlled_max": 16,
+    "environment_horizon": 1000,
+    "baseline_harness": "Archived baseline source with identical current read-only smoke diagnostics",
+    "alignment_note": "1714 initial heading/lateral/route match exactly; 559 lateral replay differs by 0.278mm, below existing 2mm swept resolution but not bitwise-identical."
+  },
+  "cases": {
+    "1714": {
+      "snapshot_before_step": 250,
+      "initial_alignment_error": {
+        "heading_before": 0.0,
+        "lateral_before": 0.0,
+        "route_completion": 0.0
+      },
+      "before": {
+        "steps": 60,
+        "route_gain": 0.06250685272582907,
+        "mean_speed": 4.203955484862807,
+        "max_speed": 8.410140815666058,
+        "stall_steps": 1,
+        "crash": false,
+        "offroad": false,
+        "planning": {
+          "mean": 232.60739388254783,
+          "p50": 221.90563398908125,
+          "p95": 308.4604541523731,
+          "p99": 481.5362277434895,
+          "max": 666.6986500058556
+        },
+        "modes": {
+          "baseline": 2,
+          "normal": 58
+        },
+        "distributions": {
+          "mppi/accelerate_below_target": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/accelerate_kinematic_valid": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/accelerate_no_near_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/accelerate_road_clear": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/actual_speed_mps": {
+            "mean": 4.152195625284448,
+            "p50": 3.678509943111112,
+            "p95": 7.765925596498855,
+            "p99": 8.296398350403207,
+            "max": 8.410140815666058
+          },
+          "mppi/allow_unvalidated_cost": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/baseline_candidate_cost": {
+            "mean": 0.02273526331021761,
+            "p50": 0.02399515174329281,
+            "p95": 0.038915183395147324,
+            "p99": 0.040790215209126464,
+            "max": 0.04213473200798035
+          },
+          "mppi/baseline_corridor_valid": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/baseline_full_valid": {
+            "mean": 0.8166666666666667,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/baseline_future_hard_reject": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/baseline_near_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/baseline_near_offroad": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/baseline_near_valid": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/baseline_safety_valid": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/baseline_selected": {
+            "mean": 0.03333333333333333,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/braking_streak": {
+            "mean": 0.6,
+            "p50": 0.0,
+            "p95": 4.0,
+            "p99": 5.0,
+            "max": 5.0
+          },
+          "mppi/can_accelerate": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/candidate_evaluation_ms": {
+            "mean": 51.133592468249844,
+            "p50": 51.29861701425398,
+            "p95": 53.02241344106733,
+            "p99": 53.75175254244823,
+            "max": 53.84679800772574
+          },
+          "mppi/collision_reject_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/committed_horizon_s": {
+            "mean": 0.09999999999999996,
+            "p50": 0.1,
+            "p95": 0.1,
+            "p99": 0.1,
+            "max": 0.1
+          },
+          "mppi/cost_coef": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/cost_enabled": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/cost_horizon_validated": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/cost_penalty": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/cost_prediction_ms": {
+            "mean": 1.690027730166912,
+            "p50": 1.6619039922952652,
+            "p95": 1.9151776015758515,
+            "p99": 2.0450918486714365,
+            "max": 2.053248018026352
+          },
+          "mppi/cost_scoring_requested": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/cost_validated": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/deviation_penalty": {
+            "mean": 0.289350314065814,
+            "p50": 0.3021797239780426,
+            "p95": 0.5177258729934693,
+            "p99": 0.5497090005874633,
+            "max": 0.5547872185707092
+          },
+          "mppi/elite_update_ms": {
+            "mean": 1.944168002406756,
+            "p50": 1.4924320131540298,
+            "p95": 1.643227197229862,
+            "p99": 12.263590139150534,
+            "max": 27.01564809679985
+          },
+          "mppi/emergency_fallback": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/emergency_fallback_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/emergency_fallback_steer_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/emergency_fallback_throttle_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/emergency_horizon_limited": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/emergency_reason": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/emergency_streak": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/exact_candidate_count": {
+            "mean": 4.916666666666667,
+            "p50": 5.0,
+            "p95": 5.0,
+            "p99": 5.0,
+            "max": 5.0
+          },
+          "mppi/exact_checked_candidates": {
+            "mean": 3.9166666666666665,
+            "p50": 4.0,
+            "p95": 4.0,
+            "p99": 4.0,
+            "max": 4.0
+          },
+          "mppi/exact_failed_candidates": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/execution_action_error": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/final_safety_verification_ms": {
+            "mean": 20.879488030076025,
+            "p50": 16.757712244987488,
+            "p95": 40.11822419166565,
+            "p99": 41.61524847984314,
+            "max": 42.27436828613281
+          },
+          "mppi/final_score": {
+            "mean": 216.64686609903973,
+            "p50": 214.65909576416016,
+            "p95": 229.08701782226564,
+            "p99": 229.41297210693358,
+            "max": 229.45252990722656
+          },
+          "mppi/final_std_steer": {
+            "mean": 0.016996006201952695,
+            "p50": 0.016429084353148937,
+            "p95": 0.025670109409838916,
+            "p99": 0.025980990398675203,
+            "max": 0.026090404018759727
+          },
+          "mppi/final_std_throttle": {
+            "mean": 0.04142355378717184,
+            "p50": 0.03799326531589031,
+            "p95": 0.06029360052198171,
+            "p99": 0.06211469702422618,
+            "max": 0.06314776837825775
+          },
+          "mppi/first_action_delta_norm": {
+            "mean": 0.10170161798596382,
+            "p50": 0.09898249059915543,
+            "p95": 0.250853405892849,
+            "p99": 0.2539241713285446,
+            "max": 0.255852609872818
+          },
+          "mppi/first_steer_delta": {
+            "mean": 0.024555258142451446,
+            "p50": 0.023169618099927902,
+            "p95": 0.09920233301818371,
+            "p99": 0.09999999709427357,
+            "max": 0.10000000149011612
+          },
+          "mppi/first_throttle_delta": {
+            "mean": 0.024625796327988305,
+            "p50": 0.0,
+            "p95": 0.22523850873112672,
+            "p99": 0.25,
+            "max": 0.25
+          },
+          "mppi/future_hard": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/future_unrecoverable_reject_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/gate_threshold": {
+            "mean": 0.2137626169840495,
+            "p50": 0.21144596099853516,
+            "p95": 0.22749433822631837,
+            "p99": 0.2284619874572754,
+            "max": 0.2287387390136719
+          },
+          "mppi/geometric_body_margin": {
+            "mean": 1.5631774282423847,
+            "p50": 0.605961422790281,
+            "p95": 3.4773867517261663,
+            "p99": 3.4827737799565406,
+            "max": 3.483121516225285
+          },
+          "mppi/geometric_heading_error": {
+            "mean": 0.01110319739144628,
+            "p50": 0.0007338231232629777,
+            "p95": 0.13440008625734992,
+            "p99": 0.13957153763064215,
+            "max": 0.1396095622446949
+          },
+          "mppi/geometric_lateral_error": {
+            "mean": -0.11765325609595036,
+            "p50": 0.149273478321348,
+            "p95": 0.43275439389095616,
+            "p99": 0.4333991160546723,
+            "max": 0.4335260796185677
+          },
+          "mppi/geometric_steer": {
+            "mean": 0.005395856004593645,
+            "p50": -0.014701607018244148,
+            "p95": 0.6273574364741874,
+            "p99": 0.6584357650691031,
+            "max": 0.6853165172397806
+          },
+          "mppi/initial_std_steer": {
+            "mean": 0.04000000283122063,
+            "p50": 0.04000000283122063,
+            "p95": 0.04000000283122063,
+            "p99": 0.04000000283122063,
+            "max": 0.04000000283122063
+          },
+          "mppi/initial_std_throttle": {
+            "mean": 0.11999999731779099,
+            "p50": 0.11999999731779099,
+            "p95": 0.11999999731779099,
+            "p99": 0.11999999731779099,
+            "max": 0.11999999731779099
+          },
+          "mppi/kinematic_reject_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_baseline_checked": {
+            "mean": 0.03333333333333333,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/lattice_baseline_full_valid": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/lattice_baseline_future_hard_reject": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_baseline_near_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_baseline_near_offroad": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_baseline_near_valid": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/lattice_baseline_safety_valid": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/lattice_fallback": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_fallback_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_fallback_steer_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_fallback_throttle_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/long_clearance_risk": {
+            "mean": 2.470014005210667e-06,
+            "p50": 2.2274215183415436e-07,
+            "p95": 1.566291166454903e-05,
+            "p99": 2.0249561202945178e-05,
+            "max": 2.198246329498943e-05
+          },
+          "mppi/long_collision_risk": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/long_kinematic_risk": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/long_lateral_risk": {
+            "mean": 0.014883902327467998,
+            "p50": 0.015044491738080978,
+            "p95": 0.03102908683940768,
+            "p99": 0.03365742720663547,
+            "max": 0.034917719662189484
+          },
+          "mppi/long_risk_penalty": {
+            "mean": 0.6999197448293368,
+            "p50": 0.7911879420280457,
+            "p95": 1.8030464410781861,
+            "p99": 1.9202910137176514,
+            "max": 1.92167067527771
+          },
+          "mppi/long_risk_score": {
+            "mean": 0.6999197448293368,
+            "p50": 0.7911879420280457,
+            "p95": 1.8030464410781861,
+            "p99": 1.9202910137176514,
+            "max": 1.92167067527771
+          },
+          "mppi/long_road_risk": {
+            "mean": 0.1009259266157945,
+            "p50": 0.0,
+            "p95": 0.7777777910232544,
+            "p99": 0.8888888955116272,
+            "max": 0.8888888955116272
+          },
+          "mppi/long_speed_risk": {
+            "mean": 0.0015646345525359114,
+            "p50": 0.0,
+            "p95": 0.010346491774544104,
+            "p99": 0.026300605759024598,
+            "max": 0.030310185626149178
+          },
+          "mppi/max_delta_steer": {
+            "mean": 0.08234576936811208,
+            "p50": 0.09655440598726273,
+            "p95": 0.10000000894069672,
+            "p99": 0.10000000894069672,
+            "max": 0.10000000894069672
+          },
+          "mppi/max_delta_throttle": {
+            "mean": 0.1735578405360381,
+            "p50": 0.19661203026771545,
+            "p95": 0.25,
+            "p99": 0.25,
+            "max": 0.25
+          },
+          "mppi/mode_switch_count": {
+            "mean": 1.6666666666666667,
+            "p50": 2.0,
+            "p95": 2.0,
+            "p99": 2.0,
+            "max": 2.0
+          },
+          "mppi/mode_transition_reason": {
+            "mean": 0.05,
+            "p50": 0.0,
+            "p95": 0.04999999999999716,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/mppi_sampling_ms": {
+            "mean": 0.822774401307106,
+            "p50": 0.7944160103797913,
+            "p95": 0.9700416281819343,
+            "p99": 1.299709769338367,
+            "max": 1.7088960260152817
+          },
+          "mppi/near_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/near_hard_valid_ratio": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/near_offroad": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/normal_near_valid_ratio": {
+            "mean": 1.0038461538461538,
+            "p50": 1.0038461538461538,
+            "p95": 1.0038461538461538,
+            "p99": 1.0038461538461538,
+            "max": 1.0038461538461538
+          },
+          "mppi/normal_safety_valid_ratio": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/normal_search_delta": {
+            "mean": 0.10170161798596382,
+            "p50": 0.09898249059915543,
+            "p95": 0.250853405892849,
+            "p99": 0.2539241713285446,
+            "max": 0.255852609872818
+          },
+          "mppi/normal_search_steer_delta": {
+            "mean": 0.024555258142451446,
+            "p50": 0.023169618099927902,
+            "p95": 0.09920233301818371,
+            "p99": 0.09999999709427357,
+            "max": 0.10000000149011612
+          },
+          "mppi/normal_search_throttle_delta": {
+            "mean": 0.024625796327988305,
+            "p50": 0.0,
+            "p95": 0.22523850873112672,
+            "p99": 0.25,
+            "max": 0.25
+          },
+          "mppi/obstacle_uncertainty_radius_m": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/physics_acceleration_bias_mps2": {
+            "mean": -1.3044963784279278,
+            "p50": -1.213165794429294,
+            "p95": -0.133283521663302,
+            "p99": -0.016716824760998863,
+            "max": -0.013450101770189349
+          },
+          "mppi/physics_braking_response_bias_mps2": {
+            "mean": -2.264960374710848,
+            "p50": -2.0163465659239055,
+            "p95": -0.3113610729528629,
+            "p99": -0.17548801153512775,
+            "max": -0.14151974618069385
+          },
+          "mppi/physics_heading_error_rad": {
+            "mean": 0.0023988232615091845,
+            "p50": 0.0018552504307152162,
+            "p95": 0.006938924392674514,
+            "p99": 0.010726971885423988,
+            "max": 0.012124663010139702
+          },
+          "mppi/physics_position_error_m": {
+            "mean": 0.016250326309055936,
+            "p50": 0.017693026505002617,
+            "p95": 0.026191953682577828,
+            "p99": 0.029295533514431822,
+            "max": 0.03303308457629766
+          },
+          "mppi/physics_speed_error_mps": {
+            "mean": 0.1304496378427928,
+            "p50": 0.1213165794429294,
+            "p95": 0.36721807498293657,
+            "p99": 0.4973689678485157,
+            "max": 0.5648707871414524
+          },
+          "mppi/planning_mode": {
+            "mean": 0.9666666666666667,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/positive_throttle_candidate_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_exact_collision_rejected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_exact_kinematic_rejected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_exact_offroad_rejected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_exact_rejected_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_feasible_not_selected_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_future_hard_rejected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_kinematic_rejected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_near_collision_rejected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_near_offroad_rejected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_near_safe_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_rejected_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_score_not_selected_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_unverified_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_wm_rejected_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/predicted_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/predicted_cost": {
+            "mean": 0.017651137278880923,
+            "p50": 0.01992095448076725,
+            "p95": 0.0316387353464961,
+            "p99": 0.036215729750692836,
+            "max": 0.03717440366744995
+          },
+          "mppi/predicted_first_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/predicted_first_offroad": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/predicted_offroad": {
+            "mean": 0.25,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/predicted_progress_m": {
+            "mean": 5.086606407165528,
+            "p50": 4.267667770385742,
+            "p95": 9.427336502075196,
+            "p99": 9.555597400665283,
+            "max": 9.671175003051758
+          },
+          "mppi/predicted_reward": {
+            "mean": 5.5406443277994795,
+            "p50": 5.183650732040405,
+            "p95": 9.145991373062133,
+            "p99": 9.334196491241455,
+            "max": 9.431966781616211
+          },
+          "mppi/predicted_step_cost": {
+            "mean": 0.0018763436883091344,
+            "p50": 0.001965714560355991,
+            "p95": 0.004128278093412517,
+            "p99": 0.005148457749746737,
+            "max": 0.00552618782967329
+          },
+          "mppi/preview_candidate_count": {
+            "mean": 247.08333333333334,
+            "p50": 247.0,
+            "p95": 247.0,
+            "p99": 249.23,
+            "max": 251.0
+          },
+          "mppi/progress_delta": {
+            "mean": 0.0010290986803929351,
+            "p50": 0.0009160558746737768,
+            "p95": 0.001972753038697131,
+            "p99": 0.0020923200968608613,
+            "max": 0.0021243092851978007
+          },
+          "mppi/progress_distance_m": {
+            "mean": 0.4107882959677146,
+            "p50": 0.3673594451568542,
+            "p95": 0.7814670839751148,
+            "p99": 0.8183956952546227,
+            "max": 0.8254720760660432
+          },
+          "mppi/progress_reward": {
+            "mean": 0.4287634387722841,
+            "p50": 0.45499081347330744,
+            "p95": 0.7901588311174063,
+            "p99": 0.8274981751816204,
+            "max": 0.8346532619474653
+          },
+          "mppi/recovery_lattice_baseline_selected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_lattice_valid_ratio": null,
+          "mppi/recovery_reason": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_safety_valid_ratio": null,
+          "mppi/recovery_search": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_search_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_search_ms": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_search_steer_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_search_throttle_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_stall_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_streak": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_success": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_wm_evaluated_candidates": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/risk_p50": {
+            "mean": 0.7552975706756115,
+            "p50": 0.7706450521945953,
+            "p95": 2.000000476837158,
+            "p99": 2.0000005745887757,
+            "max": 2.0000007152557373
+          },
+          "mppi/risk_p95": {
+            "mean": 0.8617407498260339,
+            "p50": 0.7761267125606537,
+            "p95": 2.000000476837158,
+            "p99": 2.0000005745887757,
+            "max": 2.0000007152557373
+          },
+          "mppi/road_boundary_reject_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/sac_to_selected_delta": {
+            "mean": 0.10170161798596382,
+            "p50": 0.09898249059915543,
+            "p95": 0.250853405892849,
+            "p99": 0.2539241713285446,
+            "max": 0.255852609872818
+          },
+          "mppi/sac_to_selected_steer_delta": {
+            "mean": 0.024555258142451446,
+            "p50": 0.023169618099927902,
+            "p95": 0.09920233301818371,
+            "p99": 0.09999999709427357,
+            "max": 0.10000000149011612
+          },
+          "mppi/sac_to_selected_throttle_delta": {
+            "mean": 0.024625796327988305,
+            "p50": 0.0,
+            "p95": 0.22523850873112672,
+            "p99": 0.25,
+            "max": 0.25
+          },
+          "mppi/safety_check_ms": {
+            "mean": 101.39870144476494,
+            "p50": 97.21273636817932,
+            "p95": 144.54178669452656,
+            "p99": 213.04288944125167,
+            "max": 227.23440158367157
+          },
+          "mppi/safety_evaluated_candidates": {
+            "mean": 252.0,
+            "p50": 252.0,
+            "p95": 252.0,
+            "p99": 252.0,
+            "max": 252.0
+          },
+          "mppi/safety_fallback_unverified": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/safety_reject_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/safety_valid_ratio": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/score_gain": {
+            "mean": 2.8842491149902343,
+            "p50": 3.0898284912109375,
+            "p95": 4.960255432128906,
+            "p99": 5.974645538330077,
+            "max": 6.0696868896484375
+          },
+          "mppi/scoring_unavailable_fallback": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/selected_candidate_cost": {
+            "mean": 0.017651137278880923,
+            "p50": 0.01992095448076725,
+            "p95": 0.0316387353464961,
+            "p99": 0.036215729750692836,
+            "max": 0.03717440366744995
+          },
+          "mppi/selected_exact_verified": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/selected_full_braking": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/selected_full_valid": {
+            "mean": 0.75,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/selected_near_valid": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/selected_recovery_steer": null,
+          "mppi/selected_recovery_throttle": null,
+          "mppi/selected_safety_valid": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/smoothness_penalty": {
+            "mean": 0.0027951712914121647,
+            "p50": 0.002053599338978529,
+            "p95": 0.008024927927181121,
+            "p99": 0.010557387089356773,
+            "max": 0.011611689813435078
+          },
+          "mppi/stall_active": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/stopping_distance_m": {
+            "mean": 2.199348927662455,
+            "p50": 1.4955427990983963,
+            "p95": 5.80266365422021,
+            "p99": 6.566241164151021,
+            "max": 6.735219793177617
+          },
+          "mppi/stopping_horizon_insufficient": {
+            "mean": 0.2,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/stopping_time_s": {
+            "mean": 0.6920326042140748,
+            "p50": 0.6130849905185187,
+            "p95": 1.2943209327498093,
+            "p99": 1.3827330584005344,
+            "max": 1.401690135944343
+          },
+          "mppi/target_speed_mps": {
+            "mean": 10.756666666666666,
+            "p50": 9.89,
+            "p95": 13.89,
+            "p99": 13.89,
+            "max": 13.89
+          },
+          "mppi/terminal_q": {
+            "mean": 223.00078201293945,
+            "p50": 221.40232849121094,
+            "p95": 232.54050674438477,
+            "p99": 232.88577026367187,
+            "max": 233.00572204589844
+          },
+          "mppi/total_planning_ms": {
+            "mean": 232.60739388254783,
+            "p50": 221.90563398908125,
+            "p95": 308.4604541523731,
+            "p99": 481.5362277434895,
+            "max": 666.6986500058556
+          },
+          "mppi/unique_candidate_count": {
+            "mean": 252.0,
+            "p50": 252.0,
+            "p95": 252.0,
+            "p99": 252.0,
+            "max": 252.0
+          },
+          "mppi/value_p50": {
+            "mean": 215.9866045633952,
+            "p50": 213.18341827392578,
+            "p95": 229.41789855957032,
+            "p99": 229.6704914855957,
+            "max": 229.750732421875
+          },
+          "mppi/wm_cache_hits": {
+            "mean": 4.0,
+            "p50": 4.0,
+            "p95": 4.0,
+            "p99": 4.0,
+            "max": 4.0
+          },
+          "mppi/wm_evaluated_candidates": {
+            "mean": 252.0,
+            "p50": 252.0,
+            "p95": 252.0,
+            "p99": 252.0,
+            "max": 252.0
+          },
+          "mppi/world_model_rollout_ms": {
+            "mean": 41.00834555625916,
+            "p50": 41.188111782073975,
+            "p95": 42.597097826004024,
+            "p99": 43.108310861587526,
+            "max": 43.367552757263184
+          }
+        },
+        "start_route": 0.4333385672819936,
+        "end_route": 0.49584542000782267,
+        "replay_max_speed_error": 0.0,
+        "executed_positive_steps": 45,
+        "emergency_steps": 0,
+        "unverified_emergency_steps": 0,
+        "max_emergency_streak": 0.0,
+        "initial_contacts": {
+          "crash": false,
+          "crash_vehicle": false,
+          "crash_object": false,
+          "crash_building": false,
+          "crash_human": false,
+          "crash_sidewalk": false,
+          "out_of_road": false
+        },
+        "totals": {
+          "positive_throttle_candidate_count": 0.0,
+          "positive_throttle_near_safe_count": 0.0,
+          "positive_throttle_exact_rejected_count": 0.0,
+          "positive_throttle_future_hard_rejected": 0.0,
+          "positive_throttle_near_offroad_rejected": 0.0,
+          "positive_sequence_candidate_count": null,
+          "positive_sequence_verified_count": null,
+          "forward_verified_candidates": null,
+          "forward_candidate_selected": null,
+          "baseline_selected": 2.0,
+          "safety_reject_count": 0.0
+        }
+      },
+      "after": {
+        "steps": 60,
+        "route_gain": 0.06698124259613825,
+        "mean_speed": 4.515819056656733,
+        "max_speed": 8.730789429979659,
+        "stall_steps": 1,
+        "crash": false,
+        "offroad": false,
+        "planning": {
+          "mean": 517.946006701095,
+          "p50": 371.87700549839064,
+          "p95": 894.0717419078268,
+          "p99": 1524.6258295187715,
+          "max": 1709.8483120062156
+        },
+        "modes": {
+          "baseline": 7,
+          "normal": 45,
+          "recovery_controlled": 5,
+          "recovery_lattice": 3
+        },
+        "distributions": {
+          "mppi/accelerate_below_target": {
+            "mean": 0.3,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/accelerate_kinematic_valid": {
+            "mean": 0.3,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/accelerate_no_near_collision": {
+            "mean": 0.3,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/accelerate_road_clear": {
+            "mean": 0.3,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/actual_speed_mps": {
+            "mean": 4.452757822450738,
+            "p50": 3.6714080945185206,
+            "p95": 8.472769212697687,
+            "p99": 8.718545847644686,
+            "max": 8.730789429979659
+          },
+          "mppi/allow_unvalidated_cost": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/baseline_candidate_cost": {
+            "mean": 0.025533999824741235,
+            "p50": 0.02521693892776966,
+            "p95": 0.05284242574125528,
+            "p99": 0.055436094403266904,
+            "max": 0.05613790825009346
+          },
+          "mppi/baseline_corridor_valid": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/baseline_full_valid": {
+            "mean": 0.85,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/baseline_future_hard_reject": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/baseline_near_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/baseline_near_offroad": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/baseline_near_valid": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/baseline_safety_valid": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/baseline_selected": {
+            "mean": 0.11666666666666667,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/braking_streak": {
+            "mean": 0.5166666666666667,
+            "p50": 0.0,
+            "p95": 4.049999999999997,
+            "p99": 6.409999999999997,
+            "max": 7.0
+          },
+          "mppi/can_accelerate": {
+            "mean": 0.3,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/candidate_evaluation_ms": {
+            "mean": 75.14938881455844,
+            "p50": 66.6333914923598,
+            "p95": 105.4469552822411,
+            "p99": 116.19599298632237,
+            "max": 119.48806200234685
+          },
+          "mppi/center_model_active": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/collision_reject_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/committed_horizon_s": {
+            "mean": 0.09999999999999996,
+            "p50": 0.1,
+            "p95": 0.1,
+            "p99": 0.1,
+            "max": 0.1
+          },
+          "mppi/continuity_changed": {
+            "mean": 0.6666666666666666,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/continuity_rejected": {
+            "mean": 0.016666666666666666,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.4099999999999966,
+            "max": 1.0
+          },
+          "mppi/cost_coef": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/cost_enabled": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/cost_horizon_validated": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/cost_penalty": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/cost_prediction_ms": {
+            "mean": 2.554150403290987,
+            "p50": 2.27121601998806,
+            "p95": 3.92328477576375,
+            "p99": 4.120915853083133,
+            "max": 4.177215993404388
+          },
+          "mppi/cost_scoring_requested": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/cost_validated": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/deviation_penalty": {
+            "mean": 0.4011855013668537,
+            "p50": 0.31623466312885284,
+            "p95": 1.1226553678512572,
+            "p99": 2.0833874940872166,
+            "max": 2.522444248199463
+          },
+          "mppi/elite_update_ms": {
+            "mean": 2.3190245367586613,
+            "p50": 1.72577603161335,
+            "p95": 2.7783071637153625,
+            "p99": 13.221716536879454,
+            "max": 28.220064163208008
+          },
+          "mppi/emergency_fallback": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/emergency_fallback_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/emergency_fallback_steer_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/emergency_fallback_throttle_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/emergency_horizon_limited": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/emergency_reason": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/emergency_streak": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/exact_candidate_count": {
+            "mean": 28.2,
+            "p50": 6.0,
+            "p95": 84.0,
+            "p99": 87.68999999999997,
+            "max": 93.0
+          },
+          "mppi/exact_checked_candidates": {
+            "mean": 21.416666666666668,
+            "p50": 4.0,
+            "p95": 65.0,
+            "p99": 69.09999999999997,
+            "max": 75.0
+          },
+          "mppi/exact_failed_candidates": {
+            "mean": 0.16666666666666666,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 4.099999999999966,
+            "max": 10.0
+          },
+          "mppi/execution_action_error": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/final_safety_verification_ms": {
+            "mean": 71.46141218642394,
+            "p50": 54.7161431312561,
+            "p95": 128.6174701452254,
+            "p99": 268.6630292135469,
+            "max": 405.33289390802383
+          },
+          "mppi/final_score": {
+            "mean": 215.93363825480142,
+            "p50": 214.12285614013672,
+            "p95": 228.87839965820314,
+            "p99": 229.73188095092772,
+            "max": 230.39227294921875
+          },
+          "mppi/final_std_steer": {
+            "mean": 0.016393507225438954,
+            "p50": 0.015819593332707882,
+            "p95": 0.031746712885797015,
+            "p99": 0.037123281620442844,
+            "max": 0.04094257205724716
+          },
+          "mppi/final_std_throttle": {
+            "mean": 0.04114262890070677,
+            "p50": 0.037594353780150414,
+            "p95": 0.06955310888588427,
+            "p99": 0.08187643751502033,
+            "max": 0.08831310272216797
+          },
+          "mppi/first_action_delta_norm": {
+            "mean": 0.19885221732159455,
+            "p50": 0.09620781987905502,
+            "p95": 0.8420310288667672,
+            "p99": 1.4314894902706137,
+            "max": 1.5795245170593262
+          },
+          "mppi/first_steer_delta": {
+            "mean": 0.02381781270572295,
+            "p50": 0.028389815241098404,
+            "p95": 0.10000000149011612,
+            "p99": 0.1129000961035489,
+            "max": 0.1314636468887329
+          },
+          "mppi/first_throttle_delta": {
+            "mean": 0.1161487222959598,
+            "p50": 0.0,
+            "p95": 0.8411097615957253,
+            "p99": 1.4311097049713126,
+            "max": 1.5786097049713135
+          },
+          "mppi/forward_candidate_selected": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/forward_verified_candidates": {
+            "mean": 27.966666666666665,
+            "p50": 6.0,
+            "p95": 84.0,
+            "p99": 84.0,
+            "max": 84.0
+          },
+          "mppi/future_hard": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/future_unrecoverable_reject_count": {
+            "mean": 0.18333333333333332,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 4.5099999999999625,
+            "max": 11.0
+          },
+          "mppi/gate_threshold": {
+            "mean": 0.21339356460571288,
+            "p50": 0.20986378479003906,
+            "p95": 0.2276078872680664,
+            "p99": 0.22911611709594726,
+            "max": 0.22999464416503906
+          },
+          "mppi/geometric_body_margin": {
+            "mean": 1.6130324950254669,
+            "p50": 0.6027758685297938,
+            "p95": 3.483993701764465,
+            "p99": 3.5154143716740807,
+            "max": 3.5420050253011364
+          },
+          "mppi/geometric_heading_error": {
+            "mean": 0.004586537187910791,
+            "p50": -0.003282479201581312,
+            "p95": 0.1136960061528049,
+            "p99": 0.12037819957035714,
+            "max": 0.12149474051008369
+          },
+          "mppi/geometric_lateral_error": {
+            "mean": -0.14137738621491902,
+            "p50": 0.1358387151673496,
+            "p95": 0.42693190778371065,
+            "p99": 0.4314591466972655,
+            "max": 0.43292796082893725
+          },
+          "mppi/geometric_steer": {
+            "mean": 0.0005745784038305797,
+            "p50": -0.005045640129941439,
+            "p95": 0.6818228437365317,
+            "p99": 0.740415272474534,
+            "max": 0.7484134116347763
+          },
+          "mppi/initial_std_steer": {
+            "mean": 0.04000000283122063,
+            "p50": 0.04000000283122063,
+            "p95": 0.04000000283122063,
+            "p99": 0.04000000283122063,
+            "max": 0.04000000283122063
+          },
+          "mppi/initial_std_throttle": {
+            "mean": 0.11999999731779099,
+            "p50": 0.11999999731779099,
+            "p95": 0.11999999731779099,
+            "p99": 0.11999999731779099,
+            "max": 0.11999999731779099
+          },
+          "mppi/kinematic_reject_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_baseline_checked": {
+            "mean": 0.35,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/lattice_baseline_full_valid": {
+            "mean": 0.6666666666666666,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/lattice_baseline_future_hard_reject": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_baseline_near_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_baseline_near_offroad": {
+            "mean": 0.016666666666666666,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.4099999999999966,
+            "max": 1.0
+          },
+          "mppi/lattice_baseline_near_valid": {
+            "mean": 0.9523809523809523,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/lattice_baseline_safety_valid": {
+            "mean": 0.9523809523809523,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/lattice_fallback": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_fallback_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_fallback_steer_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_fallback_throttle_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/long_clearance_risk": {
+            "mean": 6.9879890334837805e-06,
+            "p50": 3.1803223521365e-07,
+            "p95": 4.03156158427009e-05,
+            "p99": 7.166665302065658e-05,
+            "max": 8.65074252942577e-05
+          },
+          "mppi/long_collision_risk": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/long_kinematic_risk": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/long_lateral_risk": {
+            "mean": 0.01567870987734447,
+            "p50": 0.01631832029670477,
+            "p95": 0.032068275287747375,
+            "p99": 0.03685287222266196,
+            "max": 0.0385231077671051
+          },
+          "mppi/long_risk_penalty": {
+            "mean": 0.6648731902241707,
+            "p50": 0.7777876257896423,
+            "p95": 1.7921245753765105,
+            "p99": 1.9469354808330535,
+            "max": 1.980136752128601
+          },
+          "mppi/long_risk_score": {
+            "mean": 0.6648731902241707,
+            "p50": 0.7777876257896423,
+            "p95": 1.7921245753765105,
+            "p99": 1.9469354808330535,
+            "max": 1.980136752128601
+          },
+          "mppi/long_road_risk": {
+            "mean": 0.07407407412926356,
+            "p50": 0.0,
+            "p95": 0.7805555671453475,
+            "p99": 0.9116666597127913,
+            "max": 0.9444444179534912
+          },
+          "mppi/long_speed_risk": {
+            "mean": 0.0013651599719505826,
+            "p50": 0.0,
+            "p95": 0.01152535751461982,
+            "p99": 0.019609664753079382,
+            "max": 0.024991890415549278
+          },
+          "mppi/max_delta_steer": {
+            "mean": 0.08060477090378602,
+            "p50": 0.09016605466604233,
+            "p95": 0.13336860835552206,
+            "p99": 0.182425608485937,
+            "max": 0.20052359998226166
+          },
+          "mppi/max_delta_throttle": {
+            "mean": 0.23784744838873545,
+            "p50": 0.1997864693403244,
+            "p95": 0.8411097615957253,
+            "p99": 1.4311097049713126,
+            "max": 1.5786097049713135
+          },
+          "mppi/mode_switch_count": {
+            "mean": 6.366666666666666,
+            "p50": 8.0,
+            "p95": 8.0,
+            "p99": 8.0,
+            "max": 8.0
+          },
+          "mppi/mode_transition_reason": {
+            "mean": 0.15,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/model_guard_active": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/mppi_sampling_ms": {
+            "mean": 1.0612720015148323,
+            "p50": 0.9311839938163757,
+            "p95": 1.5297839969396592,
+            "p99": 1.994650253355501,
+            "max": 2.3515200316905975
+          },
+          "mppi/near_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/near_hard_valid_ratio": {
+            "mean": 0.9999041946487581,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/near_offroad": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/normal_near_valid_ratio": {
+            "mean": 1.003843779677113,
+            "p50": 1.0038461538461538,
+            "p95": 1.0038461538461538,
+            "p99": 1.0038461538461538,
+            "max": 1.0038461538461538
+          },
+          "mppi/normal_safety_valid_ratio": {
+            "mean": 0.9993827160493827,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/normal_search_delta": {
+            "mean": 0.18020176601906618,
+            "p50": 0.08823094144463539,
+            "p95": 0.8420310288667672,
+            "p99": 1.4314894902706137,
+            "max": 1.5795245170593262
+          },
+          "mppi/normal_search_steer_delta": {
+            "mean": 0.023116107215173542,
+            "p50": 0.01654883474111557,
+            "p95": 0.09679045192897319,
+            "p99": 0.10000000149011612,
+            "max": 0.10000000149011612
+          },
+          "mppi/normal_search_throttle_delta": {
+            "mean": 0.12402733278771241,
+            "p50": 0.0,
+            "p95": 0.8411097615957253,
+            "p99": 1.4311097049713126,
+            "max": 1.5786097049713135
+          },
+          "mppi/obstacle_uncertainty_radius_m": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/physics_acceleration_bias_mps2": {
+            "mean": -1.2831301772372419,
+            "p50": -1.200173253791581,
+            "p95": -0.10272900212258064,
+            "p99": -0.004909203139151767,
+            "max": -0.0024306654081840406
+          },
+          "mppi/physics_braking_response_bias_mps2": {
+            "mean": -3.3617396464519747,
+            "p50": -4.655546434038325,
+            "p95": -0.4138223315144237,
+            "p99": -0.29155342082725383,
+            "max": -0.26098619315546134
+          },
+          "mppi/physics_heading_error_rad": {
+            "mean": 0.003378150364876954,
+            "p50": 0.0022085629519601473,
+            "p95": 0.009629032902901265,
+            "p99": 0.01271699278683575,
+            "max": 0.012879881273925253
+          },
+          "mppi/physics_position_error_m": {
+            "mean": 0.011798169074295206,
+            "p50": 0.013347439847765478,
+            "p95": 0.02009564402032916,
+            "p99": 0.022288799063137313,
+            "max": 0.02465527229076393
+          },
+          "mppi/physics_speed_error_mps": {
+            "mean": 0.1283130177237242,
+            "p50": 0.1200173253791581,
+            "p95": 0.4666525847382715,
+            "p99": 0.4909720631128032,
+            "max": 0.4936821295033549
+          },
+          "mppi/planning_mode": {
+            "mean": 1.1,
+            "p50": 1.0,
+            "p95": 3.0,
+            "p99": 3.0,
+            "max": 3.0
+          },
+          "mppi/positive_sequence_candidate_count": {
+            "mean": 4.766666666666667,
+            "p50": 0.0,
+            "p95": 16.0,
+            "p99": 16.0,
+            "max": 16.0
+          },
+          "mppi/positive_sequence_verified_count": {
+            "mean": 4.75,
+            "p50": 0.0,
+            "p95": 16.0,
+            "p99": 16.0,
+            "max": 16.0
+          },
+          "mppi/positive_throttle_candidate_count": {
+            "mean": 4.766666666666667,
+            "p50": 0.0,
+            "p95": 16.0,
+            "p99": 16.0,
+            "max": 16.0
+          },
+          "mppi/positive_throttle_exact_collision_rejected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_exact_kinematic_rejected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_exact_offroad_rejected": {
+            "mean": 0.016666666666666666,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.4099999999999966,
+            "max": 1.0
+          },
+          "mppi/positive_throttle_exact_rejected_count": {
+            "mean": 0.016666666666666666,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.4099999999999966,
+            "max": 1.0
+          },
+          "mppi/positive_throttle_feasible_not_selected_count": {
+            "mean": 4.666666666666667,
+            "p50": 0.0,
+            "p95": 16.0,
+            "p99": 16.0,
+            "max": 16.0
+          },
+          "mppi/positive_throttle_future_hard_rejected": {
+            "mean": 0.016666666666666666,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.4099999999999966,
+            "max": 1.0
+          },
+          "mppi/positive_throttle_kinematic_rejected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_near_collision_rejected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_near_offroad_rejected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_near_safe_count": {
+            "mean": 4.766666666666667,
+            "p50": 0.0,
+            "p95": 16.0,
+            "p99": 16.0,
+            "max": 16.0
+          },
+          "mppi/positive_throttle_rejected_count": {
+            "mean": 0.016666666666666666,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.4099999999999966,
+            "max": 1.0
+          },
+          "mppi/positive_throttle_score_not_selected_count": {
+            "mean": 4.666666666666667,
+            "p50": 0.0,
+            "p95": 16.0,
+            "p99": 16.0,
+            "max": 16.0
+          },
+          "mppi/positive_throttle_unverified_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_wm_rejected_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/predicted_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/predicted_cost": {
+            "mean": 0.019078121873705337,
+            "p50": 0.018190843053162098,
+            "p95": 0.04123604111373424,
+            "p99": 0.045660295188426965,
+            "max": 0.047308024019002914
+          },
+          "mppi/predicted_first_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/predicted_first_offroad": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/predicted_offroad": {
+            "mean": 0.1,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/predicted_progress_m": {
+            "mean": 5.276804029941559,
+            "p50": 4.452612638473511,
+            "p95": 9.45491452217102,
+            "p99": 9.510345554351806,
+            "max": 9.546024322509766
+          },
+          "mppi/predicted_reward": {
+            "mean": 5.614854839444161,
+            "p50": 5.256869077682495,
+            "p95": 9.122151708602905,
+            "p99": 9.265353174209594,
+            "max": 9.348806381225586
+          },
+          "mppi/predicted_route_progress": {
+            "mean": 5.264485927422841,
+            "p50": 4.453585147857666,
+            "p95": 9.44568910598755,
+            "p99": 9.47622109413147,
+            "max": 9.512322425842285
+          },
+          "mppi/predicted_step_cost": {
+            "mean": 0.0019152375651174224,
+            "p50": 0.0017085926374420524,
+            "p95": 0.0038712770212441616,
+            "p99": 0.0068853324837982646,
+            "max": 0.007101281546056271
+          },
+          "mppi/predicted_terminal_speed": {
+            "mean": 6.034875569740931,
+            "p50": 5.333542108535767,
+            "p95": 10.951560354232788,
+            "p99": 11.266103906631468,
+            "max": 11.453493118286133
+          },
+          "mppi/preview_candidate_count": {
+            "mean": 246.86666666666667,
+            "p50": 247.0,
+            "p95": 247.0,
+            "p99": 248.0,
+            "max": 248.0
+          },
+          "mppi/progress_delta": {
+            "mean": 0.001101214723894318,
+            "p50": 0.0008915224420990853,
+            "p95": 0.002096265660923563,
+            "p99": 0.0021207873998762956,
+            "max": 0.0021315212671398354
+          },
+          "mppi/progress_distance_m": {
+            "mean": 0.44005240437245124,
+            "p50": 0.36391724316978,
+            "p95": 0.8499808207998604,
+            "p99": 0.8683942805749659,
+            "max": 0.8711311857016021
+          },
+          "mppi/progress_guard_active": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/progress_rejected_candidates": {
+            "mean": 0.03333333333333333,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.8199999999999932,
+            "max": 2.0
+          },
+          "mppi/progress_reward": {
+            "mean": 0.5464559857072525,
+            "p50": 0.5225403231401899,
+            "p95": 1.4430913765702214,
+            "p99": 1.4743536172749843,
+            "max": 1.4790003152828557
+          },
+          "mppi/recovery_latched": {
+            "mean": 0.3,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/recovery_lattice_baseline_selected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_lattice_valid_ratio": {
+            "mean": 0.9990808823529411,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/recovery_reason": {
+            "mean": 1.35,
+            "p50": 0.0,
+            "p95": 5.0,
+            "p99": 5.0,
+            "max": 5.0
+          },
+          "mppi/recovery_safety_valid_ratio": {
+            "mean": 0.997684349813545,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/recovery_search": {
+            "mean": 0.3,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/recovery_search_delta": {
+            "mean": 0.028173688054084777,
+            "p50": 0.0,
+            "p95": 0.25017274022102354,
+            "p99": 0.27958415716886514,
+            "max": 0.29080936312675476
+          },
+          "mppi/recovery_search_ms": {
+            "mean": 134.76257781982423,
+            "p50": 0.0,
+            "p95": 492.36569061279283,
+            "p99": 874.140332031248,
+            "max": 1218.5081787109375
+          },
+          "mppi/recovery_search_steer_delta": {
+            "mean": 0.005878000395993391,
+            "p50": 0.0,
+            "p95": 0.04699776917695996,
+            "p99": 0.09492310710251324,
+            "max": 0.10661295801401138
+          },
+          "mppi/recovery_search_throttle_delta": {
+            "mean": 0.015640170375506083,
+            "p50": 0.0,
+            "p95": 0.25,
+            "p99": 0.26629140675067886,
+            "max": 0.2897351384162903
+          },
+          "mppi/recovery_stall_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_streak": {
+            "mean": 0.23333333333333334,
+            "p50": 0.0,
+            "p95": 2.0,
+            "p99": 3.0,
+            "max": 3.0
+          },
+          "mppi/recovery_success": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_wm_evaluated_candidates": {
+            "mean": 22.333333333333332,
+            "p50": 0.0,
+            "p95": 78.0,
+            "p99": 78.0,
+            "max": 78.0
+          },
+          "mppi/risk_p50": {
+            "mean": 0.6749741228918235,
+            "p50": 0.7564762532711029,
+            "p95": 2.0000002503395082,
+            "p99": 2.000000476837158,
+            "max": 2.000000476837158
+          },
+          "mppi/risk_p95": {
+            "mean": 0.7645979379614194,
+            "p50": 0.7617230117321014,
+            "p95": 2.000000476837158,
+            "p99": 2.0000005745887757,
+            "max": 2.0000007152557373
+          },
+          "mppi/road_boundary_reject_count": {
+            "mean": 0.21666666666666667,
+            "p50": 0.0,
+            "p95": 0.04999999999999716,
+            "p99": 5.099999999999966,
+            "max": 11.0
+          },
+          "mppi/sac_to_selected_delta": {
+            "mean": 0.19885221732159455,
+            "p50": 0.09620781987905502,
+            "p95": 0.8420310288667672,
+            "p99": 1.4314894902706137,
+            "max": 1.5795245170593262
+          },
+          "mppi/sac_to_selected_steer_delta": {
+            "mean": 0.02381781270572295,
+            "p50": 0.028389815241098404,
+            "p95": 0.10000000149011612,
+            "p99": 0.1129000961035489,
+            "max": 0.1314636468887329
+          },
+          "mppi/sac_to_selected_throttle_delta": {
+            "mean": 0.1161487222959598,
+            "p50": 0.0,
+            "p95": 0.8411097615957253,
+            "p99": 1.4311097049713126,
+            "max": 1.5786097049713135
+          },
+          "mppi/safety_check_ms": {
+            "mean": 337.3529410853982,
+            "p50": 208.97148942947388,
+            "p95": 665.7945995301005,
+            "p99": 1291.1798420780885,
+            "max": 1492.270291119814
+          },
+          "mppi/safety_evaluated_candidates": {
+            "mean": 275.06666666666666,
+            "p50": 253.0,
+            "p95": 331.0,
+            "p99": 331.0,
+            "max": 331.0
+          },
+          "mppi/safety_fallback_unverified": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/safety_reject_count": {
+            "mean": 0.21666666666666667,
+            "p50": 0.0,
+            "p95": 0.04999999999999716,
+            "p99": 5.099999999999966,
+            "max": 11.0
+          },
+          "mppi/safety_valid_ratio": {
+            "mean": 0.9994817676134279,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/score_gain": {
+            "mean": 2.469793759859525,
+            "p50": 2.6970901489257812,
+            "p95": 4.346979522705077,
+            "p99": 5.022408599853517,
+            "max": 5.2277984619140625
+          },
+          "mppi/scoring_unavailable_fallback": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/selected_candidate_cost": {
+            "mean": 0.019078121873705337,
+            "p50": 0.018190843053162098,
+            "p95": 0.04123604111373424,
+            "p99": 0.045660295188426965,
+            "max": 0.047308024019002914
+          },
+          "mppi/selected_exact_verified": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/selected_full_braking": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/selected_full_valid": {
+            "mean": 0.9,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/selected_near_valid": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/selected_recovery_steer": {
+            "mean": -0.17870285036042333,
+            "p50": -0.07559480145573616,
+            "p95": -0.0445047663524747,
+            "p99": -0.03761461470276118,
+            "max": -0.035892076790332794
+          },
+          "mppi/selected_recovery_throttle": {
+            "mean": 0.9409104213118553,
+            "p50": 0.9729149341583252,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/selected_safety_valid": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/smoothness_penalty": {
+            "mean": 0.0030191034811044423,
+            "p50": 0.0024041752330958843,
+            "p95": 0.008123964583501219,
+            "p99": 0.011035014363005757,
+            "max": 0.011206367053091526
+          },
+          "mppi/stall_active": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/stopping_distance_m": {
+            "mean": 2.5554450009235525,
+            "p50": 1.490466868327867,
+            "p95": 6.829690703134432,
+            "p99": 7.206283407178459,
+            "max": 7.225302615551678
+          },
+          "mppi/stopping_horizon_insufficient": {
+            "mean": 0.26666666666666666,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/stopping_time_s": {
+            "mean": 0.7421263037417898,
+            "p50": 0.61190134908642,
+            "p95": 1.412128202116281,
+            "p99": 1.4530909746074476,
+            "max": 1.4551315716632764
+          },
+          "mppi/target_speed_mps": {
+            "mean": 9.956666666666667,
+            "p50": 9.89,
+            "p95": 13.89,
+            "p99": 13.89,
+            "max": 13.89
+          },
+          "mppi/terminal_q": {
+            "mean": 222.25383555094402,
+            "p50": 220.97142791748047,
+            "p95": 232.63963012695314,
+            "p99": 233.3737773132324,
+            "max": 233.9383087158203
+          },
+          "mppi/total_planning_ms": {
+            "mean": 517.946006701095,
+            "p50": 371.87700549839064,
+            "p95": 894.0717419078268,
+            "p99": 1524.6258295187715,
+            "max": 1709.8483120062156
+          },
+          "mppi/unique_candidate_count": {
+            "mean": 275.06666666666666,
+            "p50": 253.0,
+            "p95": 331.0,
+            "p99": 331.0,
+            "max": 331.0
+          },
+          "mppi/value_p50": {
+            "mean": 215.6259915669759,
+            "p50": 211.97461700439453,
+            "p95": 229.31250762939453,
+            "p99": 230.081727142334,
+            "max": 230.8192901611328
+          },
+          "mppi/wm_cache_hits": {
+            "mean": 4.566666666666666,
+            "p50": 4.0,
+            "p95": 6.0,
+            "p99": 6.0,
+            "max": 6.0
+          },
+          "mppi/wm_evaluated_candidates": {
+            "mean": 275.0,
+            "p50": 253.0,
+            "p95": 331.0,
+            "p99": 331.0,
+            "max": 331.0
+          },
+          "mppi/world_model_rollout_ms": {
+            "mean": 60.20936579704285,
+            "p50": 53.41113567352295,
+            "p95": 85.16143565177917,
+            "p99": 93.2464588165283,
+            "max": 97.27244853973389
+          }
+        },
+        "start_route": 0.4333385672819936,
+        "end_route": 0.5003198098781318,
+        "replay_max_speed_error": 0.0,
+        "executed_positive_steps": 51,
+        "emergency_steps": 0,
+        "unverified_emergency_steps": 0,
+        "max_emergency_streak": 0.0,
+        "initial_contacts": {
+          "crash": false,
+          "crash_vehicle": false,
+          "crash_object": false,
+          "crash_building": false,
+          "crash_human": false,
+          "crash_sidewalk": false,
+          "out_of_road": false
+        },
+        "totals": {
+          "positive_throttle_candidate_count": 286.0,
+          "positive_throttle_near_safe_count": 286.0,
+          "positive_throttle_exact_rejected_count": 1.0,
+          "positive_throttle_future_hard_rejected": 1.0,
+          "positive_throttle_near_offroad_rejected": 0.0,
+          "positive_sequence_candidate_count": 286.0,
+          "positive_sequence_verified_count": 285.0,
+          "forward_verified_candidates": 1678.0,
+          "forward_candidate_selected": 60.0,
+          "baseline_selected": 7.0,
+          "safety_reject_count": 13.0
+        }
+      }
+    },
+    "559": {
+      "snapshot_before_step": 600,
+      "initial_alignment_error": {
+        "heading_before": 0.0,
+        "lateral_before": 0.00027370452880859375,
+        "route_completion": 6.027909021932842e-08
+      },
+      "before": {
+        "steps": 60,
+        "route_gain": 0.0013259290073310281,
+        "mean_speed": 0.07395402353419148,
+        "max_speed": 1.1280263667792592,
+        "stall_steps": 56,
+        "crash": false,
+        "offroad": false,
+        "planning": {
+          "mean": 175.1775196651579,
+          "p50": 147.0366730063688,
+          "p95": 239.53855245999873,
+          "p99": 807.7235135724184,
+          "max": 848.9785419951659
+        },
+        "modes": {
+          "emergency_model_checked": 4,
+          "normal": 5,
+          "recovery_controlled": 51
+        },
+        "distributions": {
+          "mppi/accelerate_below_target": {
+            "mean": 0.9333333333333333,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/accelerate_kinematic_valid": {
+            "mean": 0.9333333333333333,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/accelerate_no_near_collision": {
+            "mean": 0.9333333333333333,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/accelerate_road_clear": {
+            "mean": 0.9,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/actual_speed_mps": {
+            "mean": 0.0739505786259146,
+            "p50": 0.0039802877316967265,
+            "p95": 0.43269774900739955,
+            "p99": 0.9644832944465366,
+            "max": 1.1280263667792592
+          },
+          "mppi/allow_unvalidated_cost": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/baseline_candidate_cost": {
+            "mean": 0.03159535303711891,
+            "p50": 0.030057085677981377,
+            "p95": 0.03846873752772808,
+            "p99": 0.039620722159743306,
+            "max": 0.039908718317747116
+          },
+          "mppi/baseline_corridor_valid": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/baseline_full_valid": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/baseline_future_hard_reject": {
+            "mean": 0.05,
+            "p50": 0.0,
+            "p95": 0.04999999999999716,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/baseline_near_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/baseline_near_offroad": {
+            "mean": 0.8833333333333333,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/baseline_near_valid": {
+            "mean": 0.11666666666666667,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/baseline_safety_valid": {
+            "mean": 0.06666666666666667,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/baseline_selected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/braking_streak": {
+            "mean": 0.08333333333333333,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.4099999999999966,
+            "max": 2.0
+          },
+          "mppi/can_accelerate": {
+            "mean": 0.9,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/candidate_evaluation_ms": {
+            "mean": 14.856609099661,
+            "p50": 11.487493000458926,
+            "p95": 50.87497034910484,
+            "p99": 52.58517913724062,
+            "max": 53.85467801534105
+          },
+          "mppi/collision_reject_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/committed_horizon_s": {
+            "mean": 0.09999999999999996,
+            "p50": 0.1,
+            "p95": 0.1,
+            "p99": 0.1,
+            "max": 0.1
+          },
+          "mppi/cost_coef": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/cost_enabled": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/cost_horizon_validated": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/cost_penalty": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/cost_prediction_ms": {
+            "mean": 0.5248154679934184,
+            "p50": 0.4015519917011261,
+            "p95": 1.6480799838900564,
+            "p99": 1.9179337593913075,
+            "max": 1.9655680060386658
+          },
+          "mppi/cost_scoring_requested": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/cost_validated": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/deviation_penalty": {
+            "mean": 4.764347044937312,
+            "p50": 4.308192014694214,
+            "p95": 16.261352920532225,
+            "p99": 16.42244493484497,
+            "max": 16.437458038330078
+          },
+          "mppi/elite_update_ms": {
+            "mean": 0.12040266692638397,
+            "p50": 0.0,
+            "p95": 1.441771188378334,
+            "p99": 1.574984965026378,
+            "max": 1.6657600104808807
+          },
+          "mppi/emergency_fallback": {
+            "mean": 0.06666666666666667,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/emergency_fallback_delta": {
+            "mean": 0.13374721606572468,
+            "p50": 0.0,
+            "p95": 2.003593850135803,
+            "p99": 2.007493178844452,
+            "max": 2.007505416870117
+          },
+          "mppi/emergency_fallback_steer_delta": {
+            "mean": -0.006487319866816203,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.04815969869494398,
+            "max": 0.11746267974376678
+          },
+          "mppi/emergency_fallback_throttle_delta": {
+            "mean": -0.13333333333333333,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/emergency_horizon_limited": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/emergency_reason": {
+            "mean": 0.16666666666666666,
+            "p50": 0.0,
+            "p95": 2.0,
+            "p99": 3.0,
+            "max": 3.0
+          },
+          "mppi/emergency_streak": {
+            "mean": 0.08333333333333333,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.4099999999999966,
+            "max": 2.0
+          },
+          "mppi/exact_candidate_count": {
+            "mean": 6.933333333333334,
+            "p50": 5.0,
+            "p95": 6.099999999999994,
+            "p99": 67.04999999999998,
+            "max": 70.0
+          },
+          "mppi/exact_checked_candidates": {
+            "mean": 4.966666666666667,
+            "p50": 3.0,
+            "p95": 4.049999999999997,
+            "p99": 64.63999999999999,
+            "max": 67.0
+          },
+          "mppi/exact_failed_candidates": {
+            "mean": 3.783333333333333,
+            "p50": 2.0,
+            "p95": 2.1499999999999915,
+            "p99": 64.04999999999998,
+            "max": 67.0
+          },
+          "mppi/execution_action_error": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/final_safety_verification_ms": {
+            "mean": 47.239254371325174,
+            "p50": 28.288368225097656,
+            "p95": 39.2079431056976,
+            "p99": 643.4163903903959,
+            "max": 669.7895984649658
+          },
+          "mppi/final_score": {
+            "mean": 193.36657638549804,
+            "p50": 193.2872772216797,
+            "p95": 203.63539962768556,
+            "p99": 204.21720138549804,
+            "max": 204.30462646484375
+          },
+          "mppi/final_std_steer": {
+            "mean": 0.002809924740965168,
+            "p50": 0.0,
+            "p95": 0.016943575814366296,
+            "p99": 0.038266086913645254,
+            "max": 0.04000000283122063
+          },
+          "mppi/final_std_throttle": {
+            "mean": 0.006007652295132478,
+            "p50": 0.0,
+            "p95": 0.03399389851838345,
+            "p99": 0.0857172454521058,
+            "max": 0.11999999731779099
+          },
+          "mppi/first_action_delta_norm": {
+            "mean": 0.9924508160290618,
+            "p50": 1.0117393732070923,
+            "p95": 2.003593850135803,
+            "p99": 2.007493178844452,
+            "max": 2.007505416870117
+          },
+          "mppi/first_steer_delta": {
+            "mean": -0.13476408484081429,
+            "p50": -0.16504105180501938,
+            "p95": 0.0032240852713584893,
+            "p99": 0.06046864688396421,
+            "max": 0.11746267974376678
+          },
+          "mppi/first_throttle_delta": {
+            "mean": -0.9814603656530381,
+            "p50": -1.0,
+            "p95": -0.02388850748538976,
+            "p99": -0.0027363538742065556,
+            "max": -0.0004976391792297363
+          },
+          "mppi/future_hard": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/future_unrecoverable_reject_count": {
+            "mean": 5.2,
+            "p50": 2.0,
+            "p95": 6.199999999999989,
+            "p99": 95.92999999999975,
+            "max": 139.0
+          },
+          "mppi/gate_threshold": {
+            "mean": 0.20236074447631835,
+            "p50": 0.2026141815185547,
+            "p95": 0.20326220703125,
+            "p99": 0.20330560302734377,
+            "max": 0.2033164520263672
+          },
+          "mppi/geometric_body_margin": {
+            "mean": 0.12886540054482468,
+            "p50": 0.10333294119049038,
+            "p95": 0.3371889986019461,
+            "p99": 0.43204005659844885,
+            "max": 0.4360828601297513
+          },
+          "mppi/geometric_heading_error": {
+            "mean": 0.013733868478317035,
+            "p50": 0.012994894539041901,
+            "p95": 0.019542462500278194,
+            "p99": 0.023955465568818626,
+            "max": 0.02409601522692828
+          },
+          "mppi/geometric_lateral_error": {
+            "mean": 1.5605435132980348,
+            "p50": 1.5613574981689453,
+            "p95": 1.5613599061965941,
+            "p99": 1.5613631582260132,
+            "max": 1.5613651275634766
+          },
+          "mppi/geometric_steer": {
+            "mean": -1.0,
+            "p50": -1.0,
+            "p95": -1.0,
+            "p99": -1.0,
+            "max": -1.0
+          },
+          "mppi/initial_std_steer": {
+            "mean": 0.04000000283122063,
+            "p50": 0.04000000283122063,
+            "p95": 0.04000000283122063,
+            "p99": 0.04000000283122063,
+            "max": 0.04000000283122063
+          },
+          "mppi/initial_std_throttle": {
+            "mean": 0.11999999731779099,
+            "p50": 0.11999999731779099,
+            "p95": 0.11999999731779099,
+            "p99": 0.11999999731779099,
+            "max": 0.11999999731779099
+          },
+          "mppi/kinematic_reject_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_baseline_checked": {
+            "mean": 0.9333333333333333,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/lattice_baseline_full_valid": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_baseline_future_hard_reject": {
+            "mean": 0.05,
+            "p50": 0.0,
+            "p95": 0.04999999999999716,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/lattice_baseline_near_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_baseline_near_offroad": {
+            "mean": 0.8833333333333333,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/lattice_baseline_near_valid": {
+            "mean": 0.05357142857142857,
+            "p50": 0.0,
+            "p95": 0.25,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/lattice_baseline_safety_valid": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_fallback": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_fallback_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_fallback_steer_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_fallback_throttle_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/long_clearance_risk": {
+            "mean": 0.06501016337424517,
+            "p50": 0.06596973910927773,
+            "p95": 0.06606587395071983,
+            "p99": 0.0666544833779335,
+            "max": 0.06673251837491989
+          },
+          "mppi/long_collision_risk": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/long_kinematic_risk": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/long_lateral_risk": {
+            "mean": 0.0005747488406099584,
+            "p50": 5.078003084690863e-08,
+            "p95": 0.006651257397606969,
+            "p99": 0.007154771862551569,
+            "max": 0.0073400395922362804
+          },
+          "mppi/long_risk_penalty": {
+            "mean": 1.3232056140899657,
+            "p50": 1.2062702178955078,
+            "p95": 2.0052869439125063,
+            "p99": 2.0326489996910095,
+            "max": 2.0652644634246826
+          },
+          "mppi/long_risk_score": {
+            "mean": 1.3232056140899657,
+            "p50": 1.2062702178955078,
+            "p95": 2.0052869439125063,
+            "p99": 2.0326489996910095,
+            "max": 2.0652644634246826
+          },
+          "mppi/long_road_risk": {
+            "mean": 0.2805555564040939,
+            "p50": 0.1666666716337204,
+            "p95": 0.9444444179534912,
+            "p99": 0.9672222065925596,
+            "max": 1.0
+          },
+          "mppi/long_speed_risk": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/max_delta_steer": {
+            "mean": 0.14599483807881672,
+            "p50": 0.16504105180501938,
+            "p95": 0.17349295392632483,
+            "p99": 0.17598949119448662,
+            "max": 0.17643490433692932
+          },
+          "mppi/max_delta_throttle": {
+            "mean": 0.9884883522987366,
+            "p50": 1.0,
+            "p95": 2.0,
+            "p99": 2.0,
+            "max": 2.0
+          },
+          "mppi/mode_switch_count": {
+            "mean": 5.3,
+            "p50": 6.0,
+            "p95": 6.0,
+            "p99": 6.0,
+            "max": 6.0
+          },
+          "mppi/mode_transition_reason": {
+            "mean": 0.11666666666666667,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/mppi_sampling_ms": {
+            "mean": 0.25678773497541746,
+            "p50": 0.20100799947977066,
+            "p95": 0.7969664059579372,
+            "p99": 0.9406579379737373,
+            "max": 1.0183680206537247
+          },
+          "mppi/near_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/near_hard_valid_ratio": {
+            "mean": 0.24190438561895877,
+            "p50": 0.14102564102564102,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/near_offroad": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/normal_near_valid_ratio": {
+            "mean": 0.11743638340653266,
+            "p50": 0.0,
+            "p95": 1.0040506715506716,
+            "p99": 1.0108019426676143,
+            "max": 1.0149253731343284
+          },
+          "mppi/normal_safety_valid_ratio": {
+            "mean": 0.08442503504303879,
+            "p50": -0.015625,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/normal_search_delta": {
+            "mean": 0.002184619102627039,
+            "p50": 0.0,
+            "p95": 0.020926549471914763,
+            "p99": 0.03963224854320281,
+            "max": 0.05088787153363228
+          },
+          "mppi/normal_search_steer_delta": {
+            "mean": -0.00022117892901102703,
+            "p50": 0.0,
+            "p95": 0.00016071498394011537,
+            "p99": 0.010565582662820757,
+            "max": 0.020862624049186707
+          },
+          "mppi/normal_search_throttle_delta": {
+            "mean": -0.001460366447766622,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/obstacle_uncertainty_radius_m": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/physics_acceleration_bias_mps2": {
+            "mean": -0.10793127947756262,
+            "p50": -0.006879743726545336,
+            "p95": 0.10970281341957135,
+            "p99": 1.5536140232664215,
+            "max": 2.07046676642653
+          },
+          "mppi/physics_braking_response_bias_mps2": {
+            "mean": 0.1442842383524881,
+            "p50": 1.1072233782583427,
+            "p95": 1.9367979535402944,
+            "p99": 2.0437330038492827,
+            "max": 2.07046676642653
+          },
+          "mppi/physics_heading_error_rad": {
+            "mean": 0.00013583058453787823,
+            "p50": 1.962098913566024e-06,
+            "p95": 0.0012043777577801498,
+            "p99": 0.001508902212487158,
+            "max": 0.001680783513998918
+          },
+          "mppi/physics_position_error_m": {
+            "mean": 0.0022128873552386503,
+            "p50": 0.0004272676466716673,
+            "p95": 0.014642039691237603,
+            "p99": 0.015306098714102122,
+            "max": 0.015521063094125822
+          },
+          "mppi/physics_speed_error_mps": {
+            "mean": 0.0258313277385897,
+            "p50": 0.0006879768830762353,
+            "p95": 0.11703292212847721,
+            "p99": 0.2758136883731361,
+            "max": 0.3707776569533263
+          },
+          "mppi/planning_mode": {
+            "mean": 2.966666666666667,
+            "p50": 3.0,
+            "p95": 5.0,
+            "p99": 5.0,
+            "max": 5.0
+          },
+          "mppi/positive_throttle_candidate_count": {
+            "mean": 2.8,
+            "p50": 3.0,
+            "p95": 3.0,
+            "p99": 3.0,
+            "max": 3.0
+          },
+          "mppi/positive_throttle_exact_collision_rejected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_exact_kinematic_rejected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_exact_offroad_rejected": {
+            "mean": 1.5833333333333333,
+            "p50": 2.0,
+            "p95": 2.0,
+            "p99": 2.0,
+            "max": 2.0
+          },
+          "mppi/positive_throttle_exact_rejected_count": {
+            "mean": 1.5833333333333333,
+            "p50": 2.0,
+            "p95": 2.0,
+            "p99": 2.0,
+            "max": 2.0
+          },
+          "mppi/positive_throttle_feasible_not_selected_count": {
+            "mean": 0.016666666666666666,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.4099999999999966,
+            "max": 1.0
+          },
+          "mppi/positive_throttle_future_hard_rejected": {
+            "mean": 1.5833333333333333,
+            "p50": 2.0,
+            "p95": 2.0,
+            "p99": 2.0,
+            "max": 2.0
+          },
+          "mppi/positive_throttle_kinematic_rejected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_near_collision_rejected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_near_offroad_rejected": {
+            "mean": 0.65,
+            "p50": 1.0,
+            "p95": 1.0499999999999972,
+            "p99": 3.0,
+            "max": 3.0
+          },
+          "mppi/positive_throttle_near_safe_count": {
+            "mean": 2.15,
+            "p50": 2.0,
+            "p95": 3.0,
+            "p99": 3.0,
+            "max": 3.0
+          },
+          "mppi/positive_throttle_rejected_count": {
+            "mean": 0.65,
+            "p50": 1.0,
+            "p95": 1.0499999999999972,
+            "p99": 3.0,
+            "max": 3.0
+          },
+          "mppi/positive_throttle_score_not_selected_count": {
+            "mean": 0.5333333333333333,
+            "p50": 0.0,
+            "p95": 2.0,
+            "p99": 2.4099999999999966,
+            "max": 3.0
+          },
+          "mppi/positive_throttle_unverified_count": {
+            "mean": 0.5166666666666667,
+            "p50": 0.0,
+            "p95": 2.0,
+            "p99": 2.0,
+            "max": 2.0
+          },
+          "mppi/positive_throttle_wm_rejected_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/predicted_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/predicted_cost": {
+            "mean": 0.04165806422630946,
+            "p50": 0.03674772009253502,
+            "p95": 0.10837061814963814,
+            "p99": 0.13414923310279844,
+            "max": 0.1362161934375763
+          },
+          "mppi/predicted_first_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/predicted_first_offroad": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/predicted_offroad": {
+            "mean": 0.8333333333333334,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/predicted_progress_m": {
+            "mean": 0.21348279052569222,
+            "p50": 0.003967569675296545,
+            "p95": 2.0869357943534848,
+            "p99": 2.647861146926879,
+            "max": 2.8106634616851807
+          },
+          "mppi/predicted_reward": {
+            "mean": 4.261861117680867,
+            "p50": 4.252484083175659,
+            "p95": 5.001344203948975,
+            "p99": 5.280907945632935,
+            "max": 5.294616222381592
+          },
+          "mppi/predicted_step_cost": {
+            "mean": 0.005433845155251523,
+            "p50": 0.005018510390073061,
+            "p95": 0.007670942973345518,
+            "p99": 0.009767758706584568,
+            "max": 0.010573849081993103
+          },
+          "mppi/preview_candidate_count": {
+            "mean": 78.0,
+            "p50": 68.0,
+            "p95": 247.0,
+            "p99": 247.0,
+            "max": 247.0
+          },
+          "mppi/progress_delta": {
+            "mean": 2.2095300508589063e-05,
+            "p50": 2.109768156288716e-07,
+            "p95": 0.00014033273591328133,
+            "p99": 0.00031747791220470146,
+            "max": 0.0003576659816333927
+          },
+          "mppi/progress_distance_m": {
+            "mean": 0.005588914766025338,
+            "p50": 5.340744884234503e-05,
+            "p95": 0.03547707460050992,
+            "p99": 0.08032779272029719,
+            "max": 0.0904777402788873
+          },
+          "mppi/progress_reward": {
+            "mean": 0.004023696735799377,
+            "p50": 3.845028714351694e-05,
+            "p95": 0.025541450396335427,
+            "p99": 0.05783138424787413,
+            "max": 0.06513876189984685
+          },
+          "mppi/recovery_lattice_baseline_selected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_lattice_valid_ratio": null,
+          "mppi/recovery_reason": {
+            "mean": 2.066666666666667,
+            "p50": 3.0,
+            "p95": 3.0,
+            "p99": 3.0,
+            "max": 3.0
+          },
+          "mppi/recovery_safety_valid_ratio": {
+            "mean": 0.7190143190143189,
+            "p50": 0.6923076923076923,
+            "p95": 0.8522727272727273,
+            "p99": 0.9090909090909091,
+            "max": 0.9090909090909091
+          },
+          "mppi/recovery_search": {
+            "mean": 0.9333333333333333,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/recovery_search_delta": {
+            "mean": 0.8533333460489909,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.1000003170967103,
+            "max": 1.1000007390975952
+          },
+          "mppi/recovery_search_ms": {
+            "mean": 54.969216410319014,
+            "p50": 61.35505676269531,
+            "p95": 63.0039358139038,
+            "p99": 85.57266479492186,
+            "max": 87.21903991699219
+          },
+          "mppi/recovery_search_steer_delta": {
+            "mean": -2.1609384566545488e-05,
+            "p50": 0.0,
+            "p95": 9.631738066673273e-07,
+            "p99": 7.227629423141421e-05,
+            "max": 0.0001735389232635498
+          },
+          "mppi/recovery_search_throttle_delta": {
+            "mean": 0.8533333341280619,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.100000023841858,
+            "max": 1.100000023841858
+          },
+          "mppi/recovery_stall_count": {
+            "mean": 0.5666666666666667,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/recovery_streak": {
+            "mean": 20.466666666666665,
+            "p50": 19.5,
+            "p95": 46.05,
+            "p99": 48.41,
+            "max": 49.0
+          },
+          "mppi/recovery_success": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_wm_evaluated_candidates": {
+            "mean": 7.65,
+            "p50": 8.0,
+            "p95": 9.0,
+            "p99": 9.0,
+            "max": 9.0
+          },
+          "mppi/risk_p50": {
+            "mean": 2.0277576625347136,
+            "p50": 2.0613118410110474,
+            "p95": 2.0699877381324767,
+            "p99": 2.071691892147064,
+            "max": 2.0717620849609375
+          },
+          "mppi/risk_p95": {
+            "mean": 2.06607430378596,
+            "p50": 2.0660043954849243,
+            "p95": 2.0699877381324767,
+            "p99": 2.071691892147064,
+            "max": 2.0717620849609375
+          },
+          "mppi/road_boundary_reject_count": {
+            "mean": 64.26666666666667,
+            "p50": 69.0,
+            "p95": 72.0,
+            "p99": 103.41999999999979,
+            "max": 140.0
+          },
+          "mppi/sac_to_selected_delta": {
+            "mean": 0.9924508160290618,
+            "p50": 1.0117393732070923,
+            "p95": 2.003593850135803,
+            "p99": 2.007493178844452,
+            "max": 2.007505416870117
+          },
+          "mppi/sac_to_selected_steer_delta": {
+            "mean": -0.13476408484081429,
+            "p50": -0.16504105180501938,
+            "p95": 0.0032240852713584893,
+            "p99": 0.06046864688396421,
+            "max": 0.11746267974376678
+          },
+          "mppi/sac_to_selected_throttle_delta": {
+            "mean": -0.9814603656530381,
+            "p50": -1.0,
+            "p95": -0.02388850748538976,
+            "p99": -0.0027363538742065556,
+            "max": -0.0004976391792297363
+          },
+          "mppi/safety_check_ms": {
+            "mean": 82.10023306186001,
+            "p50": 58.39702391624451,
+            "p95": 103.39920248985273,
+            "p99": 692.2672474142906,
+            "max": 730.111906260252
+          },
+          "mppi/safety_evaluated_candidates": {
+            "mean": 84.93333333333334,
+            "p50": 73.0,
+            "p95": 252.0,
+            "p99": 252.0,
+            "max": 252.0
+          },
+          "mppi/safety_fallback_unverified": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/safety_reject_count": {
+            "mean": 64.26666666666667,
+            "p50": 69.0,
+            "p95": 72.0,
+            "p99": 103.41999999999979,
+            "max": 140.0
+          },
+          "mppi/safety_valid_ratio": {
+            "mean": 0.20030850719006763,
+            "p50": 0.11538461538461542,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/score_gain": {
+            "mean": 1.4840202331542969,
+            "p50": 1.2976226806640625,
+            "p95": 2.2088043212890622,
+            "p99": 2.323889770507812,
+            "max": 2.3526611328125
+          },
+          "mppi/scoring_unavailable_fallback": {
+            "mean": 0.03333333333333333,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/selected_candidate_cost": {
+            "mean": 0.04165806422630946,
+            "p50": 0.03674772009253502,
+            "p95": 0.10837061814963814,
+            "p99": 0.13414923310279844,
+            "max": 0.1362161934375763
+          },
+          "mppi/selected_exact_verified": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/selected_full_braking": {
+            "mean": 0.06666666666666667,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/selected_full_valid": {
+            "mean": 0.16666666666666666,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/selected_near_valid": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/selected_recovery_steer": {
+            "mean": 0.018624531579952613,
+            "p50": 0.01861257664859295,
+            "p95": 0.018708214163780212,
+            "p99": 0.01882473286241293,
+            "max": 0.018899202346801758
+          },
+          "mppi/selected_recovery_throttle": {
+            "mean": 0.003921568685886907,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.10000000149011612,
+            "max": 0.10000000149011612
+          },
+          "mppi/selected_safety_valid": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/smoothness_penalty": {
+            "mean": 0.001146920304260372,
+            "p50": 0.0009585222287569195,
+            "p95": 0.0015282119100447744,
+            "p99": 0.002417290196754033,
+            "max": 0.003325357800349593
+          },
+          "mppi/stall_active": {
+            "mean": 0.5666666666666667,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/stopping_distance_m": {
+            "mean": 0.011188589417417637,
+            "p50": 0.00039934899737193065,
+            "p95": 0.05895214562946242,
+            "p99": 0.1755162013197233,
+            "max": 0.21883959369036057
+          },
+          "mppi/stopping_horizon_insufficient": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/stopping_time_s": {
+            "mean": 0.01232509643765243,
+            "p50": 0.0006633812886161211,
+            "p95": 0.07211629150123326,
+            "p99": 0.16074721574108944,
+            "max": 0.18800439446320985
+          },
+          "mppi/target_speed_mps": {
+            "mean": 13.889999999999999,
+            "p50": 13.89,
+            "p95": 13.89,
+            "p99": 13.89,
+            "max": 13.89
+          },
+          "mppi/terminal_q": {
+            "mean": 205.22694676717123,
+            "p50": 204.56344604492188,
+            "p95": 210.88250503540038,
+            "p99": 211.636728515625,
+            "max": 211.7943115234375
+          },
+          "mppi/total_planning_ms": {
+            "mean": 175.1775196651579,
+            "p50": 147.0366730063688,
+            "p95": 239.53855245999873,
+            "p99": 807.7235135724184,
+            "max": 848.9785419951659
+          },
+          "mppi/unique_candidate_count": {
+            "mean": 84.93333333333334,
+            "p50": 73.0,
+            "p95": 252.0,
+            "p99": 252.0,
+            "max": 252.0
+          },
+          "mppi/value_p50": {
+            "mean": 199.51481857299805,
+            "p50": 198.8150405883789,
+            "p95": 204.9167724609375,
+            "p99": 205.67387435913085,
+            "max": 205.70703125
+          },
+          "mppi/wm_cache_hits": {
+            "mean": 0.26666666666666666,
+            "p50": 0.0,
+            "p95": 4.0,
+            "p99": 4.0,
+            "max": 4.0
+          },
+          "mppi/wm_evaluated_candidates": {
+            "mean": 27.55,
+            "p50": 8.0,
+            "p95": 252.0,
+            "p99": 252.0,
+            "max": 252.0
+          },
+          "mppi/world_model_rollout_ms": {
+            "mean": 12.485393571853638,
+            "p50": 9.810783863067627,
+            "p95": 40.86484460830688,
+            "p99": 42.272446870803826,
+            "max": 43.4017915725708
+          }
+        },
+        "start_route": 0.4831414890715606,
+        "end_route": 0.48446741807889165,
+        "replay_max_speed_error": 7.5444302319845405e-06,
+        "executed_positive_steps": 7,
+        "emergency_steps": 4,
+        "unverified_emergency_steps": 0,
+        "max_emergency_streak": 2.0,
+        "initial_contacts": {
+          "crash": false,
+          "crash_vehicle": false,
+          "crash_object": false,
+          "crash_building": false,
+          "crash_human": false,
+          "crash_sidewalk": false,
+          "out_of_road": false
+        },
+        "totals": {
+          "positive_throttle_candidate_count": 168.0,
+          "positive_throttle_near_safe_count": 129.0,
+          "positive_throttle_exact_rejected_count": 95.0,
+          "positive_throttle_future_hard_rejected": 95.0,
+          "positive_throttle_near_offroad_rejected": 39.0,
+          "positive_sequence_candidate_count": null,
+          "positive_sequence_verified_count": null,
+          "forward_verified_candidates": null,
+          "forward_candidate_selected": null,
+          "baseline_selected": 0.0,
+          "safety_reject_count": 3856.0
+        }
+      },
+      "after": {
+        "steps": 60,
+        "route_gain": 0.0013287621245698378,
+        "mean_speed": 0.1511121781848845,
+        "max_speed": 1.0677793969245186,
+        "stall_steps": 55,
+        "crash": false,
+        "offroad": false,
+        "planning": {
+          "mean": 424.0806446992792,
+          "p50": 249.9961350040394,
+          "p95": 1865.3712646490021,
+          "p99": 1935.2264484728219,
+          "max": 1974.3931660050293
+        },
+        "modes": {
+          "baseline": 4,
+          "emergency_model_check_failed": 2,
+          "emergency_model_checked": 8,
+          "normal": 1,
+          "recovery_controlled": 45
+        },
+        "distributions": {
+          "mppi/accelerate_below_target": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/accelerate_kinematic_valid": {
+            "mean": 0.4166666666666667,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/accelerate_no_near_collision": {
+            "mean": 0.4166666666666667,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/accelerate_road_clear": {
+            "mean": 0.31666666666666665,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/actual_speed_mps": {
+            "mean": 0.15093140932993132,
+            "p50": 0.10612073020696057,
+            "p95": 0.43070344644510145,
+            "p99": 0.9420227552065052,
+            "max": 1.0677793969245186
+          },
+          "mppi/allow_unvalidated_cost": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/baseline_candidate_cost": {
+            "mean": 0.032756961137056353,
+            "p50": 0.030514584854245186,
+            "p95": 0.03934430405497551,
+            "p99": 0.0397853122651577,
+            "max": 0.03989556431770325
+          },
+          "mppi/baseline_corridor_valid": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/baseline_full_valid": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/baseline_future_hard_reject": {
+            "mean": 0.1,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/baseline_near_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/baseline_near_offroad": {
+            "mean": 0.8166666666666667,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/baseline_near_valid": {
+            "mean": 0.18333333333333332,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/baseline_safety_valid": {
+            "mean": 0.08333333333333333,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/baseline_selected": {
+            "mean": 0.06666666666666667,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/braking_streak": {
+            "mean": 1.5833333333333333,
+            "p50": 1.0,
+            "p95": 4.049999999999997,
+            "p99": 6.409999999999997,
+            "max": 7.0
+          },
+          "mppi/can_accelerate": {
+            "mean": 0.31666666666666665,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/candidate_evaluation_ms": {
+            "mean": 22.60220234492063,
+            "p50": 13.789551005174872,
+            "p95": 91.86148186854552,
+            "p99": 97.82108533152496,
+            "max": 98.06432598270476
+          },
+          "mppi/center_model_active": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/collision_reject_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/committed_horizon_s": {
+            "mean": 0.09999999999999996,
+            "p50": 0.1,
+            "p95": 0.1,
+            "p99": 0.1,
+            "max": 0.1
+          },
+          "mppi/continuity_changed": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/continuity_rejected": {
+            "mean": 0.016666666666666666,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.4099999999999966,
+            "max": 1.0
+          },
+          "mppi/cost_coef": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/cost_enabled": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/cost_horizon_validated": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/cost_penalty": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/cost_prediction_ms": {
+            "mean": 0.7502218703428905,
+            "p50": 0.4556799978017807,
+            "p95": 3.146454392373562,
+            "p99": 3.3783786034584034,
+            "max": 3.5560960471630096
+          },
+          "mppi/cost_scoring_requested": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/cost_validated": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/deviation_penalty": {
+            "mean": 5.330133431653182,
+            "p50": 3.2273412942886353,
+            "p95": 16.760776329040528,
+            "p99": 17.645016498565674,
+            "max": 17.739320755004883
+          },
+          "mppi/elite_update_ms": {
+            "mean": 0.2700640007853508,
+            "p50": 0.0,
+            "p95": 2.2957024231553076,
+            "p99": 2.463295366466045,
+            "max": 2.5119680166244507
+          },
+          "mppi/emergency_fallback": {
+            "mean": 0.16666666666666666,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/emergency_fallback_delta": {
+            "mean": 0.3337489446004232,
+            "p50": 0.0,
+            "p95": 2.0037999033927916,
+            "p99": 2.0051477694511415,
+            "max": 2.0064687728881836
+          },
+          "mppi/emergency_fallback_steer_delta": {
+            "mean": -0.00831461896498998,
+            "p50": 0.0,
+            "p95": 0.0005882099270820284,
+            "p99": 0.07682033792138052,
+            "max": 0.1609877198934555
+          },
+          "mppi/emergency_fallback_throttle_delta": {
+            "mean": -0.3333333333333333,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/emergency_horizon_limited": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/emergency_reason": {
+            "mean": 0.3,
+            "p50": 0.0,
+            "p95": 2.0,
+            "p99": 2.0,
+            "max": 2.0
+          },
+          "mppi/emergency_streak": {
+            "mean": 0.18333333333333332,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.4099999999999966,
+            "max": 2.0
+          },
+          "mppi/exact_candidate_count": {
+            "mean": 28.4,
+            "p50": 18.0,
+            "p95": 83.0,
+            "p99": 83.41,
+            "max": 84.0
+          },
+          "mppi/exact_checked_candidates": {
+            "mean": 10.283333333333333,
+            "p50": 0.0,
+            "p95": 65.0,
+            "p99": 65.0,
+            "max": 65.0
+          },
+          "mppi/exact_failed_candidates": {
+            "mean": 4.833333333333333,
+            "p50": 0.0,
+            "p95": 60.05,
+            "p99": 62.0,
+            "max": 62.0
+          },
+          "mppi/execution_action_error": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/final_safety_verification_ms": {
+            "mean": 159.45744818907517,
+            "p50": 0.5471360087394714,
+            "p95": 1615.2230735644698,
+            "p99": 1631.8705384230614,
+            "max": 1638.5310363769531
+          },
+          "mppi/final_score": {
+            "mean": 195.11338516761518,
+            "p50": 196.88290405273438,
+            "p95": 201.19344329833984,
+            "p99": 203.56201782226563,
+            "max": 203.84886169433594
+          },
+          "mppi/final_std_steer": {
+            "mean": 0.0013048868471135695,
+            "p50": 0.0,
+            "p95": 0.014343696553260087,
+            "p99": 0.01708892734721302,
+            "max": 0.019037121906876564
+          },
+          "mppi/final_std_throttle": {
+            "mean": 0.0025733539213736853,
+            "p50": 0.0,
+            "p95": 0.030376857426017524,
+            "p99": 0.031585176233202214,
+            "max": 0.032501112669706345
+          },
+          "mppi/first_action_delta_norm": {
+            "mean": 1.2371771474679312,
+            "p50": 1.2556642889976501,
+            "p95": 2.0037999033927916,
+            "p99": 2.0051477694511415,
+            "max": 2.0064687728881836
+          },
+          "mppi/first_steer_delta": {
+            "mean": -0.0755839375158151,
+            "p50": -0.09149860590696335,
+            "p95": 0.01209254562854765,
+            "p99": 0.11443685501813862,
+            "max": 0.1609877198934555
+          },
+          "mppi/first_throttle_delta": {
+            "mean": -1.2329884827136994,
+            "p50": -1.25,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/forward_candidate_selected": {
+            "mean": 0.8,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/forward_verified_candidates": {
+            "mean": 16.15,
+            "p50": 14.0,
+            "p95": 81.05,
+            "p99": 83.0,
+            "max": 83.0
+          },
+          "mppi/future_hard": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/future_unrecoverable_reject_count": {
+            "mean": 7.766666666666667,
+            "p50": 0.0,
+            "p95": 64.05,
+            "p99": 97.97999999999973,
+            "max": 144.0
+          },
+          "mppi/gate_threshold": {
+            "mean": 0.20203431396484378,
+            "p50": 0.2021979675292969,
+            "p95": 0.2032186462402344,
+            "p99": 0.20332023071289063,
+            "max": 0.2033456268310547
+          },
+          "mppi/geometric_body_margin": {
+            "mean": 0.13923682063190287,
+            "p50": 0.11522543072702643,
+            "p95": 0.3366130765027296,
+            "p99": 0.43199736754472856,
+            "max": 0.4360610112200209
+          },
+          "mppi/geometric_heading_error": {
+            "mean": 0.011718587902426606,
+            "p50": 0.010714829171770468,
+            "p95": 0.019637377561528026,
+            "p99": 0.023936531825048648,
+            "max": 0.02409601522692828
+          },
+          "mppi/geometric_lateral_error": {
+            "mean": 1.5646467288335164,
+            "p50": 1.566195011138916,
+            "p95": 1.567579174041748,
+            "p99": 1.5676660966873168,
+            "max": 1.5676798820495605
+          },
+          "mppi/geometric_steer": {
+            "mean": -1.0,
+            "p50": -1.0,
+            "p95": -1.0,
+            "p99": -1.0,
+            "max": -1.0
+          },
+          "mppi/initial_std_steer": {
+            "mean": 0.04000000283122063,
+            "p50": 0.04000000283122063,
+            "p95": 0.04000000283122063,
+            "p99": 0.04000000283122063,
+            "max": 0.04000000283122063
+          },
+          "mppi/initial_std_throttle": {
+            "mean": 0.11999999731779099,
+            "p50": 0.11999999731779099,
+            "p95": 0.11999999731779099,
+            "p99": 0.11999999731779099,
+            "max": 0.11999999731779099
+          },
+          "mppi/kinematic_reject_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_baseline_checked": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/lattice_baseline_full_valid": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_baseline_future_hard_reject": {
+            "mean": 0.1,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/lattice_baseline_near_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_baseline_near_offroad": {
+            "mean": 0.8166666666666667,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/lattice_baseline_near_valid": {
+            "mean": 0.18333333333333332,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/lattice_baseline_safety_valid": {
+            "mean": 0.08333333333333333,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/lattice_fallback": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_fallback_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_fallback_steer_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_fallback_throttle_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/long_clearance_risk": {
+            "mean": 0.06325667394946019,
+            "p50": 0.06419534608721733,
+            "p95": 0.06605979353189469,
+            "p99": 0.0667354405671358,
+            "max": 0.06688261777162552
+          },
+          "mppi/long_collision_risk": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/long_kinematic_risk": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/long_lateral_risk": {
+            "mean": 0.0009571335180303824,
+            "p50": 0.00017397120245732367,
+            "p95": 0.007520491094328462,
+            "p99": 0.008074995493516327,
+            "max": 0.008097237907350063
+          },
+          "mppi/long_risk_penalty": {
+            "mean": 1.6559539397557577,
+            "p50": 1.7862377166748047,
+            "p95": 2.062802052497864,
+            "p99": 2.063448212146759,
+            "max": 2.0641725063323975
+          },
+          "mppi/long_risk_score": {
+            "mean": 1.6559539397557577,
+            "p50": 1.7862377166748047,
+            "p95": 2.062802052497864,
+            "p99": 2.063448212146759,
+            "max": 2.0641725063323975
+          },
+          "mppi/long_road_risk": {
+            "mean": 0.6666666646798451,
+            "p50": 0.75,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/long_speed_risk": {
+            "mean": 6.698537152523349e-16,
+            "p50": 0.0,
+            "p95": 6.186355528731793e-16,
+            "p99": 1.3858917319824322e-14,
+            "max": 1.4188914867802223e-14
+          },
+          "mppi/max_delta_steer": {
+            "mean": 0.11936741334696611,
+            "p50": 0.12843790650367737,
+            "p95": 0.1640212669968605,
+            "p99": 0.17978527992963783,
+            "max": 0.19214102625846863
+          },
+          "mppi/max_delta_throttle": {
+            "mean": 1.2406493147214255,
+            "p50": 1.25,
+            "p95": 2.0,
+            "p99": 2.0,
+            "max": 2.0
+          },
+          "mppi/mode_switch_count": {
+            "mean": 11.966666666666667,
+            "p50": 12.0,
+            "p95": 20.0,
+            "p99": 20.0,
+            "max": 20.0
+          },
+          "mppi/mode_transition_reason": {
+            "mean": 0.48333333333333334,
+            "p50": 0.0,
+            "p95": 2.0,
+            "p99": 2.0,
+            "max": 2.0
+          },
+          "mppi/model_guard_active": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/mppi_sampling_ms": {
+            "mean": 0.3260458658138911,
+            "p50": 0.22222400456666946,
+            "p95": 1.3591471813619136,
+            "p99": 1.3861062437295912,
+            "max": 1.3918080031871796
+          },
+          "mppi/near_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/near_hard_valid_ratio": {
+            "mean": 0.3989491053646713,
+            "p50": 0.3333333333333333,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/near_offroad": {
+            "mean": 0.03333333333333333,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/normal_near_valid_ratio": {
+            "mean": 0.19272079136160275,
+            "p50": 0.0,
+            "p95": 1.0080032258064515,
+            "p99": 1.0124975845410629,
+            "max": 1.0144927536231885
+          },
+          "mppi/normal_safety_valid_ratio": {
+            "mean": 0.13396232378841297,
+            "p50": -0.015625,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/normal_search_delta": {
+            "mean": 0.0004910995562871297,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.01208104908466329,
+            "max": 0.029465973377227783
+          },
+          "mppi/normal_search_steer_delta": {
+            "mean": 5.061849951744079e-05,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0012452150881290332,
+            "max": 0.0030371099710464478
+          },
+          "mppi/normal_search_throttle_delta": {
+            "mean": -0.0004884839057922363,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/obstacle_uncertainty_radius_m": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/physics_acceleration_bias_mps2": {
+            "mean": 0.431043751274064,
+            "p50": 0.5062839498789242,
+            "p95": 2.1886525152984486,
+            "p99": 2.274218152220918,
+            "max": 2.2843109155425414
+          },
+          "mppi/physics_braking_response_bias_mps2": {
+            "mean": 1.1069680929939312,
+            "p50": 1.0636682304832255,
+            "p95": 2.2604909517923275,
+            "p99": 2.2783944680781416,
+            "max": 2.2843109155425414
+          },
+          "mppi/physics_heading_error_rad": {
+            "mean": 0.00021435727937512496,
+            "p50": 0.00011170348677769226,
+            "p95": 0.0008486669621131412,
+            "p99": 0.001138275438183012,
+            "max": 0.0012234287959191903
+          },
+          "mppi/physics_position_error_m": {
+            "mean": 0.005933126055684653,
+            "p50": 0.005560798968334434,
+            "p95": 0.01432830561356702,
+            "p99": 0.015588061980658685,
+            "max": 0.016027097710626423
+          },
+          "mppi/physics_speed_error_mps": {
+            "mean": 0.09904452523700975,
+            "p50": 0.08570030883937274,
+            "p95": 0.22586570524556276,
+            "p99": 0.2664718119155048,
+            "max": 0.31900423527151717
+          },
+          "mppi/planning_mode": {
+            "mean": 3.1333333333333333,
+            "p50": 3.0,
+            "p95": 5.0,
+            "p99": 6.0,
+            "max": 6.0
+          },
+          "mppi/positive_sequence_candidate_count": {
+            "mean": 14.2,
+            "p50": 14.0,
+            "p95": 16.0,
+            "p99": 16.0,
+            "max": 16.0
+          },
+          "mppi/positive_sequence_verified_count": {
+            "mean": 10.35,
+            "p50": 14.0,
+            "p95": 14.049999999999997,
+            "p99": 16.0,
+            "max": 16.0
+          },
+          "mppi/positive_throttle_candidate_count": {
+            "mean": 6.066666666666666,
+            "p50": 0.0,
+            "p95": 16.0,
+            "p99": 16.0,
+            "max": 16.0
+          },
+          "mppi/positive_throttle_exact_collision_rejected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_exact_kinematic_rejected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_exact_offroad_rejected": {
+            "mean": 3.1666666666666665,
+            "p50": 0.0,
+            "p95": 16.0,
+            "p99": 16.0,
+            "max": 16.0
+          },
+          "mppi/positive_throttle_exact_rejected_count": {
+            "mean": 3.1666666666666665,
+            "p50": 0.0,
+            "p95": 16.0,
+            "p99": 16.0,
+            "max": 16.0
+          },
+          "mppi/positive_throttle_feasible_not_selected_count": {
+            "mean": 2.7,
+            "p50": 0.0,
+            "p95": 14.0,
+            "p99": 16.0,
+            "max": 16.0
+          },
+          "mppi/positive_throttle_future_hard_rejected": {
+            "mean": 1.2166666666666666,
+            "p50": 0.0,
+            "p95": 7.199999999999989,
+            "p99": 14.819999999999993,
+            "max": 16.0
+          },
+          "mppi/positive_throttle_kinematic_rejected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_near_collision_rejected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_near_offroad_rejected": {
+            "mean": 1.95,
+            "p50": 0.0,
+            "p95": 14.0,
+            "p99": 16.0,
+            "max": 16.0
+          },
+          "mppi/positive_throttle_near_safe_count": {
+            "mean": 4.116666666666666,
+            "p50": 0.0,
+            "p95": 16.0,
+            "p99": 16.0,
+            "max": 16.0
+          },
+          "mppi/positive_throttle_rejected_count": {
+            "mean": 3.1666666666666665,
+            "p50": 0.0,
+            "p95": 16.0,
+            "p99": 16.0,
+            "max": 16.0
+          },
+          "mppi/positive_throttle_score_not_selected_count": {
+            "mean": 2.7,
+            "p50": 0.0,
+            "p95": 14.0,
+            "p99": 16.0,
+            "max": 16.0
+          },
+          "mppi/positive_throttle_unverified_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_wm_rejected_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/predicted_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/predicted_cost": {
+            "mean": 0.04016463672099956,
+            "p50": 0.02780213952064514,
+            "p95": 0.12603259086608887,
+            "p99": 0.13218240275979043,
+            "max": 0.13256311416625977
+          },
+          "mppi/predicted_first_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/predicted_first_offroad": {
+            "mean": 0.03333333333333333,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/predicted_offroad": {
+            "mean": 0.8333333333333334,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/predicted_progress_m": {
+            "mean": 0.5435210733364025,
+            "p50": 0.36104030907154083,
+            "p95": 2.082048571109772,
+            "p99": 2.4006067967414846,
+            "max": 2.5666513442993164
+          },
+          "mppi/predicted_reward": {
+            "mean": 4.356801061794676,
+            "p50": 4.431000471115112,
+            "p95": 4.951458406448364,
+            "p99": 5.104956159591675,
+            "max": 5.184813976287842
+          },
+          "mppi/predicted_route_progress": {
+            "mean": 0.5503152827421824,
+            "p50": 0.3610572814941406,
+            "p95": 2.1488682985305787,
+            "p99": 2.466540527343749,
+            "max": 2.6342830657958984
+          },
+          "mppi/predicted_step_cost": {
+            "mean": 0.00561940242086762,
+            "p50": 0.005009912187233567,
+            "p95": 0.008096496760845184,
+            "p99": 0.00869154218584299,
+            "max": 0.008728411048650742
+          },
+          "mppi/predicted_terminal_speed": {
+            "mean": 1.1900335608050228,
+            "p50": 1.059999942779541,
+            "p95": 4.029784059524536,
+            "p99": 4.403100838661193,
+            "max": 4.570396900177002
+          },
+          "mppi/preview_candidate_count": {
+            "mean": 72.55,
+            "p50": 62.0,
+            "p95": 247.0,
+            "p99": 247.0,
+            "max": 247.0
+          },
+          "mppi/progress_delta": {
+            "mean": 2.1879300435413233e-05,
+            "p50": 2.7125590584820003e-07,
+            "p95": 0.00014116308038062653,
+            "p99": 0.0003024391833890363,
+            "max": 0.0003529943521438095
+          },
+          "mppi/progress_distance_m": {
+            "mean": 0.005533121978367798,
+            "p50": 6.868358377709995e-05,
+            "p95": 0.03568665918538665,
+            "p99": 0.07650338383339574,
+            "max": 0.08928236849488619
+          },
+          "mppi/progress_guard_active": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/progress_rejected_candidates": {
+            "mean": 1.5166666666666666,
+            "p50": 2.0,
+            "p95": 2.0,
+            "p99": 2.0,
+            "max": 2.0
+          },
+          "mppi/progress_reward": {
+            "mean": 0.003983529142093447,
+            "p50": 4.9448224461555034e-05,
+            "p95": 0.025692339226340278,
+            "p99": 0.055078030117635506,
+            "max": 0.06427816306327298
+          },
+          "mppi/recovery_latched": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/recovery_lattice_baseline_selected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_lattice_valid_ratio": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/recovery_reason": {
+            "mean": 2.3333333333333335,
+            "p50": 3.0,
+            "p95": 5.0,
+            "p99": 5.0,
+            "max": 5.0
+          },
+          "mppi/recovery_safety_valid_ratio": {
+            "mean": 0.7459933592819357,
+            "p50": 0.9705882352941176,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/recovery_search": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/recovery_search_delta": {
+            "mean": 0.040635947572688264,
+            "p50": 0.004017634317278862,
+            "p95": 0.15902525559067685,
+            "p99": 0.3205200672149656,
+            "max": 0.3499999940395355
+          },
+          "mppi/recovery_search_ms": {
+            "mean": 140.35411885579427,
+            "p50": 120.0211067199707,
+            "p95": 317.6081466674804,
+            "p99": 463.75190185546865,
+            "max": 478.8341369628906
+          },
+          "mppi/recovery_search_steer_delta": {
+            "mean": -0.00303458155443271,
+            "p50": -0.003296002745628357,
+            "p95": 0.0,
+            "p99": 0.021796694211661815,
+            "max": 0.022005397826433182
+          },
+          "mppi/recovery_search_throttle_delta": {
+            "mean": 0.012500000869234402,
+            "p50": 0.0,
+            "p95": 0.15000000596046448,
+            "p99": 0.2115000084042544,
+            "max": 0.30000001192092896
+          },
+          "mppi/recovery_stall_count": {
+            "mean": 0.5,
+            "p50": 0.5,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/recovery_streak": {
+            "mean": 2.5166666666666666,
+            "p50": 2.0,
+            "p95": 6.0,
+            "p99": 6.0,
+            "max": 6.0
+          },
+          "mppi/recovery_success": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_wm_evaluated_candidates": {
+            "mean": 17.066666666666666,
+            "p50": 16.0,
+            "p95": 78.0,
+            "p99": 78.0,
+            "max": 78.0
+          },
+          "mppi/risk_p50": {
+            "mean": 1.9349320809046426,
+            "p50": 2.0322508811950684,
+            "p95": 2.0699939489364625,
+            "p99": 2.07169988155365,
+            "max": 2.0717716217041016
+          },
+          "mppi/risk_p95": {
+            "mean": 2.0638732512791953,
+            "p50": 2.06438946723938,
+            "p95": 2.0699939489364625,
+            "p99": 2.07169988155365,
+            "max": 2.0717716217041016
+          },
+          "mppi/road_boundary_reject_count": {
+            "mean": 63.983333333333334,
+            "p50": 66.0,
+            "p95": 83.0,
+            "p99": 108.00999999999979,
+            "max": 144.0
+          },
+          "mppi/sac_to_selected_delta": {
+            "mean": 1.2371771474679312,
+            "p50": 1.2556642889976501,
+            "p95": 2.0037999033927916,
+            "p99": 2.0051477694511415,
+            "max": 2.0064687728881836
+          },
+          "mppi/sac_to_selected_steer_delta": {
+            "mean": -0.0755839375158151,
+            "p50": -0.09149860590696335,
+            "p95": 0.01209254562854765,
+            "p99": 0.11443685501813862,
+            "max": 0.1609877198934555
+          },
+          "mppi/sac_to_selected_throttle_delta": {
+            "mean": -1.2329884827136994,
+            "p50": -1.25,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/safety_check_ms": {
+            "mean": 299.4695588812232,
+            "p50": 134.3594716489315,
+            "p95": 1735.8520339936017,
+            "p99": 1794.8872739255426,
+            "max": 1843.326312482357
+          },
+          "mppi/safety_evaluated_candidates": {
+            "mean": 100.95,
+            "p50": 80.0,
+            "p95": 330.0,
+            "p99": 330.40999999999997,
+            "max": 331.0
+          },
+          "mppi/safety_fallback_unverified": {
+            "mean": 0.03333333333333333,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/safety_reject_count": {
+            "mean": 63.983333333333334,
+            "p50": 66.0,
+            "p95": 83.0,
+            "p99": 108.00999999999979,
+            "max": 144.0
+          },
+          "mppi/safety_valid_ratio": {
+            "mean": 0.3452912038570298,
+            "p50": 0.33333333333333337,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/score_gain": {
+            "mean": 0.2276275634765625,
+            "p50": 0.0,
+            "p95": 0.9105102539062497,
+            "p99": 1.0926123046875,
+            "max": 1.1381378173828125
+          },
+          "mppi/scoring_unavailable_fallback": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/selected_candidate_cost": {
+            "mean": 0.04016463672099956,
+            "p50": 0.02780213952064514,
+            "p95": 0.12603259086608887,
+            "p99": 0.13218240275979043,
+            "max": 0.13256311416625977
+          },
+          "mppi/selected_exact_verified": {
+            "mean": 0.9666666666666667,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/selected_full_braking": {
+            "mean": 0.16666666666666666,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/selected_full_valid": {
+            "mean": 0.16666666666666666,
+            "p50": 0.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/selected_near_valid": {
+            "mean": 0.9666666666666667,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/selected_recovery_steer": {
+            "mean": 0.09638271638088756,
+            "p50": 0.09234842658042908,
+            "p95": 0.17365224659442902,
+            "p99": 0.18976998031139375,
+            "max": 0.19056449830532074
+          },
+          "mppi/selected_recovery_throttle": {
+            "mean": -0.19888888912068473,
+            "p50": -0.25,
+            "p95": 0.25,
+            "p99": 0.5960000026226051,
+            "max": 0.75
+          },
+          "mppi/selected_safety_valid": {
+            "mean": 0.9666666666666667,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/smoothness_penalty": {
+            "mean": 0.0038554043906818456,
+            "p50": 0.0029862349620088935,
+            "p95": 0.00940099274739623,
+            "p99": 0.009616339802742005,
+            "max": 0.00965934433043003
+          },
+          "mppi/stall_active": {
+            "mean": 0.5,
+            "p50": 0.5,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/stopping_distance_m": {
+            "mean": 0.019781190468717607,
+            "p50": 0.011550545515808149,
+            "p95": 0.05861472173097875,
+            "p99": 0.16906867306114257,
+            "max": 0.20179067640049259
+          },
+          "mppi/stopping_horizon_insufficient": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/stopping_time_s": {
+            "mean": 0.025155234888321887,
+            "p50": 0.017686788367826764,
+            "p95": 0.07178390774085024,
+            "p99": 0.15700379253441754,
+            "max": 0.1779632328207531
+          },
+          "mppi/target_speed_mps": {
+            "mean": 13.889999999999999,
+            "p50": 13.89,
+            "p95": 13.89,
+            "p99": 13.89,
+            "max": 13.89
+          },
+          "mppi/terminal_q": {
+            "mean": 207.56388539281386,
+            "p50": 207.54581451416016,
+            "p95": 208.7457717895508,
+            "p99": 210.80448974609374,
+            "max": 211.42138671875
+          },
+          "mppi/total_planning_ms": {
+            "mean": 424.0806446992792,
+            "p50": 249.9961350040394,
+            "p95": 1865.3712646490021,
+            "p99": 1935.2264484728219,
+            "max": 1974.3931660050293
+          },
+          "mppi/unique_candidate_count": {
+            "mean": 100.95,
+            "p50": 80.0,
+            "p95": 330.0,
+            "p99": 330.40999999999997,
+            "max": 331.0
+          },
+          "mppi/value_p50": {
+            "mean": 200.2118693384631,
+            "p50": 199.39861297607422,
+            "p95": 205.00676651000975,
+            "p99": 205.21981964111328,
+            "max": 205.35523986816406
+          },
+          "mppi/wm_cache_hits": {
+            "mean": 0.5166666666666667,
+            "p50": 0.0,
+            "p95": 6.0,
+            "p99": 6.0,
+            "max": 6.0
+          },
+          "mppi/wm_evaluated_candidates": {
+            "mean": 44.71666666666667,
+            "p50": 16.0,
+            "p95": 330.0,
+            "p99": 330.0,
+            "max": 330.0
+          },
+          "mppi/world_model_rollout_ms": {
+            "mean": 17.97729450861613,
+            "p50": 11.530752182006836,
+            "p95": 74.37564368247986,
+            "p99": 78.4000154876709,
+            "max": 78.42016124725342
+          }
+        },
+        "start_route": 0.48314154935065085,
+        "end_route": 0.4844703114752207,
+        "replay_max_speed_error": 1.3129757379026427e-05,
+        "executed_positive_steps": 17,
+        "emergency_steps": 10,
+        "unverified_emergency_steps": 2,
+        "max_emergency_streak": 2.0,
+        "initial_contacts": {
+          "crash": false,
+          "crash_vehicle": false,
+          "crash_object": false,
+          "crash_building": false,
+          "crash_human": false,
+          "crash_sidewalk": false,
+          "out_of_road": false
+        },
+        "totals": {
+          "positive_throttle_candidate_count": 364.0,
+          "positive_throttle_near_safe_count": 247.0,
+          "positive_throttle_exact_rejected_count": 190.0,
+          "positive_throttle_future_hard_rejected": 73.0,
+          "positive_throttle_near_offroad_rejected": 117.0,
+          "positive_sequence_candidate_count": 852.0,
+          "positive_sequence_verified_count": 621.0,
+          "forward_verified_candidates": 969.0,
+          "forward_candidate_selected": 48.0,
+          "baseline_selected": 4.0,
+          "safety_reject_count": 3839.0
+        }
+      }
+    }
+  },
+  "candidate_diagnosis_559": {
+    "rejection_reasons": {
+      "selected": 58,
+      "not_finally_verified": 1334,
+      "sac_baseline_retained": 298,
+      "insufficient_progress": 435,
+      "future_recoverability_failed_offroad": 390,
+      "future_risk_tier": 5,
+      "wm_score_lower": 244,
+      "continuity_progress_loss": 1,
+      "near_offroad": 3271,
+      "deviation_penalty": 17,
+      "selected_unverified_emergency": 2,
+      "trajectory_quality_score_lower": 2
+    },
+    "verified_forward_not_selected_reasons": {
+      "sac_baseline_retained": 298,
+      "insufficient_progress": 354,
+      "future_risk_tier": 4,
+      "wm_score_lower": 244,
+      "continuity_progress_loss": 1,
+      "deviation_penalty": 17,
+      "trajectory_quality_score_lower": 2
+    },
+    "selected_types": {
+      "sac_baseline": 4,
+      "recovery_lattice_ramp": 13,
+      "emergency_braking": 10,
+      "normal": 1,
+      "recovery_tangent_slow": 17,
+      "recovery_continuation": 10,
+      "recovery_hold": 2,
+      "recovery_decelerate": 2,
+      "recovery_coast": 1
+    }
+  },
+  "acceptance_checks": {
+    "mean_speed_at_least_0_5": false,
+    "route_gain_at_least_0_01": false,
+    "low_speed_steps_at_most_20": false,
+    "emergency_steps_at_most_10": true,
+    "no_crash": true,
+    "no_offroad": true,
+    "no_unverified_emergency": false,
+    "scenario_1714_without_incident": true
+  },
+  "formal_evaluation_ready": false,
+  "blocking_reasons": [
+    "mean_speed_at_least_0_5",
+    "route_gain_at_least_0_01",
+    "low_speed_steps_at_most_20",
+    "no_unverified_emergency"
+  ],
+  "formal_command": "bash tools/run_trajectory_pair.sh",
+  "notes": [
+    "Missing old-version fields are null, not zero.",
+    "First-action positive throttle metrics retain their old meaning; future-positive sequences have separate counters.",
+    "Candidate IDs identify unique action sequences per planning call; candidate_types preserves generator aliases.",
+    "Closed-loop planning-time averages follow diverging states and include diagnostics, not isolated latency benchmarks.",
+    "Two hypotheses are checked independently with the original geometry/continuous collision thresholds; neither is a real-world safety guarantee.",
+    "Final ordering has no extra lateral-centering rejection band; lateral fields are diagnostic and candidate-generation inputs."
+  ],
+  "current_head": "e8af086e97eb4a8a5e824e6e4c4c3123930cfce3",
+  "final_run": "strict_hierarchy.json",
+  "candidate_records": "strict_hierarchy.candidates.jsonl.gz"
+}

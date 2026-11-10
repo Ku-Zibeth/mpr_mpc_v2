@@ -114,8 +114,13 @@ mpr_mpc:
       min_progress_m: 0.05
       normal_progress_ratio: 0.9
       recovery_progress_ratio: 0.8
-      recovery_lateral_ratio: 0.5
       max_throttle_step: 0.25
+      brake_release_enabled: true
+      # MetaDrive negative command is brake; zero releases it. Acceleration
+      # retains the existing .25 command increment and still needs a certificate.
+      brake_release_step: 1.0
+      throttle_increase_step: 0.25
+      throttle_decrease_step: 0.25
     recovery:
       enabled: true
       num_samples: 32
@@ -143,6 +148,7 @@ mpr_mpc:
       # MetaDrive pose is at chassis center; measured rear axle offset supplies beta.
       center_bicycle: true
       center_model_guard: true
+      motion_validation_path: reports/round2/motion_calibration_final/validation.json
       # Synchronous MetaDrive commits exactly decision_repeat physics ticks.
       action_delay_s: 0.0
       long_risk_coef: 1.0

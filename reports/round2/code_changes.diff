@@ -1,0 +1,1584 @@
+diff --git a/planning/local_mppi.py b/planning/local_mppi.py
+--- a/planning/local_mppi.py
++++ b/planning/local_mppi.py
+@@ -7,12 +7,17 @@
+ import math
+ import time
+ import warnings
++import hashlib
+ 
+ import torch
+ 
+ from .kinematic_filter import BatchedKinematicCorridor, CorridorContext
+ from .timing import PhaseTimings
+ from .mppi_safety import MPPISafetyFilter
++
++
++class InvalidCandidatePrediction(RuntimeError):
++    """Invalid WM output: reject its score while retaining geometric fallbacks."""
+ 
+ 
+ MPPI_DIAGNOSTIC_KEYS = (
+@@ -72,6 +77,13 @@
+     "progress_guard_active", "progress_rejected_candidates", "recovery_latched", "continuity_changed", "continuity_rejected",
+     "center_model_active", "model_guard_active",
+     "positive_sequence_candidate_count", "positive_sequence_verified_count",
++    "safety_failure", "execution_authorized", "emergency_verified", "emergency_unverified", "safety_failure_streak",
++    "brake_released", "longitudinal_mode", "lattice_speed_limit", "sac_target_speed", "mppi_target_speed",
++    "baseline_future_recoverable", "recovery_forced_near", "recovery_forced_unrecoverable",
++    "primary_calibrated", "legacy_shadow",
++    "center_near_collision", "legacy_near_collision", "center_near_offroad", "legacy_near_offroad",
++    *(f"motion_{model}_{metric}" for model in ("center", "legacy") for metric in
++      ("position_error_m", "heading_error_rad", "lateral_error_m", "speed_error_mps", "collision_false_positive", "collision_false_negative", "offroad_false_positive", "offroad_false_negative")),
+ )
+ MPPI_EPISODE_METRICS = {
+     (key if key.startswith("mppi_") else f"mppi_{key}"): f"mppi/{key}"
+@@ -120,6 +132,8 @@
+     planning_mode: str = "baseline"
+     recovery_reason: str = "none"
+     candidate_diagnostics: list = field(default_factory=list)
++    safety_failure: bool = False
++    safety_certificate: dict = field(default_factory=dict)
+ 
+ 
+ class LocalMPPI:
+@@ -177,6 +191,13 @@
+         self.progress_ratio = float(selection.get("recovery_progress_ratio", .8))
+         self.normal_progress_ratio = float(selection.get("normal_progress_ratio", .9))
+         self.throttle_step = float(selection.get("max_throttle_step", .25))
++        self.brake_release_enabled = bool(selection.get("brake_release_enabled", True))
++        self.brake_release_step = float(selection.get("brake_release_step", 1.))
++        self.throttle_increase_step = float(selection.get("throttle_increase_step", self.throttle_step))
++        self.throttle_decrease_step = float(selection.get("throttle_decrease_step", self.throttle_step))
++        if any(not math.isfinite(v) or not 0 < v <= 2 for v in
++               (self.brake_release_step, self.throttle_increase_step, self.throttle_decrease_step)):
++            raise ValueError("Longitudinal command steps must be finite in (0,2].")
+         if (not math.isfinite(self.min_progress) or self.min_progress <= 0 or
+                 not 0 < self.progress_ratio <= 1 or not 0 < self.normal_progress_ratio <= 1 or
+                 not math.isfinite(self.throttle_step) or not 0 < self.throttle_step <= 2):
+@@ -237,6 +258,7 @@
+         self._warned_unvalidated = False
+         self._emergency_streak = self._braking_streak = self._recovery_streak = self._mode_switches = 0
+         self._last_mode = None
++        self._safety_failure_streak = 0
+ 
+     def reset(self, seed=None):
+         self._prev_mean = None
+@@ -244,6 +266,7 @@
+         self.candidate_safety.reset()
+         self._emergency_streak = self._braking_streak = self._recovery_streak = self._mode_switches = 0
+         self._last_mode = None
++        self._safety_failure_streak = 0
+         self._motion.clear()
+         self._stall_active = False
+         self._stall_clear = self._stall_count = 0
+@@ -258,9 +281,19 @@
+         result = actions.clone()
+         previous = result.new_tensor(context.previous_action)
+         steer_step = float(self.candidate_safety.cfg.get("max_steering_rate", 7.))*self.candidate_safety.geometry.dt/context.max_steering
+-        limits = result.new_tensor([steer_step, self.throttle_step])
+         for i in range(len(result)):
+-            result[i] = previous+(result[i]-previous).clamp(-limits, limits)
++            steering = previous[0]+(result[i, 0]-previous[0]).clamp(-steer_step, steer_step)
++            requested = result[i, 1]
++            fast_release = (i == 0 and self.brake_release_enabled and
++                (self._recovery_latched or self._stall_active) and context.speed < 2*self.stall_speed and
++                getattr(context, "brake_action_mapping_verified", False) and previous[1] < 0 and requested >= 0)
++            if fast_release:
++                released = (previous[1]+self.brake_release_step).clamp_max(0.)
++                longitudinal = torch.minimum(requested, released+self.throttle_increase_step) if released == 0 else released
++            else:
++                step = self.throttle_increase_step if requested >= previous[1] else self.throttle_decrease_step
++                longitudinal = previous[1]+(requested-previous[1]).clamp(-step, step)
++            result[i] = torch.stack((steering, longitudinal))
+             previous = result[i].clone()
+         return result.clamp(-1, 1)
+ 
+@@ -406,15 +439,15 @@
+                 timing[name] = timing.get(name, 0.)+value
+             cost = getattr(result, "cumulative_cost", None)
+             if enabled and cost is None:
+-                raise RuntimeError("MPPI Cost is enabled but the World Model returned no predicted cost.")
++                raise InvalidCandidatePrediction("MPPI Cost is enabled but the World Model returned no predicted cost.")
+             if cost is not None:
+                 bad_cost = ~torch.isfinite(cost) | (cost < 0)
+                 if bool(bad_cost.all()):
+-                    raise RuntimeError("MPPI received non-finite or negative cumulative WM Cost for every evaluated candidate.")
++                    raise InvalidCandidatePrediction("MPPI received non-finite or negative cumulative WM Cost for every evaluated candidate.")
+                 cost = cost.masked_fill(bad_cost, float("nan"))
+             for i, key in enumerate(missing):
+                 cache[key] = {
+-                    "value": result.total_value[i],
++                    "value": (result.total_value[i] if cost is None or torch.isfinite(cost[i]) else actions.new_tensor(float("nan"))),
+                     "cost": cost[i] if cost is not None else actions.new_tensor(float("nan")),
+                     "step_cost": (result.predicted_cost[i, 0] if getattr(result, "predicted_cost", None) is not None else actions.new_tensor(float("nan"))),
+                     "reward": (result.discounted_reward[i] if getattr(result, "discounted_reward", None) is not None else actions.new_tensor(float("nan"))),
+@@ -533,7 +566,8 @@
+                         for name in ("near_valid", "near_collision", "near_offroad", "near_kinematic", "full_valid", "risk_score", "road_risk", "collision_risk",
+                                      "clearance_risk", "speed_risk", "lateral_risk", "kinematic_risk", "unrecoverable", "progress_estimate",
+                                      "route_progress_estimate", "terminal_speed", "terminal_lateral_error", "committed_lateral_error", "boundary_margin", "min_clearance",
+-                                     "center_model_valid", "legacy_model_valid"):
++                                     "center_model_valid", "legacy_model_valid", "primary_calibrated", "legacy_shadow",
++                                     "center_near_collision", "legacy_near_collision", "center_near_offroad", "legacy_near_offroad"):
+                             value = getattr(result, name, None)
+                             if value is not None:
+                                 columns[name] = value.tolist()
+@@ -578,7 +612,18 @@
+             nonlocal evaluated, wm_requested
+             started_evaluation = time.perf_counter()
+             wm_requested += len(actions)
+-            rows, values, count = self._evaluate_cached(z_t, actions, cache, task, timing, keys)
++            try:
++                rows, values, count = self._evaluate_cached(z_t, actions, cache, task, timing, keys)
++            except InvalidCandidatePrediction:
++                # An invalid value must never become a normal score, nor
++                # bypass final exact verification of the geometric fallback.
++                for key in keys:
++                    if key in cache:
++                        continue
++                    cache[key] = {**{name: actions.new_tensor(float("nan")) for name in
++                        ("value", "cost", "step_cost", "reward", "terminal_q")},
++                        "validated": False, "ranking_validated": False}
++                rows, values, count = self._evaluate_cached(z_t, actions, cache, task, timing, keys)
+             for key, row in zip(keys, rows):
+                 row["long_risk"] = float(safety_cache.get(key, {}).get("risk_score", 0.))
+             values["long_risk"] = actions.new_tensor([row["long_risk"] for row in rows])
+@@ -732,11 +777,13 @@
+         recovery_checked = recovery_rejects = recovery_evaluated = 0
+         lattice_checked = lattice_passed = 0
+         recovery_best = None
+-        baseline_tail_risk = progress_active and not safety_cache.get(baseline_key, {}).get("full_valid", False)
++        baseline_flags = safety_cache.get(baseline_key, {})
++        near_failure = not bool(baseline_flags.get("near_valid", baseline_safe))
++        unrecoverable_failure = bool(baseline_flags.get("unrecoverable", False)) or (not baseline_safe and not near_failure)
+         if progress_active:
+             if self._stall_active:
+                 self._recovery_latched = True
+-            if not baseline_safe or baseline_tail_risk:
++            if near_failure or unrecoverable_failure:
+                 self._recovery_latched, self._recovery_exit_count = True, 0
+             elif self._recovery_latched and fresh_motion:
+                 actual_progress = progress_delta if math.isfinite(progress_delta) else progress_distance
+@@ -747,7 +794,6 @@
+         if self.recovery_enabled and (not baseline_safe or best is None or self._stall_active or self._recovery_latched):
+             recovery_used = True
+             recovery_reason = ("low_speed_stall" if self._stall_active else
+-                "future_sac_risk" if baseline_tail_risk and baseline_safe else
+                 "recovery_hysteresis" if self._recovery_latched and baseline_safe and best is not None else
+                 "unsafe_sac_baseline" if not baseline_safe else "no_usable_normal_candidate")
+             start_checked, start_rejects, start_evaluated = checked, safety_rejected, evaluated
+@@ -899,6 +945,7 @@
+         scoring_unavailable = False
+         if baseline_selected:
+             sequence, selected, selected_key, mode = baseline, base, baseline_key, "baseline"
++            scoring_unavailable = not baseline_finite
+         elif choose_recovery:
+             _, sequence, selected, selected_key = recovery_best
+             baseline_selected = torch.equal(sequence, baseline)
+@@ -969,6 +1016,14 @@
+             certificate = safety_cache[selected_key]
+             if not certificate.get("exact", False) or not certificate["valid"]:
+                 raise RuntimeError("Selected MPPI action has no exact safety certificate.")
++        sequence_key = sequence.detach().cpu().contiguous().numpy().tobytes()
++        certificate_valid = bool(self.safety_enabled and not unverified and sequence_key == selected_key
++            and safety_cache.get(selected_key, {}).get("exact", False) and safety_cache[selected_key]["valid"])
++        safety_failure = self.safety_enabled and not certificate_valid
++        self._safety_failure_streak = self._safety_failure_streak+1 if safety_failure else 0
++        safety_certificate = dict(valid=certificate_valid, scope="finite_horizon_model_check",
++            sequence_sha256=hashlib.sha256(sequence_key).hexdigest(),
++            horizon_controls=self.horizon, action_executable=not safety_failure)
+         full_braking = bool((sequence[:self.horizon, 1] <= self.candidate_safety.emergency_throttle).all())
+         if full_braking and (mode == "recovery_controlled" or scoring_unavailable):
+             # Full braking discovered among recovery candidates is still a
+@@ -993,13 +1048,24 @@
+         max_delta = (sequence-baseline).abs().amax(0)
+         metrics = {
+             **timing,
++            "brake_released": float(safety_context is not None and float(safety_context.previous_action[1]) < 0 and float(sequence[0, 1]) >= 0),
++            "longitudinal_mode": float(1 if safety_context is not None and float(safety_context.previous_action[1]) < 0 and float(sequence[0, 1]) >= 0
++                else 0 if float(sequence[0, 1]) < 0 else 2 if safety_context is not None and float(sequence[0, 1]) > float(safety_context.previous_action[1]) else 3),
++            "baseline_future_recoverable": float(baseline_safe and not baseline_flags.get("full_valid", baseline_safe)),
++            "recovery_forced_near": float(near_failure), "recovery_forced_unrecoverable": float(unrecoverable_failure),
++            **{name: float(getattr(safety_context, name, None) if getattr(safety_context, name, None) is not None else float("nan"))
++                for name in ("lattice_speed_limit", "sac_target_speed", "mppi_target_speed")},
++            "safety_failure": float(safety_failure), "execution_authorized": float(not safety_failure),
++            "emergency_verified": float(emergency_fallback and certificate_valid),
++            "emergency_unverified": float(emergency_fallback and not certificate_valid),
++            "safety_failure_streak": float(self._safety_failure_streak),
+             "progress_guard_active": float(progress_active), "recovery_latched": float(self._recovery_latched),
+             "continuity_changed": float(continuity_changed), "continuity_rejected": float(continuity_rejected),
+             "center_model_active": float(self.candidate_safety.center_bicycle and getattr(safety_context, "rear_axle_to_center", None) is not None),
+             "model_guard_active": float(self.candidate_safety.center_bicycle and self.candidate_safety.center_model_guard
+                 and getattr(safety_context, "rear_axle_to_center", None) is not None),
+             "exact_checked_candidates": float(exact_checked), "exact_failed_candidates": float(exact_failed),
+-            "selected_exact_verified": float(self.safety_enabled and not unverified),
++            "selected_exact_verified": float(certificate_valid),
+             "recovery_stall_count": float(self._stall_count), "stall_active": float(self._stall_active),
+             # Availability refers to the positive proposals' OWN committed
+             # prefix, not the possibly different Lattice steering direction.
+@@ -1050,7 +1116,7 @@
+             "baseline_safety_valid": float(baseline_safe) if self.safety_enabled else float("nan"),
+             "emergency_fallback": float(emergency_fallback), "lattice_fallback": float(lattice_fallback),
+             "safety_fallback_unverified": float(unverified),
+-            "selected_safety_valid": float(not unverified) if self.safety_enabled else float("nan"),
++            "selected_safety_valid": float(certificate_valid) if self.safety_enabled else float("nan"),
+             "normal_safety_valid_ratio": 1-normal_rejects/max(normal_checked, 1) if self.safety_enabled else float("nan"),
+             "recovery_safety_valid_ratio": 1-recovery_rejects/max(recovery_checked, 1) if recovery_checked else float("nan"),
+             "lattice_baseline_safety_valid": float(lattice_safe),
+@@ -1078,6 +1144,8 @@
+             metrics.update({f"{label}_delta": float(part.norm()), f"{label}_steer_delta": float(part[0]),
+                             f"{label}_throttle_delta": float(part[1])})
+         flags = safety_cache.get(selected_key, {})
++        for name in ("primary_calibrated", "legacy_shadow", "center_near_collision", "legacy_near_collision", "center_near_offroad", "legacy_near_offroad"):
++            metrics[name] = float(flags.get(name, float("nan")))
+         metrics["predicted_route_progress"] = float(flags.get("route_progress_estimate", float("nan")))
+         metrics["predicted_terminal_speed"] = float(flags.get("terminal_speed", float("nan")))
+         metrics["forward_verified_candidates"] = float(sum(row.get("exact", False) and row["valid"]
+@@ -1234,6 +1302,7 @@
+                                 else None),
+             planning_mode=mode, recovery_reason=recovery_reason,
+             candidate_diagnostics=candidate_records,
++            safety_failure=safety_failure, safety_certificate=safety_certificate,
+         )
+ 
+ 
+diff --git a/planning/mppi_safety.py b/planning/mppi_safety.py
+--- a/planning/mppi_safety.py
++++ b/planning/mppi_safety.py
+@@ -6,6 +6,10 @@
+ 
+ from dataclasses import dataclass, fields, replace
+ import math
++import hashlib
++import inspect
++import json
++from pathlib import Path
+ 
+ import numpy as np
+ import shapely
+@@ -35,6 +39,10 @@
+     measurement_step: int | None = None
+     lane_centers: tuple = ()
+     rear_axle_to_center: float | None = None
++    lattice_speed_limit: float | None = None
++    sac_target_speed: float | None = None
++    mppi_target_speed: float | None = None
++    motion_signature: dict | None = None
+ 
+ 
+ def geometric_recovery_reference(context, reference, lane_centers, control_dt):
+@@ -91,6 +99,12 @@
+     committed_lateral_error: torch.Tensor | None = None
+     center_model_valid: torch.Tensor | None = None
+     legacy_model_valid: torch.Tensor | None = None
++    primary_calibrated: torch.Tensor | None = None
++    legacy_shadow: torch.Tensor | None = None
++    center_near_collision: torch.Tensor | None = None
++    legacy_near_collision: torch.Tensor | None = None
++    center_near_offroad: torch.Tensor | None = None
++    legacy_near_offroad: torch.Tensor | None = None
+ 
+ 
+ def projected_route_progress(positions, context, *, with_lateral=False):
+@@ -137,6 +151,22 @@
+         self.staged = self.two_layer and bool(cfg.get("staged", False))
+         self.center_bicycle = bool(cfg.get("center_bicycle", False))
+         self.center_model_guard = bool(cfg.get("center_model_guard", False))
++        self.motion_evidence = None
++        self.motion_evidence_sha = None
++        evidence_path = cfg.get("motion_validation_path")
++        self.motion_evidence_path = Path(str(evidence_path)).expanduser() if evidence_path else None
++        if self.motion_evidence_path is not None and self.motion_evidence_path.is_file():
++            try:
++                payload = self.motion_evidence_path.read_bytes()
++                evidence = json.loads(payload)
++                data = Path(evidence.get("dataset", ""))
++                if (self.valid_motion_evidence(evidence) and data.is_file()
++                        and hashlib.sha256(data.read_bytes()).hexdigest() == evidence.get("dataset_sha256")):
++                    self.motion_evidence, self.motion_evidence_sha = evidence, hashlib.sha256(payload).hexdigest()
++                    self._evidence_stamp = (self.motion_evidence_path.stat().st_mtime_ns, data.stat().st_mtime_ns)
++                    self._evidence_data_path = data
++            except (OSError, ValueError, TypeError, KeyError, AttributeError):
++                pass  # Malformed/stale evidence retains the conservative dual check.
+         self.action_delay_s = float(cfg.get("action_delay_s", 0.))
+         if not math.isfinite(self.action_delay_s) or self.action_delay_s < 0:
+             raise ValueError("Action delay must be finite and nonnegative.")
+@@ -184,7 +214,86 @@
+         result.dynamics_parameters = {key: config.get(key) for key in ("mass", "max_engine_force", "max_brake_force")}
+         result.dynamics_parameters.update(model_acceleration=float(self.cfg.get("max_acceleration", 4.)),
+             model_deceleration=float(self.cfg.get("max_deceleration", 6.)), longitudinal_bounds_calibrated=False)
++        result.motion_signature = dict(length=result.length, width=result.width, wheelbase=result.wheelbase,
++            rear_axle=result.rear_axle_to_center, steering=result.max_steering,
++            mass=float(config.get("mass") or getattr(vehicle, "MASS", 0.)),
++            engine=float(config.get("max_engine_force", 0.)), brake=float(config.get("max_brake_force", 0.)),
++            friction=float(config.get("wheel_friction", 0.)))
++        physics = getattr(getattr(vehicle, "engine", None), "global_config", {})
++        result.motion_signature.update(physics_dt=physics.get("physics_world_step_size"), decision_repeat=physics.get("decision_repeat"))
+         return result
++
++    @staticmethod
++    def valid_motion_evidence(e):
++        try:
++            if not (e["schema"] == 1 and e["predictor_schema"] == "center_bicycle_v1"
++                    and e["protocol"] == "disjoint_scene_physics_tick_v1"
++                    and e["fit_windows"] >= 20 and e["heldout_windows"] >= 20
++                    and e["fit_scenes"] and e["heldout_scenes"]
++                    and set(e["fit_scenes"]).isdisjoint(e["heldout_scenes"])):
++                return False
++            if e.get("validated", False) and not e.get("event_validation_supported", False):
++                return False
++            for horizon in e["valid_horizons"]:
++                if type(horizon) is not int or horizon <= 0:
++                    return False
++                bound = e["bounds"][str(horizon)]
++                if not all(math.isfinite(bound[k]) and bound[k] >= 0 for k in
++                           ("position_m", "heading_rad", "lateral_m", "speed_mps")):
++                    return False
++            for name, value in e.get("parameters", {}).items():
++                if name not in ("max_acceleration", "max_deceleration", "beta_gain", "yaw_gain") or not math.isfinite(value) or value <= 0:
++                    return False
++            domain = e["domain"]
++            return (len(domain["speed"]) == 2 and 0 <= domain["speed"][0] <= domain["speed"][1]
++                    and all(math.isfinite(v) for v in domain["speed"])
++                    and len(domain["action_min"]) == len(domain["action_max"]) == 2
++                    and all(-1 <= lo <= hi <= 1 for lo, hi in zip(domain["action_min"], domain["action_max"])))
++        except (ValueError, TypeError, KeyError):
++            return False
++
++    def calibrated_mask(self, actions, context):
++        """Evidence-gated operating domain; absent/stale data retains both checks."""
++        no = torch.zeros(len(actions), dtype=torch.bool)
++        e = self.motion_evidence
++        if not e or not e.get("validated", False) or context.rear_axle_to_center is None:
++            return no
++        if (not self.motion_evidence_path.is_file() or not self._evidence_data_path.is_file() or
++            (self.motion_evidence_path.stat().st_mtime_ns, self._evidence_data_path.stat().st_mtime_ns) != self._evidence_stamp):
++            return no
++        if (abs(e.get("control_dt", -1)-self.geometry.dt) > 1e-9 or
++                actions.shape[1]-1 not in e.get("valid_horizons", []) or
++                e.get("nominal_config") != self.motion_nominal_config() or
++                e.get("predictor_sha256") != self.motion_predictor_sha()):
++            return no
++        if not any(context.motion_signature == signature for signature in e.get("vehicle_signatures", [])):
++            return no
++        domain = e["domain"]
++        if not domain["speed"][0] <= context.speed <= domain["speed"][1]:
++            return no
++        controls = actions.detach().cpu()[:, :-1]
++        return (torch.isfinite(controls).all((1, 2)) &
++            (controls >= controls.new_tensor(domain["action_min"])).all((1, 2)) &
++            (controls <= controls.new_tensor(domain["action_max"])).all((1, 2)))
++
++    def motion_nominal_config(self):
++        return {"max_acceleration": float(self.cfg.get("max_acceleration", 4.)),
++                "max_deceleration": float(self.cfg.get("max_deceleration", 6.)), "substeps": self.geometry.substeps}
++
++    @staticmethod
++    def motion_predictor_sha():
++        return hashlib.sha256((inspect.getsource(MPPISafetyFilter._center_rollout)
++            +inspect.getsource(TrajectorySafetyEvaluator.rollout)).encode()).hexdigest()
++
++    def calibrated_extra_margin(self, actions, context):
++        ready = self.calibrated_mask(actions, context)
++        if not bool(ready.any()):
++            return 0.
++        bound = self.motion_evidence["bounds"][str(actions.shape[1]-1)]
++        # Convert orientation error into a body-corner displacement. Keep the
++        # original margin as the minimum; never subtract a road/collision bound.
++        pose = bound["position_m"]+math.hypot(context.length, context.width)*math.sin(min(math.pi, bound["heading_rad"])/2)
++        return max(0., pose-self.geometry.model_margin)
+ 
+     def response_errors(self, vehicle):
+         """Compare a stored executed-action model prediction after ONE env step.
+@@ -208,11 +317,21 @@
+             "execution_action_error": float(np.linalg.norm(actual_action-pending["action"]))}
+ 
+     def predict_response(self, actions, context, vehicle):
+-        positions, headings, speeds = self._rollout(actions[None, :2].detach().cpu(), context)
++        # Use the same horizon/domain as the certified model, then take its
++        # first control. A prefix-only call could use a different evidence gate.
++        positions, headings, speeds = (value[:, :self.geometry.substeps+1]
++            for value in self._rollout(actions[None].detach().cpu(), context))
++        legacy_xy, legacy_yaw, legacy_speed = self.geometry.rollout(actions[None, :2].detach().cpu(), context)
+         step = getattr(getattr(vehicle, "engine", None), "episode_step", None)
+         if step is not None:
+             self._response_prediction = dict(step=step, position=positions[0, -1].numpy(), heading=float(headings[0, -1]),
+                 speed=float(speeds[0, -1]), action=actions[0].detach().cpu().numpy())
++        return dict(control_dt=self.geometry.dt, measured_speed=context.speed,
++            reference_points=getattr(context.road_reference, "points", np.empty((0, 2))).tolist(),
++            center=dict(position=positions[0, -1].tolist(), heading=float(headings[0, -1]), speed=float(speeds[0, -1])),
++            legacy=dict(position=legacy_xy[0, -1].tolist(), heading=float(legacy_yaw[0, -1]), speed=float(legacy_speed[0, -1])))
++
++
+ 
+     def _rollout(self, controls, context):
+         # Observation-local cache: exact promotion can reuse a preview rollout
+@@ -221,6 +340,7 @@
+             context.wheelbase, context.max_steering, str(controls.dtype), self.geometry.dt,
+             self.geometry.substeps, self.cfg.get("max_acceleration", 4.), self.cfg.get("max_deceleration", 6.),
+             self.center_bicycle, getattr(context, "rear_axle_to_center", None))
++        signature += (self.motion_evidence_sha,)
+         cache = context.cache.setdefault(("mppi_rollouts", signature), {})
+         keys = [row.tobytes() for row in controls.contiguous().numpy()]
+         missing = {key: i for i, key in enumerate(keys) if key not in cache}
+@@ -232,7 +352,7 @@
+                 cache[key] = tuple(tensor[i] for tensor in packed)
+         return tuple(torch.stack([cache[key][j] for key in keys]) for j in range(3))
+ 
+-    def _center_rollout(self, actions, context):
++    def _center_rollout(self, actions, context, *, parameters=None):
+         """Kinematic bicycle at the measured chassis CENTER, not rear axle.
+ 
+         Bullet wheel locations are +FRONT_WHEELBASE/-REAR_WHEELBASE relative
+@@ -247,16 +367,26 @@
+         speed = actions.new_full((len(actions),), context.speed)
+         positions, headings, speeds = [xy.clone()], [yaw.clone()], [speed.clone()]
+         dt = self.geometry.dt/self.geometry.substeps
++        if parameters is not None:
++            ready = torch.ones(len(actions), dtype=torch.bool)
++            fit = parameters
++        else:
++            ready = self.calibrated_mask(actions, context)
++            fit = self.motion_evidence.get("parameters", {}) if self.motion_evidence else {}
++        ready = ready.to(actions.device)
++        parameter = lambda name, nominal: torch.where(ready, actions.new_tensor(float(fit.get(name, nominal))), actions.new_tensor(nominal))
++        positive_acceleration = parameter("max_acceleration", float(self.cfg.get("max_acceleration", 4.)))
++        braking_acceleration = parameter("max_deceleration", float(self.cfg.get("max_deceleration", 6.)))
++        beta_gain, yaw_gain = parameter("beta_gain", 1.), parameter("yaw_gain", 1.)
+         for action in controls.unbind(1):
+             delta = action[:, 0]*context.max_steering
+-            beta = (context.rear_axle_to_center/context.wheelbase*delta.tan()).atan()
++            beta = (context.rear_axle_to_center/context.wheelbase*delta.tan()).atan()*beta_gain
+             acceleration = action[:, 1]*torch.where(action[:, 1] >= 0,
+-                action.new_tensor(float(self.cfg.get("max_acceleration", 4.))),
+-                action.new_tensor(float(self.cfg.get("max_deceleration", 6.))))
++                positive_acceleration, braking_acceleration)
+             for _ in range(self.geometry.substeps):
+                 next_speed = (speed+dt*acceleration).clamp_min(0)
+                 middle = (speed+next_speed)/2
+-                turn = dt*middle*beta.cos()*delta.tan()/context.wheelbase
++                turn = dt*middle*beta.cos()*delta.tan()/context.wheelbase*yaw_gain
+                 direction = yaw+turn/2+beta
+                 distance = dt*middle*torch.sinc(turn/(2*math.pi))
+                 xy = xy+distance[:, None]*torch.stack((direction.cos(), direction.sin()), -1)
+@@ -292,13 +422,20 @@
+         interval_kinematic = ((rate > float(self.cfg.get("max_steering_rate", 7.0))).repeat_interleave(self.geometry.substeps, 1)
+             | (acceleration > float(self.cfg.get("max_lateral_acceleration", 6.)))
+             | (headings.diff(dim=1).abs() >= math.pi))
++        speed_limit = getattr(context, "lattice_speed_limit", None)
++        if speed_limit is not None:
++            # An already overspeed state cannot brake instantaneously. Do not
++            # permit its speed to increase further; target/risk still demand
++            # deceleration toward the same physical ceiling.
++            interval_kinematic |= speeds[:, 1:] > max(float(speed_limit), context.speed)+1e-6
+         kinematic = ~finite | interval_kinematic.any(1)
+         # Enclose the full translation/rotation between adjacent substeps, not
+         # just the center or endpoint corners. The same arc-error bound is used
+         # by the continuous collision primitive.
+         middle = (headings[:, :-1] + headings[:, 1:]) / 2
+-        length = context.length + 2*self.geometry.model_margin
+-        width = context.width + 2*self.geometry.model_margin
++        extra_margin = self.calibrated_extra_margin(controls, context) if self.center_bicycle and context.rear_axle_to_center is not None else 0.
++        length = context.length + 2*(self.geometry.model_margin+extra_margin)
++        width = context.width + 2*(self.geometry.model_margin+extra_margin)
+         vertices = torch.cat((_corners(positions[:, :-1], middle, length, width),
+                               _corners(positions[:, 1:], middle, length, width)), dim=-2)
+         turn = headings[:, 1:] - headings[:, :-1]
+@@ -433,10 +570,11 @@
+         result = self._strict_check(controls[:, :committed+1], context)
+         if self.center_bicycle and self.center_model_guard and context.rear_axle_to_center is not None:
+             guard = self._strict_check(controls[:, :committed+1], replace(context, rear_axle_to_center=None))
+-            result.valid &= guard.valid
+-            result.collision |= guard.collision
+-            result.offroad |= guard.offroad
+-            result.kinematic_violation |= guard.kinematic_violation
++            shadow = self.calibrated_mask(controls, context)
++            result.valid &= shadow | guard.valid
++            result.collision |= ~shadow & guard.collision
++            result.offroad |= ~shadow & guard.offroad
++            result.kinematic_violation |= ~shadow & guard.kinematic_violation
+         result.near_valid = result.valid.clone()
+         result.near_collision = result.collision.clone()
+         result.near_offroad = result.offroad.clone()
+@@ -512,6 +650,7 @@
+     def check(self, actions, context):
+         result = self._check_nominal(actions, context)
+         result.center_model_valid = result.valid.clone() if self.center_bicycle and context.rear_axle_to_center is not None else None
++        result.center_near_collision, result.center_near_offroad = result.near_collision, result.near_offroad
+         if self.center_bicycle and self.center_model_guard and context.rear_axle_to_center is not None:
+             # Preserve the original geometric standard as a second hypothesis.
+             # Bullet tire transients need not instantly reach steady beta. Both
+@@ -519,28 +658,32 @@
+             # neither a failed check nor missing evidence can be averaged away.
+             guard = self._check_nominal(actions, replace(context, rear_axle_to_center=None))
+             result.legacy_model_valid = guard.valid.clone()
++            result.legacy_near_collision, result.legacy_near_offroad = guard.near_collision, guard.near_offroad
++            shadow = result.primary_calibrated
++            result.legacy_shadow = shadow.clone()
+             for name in ("valid", "near_valid", "full_valid"):
+                 a, b = getattr(result, name), getattr(guard, name)
+                 if a is not None and b is not None:
+-                    setattr(result, name, a & b)
++                    setattr(result, name, a & (shadow | b))
+             for name in ("collision", "offroad", "kinematic_violation", "near_collision", "near_offroad", "near_kinematic", "unrecoverable"):
+                 a, b = getattr(result, name), getattr(guard, name)
+                 if a is not None and b is not None:
+-                    setattr(result, name, a | b)
++                    setattr(result, name, a | (~shadow & b))
+             for name in ("risk_score", "road_risk", "collision_risk", "clearance_risk", "speed_risk", "lateral_risk", "kinematic_risk",
+                          "terminal_lateral_error", "committed_lateral_error"):
+                 a, b = getattr(result, name), getattr(guard, name)
+                 if a is not None and b is not None:
+-                    setattr(result, name, torch.maximum(a, b))
+-            for name in ("route_progress_estimate", "boundary_margin", "min_clearance", "min_ttc"):
++                    setattr(result, name, torch.where(shadow, a, torch.maximum(a, b)))
++            for name in ("boundary_margin", "min_clearance", "min_ttc"):
+                 a, b = getattr(result, name), getattr(guard, name)
+                 if a is not None and b is not None:
+-                    setattr(result, name, torch.minimum(a, b))
++                    setattr(result, name, torch.where(shadow, a, torch.minimum(a, b)))
+         return result
+ 
+     @torch.no_grad()
+     def _check_nominal(self, actions, context):
+         result = self._strict_check(actions, context)
++        result.primary_calibrated = self.calibrated_mask(actions, context)
+         result.route_progress_estimate, result.terminal_lateral_error = projected_route_progress(result.positions, context, with_lateral=True)
+         result.terminal_speed = result.speeds[:, -1]
+         committed = self.committed_controls(actions.shape[1]-1)
+@@ -573,6 +716,8 @@
+             checked = self._strict_check(witnesses, context)
+             viable = checked.valid.reshape(-1, len(risky)).any(0)
+             unrecoverable[risky] = ~viable
++            calibrated_viable = (checked.valid & self.calibrated_mask(witnesses, context)).reshape(-1, len(risky)).any(0)
++            result.primary_calibrated[risky] &= calibrated_viable
+         result.near_valid, result.unrecoverable = near_valid, unrecoverable
+         result.valid = near_valid & ~unrecoverable
+         # Only the uncommitted tail contributes soft risk. Immediate violations
+@@ -649,3 +794,40 @@
+         action = torch.tensor([float(np.clip(context.previous_action[0], -1, 1)), self.emergency_throttle],
+                               dtype=dtype, device=device)
+         return action.expand(horizon+1, -1).clone()
++
++
++def motion_response_errors(prediction, vehicle, info):
++    """Compare both forecasts against ONE actual control interval, never an abort."""
++    if not prediction or not bool(info.get("action_executed", True)):
++        return {}
++    actual_xy = np.asarray(vehicle.position)
++    speed, heading = float(np.linalg.norm(vehicle.velocity)), float(vehicle.heading_theta)
++    points = np.asarray(prediction.get("reference_points", []))
++    def lateral(xy):
++        if len(points) < 2:
++            return float("nan")
++        segments = points[1:]-points[:-1]
++        length2 = np.einsum("ij,ij->i", segments, segments).clip(1e-12)
++        delta = xy-points[:-1]
++        u = np.clip((delta*segments).sum(-1)/length2, 0, 1)
++        error = delta-u[:, None]*segments
++        index = (error*error).sum(-1).argmin()
++        normal = np.array([-segments[index, 1], segments[index, 0]])/np.sqrt(length2[index])
++        return float(error[index]@normal)
++    collision = any(bool(info.get(k, False)) for k in ("crash", "crash_vehicle", "crash_object", "crash_building", "crash_human", "crash_sidewalk"))
++    offroad = bool(info.get("out_of_road", False))
++    result = {}
++    for name in ("center", "legacy"):
++        model = prediction[name]
++        angle = heading-model["heading"]
++        prefix = f"motion_{name}_"
++        result.update({prefix+"position_error_m": float(np.linalg.norm(actual_xy-model["position"])),
++            prefix+"heading_error_rad": abs(math.atan2(math.sin(angle), math.cos(angle))),
++            prefix+"lateral_error_m": abs(lateral(actual_xy)-lateral(np.asarray(model["position"]))),
++            prefix+"speed_error_mps": abs(speed-model["speed"])})
++        for event, actual in (("collision", collision), ("offroad", offroad)):
++            predicted = model.get(event, float("nan"))
++            known = isinstance(predicted, (bool, int, float)) and math.isfinite(float(predicted))
++            result[prefix+event+"_false_positive"] = float(bool(predicted) and not actual) if known else float("nan")
++            result[prefix+event+"_false_negative"] = float(not bool(predicted) and actual) if known else float("nan")
++    return result
+diff --git a/planning/coordinator.py b/planning/coordinator.py
+--- a/planning/coordinator.py
++++ b/planning/coordinator.py
+@@ -315,6 +315,28 @@
+         max_steering_angle = positive(max_steering_angle, fallback_steering)
+         return vehicle_width, wheelbase, max_steering_angle
+ 
++    def _update_mppi_speed_context(self, context, refined, vehicle):
++        """Update AFTER SAC regeneration; never alter the frozen SAC features."""
++        settings = getattr(self.structured.planner, "config", {})
++        limit = min(self.max_speed, float(settings.get("frenet_rl_max_speed", self.max_speed)))
++        vehicle_limit = float(getattr(vehicle, "max_speed_km_h", float("inf")))/3.6
++        if np.isfinite(vehicle_limit) and vehicle_limit > 0:
++            limit = min(limit, vehicle_limit)
++        points = np.column_stack((refined.x, refined.y))
++        curvature_function = getattr(self.structured.controller, "_local_path_curvature", None)
++        if len(points) >= 4 and callable(curvature_function) and bool(settings.get("frenet_curve_speed_limit", True)):
++            arc = np.r_[0., np.cumsum(np.linalg.norm(np.diff(points, axis=0), axis=1))]
++            closest = int(np.linalg.norm(points-np.asarray(vehicle.position), axis=1).argmin())
++            curvature = float(curvature_function(points, arc, closest))
++            if curvature > 1e-6:
++                # Existing Lattice lateral-acceleration setting, without a
++                # minimum desired-speed floor overriding a physical ceiling.
++                limit = min(limit, np.sqrt(float(settings.get("frenet_max_lateral_accel", 2.8))/curvature))
++        context.lattice_speed_limit = max(0., float(limit))
++        context.sac_target_speed = float(refined.target_speed)
++        context.mppi_target_speed = float(np.clip(refined.target_speed, 0., context.lattice_speed_limit))
++        context.target_speed = context.mppi_target_speed  # compatibility alias
++
+     def _corridor_context(self, refined, vehicle) -> CorridorContext:
+         # H controls a_t...a_{t+H-1} produce H post-transition states. The
+         # H+1-th control belongs only to terminal Q and is not integrated here.
+@@ -481,6 +503,8 @@
+         if stage.use_mppi:
+             if context.latent is None:
+                 raise RuntimeError("Stage B/C MPPI requires an encoded current observation.")
++            if context.mppi_safety_context is not None:
++                self._update_mppi_speed_context(context.mppi_safety_context, refined, vehicle)
+             mppi = self.local_mppi.plan(
+                 context.latent,
+                 refined_actions,
+@@ -542,6 +566,7 @@
+                     "validated": consequence.cost_validated}
+ 
+         coarse_row = consequence_row(context.coarse_consequence)
++        motion_prediction = None
+         if stage.use_mppi:
+             sac_row, selected_row = mppi.baseline_consequence, mppi.selected_consequence
+             if not stage.use_residual:
+@@ -551,7 +576,10 @@
+             response = self.local_mppi.candidate_safety.response_errors(vehicle)
+             diagnostics.update({f"mppi/{key}": value for key, value in response.items()})
+             if context.mppi_safety_context is not None:
+-                self.local_mppi.candidate_safety.predict_response(selected_actions, context.mppi_safety_context, vehicle)
++                motion_prediction = self.local_mppi.candidate_safety.predict_response(selected_actions, context.mppi_safety_context, vehicle)
++                for name in ("center", "legacy"):
++                    motion_prediction[name].update(collision=mppi.metrics.get(f"{name}_near_collision", float("nan")),
++                        offroad=mppi.metrics.get(f"{name}_near_offroad", float("nan")))
+         else:
+             sac_row = selected_row = consequence_row(refined_consequence if context.latent is not None else None)
+         for name, row in (("lattice", coarse_row), ("sac", sac_row), ("mppi", selected_row)):
+@@ -663,6 +691,8 @@
+                 "mpr/planning_ms": elapsed_ms,
+             },
+             debug={
++                "motion_prediction": motion_prediction,
++                "safety_certificate": mppi.safety_certificate if stage.use_mppi else None,
+                 "mppi_candidates": mppi.candidate_diagnostics if stage.use_mppi else [],
+                 "selected_mppi_actions": selected_actions.detach().cpu(),
+                 "final_mppi_xy": final_mppi_xy,
+@@ -673,6 +703,7 @@
+             },
+             planning_mode=mppi.planning_mode if stage.use_mppi else "baseline",
+             recovery_reason=mppi.recovery_reason if stage.use_mppi else "none",
++            safety_failure=mppi.safety_failure if stage.use_mppi else False,
+         )
+         self.last_result = result
+         return result
+diff --git a/planning/types.py b/planning/types.py
+--- a/planning/types.py
++++ b/planning/types.py
+@@ -96,6 +96,7 @@
+     debug: dict[str, Any] = field(default_factory=dict)
+     planning_mode: str = "baseline"
+     recovery_reason: str = "none"
++    safety_failure: bool = False
+ 
+     @property
+     def coarse_parameters(self) -> np.ndarray:
+diff --git a/agent.py b/agent.py
+--- a/agent.py
++++ b/agent.py
+@@ -208,6 +208,21 @@
+             eval_mode=eval_mode,
+         )
+         self.last_plan = result
++        if eval_mode and result.stage.use_mppi:
++            import hashlib
++            sequence = result.debug.get("selected_mppi_actions")
++            certificate = result.debug.get("safety_certificate") or {}
++            matches = (sequence is not None and torch.equal(result.action.cpu(), sequence[0].cpu())
++                and hashlib.sha256(sequence.contiguous().cpu().numpy().tobytes()).hexdigest() == certificate.get("sequence_sha256"))
++            failure = result.safety_failure or not certificate.get("valid", False) or not matches
++            if failure:
++                result.safety_failure = True
++                result.metrics.update({"mppi/safety_failure": 1., "mppi/execution_authorized": 0.,
++                    "mppi/selected_safety_valid": 0., "mppi/selected_exact_verified": 0., "mppi/emergency_verified": 0.})
++                stop = getattr(self.env, "request_safety_failure", None)
++                if stop is None:
++                    raise RuntimeError("Planner safety_failure: environment cannot terminate without executing an unverified action.")
++                stop("no_verified_action" if matches else "action_certificate_mismatch")
+         context = self.planner.last_context
+         if not eval_mode:
+             if t0:
+diff --git a/env/env.py b/env/env.py
+--- a/env/env.py
++++ b/env/env.py
+@@ -285,6 +285,9 @@
+         self._risk_calculator = RiskFieldCalculator(self.risk_config)
+         self._rng = np.random.RandomState(seed)
+         self._last_info: dict[str, Any] = {}
++        self._last_observation = None
++        self._pending_safety_failure = None
++        self._planner_failed = False
+         self._active_cost_events: set[str] = set()
+         self._safety_cost_calculator = self._make_safety_cost_calculator()
+         self.action_space.seed(seed)
+@@ -341,7 +344,10 @@
+         self._active_cost_events.clear()
+         self._safety_cost_calculator.reset()
+         self._last_info = dict(info)
+-        return self._observation(observation)
++        self._pending_safety_failure = None
++        self._planner_failed = False
++        self._last_observation = self._observation(observation)
++        return self._last_observation
+ 
+     def rand_act(self) -> torch.Tensor:
+         action = self.action_space.sample().astype(np.float32)
+@@ -406,7 +412,27 @@
+ 
+         return SafetyCostV3(self.cost_config, _flag)
+ 
++    def request_safety_failure(self, reason):
++        """Abort at the adapter boundary; never advance Bullet on an uncertified action."""
++        self._pending_safety_failure = str(reason)
++
+     def step(self, action: torch.Tensor | np.ndarray):
++        if getattr(self, "_pending_safety_failure", None) is not None:
++            if self._last_observation is None:
++                raise RuntimeError("Reset the environment before reporting a planner failure.")
++            info = dict(self._last_info)
++            info.update(safety_failure=1., safety_failure_reason=self._pending_safety_failure,
++                action_executed=0., success=0., terminated=torch.tensor(1.), truncated=0.,
++                end_reason="safety_failure", cost=0., metadrive_reward=0., tdmpc2_reward=0.)
++            for key in tuple(info):
++                if (key.startswith(("safety_", "risk_field_")) and key.endswith("_cost")) or key in (
++                    "risk_field_cost", "risk_field_normalized_cost", "risk_field_reward_penalty"):
++                    info[key] = 0.
++            self._last_info, self._planner_failed = info, True
++            self._pending_safety_failure = None
++            return self._last_observation.clone(), torch.tensor(0.), True, info
++        if getattr(self, "_planner_failed", False):
++            raise RuntimeError("Reset after planner safety_failure.")
+         if torch.is_tensor(action):
+             action = action.detach().cpu().numpy()
+         action_array = np.asarray(action, dtype=np.float32).reshape(self.action_space.shape)
+@@ -457,8 +483,10 @@
+         for name in ("dynamic_collision", "static_collision", "road_event", "other_event", "unallocated_event"):
+             info[f"safety_{name}_cost"] = float(components.get(name, 0.0))
+         self._last_info = info
++        self._last_observation = self._observation(observation)
++        info["action_executed"] = 1.
+         return (
+-            self._observation(observation),
++            self._last_observation,
+             torch.tensor(reward, dtype=torch.float32),
+             done,
+             info,
+diff --git a/evaluation_diagnostics.py b/evaluation_diagnostics.py
+--- a/evaluation_diagnostics.py
++++ b/evaluation_diagnostics.py
+@@ -11,6 +11,7 @@
+ from omegaconf import OmegaConf
+ from mpr_mpc.evaluation_statistics import cluster_intervals
+ from mpr_mpc.planning.local_mppi import MPPI_DIAGNOSTIC_KEYS, MPPI_EPISODE_METRICS
++from mpr_mpc.planning.mppi_safety import motion_response_errors
+ 
+ 
+ PLAN_ALIASES = {
+@@ -34,6 +35,10 @@
+     """
+     if result is None or not result.stage.use_mppi:
+         return {}
++    if not bool(info.get("action_executed", True)):
++        return {**{f"mppi/{key}": float("nan") for key in
++            ("actual_collision", "actual_offroad", "predicted_safe_actual_collision", "predicted_safe_actual_offroad")},
++            "mppi/prediction_collision_known": 0., "mppi/prediction_offroad_known": 0.}
+     crash = any(bool(info.get(k, False)) for k in
+                 ("crash", "crash_vehicle", "crash_object", "crash_building", "crash_human", "crash_sidewalk"))
+     offroad = bool(info.get("out_of_road", False))
+@@ -74,13 +79,19 @@
+             return
+         state = (int(scenario), getattr(result, "planning_mode", "unknown"))
+         incident = info is not None and any(bool(info.get(k, False)) for k in
+-            ("crash", "crash_vehicle", "crash_object", "out_of_road", "success", "truncated"))
++            ("crash", "crash_vehicle", "crash_object", "out_of_road", "success", "truncated", "safety_failure"))
+         changed = state != self._last_state
+         self._last_state = state
+         if self.compact and not (changed or incident or step == 1 or step % self.stride == 0):
+             return
+         row = dict(scenario=int(scenario), episode_step=int(step),
+                    executed_action=np.asarray(action.detach().cpu() if torch.is_tensor(action) else action).tolist())
++        if info is not None:
++            row["action_executed"] = bool(info.get("action_executed", True))
++            row["safety_failure"] = bool(info.get("safety_failure", False))
++            if not row["action_executed"]:
++                row["proposed_action"], row["executed_action"] = row["executed_action"], None
++                row["safety_failure_reason"] = info.get("safety_failure_reason", "")
+         if result is not None:
+             row.update({k: v for k, v in result.metrics.items() if not self.compact or
+                 (k.startswith("mppi/") and not k.endswith("cpu_wall_ms")) or k in
+@@ -147,6 +158,8 @@
+ class EpisodeDiagnostics:
+     def __init__(self):
+         self.crash = self.offroad = False
++        self.safety_failure = False
++        self.unverified_executions = 0
+         self.ttcs, self.clearances = [], []
+         self.plans = defaultdict(list, {f"mpr/{key}": [] for key in MPPI_DIAGNOSTIC_KEYS})
+         self.plans.update({key: [] for key in MPPI_EPISODE_METRICS.values()})
+@@ -156,10 +169,13 @@
+         self.distance = 0.0
+ 
+     def observe(self, observation, action, info, result, vehicle=None):
+-        self.observations.append(np.asarray(observation.detach().cpu() if torch.is_tensor(observation) else observation, dtype=np.float32).copy())
+-        self.actions.append(np.asarray(action.detach().cpu() if torch.is_tensor(action) else action, dtype=np.float32).copy())
+-        self.costs.append(float(info.get("cost", 0)))
+-        if vehicle is not None:
++        executed = bool(info.get("action_executed", True))
++        self.safety_failure |= bool(info.get("safety_failure", False))
++        if executed:
++            self.observations.append(np.asarray(observation.detach().cpu() if torch.is_tensor(observation) else observation, dtype=np.float32).copy())
++            self.actions.append(np.asarray(action.detach().cpu() if torch.is_tensor(action) else action, dtype=np.float32).copy())
++            self.costs.append(float(info.get("cost", 0)))
++        if vehicle is not None and executed:
+             self.speeds.append(float(np.linalg.norm(np.asarray(vehicle.velocity)[:2])))
+             if hasattr(vehicle, "last_position"):
+                 self.distance += float(np.linalg.norm(np.asarray(vehicle.position)[:2] - np.asarray(vehicle.last_position)[:2]))
+@@ -174,14 +190,18 @@
+         for key in ("dynamic_collision", "static_collision", "road_event", "other_event", "unallocated_event"):
+             self.sums[f"safety_{key}_cost"] += float(info.get(f"safety_{key}_cost", 0))
+         if result is not None:
++            if vehicle is not None:
++                result.metrics.update({f"mppi/{key}": value for key, value in motion_response_errors(
++                    getattr(result, "debug", {}).get("motion_prediction"), vehicle, info).items()})
++            self.unverified_executions += int(executed and result.stage.use_mppi and bool(getattr(result, "safety_failure", False)))
+             result.metrics.update(prediction_outcomes(info, result))
+             code = result.metrics.get("mppi/planning_mode", float("nan"))
+-            if result.stage.use_mppi and np.isfinite(code):
++            if result.stage.use_mppi and executed and np.isfinite(code):
+                 self.sums[f"mode{int(code)}_steps"] += 1
+                 self.sums[f"mode{int(code)}_collision_steps"] += result.metrics["mppi/actual_collision"]
+                 self.sums[f"mode{int(code)}_offroad_steps"] += result.metrics["mppi/actual_offroad"]
+             predicted_step = float(result.metrics.get("mppi/predicted_step_cost", float("nan")))
+-            if result.stage.use_mppi and np.isfinite(predicted_step):
++            if result.stage.use_mppi and executed and np.isfinite(predicted_step):
+                 self.sums["predicted_step_cost"] += predicted_step
+                 self.sums["predicted_cost_steps"] += 1
+             for key, value in result.metrics.items():
+@@ -207,6 +227,8 @@
+         planning = self.plans.get("mpr/total_planning_ms", [])
+         legacy = {"mppi_baseline_selected": "mpr/baseline_selected", "mppi_score_gain": "mpr/planner_score_gain"}
+         return {
++            "safety_failure": float(self.safety_failure), "physical_steps": len(self.actions),
++            "unverified_action_executions": self.unverified_executions,
+             **{f"planning_p{q}_ms": float(np.percentile(planning, q)) if planning else float("nan")
+                for q in (50, 95, 99)},
+             "forward_progress_candidate_pass_count": sum(self.plans["mppi/forward_verified_candidates"]),
+@@ -219,6 +241,10 @@
+                 if self.plans[f"mppi/{name}"] else float("nan")
+                for name in ("physics_position_error_m", "physics_speed_error_mps", "physics_heading_error_rad",
+                     "physics_acceleration_bias_mps2", "physics_braking_response_bias_mps2", "execution_action_error")
++               for q in (50, 95, 99)},
++            **{f"motion_{model}_{name}_p{q}": float(np.percentile(self.plans[f"mppi/motion_{model}_{name}"], q))
++                if self.plans[f"mppi/motion_{model}_{name}"] else float("nan")
++               for model in ("center", "legacy") for name in ("position_error_m", "heading_error_rad", "lateral_error_m", "speed_error_mps")
+                for q in (50, 95, 99)},
+             **{f"mean_{key.replace('/', '_')}": mean(values) for key, values in self.plans.items()},
+             **{name: mean(self.plans[key]) for name, key in PLAN_ALIASES.items()},
+diff --git a/evaluation_statistics.py b/evaluation_statistics.py
+--- a/evaluation_statistics.py
++++ b/evaluation_statistics.py
+@@ -38,10 +38,12 @@
+     "planning_time_ms": ("mean_mpr_total_planning_ms", None),
+     "predicted_cost": ("total_predicted_cost", None),
+     "actual_cost": ("total_actual_cost", None),
++    "safety_failure_rate": ("safety_failure", None),
++    "unverified_action_executions": ("unverified_action_executions", None),
+ }
+ BINARY_RATES = {
+     "out_of_road", "crash", "success", "collision_and_success",
+-    "collision_and_offroad", "cost_limit_exceedance", "timeout_rate",
++    "collision_and_offroad", "cost_limit_exceedance", "timeout_rate", "safety_failure_rate",
+ }
+ 
+ 
+diff --git a/config.yaml b/config.yaml
+--- a/config.yaml
++++ b/config.yaml
+@@ -115,6 +115,12 @@
+       normal_progress_ratio: 0.9
+       recovery_progress_ratio: 0.8
+       max_throttle_step: 0.25
++      brake_release_enabled: true
++      # MetaDrive negative command is brake; zero releases it. Acceleration
++      # retains the existing .25 command increment and still needs a certificate.
++      brake_release_step: 1.0
++      throttle_increase_step: 0.25
++      throttle_decrease_step: 0.25
+     recovery:
+       enabled: true
+       num_samples: 32
+@@ -142,6 +148,7 @@
+       # MetaDrive pose is at chassis center; measured rear axle offset supplies beta.
+       center_bicycle: true
+       center_model_guard: true
++      motion_validation_path: reports/round2/motion_calibration_final/validation.json
+       # Synchronous MetaDrive commits exactly decision_repeat physics ticks.
+       action_delay_s: 0.0
+       long_risk_coef: 1.0
+diff --git a/planning/native_config.py b/planning/native_config.py
+--- a/planning/native_config.py
++++ b/planning/native_config.py
+@@ -5,14 +5,15 @@
+     "max_steering_rate", "max_lateral_acceleration", "swept_max_depth", "swept_angle_tolerance",
+     "swept_position_tolerance", "hard_clearance", "hard_ttc", "ttc_lookahead", "emergency_throttle",
+     "obstacle_acceleration_bound", "obstacle_velocity_error", "braking_distance_deceleration",
+-    "two_layer", "action_delay_s", "long_risk_coef", "staged", "center_bicycle", "center_model_guard",
++    "two_layer", "action_delay_s", "long_risk_coef", "staged", "center_bicycle", "center_model_guard", "motion_validation_path",
+ })
+ MPPI_RECOVERY_KEYS = frozenset({"enabled", "num_samples", "iterations", "initial_std", "max_delta",
+                                 "straighten_fractions", "throttle_levels", "lattice_guided", "positive_throttle",
+                                 "anti_stall", "stall_speed_mps", "stall_duration_s", "stall_progress_m", "stall_exit_s",
+                                 "progressive", "positive_throttles", "transition_fractions", "controlled_deceleration"})
+ MPPI_SELECTION_KEYS = frozenset({"enabled", "record_candidates", "min_progress_m", "normal_progress_ratio",
+-                                 "recovery_progress_ratio", "max_throttle_step"})
++                                 "recovery_progress_ratio", "max_throttle_step", "brake_release_enabled",
++                                 "brake_release_step", "throttle_increase_step", "throttle_decrease_step"})
+ NATIVE_MPPI_KEYS = frozenset({
+     "enabled", "cost_enabled", "cost_coef", "num_samples", "num_elites", "iterations",
+     "initial_std", "min_std", "max_std", "max_delta", "temperature", "proposal_init",
+diff --git a/tools/calibrate_mppi_motion.py b/tools/calibrate_mppi_motion.py
+new file mode 100644
+--- /dev/null
++++ b/tools/calibrate_mppi_motion.py
+@@ -0,0 +1,204 @@
++"""Read-only action replay; empirical pose tubes with disjoint scene validation.
++
++No WM/SAC fitting, checkpoint writes, candidate search or safety relaxation.
++An unsuccessful validation is saved as such and cannot change authorization.
++"""
++import argparse
++import contextlib
++from dataclasses import replace
++import gzip
++import hashlib
++import io
++import json
++from pathlib import Path
++import sys
++
++ROOT = Path(__file__).resolve().parents[1]
++sys.path.insert(0, str(ROOT))
++import numpy as np
++import torch
++from omegaconf import OmegaConf
++from mpr_mpc._bootstrap import bootstrap
++bootstrap()
++from common.seed import set_seed
++from env import make_env
++import evaluate_model_suite as suite
++
++
++def distribution(values):
++    a = np.asarray(values, dtype=float)
++    return {**{f"p{q}": float(np.percentile(a, q)) for q in (50, 95, 99)}, "max": float(a.max())} if len(a) else None
++
++
++def main():
++    p = argparse.ArgumentParser(description=__doc__)
++    p.add_argument("--run", type=Path, default=ROOT/"logs/benchmark/mpr_mpc_v311_sac_vs_sac_mppi_fixed100_20261109_202823")
++    p.add_argument("--output", type=Path, required=True)
++    args = p.parse_args()
++    if args.output.exists():
++        p.error("Use a fresh output directory; existing calibration evidence is never overwritten.")
++    args.output.mkdir(parents=True)
++    fit_scenes, heldout_scenes = [1525, 539], [1714, 559]
++    limits = {1525: 300, 539: 300, 1714: 310, 559: 660}
++    records = {s: [] for s in limits}
++    for line in next((args.run/"steps").glob("*_full_mpr_mpc_seed1.jsonl")).open():
++        row = json.loads(line)
++        s = row["scenario"]
++        if s in limits and row["episode_step"] <= limits[s]:
++            records[s].append(row)
++        if all(len(records[s]) >= n for s, n in limits.items()):
++            break
++    raw = OmegaConf.load(args.run/"config_D_lattice_sac_mppi_seed1.yaml")
++    raw.mpr_mpc.mppi = OmegaConf.load(ROOT/"config.yaml").mpr_mpc.mppi
++    # Measure the CURRENT nominal model; never consume the report being built.
++    raw.mpr_mpc.mppi.safety.motion_validation_path = None
++    raw.enable_wandb = raw.save_agent = raw.save_video = False
++    raw.restore_mppi_runtime = False
++    raw.residual_rl.buffer_size = 8
++    checkpoint = Path(json.loads((args.run/"manifest.json").read_text())["checkpoint"])
++    checksum = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
++    scenarios = json.loads((args.run/"scenarios.json").read_text())["scenarios"]
++    _, cfg = suite._make_cfg(raw, checkpoint.parent.parent.name, checkpoint, scenarios)
++    set_seed(cfg.seed)
++    env = make_env(cfg)
++    dataset, errors, signatures = [], {"fit": {}, "heldout": {}}, []
++    domain_speeds, domain_actions = [], []
++    windows_count = {"fit": 0, "heldout": 0}
++    try:
++        with contextlib.redirect_stdout(io.StringIO()):
++            agent = suite._make_agent(cfg, env)
++            agent.load(checkpoint)
++        agent.eval()
++        planner = agent.planner
++        f = planner.local_mppi.candidate_safety
++        nominal = f.motion_nominal_config()
++        for seed in limits:
++            set_seed((int(cfg.seed)+seed) % 2**32)
++            env.reset(seed=seed)
++            f.reset()
++            trace, contexts = [], {}
++            vehicle = env.unwrapped_metadrive.agent
++            def state():
++                return [*map(float, vehicle.position), float(vehicle.heading_theta), float(np.linalg.norm(vehicle.velocity))]
++            for i, row in enumerate(records[seed]):
++                if i % 10 == 0:
++                    width, wheelbase, steering = planner._vehicle_geometry(vehicle)
++                    ctx = f.context(planner.structured.planner, vehicle, width=width, wheelbase=wheelbase, max_steering=steering)
++                    ctx.position = ctx.position.copy()
++                    ctx.previous_action = ctx.previous_action.copy()
++                    contexts[i] = ctx
++                action = np.asarray(row["executed_action"], dtype=np.float32)
++                before = state()
++                ticks = []
++                engine = vehicle.engine
++                original = engine.step_physics_world
++                def observe_physics():
++                    original()
++                    ticks.append(state())
++                engine.step_physics_world = observe_physics
++                try:
++                    _, _, done, info = env.step(action)
++                finally:
++                    engine.step_physics_world = original
++                trace.append(dict(before=before, action=action.tolist(), ticks=ticks,
++                    crash=any(bool(info.get(k, False)) for k in ("crash", "crash_vehicle", "crash_object", "crash_building", "crash_human", "crash_sidewalk")),
++                    offroad=bool(info.get("out_of_road", False))))
++                if done:
++                    break
++            split = "fit" if seed in fit_scenes else "heldout"
++            for index, ctx in contexts.items():
++                if index+10 > len(trace):
++                    continue
++                windows_count[split] += 1
++                if ctx.motion_signature not in signatures:
++                    signatures.append(ctx.motion_signature)
++                if split == "fit":
++                    domain_speeds.append(ctx.speed)
++                    domain_actions.extend([r["action"] for r in trace[index:index+10]])
++                window = dict(scenario=seed, index=index, split=split,
++                    road_wkb=ctx.road.wkb_hex, vehicle_signature=ctx.motion_signature,
++                    obstacles=[{k: (v.tolist() if isinstance(v, np.ndarray) else v) for k, v in vars(o).items()}
++                        for o in ctx.obstacles], states=trace[index:index+10])
++                window["errors"] = {}
++                for horizon in range(1, 11):
++                    controls = torch.tensor([r["action"] for r in trace[index:index+horizon]]+[trace[index+horizon-1]["action"]])[None]
++                    actual = np.asarray([trace[index]["before"]]+[tick for r in trace[index:index+horizon] for tick in r["ticks"]])
++                    if len(actual) != horizon*5+1:
++                        raise RuntimeError("Expected MetaDrive five physics ticks per control; no interpolated actual data permitted.")
++                    for model, prediction in (("center", f._rollout(controls, ctx)), ("legacy", f.geometry.rollout(controls, ctx))):
++                        xy, yaw, speed = (a[0].numpy() for a in prediction)
++                        source_times = np.linspace(0, horizon, len(xy))
++                        actual_times = np.linspace(0, horizon, len(actual))
++                        xy = np.column_stack([np.interp(actual_times, source_times, xy[:, j]) for j in range(2)])
++                        yaw = np.interp(actual_times, source_times, np.unwrap(yaw))
++                        speed = np.interp(actual_times, source_times, speed)
++                        delta = xy-actual[:, :2]
++                        # Reference normal at the measured INITIAL heading;
++                        # independent of either model's predicted heading.
++                        normal = np.array([-np.sin(ctx.heading), np.cos(ctx.heading)])
++                        angle = yaw-actual[:, 2]
++                        values = dict(position_m=float(np.linalg.norm(delta, axis=1).max()),
++                            heading_rad=float(np.abs(np.arctan2(np.sin(angle), np.cos(angle))).max()),
++                            lateral_m=float(np.abs(delta@normal).max()), speed_mps=float(np.abs(speed-actual[:, 3]).max()))
++                        key = f"{model}_h{horizon}"
++                        errors[split].setdefault(key, []).append(values)
++                        window["errors"][key] = values
++                    # Near-event labels use the SAME measured future outcome.
++                    if horizon == 1:
++                        for model, c in (("center", ctx), ("legacy", replace(ctx, rear_axle_to_center=None))):
++                            check = f._strict_check(controls, c)
++                            window[model+"_events"] = {event: dict(predicted=bool(getattr(check, name)[0]), actual=bool(trace[index][event]))
++                                for event, name in (("crash", "collision"), ("offroad", "offroad"))}
++                dataset.append(window)
++            print(f"[motion calibration] scene={seed} replay_controls={len(trace)} windows={sum(w['scenario']==seed for w in dataset)}", flush=True)
++    finally:
++        env.close()
++    path = (args.output/"measured_windows.jsonl.gz").resolve()
++    with gzip.open(path, "wt") as stream:
++        for window in dataset:
++            stream.write(json.dumps(window)+"\n")
++    bounds, valid_horizons, comparisons = {}, [], {}
++    for h in range(1, 11):
++        key = f"center_h{h}"
++        fit, held = errors["fit"].get(key, []), errors["heldout"].get(key, [])
++        if not fit or not held:
++            continue
++        # Measured upper residual plus the existing geometric numeric tolerance.
++        bound = {name: max(v[name] for v in fit)+(1e-4 if name != "speed_mps" else np.finfo(np.float32).eps)
++            for name in fit[0]}
++        bounds[str(h)] = bound
++        passes = all(v[name] <= bound[name] for v in held for name in bound)
++        comparisons[str(h)] = dict(fit_bound=bound, heldout_max={name: max(v[name] for v in held) for name in bound}, passed=passes)
++        if passes and min(len(fit), len(held)) >= 20:
++            valid_horizons.append(h)
++    confusion = {}
++    for model in ("center", "legacy"):
++        for event in ("crash", "offroad"):
++            pairs = [w[model+"_events"][event] for w in dataset]
++            confusion[f"{model}_{event}"] = {"samples": len(pairs),
++                "false_positive": sum(v["predicted"] and not v["actual"] for v in pairs),
++                "false_negative": sum(not v["predicted"] and v["actual"] for v in pairs),
++                "actual_positive": sum(v["actual"] for v in pairs)}
++    # No observed positive event cannot establish collision/road-event recall.
++    events_supported = all(confusion[f"center_{e}"]["actual_positive"] > 0 and
++        confusion[f"center_{e}"]["false_negative"] == 0 for e in ("crash", "offroad"))
++    evidence = dict(schema=1, predictor_schema="center_bicycle_v1", protocol="disjoint_scene_physics_tick_v1",
++        checkpoint_sha256=checksum, dataset=str(path), dataset_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
++        fit_scenes=fit_scenes, heldout_scenes=heldout_scenes, fit_windows=windows_count["fit"], heldout_windows=windows_count["heldout"],
++        control_dt=f.geometry.dt, nominal_config=nominal, predictor_sha256=f.motion_predictor_sha(),
++        parameters={}, vehicle_signatures=signatures,
++        domain=dict(speed=[min(domain_speeds), max(domain_speeds)], action_min=np.min(domain_actions, axis=0).tolist(),
++            action_max=np.max(domain_actions, axis=0).tolist()), bounds=bounds, valid_horizons=valid_horizons,
++        validated=bool(10 in valid_horizons and events_supported), event_confusion=confusion,
++        validation=comparisons, uncertainty_scope="empirical operating domain only; not a real-world safety guarantee",
++        event_validation_supported=events_supported,
++        error_distributions={split: {k: {name: distribution([v[name] for v in rows]) for name in rows[0]}
++            for k, rows in section.items()} for split, section in errors.items()})
++    assert hashlib.sha256(checkpoint.read_bytes()).hexdigest() == checksum
++    (args.output/"validation.json").write_text(json.dumps(evidence, indent=2))
++    print(json.dumps(dict(validated=evidence["validated"], valid_horizons=valid_horizons,
++        event_validation_supported=events_supported, evidence=str(args.output/"validation.json"))), flush=True)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/tools/smoke_v32_recovery.py b/tools/smoke_v32_recovery.py
+--- a/tools/smoke_v32_recovery.py
++++ b/tools/smoke_v32_recovery.py
+@@ -23,6 +23,7 @@
+ from env import make_env
+ import evaluate_model_suite as suite
+ from mpr_mpc.planning.safety import _corners
++from mpr_mpc.planning.mppi_safety import motion_response_errors
+ from shapely.geometry import Polygon
+ 
+ 
+@@ -98,7 +99,15 @@
+                 if profile: profile.enable()
+                 action = agent.act(obs, t0=False, eval_mode=True)
+                 if profile:
+-                    profile.disable(); pstats.Stats(profile).sort_stats("cumtime").print_stats(20)
++                    profile.disable()
++                    stream = io.StringIO()
++                    pstats.Stats(profile, stream=stream).sort_stats("cumtime").print_stats(30)
++                    profile_path = args.output.with_suffix(f".{seed}.profile.txt")
++                    if profile_path.exists():
++                        raise FileExistsError(profile_path)
++                    profile_path.parent.mkdir(parents=True, exist_ok=True)
++                    profile_path.write_text(stream.getvalue())
++                    print(stream.getvalue(), flush=True)
+                 result, context = agent.last_plan, agent.planner.last_context.mppi_safety_context
+                 if candidate_stream is not None:
+                     candidate_stream.write(json.dumps(dict(scenario=seed, step=i+1,
+@@ -119,10 +128,16 @@
+                 prediction, predicted_heading, predicted_speed = agent.planner.local_mppi.candidate_safety._rollout(
+                     result.debug["selected_mppi_actions"][None, :2], context)
+                 obs, _, done, info = env.step(action)
++                executed = bool(info.get("action_executed", True))
++                result.metrics.update({f"mppi/{key}": value for key, value in motion_response_errors(
++                    result.debug.get("motion_prediction"), env.unwrapped_metadrive.agent, info).items()})
+                 crash = any(bool(info.get(k, False)) for k in
+                     ("crash", "crash_vehicle", "crash_object", "crash_building", "crash_human", "crash_sidewalk"))
+                 offroad = bool(info.get("out_of_road", False))
+                 smoke.append(dict(step=i+1, mode=result.planning_mode, action=action.tolist(),
++                    action_executed=executed, safety_failure=bool(info.get("safety_failure", False)),
++                    safety_failure_reason=info.get("safety_failure_reason", ""),
++                    safety_certificate=result.debug.get("safety_certificate"),
+                     heading_before=context.heading, predicted_heading=float(predicted_heading[0, -1]),
+                     actual_heading=float(env.unwrapped_metadrive.agent.heading_theta),
+                     lateral_before=float(context.road_reference.project(context.position)[1]),
+@@ -136,8 +151,8 @@
+                     baseline_near_offroad=result.metrics["mppi/baseline_near_offroad"],
+                     baseline_future_hard=result.metrics["mppi/baseline_future_hard_reject"],
+                     emergency_reason=result.metrics["mppi/emergency_reason"],
+-                    one_step_position_error_m=float(np.linalg.norm(prediction[0, -1].numpy()-env.unwrapped_metadrive.agent.position)),
+-                    one_step_speed_error_mps=abs(float(predicted_speed[0, -1])-float(np.linalg.norm(env.unwrapped_metadrive.agent.velocity))),
++                    one_step_position_error_m=float(np.linalg.norm(prediction[0, -1].numpy()-env.unwrapped_metadrive.agent.position)) if executed else float("nan"),
++                    one_step_speed_error_mps=abs(float(predicted_speed[0, -1])-float(np.linalg.norm(env.unwrapped_metadrive.agent.velocity))) if executed else float("nan"),
+                     risk=result.metrics["mppi/long_risk_score"], planning_ms=result.metrics["mpr/total_planning_ms"]))
+                 smoke[-1]["diagnostics"] = {k: float(v) for k, v in result.metrics.items() if k.startswith("mppi/")
+                     and not k.endswith("cpu_wall_ms")}
+@@ -153,9 +168,16 @@
+                 values = [float(v) for v in values if np.isfinite(v)]
+                 return dict(mean=float(np.mean(values)), **{f"p{q}": float(np.percentile(values, q)) for q in (50, 95, 99)},
+                     max=float(max(values))) if values else None
+-            results[-1]["summary"] = dict(steps=len(smoke), route_gain=smoke[-1]["route"]-start_route,
+-                mean_speed=float(np.mean([s["speed"] for s in smoke])), max_speed=max(s["speed"] for s in smoke),
+-                stall_steps=sum(s["speed"] < .3 for s in smoke), crash=any(s["crash"] for s in smoke),
++            physical = [s for s in smoke if s["action_executed"]]
++            results[-1]["summary"] = dict(steps=len(physical), requested_steps=args.steps, planning_attempts=len(smoke),
++                safety_failure=any(s["safety_failure"] for s in smoke),
++                unverified_action_executions=sum(s["action_executed"] and not s["safety_certificate"]["valid"] for s in smoke),
++                emergency_steps=sum(s["mode"].startswith("emergency") for s in physical),
++                emergency_unverified_attempts=sum(s["mode"] == "emergency_model_check_failed" for s in smoke),
++                route_gain=smoke[-1]["route"]-start_route,
++                mean_speed=float(np.mean([s["speed"] for s in physical])) if physical else 0.,
++                max_speed=max((s["speed"] for s in physical), default=0.),
++                stall_steps=sum(s["speed"] < .3 for s in physical), crash=any(s["crash"] for s in smoke),
+                 offroad=any(s["offroad"] for s in smoke), planning=distribution([s["planning_ms"] for s in smoke]),
+                 modes={mode: sum(s["mode"] == mode for s in smoke) for mode in sorted(set(s["mode"] for s in smoke))},
+                 distributions={key: distribution([s["diagnostics"].get(key, float("nan")) for s in smoke])
+diff --git a/tools/run_trajectory_pair.sh b/tools/run_trajectory_pair.sh
+--- a/tools/run_trajectory_pair.sh
++++ b/tools/run_trajectory_pair.sh
+@@ -35,7 +35,7 @@
+ import hashlib, json, sys
+ from pathlib import Path
+ from tools.benchmark_mppi import source_fingerprint
+-report = Path('reports/trajectory_filter/acceptance_final.json')
++report = Path('reports/round2/acceptance_final.json')
+ if not report.is_file():
+     raise SystemExit('No smoke acceptance report. Run and validate the prescribed unit/closed-loop tests first.')
+ data = json.loads(report.read_text())
+diff --git a/tests/test_trajectory_selection.py b/tests/test_trajectory_selection.py
+--- a/tests/test_trajectory_selection.py
++++ b/tests/test_trajectory_selection.py
+@@ -199,6 +199,7 @@
+ 
+ def test_future_acceleration_is_not_counted_as_an_immediate_positive_action():
+     p = make_planner(); baseline = stuck_baseline(p); c = road_context()
++    p.brake_release_enabled = False  # Retain coverage of delayed future-only acceleration.
+     c.previous_action = np.array([0., -1.])
+     result = p.plan(torch.zeros(1, 2), baseline, eval_mode=True, safety_context=c)
+     assert result.metrics["positive_throttle_candidate_count"] == 0
+@@ -220,3 +221,196 @@
+     assert row['candidate_records_count'] == 1 and 'candidates' not in row
+     with gzip.open(tmp_path/row['candidate_records_file'], 'rt') as stream:
+         assert json.loads(stream.readline())['candidates'][0] == candidate
++
++
++@pytest.mark.parametrize("throttle", [0., .1, .25])
++def test_low_speed_recovery_releases_brake_and_recertifies(throttle):
++    import hashlib
++    p = make_planner(); c = road_context()
++    c.previous_action = np.array([.1, -1.]); p._recovery_latched = True
++    candidate = torch.zeros(11, 2); candidate[:, 1] = throttle
++    repaired = p._continuous(candidate, c)
++    assert repaired[0, 1] == pytest.approx(throttle)
++    limit = p.candidate_safety.cfg["max_steering_rate"]*.1/c.max_steering
++    assert abs(float(repaired[0, 0])-c.previous_action[0]) <= limit+1e-6
++    # Run the real final selection, not just the proposal builder.
++    baseline = stuck_baseline(p)
++    result = p.plan(torch.zeros(1, 2), baseline, eval_mode=True, safety_context=c)
++    assert result.action[1] >= 0 and result.metrics["brake_released"] == 1
++    assert result.safety_certificate["valid"] and not result.safety_failure
++    assert result.safety_certificate["sequence_sha256"] == hashlib.sha256(result.selected_sequence.numpy().tobytes()).hexdigest()
++    assert p.candidate_safety.check(result.selected_sequence[None], c).valid[0]
++
++
++def test_brake_release_never_authorizes_an_unsafe_positive_action():
++    p = make_planner(); baseline = stuck_baseline(p)
++    c = road_context(road=box(0, 5, 12.0001, 15)); c.previous_action = np.array([0., -1.])
++    r = p.plan(torch.zeros(1, 2), baseline, eval_mode=True, safety_context=c)
++    assert r.safety_failure or r.action[1] <= 0
++    assert all(not row["exact_verified"] for row in r.candidate_diagnostics if row["first_action"][1] > 0)
++
++
++@pytest.mark.parametrize("verified", [True, False])
++def test_emergency_authorization_and_repeated_failures(verified):
++    from tests.test_mppi_v3 import planner, fake_filter
++    p = planner(); p.recovery_enabled = False
++    base = torch.zeros(4, 2)
++    p._candidate_batch = lambda *args: base[None].expand(4, -1, -1).clone()
++    fake_filter(p, lambda a: (a[:, 0, 1] == -1) if verified else torch.zeros(len(a), dtype=torch.bool))
++    for i in range(3):
++        r = p.plan(torch.zeros(1, 2), base, eval_mode=True, safety_context=road_context())
++        assert r.safety_failure == (not verified)
++        assert r.safety_certificate["valid"] == verified
++        assert r.metrics["emergency_verified"] == verified
++        assert r.metrics["emergency_unverified"] == (not verified)
++        assert r.metrics["selected_safety_valid"] == verified
++        assert r.metrics["safety_failure_streak"] == (0 if verified else i+1)
++
++
++def test_environment_aborts_without_advancing_physics_and_diagnostics(tmp_path):
++    from unittest.mock import Mock
++    from env.env import MetaDriveTDMPC2Env
++    from mpr_mpc.evaluation_diagnostics import EpisodeDiagnostics, StepDiagnosticsLogger
++    import json
++    env = object.__new__(MetaDriveTDMPC2Env)
++    env._env = Mock(); env._last_observation = torch.zeros(3)
++    env._last_info = dict(route_completion=.4, success=1., cost=9., safety_road_event_cost=5.)
++    env.request_safety_failure("no_verified_action")
++    obs, reward, done, info = env.step(torch.zeros(2))
++    env._env.step.assert_not_called()
++    assert done and info["safety_failure"] and not info["action_executed"] and not info["success"]
++    assert reward == info["cost"] == info["safety_road_event_cost"] == 0
++    diagnostics = EpisodeDiagnostics(); diagnostics.observe(obs, [0., -1.], info, None)
++    assert diagnostics.summary(info)["physical_steps"] == 0
++    assert diagnostics.summary(info)["safety_failure"] == 1
++    from mpr_mpc.evaluation_statistics import summarize_runs
++    aggregated = summarize_runs("abort", [dict(scenario=1, test_seed=1, collision_and_success=0.,
++        collision_and_offroad=0., **diagnostics.summary(info))], samples=20, seed=1)
++    assert aggregated["safety_failure_rate"] == 1 and aggregated["unverified_action_executions"] == 0
++    logger = StepDiagnosticsLogger(tmp_path, "abort")
++    logger.log(1, 1, [0., -1.], None, info); logger.close()
++    record = json.loads((tmp_path/"abort.jsonl").read_text())
++    assert record["executed_action"] is None and record["proposed_action"] == [0., -1.]
++    assert not record["action_executed"] and record["safety_failure"]
++    with pytest.raises(RuntimeError, match="Reset after"):
++        env.step(torch.zeros(2))
++
++
++def test_agent_rejects_action_changed_after_certificate():
++    from types import SimpleNamespace
++    from unittest.mock import Mock
++    from mpr_mpc.agent import MPRMPCAgent
++    agent = object.__new__(MPRMPCAgent)
++    result = SimpleNamespace(stage=SimpleNamespace(use_mppi=True), action=torch.ones(2), safety_failure=False,
++        metrics={}, debug=dict(selected_mppi_actions=torch.zeros(4, 2), safety_certificate=dict(valid=True)))
++    agent.planner = SimpleNamespace(enabled=True, plan=lambda *a, **k: result, last_context=None)
++    agent.env = SimpleNamespace(unwrapped_metadrive=SimpleNamespace(agent=None), request_safety_failure=Mock())
++    agent.global_env_step = 0; agent.set_global_step = lambda step: None
++    agent._maybe_freeze_tdmpc2 = lambda step: None
++    agent.act(torch.zeros(3), eval_mode=True)
++    assert result.safety_failure and result.metrics["mppi/execution_authorized"] == 0
++    agent.env.request_safety_failure.assert_called_once_with("action_certificate_mismatch")
++
++
++def test_recoverable_tail_does_not_force_latch_but_near_failure_does():
++    p = make_planner(); p.recovery_enabled = False
++    c = road_context(speed=5, road=box(0, 5, 14.7, 15))
++    base = torch.zeros(11, 2)
++    p._candidate_batch = lambda *args: base[None].expand(4, -1, -1).clone()
++    r = p.plan(torch.zeros(1, 2), base, eval_mode=True, safety_context=c)
++    assert not r.metrics["baseline_full_valid"] and r.metrics["baseline_near_valid"]
++    assert r.metrics["baseline_future_recoverable"] and not p._recovery_latched
++    c.road = box(0, 5, 11., 15); c.cache.clear()
++    p.plan(torch.zeros(1, 2), base, eval_mode=True, safety_context=c)
++    assert p._recovery_latched
++
++
++@pytest.mark.parametrize("target,expected", [(8., 8.), (3., 3.), (5., 5.), (20., 10.), (-1., 0.)])
++def test_mppi_speed_context_tracks_sac_target_and_lattice_limit(target, expected):
++    from types import SimpleNamespace
++    from mpr_mpc.planning.coordinator import MPRMPCPlanner
++    planner = object.__new__(MPRMPCPlanner)
++    planner.max_speed = 18.
++    planner.structured = SimpleNamespace(planner=SimpleNamespace(config={"frenet_rl_max_speed": 10.}), controller=None)
++    c = road_context(); refined = SimpleNamespace(target_speed=target, x=[0., 1.], y=[0., 0.])
++    planner._update_mppi_speed_context(c, refined, SimpleNamespace(max_speed_km_h=100.))
++    assert c.sac_target_speed == target and c.lattice_speed_limit == 10.
++    assert c.target_speed == c.mppi_target_speed == expected
++    p = make_planner(); c.speed = expected
++    actions, _ = p._controlled_candidates(c, None, torch.zeros(11, 2))
++    assert (actions[:, :, 1] <= 0).all()
++
++
++@pytest.mark.parametrize("bad", [float("nan"), float("inf"), -.1])
++def test_invalid_wm_cost_uses_only_exactly_certified_geometric_fallback(bad):
++    p = make_planner()
++    original = p.evaluator.evaluate_mppi_candidates
++    def invalid(*args, **kwargs):
++        r = original(*args, **kwargs); r.cumulative_cost[:] = bad
++        return r
++    p.evaluator.evaluate_mppi_candidates = invalid
++    base = torch.zeros(11, 2); base[:, 1] = .25
++    r = p.plan(torch.zeros(1, 2), base, eval_mode=True, safety_context=road_context(speed=1))
++    assert not np.isfinite(r.selected_score) and r.metrics["scoring_unavailable_fallback"] == 1
++    assert r.safety_certificate["valid"] and not r.safety_failure
++    assert p.candidate_safety.check(r.selected_sequence[None], road_context(speed=1)).valid[0]
++
++
++def test_motion_diagnostics_compare_both_models_to_same_actual_state():
++    from types import SimpleNamespace
++    from mpr_mpc.planning.mppi_safety import motion_response_errors
++    f = MPPISafetyFilter(safety_cfg(center_bicycle=True), control_dt=.1)
++    c = road_context(speed=5); c.rear_axle_to_center = c.wheelbase*.57
++    a = torch.zeros(11, 2); a[:, 0] = .3
++    vehicle = SimpleNamespace(engine=SimpleNamespace(episode_step=1), position=c.position.copy(), heading_theta=0., velocity=[5., 0.])
++    prediction = f.predict_response(a, c, vehicle)
++    for m in ("center", "legacy"):
++        prediction[m].update(collision=False, offroad=False)
++    r = motion_response_errors(prediction, vehicle, dict(crash=True))
++    assert r["motion_center_position_error_m"] > 0 and r["motion_legacy_position_error_m"] > 0
++    assert r["motion_center_collision_false_negative"] == r["motion_legacy_collision_false_negative"] == 1
++    assert motion_response_errors(prediction, vehicle, dict(action_executed=False)) == {}
++
++
++@pytest.mark.parametrize("state", ["missing", "malformed", "unvalidated", "stale", "domain", "source_changed", "valid"])
++def test_motion_evidence_gates_legacy_shadow_and_conservative_tube(tmp_path, state):
++    import hashlib, json
++    from tests.test_v2_safety import obstacle
++    c = road_context(speed=2); c.rear_axle_to_center = c.wheelbase*.57
++    c.motion_signature = {"test_vehicle": 1}
++    settings = safety_cfg(center_bicycle=True, center_model_guard=True, two_layer=True)
++    nominal = MPPISafetyFilter(settings, control_dt=.1)
++    data = tmp_path/"data.json"; data.write_text("unit-test fixture, not live calibration evidence")
++    evidence = dict(schema=1, predictor_schema="center_bicycle_v1", protocol="disjoint_scene_physics_tick_v1",
++        validated=state != "unvalidated", event_validation_supported=True, fit_windows=20, heldout_windows=20,
++        fit_scenes=[1], heldout_scenes=[2], parameters={}, control_dt=.1, valid_horizons=[10],
++        nominal_config=nominal.motion_nominal_config(), predictor_sha256=nominal.motion_predictor_sha(),
++        vehicle_signatures=[c.motion_signature], domain=dict(speed=[0., 5.], action_min=[-1., -1.], action_max=[1., 1.]),
++        bounds={"10": dict(position_m=.05, heading_rad=.01, lateral_m=.05, speed_mps=.2)},
++        dataset=str(data), dataset_sha256=hashlib.sha256(data.read_bytes()).hexdigest())
++    report = tmp_path/"validation.json"
++    if state != "missing":
++        report.write_text("[]" if state == "malformed" else json.dumps(evidence))
++    f = MPPISafetyFilter({**settings, "motion_validation_path": str(report)}, control_dt=.1)
++    if state == "stale": data.write_text("changed after loading")
++    if state == "domain": c.speed = 6.
++    if state == "source_changed": f.motion_evidence["predictor_sha256"] = "stale"
++    a = torch.zeros(1, 11, 2)
++    assert bool(f.calibrated_mask(a, c)[0]) == (state == "valid")
++    original = f._check_nominal
++    def conflicting(actions, ctx):
++        r = original(actions, ctx)
++        if ctx.rear_axle_to_center is None:
++            r.valid[:] = r.near_valid[:] = r.full_valid[:] = False
++            r.route_progress_estimate[:] = -1000.
++        return r
++    with patch.object(f, "_check_nominal", side_effect=conflicting):
++        r = f.check(a, c)
++    assert bool(r.valid[0]) == (state == "valid")
++    assert r.route_progress_estimate[0] > 0  # never min(main progress, shadow progress)
++    if state == "valid":
++        assert f.calibrated_extra_margin(a, c) > 0 and r.legacy_shadow[0]
++        c.obstacles = (obstacle(11., 10.),); c.cache.clear()
++        assert not f.check(a, c).valid[0]  # calibration cannot override real geometry
++        c.obstacles = (); c.road = box(0, 5, 11., 15); c.cache.clear()
++        assert not f.check(a, c).valid[0]
+diff --git a/tests/test_native_mppi_cost.py b/tests/test_native_mppi_cost.py
+--- a/tests/test_native_mppi_cost.py
++++ b/tests/test_native_mppi_cost.py
+@@ -86,7 +86,12 @@
+ def test_invalid_predicted_cost_is_explicit_error(bad):
+     planner, _, baseline = fixed_planner(bad_cost=bad)
+     with pytest.raises(RuntimeError, match="cumulative WM Cost"):
+-        planner.plan(torch.zeros(1, 2), baseline, eval_mode=True)
++        planner._evaluate_cached(torch.zeros(1, 2), baseline[None], {}, None, {})
++    # Production safety-enabled recovery is covered in trajectory selection;
++    # the legacy safety-disabled fixture still must not report a finite score.
++    result = planner.plan(torch.zeros(1, 2), baseline, eval_mode=True)
++    assert not np.isfinite(result.selected_score)
++    assert result.metrics["scoring_unavailable_fallback"] == 1
+ 
+ 
+ @pytest.mark.parametrize("parameter", ["cost_coef", "deviation_coef", "smoothness_coef", "temperature"])
+diff --git a/ROUND2_TRAJECTORY_FIX_REPORT.md b/ROUND2_TRAJECTORY_FIX_REPORT.md
+new file mode 100644
+--- /dev/null
++++ b/ROUND2_TRAJECTORY_FIX_REPORT.md
+@@ -0,0 +1,107 @@
++# 第二轮 MPPI 轨迹筛选与恢复修复报告
++
++本轮代码修改和回归已完成，但固定场景验收未通过，**尚不具备正式 100 场景评测条件**，不能据此宣称成功率提升。
++
++以任务开始时的 main `e8af086e97eb4a8a5e824e6e4c4c3123930cfce3` 加原有未提交修改为基准。未 reset、checkout、commit、push；未修改兄弟目录 `mpr_mpc`、网络、535 维 SAC 特征、Action Mapping、Lattice 生成器或 checkpoint。原始工作区修改另存于 `reports/round2/initial_worktree.diff`。
++
++## 修改文件
++
++| 文件 | 修改内容 |
++|---|---|
++| `planning/local_mppi.py` | 最终序列证书/失败状态；独立纵向制动释放；修正 Latch；无效 WM Cost 的已验证几何回退。 |
++| `planning/mppi_safety.py` | Center/Legacy 独立诊断；数据、预测器代码、车辆参数和动作域绑定的校准门控；误差补偿仅可增加车身包络；进度不再取双模型最小值。 |
++| `planning/coordinator.py` | SAC 重生成轨迹后同步三种速度定义；传递证书和单步预测。 |
++| `planning/types.py` | 携带 safety_failure，避免用普通动作返回值隐去失败。 |
++| `agent.py` | 执行边界核对最终动作及完整序列 SHA256；失败时请求环境适配器终止。 |
++| `env/env.py` | 适配器安全失败终止，不推进 Bullet；action_executed=0、success=0、end_reason=safety_failure，区分规划失败与 MetaDrive 原始事故条件。 |
++| `evaluation_diagnostics.py` | 区分提议/真实执行动作；不把安全终止作为真实物理样本；双模型误差分位数和未验证执行计数。 |
++| `evaluation_statistics.py` | 增加回合级 safety_failure_rate、未验证动作执行次数，避免提前终止被解释为安全成功。 |
++| `config.yaml` | 新增制动释放/增减油门独立设置，以及默认未通过的物理误差验证文件路径；训练阶段与搜索预算不变。 |
++| `planning/native_config.py` | 允许新设置并兼容旧 checkpoint 的缺省配置。 |
++| `tools/calibrate_mppi_motion.py` | 只读实际动作回放；记录 0.02s 物理 tick 状态；分离拟合场景/留出场景，保存误差包络与失败验证结果，不训练网络。 |
++| `tools/smoke_v32_recovery.py` | 记录证书、实际执行步与规划尝试、双模型误差；支持保存冷启动 profile。 |
++| `tools/run_trajectory_pair.sh` | 正式 B/D 入口改为读取本轮验收文件；未通过时停止，不能沿用旧版本验收。 |
++| `tests/test_trajectory_selection.py` | 在现有测试文件扩展 25 个参数化用例；原有延迟加速计数测试保留关闭快速释放的覆盖。 |
++| `tests/test_native_mppi_cost.py` | 保留底层无效 Cost 显式拒绝测试，补充生产路径不得把无效值作为正常分数的断言。 |
++
++环境、Agent、类型和统计文件的修改是为了把 P0 失败真正传递至执行与评测边界，仅在 local_mppi 中增加一个标志无法阻止未验证动作执行。
++
++## 六项问题处理结果
++
++1. **P0 执行证书：已修复。** 最终动作序列经过连续性调整后使用精确检查缓存重新确认，证书绑定完整序列摘要；Agent 再核对动作和摘要。Emergency 失败保留原模式 `emergency_model_check_failed`，并增加 `emergency_verified/emergency_unverified/safety_failure/execution_authorized`，其中 verified 只表示有限时域模型检查，不是真实环境安全保证。若全部失败，环境适配器返回明确失败终止，不执行动作；正式表格另报告安全失败率。
++2. **P1 制动释放：逻辑与回归已修复，559 脱困尚未解决。** 转向仍受原物理转向速率限制；纵向单独区分保持、释放、增油门和减油门。低速 Recovery 允许将负油门释放至零，再使用原有 0.25 增量形成正油门提议；MetaDrive 禁止倒车时零油门释放强制动，不等同于增加加速度能力。每条新序列仍精确检查。559 新回放第 7→8 步实际从 -1 到 +0.25，未被 -0.75/-0.5 阶梯拖住，但随后仍安全失败。
++3. **P1 双模型：诊断/证据门控完成，实测校准未通过。** 已分别计算位置、航向、横向、速度和事件标签误差。只有独立留出数据支持、误差包络合格且运行域一致时，经过补偿的主模型才可把 Legacy 转为影子诊断。数据/报告变更、代码指纹、控制周期、车辆参数、预测时域、速度或动作域不匹配会撤销资格。当前校准失败，继续 Center AND Legacy，不以 OR 或关 guard 代替证据。主模型进度独立计算，不再与 Legacy 进度取 min；它仍明确是未校准的启发式进度估计，不能充当安全证据。
++4. **P1 目标速度：已修复。** SAC 重生成后写入 `lattice_speed_limit/sac_target_speed/mppi_target_speed`，有效目标使用 SAC 修正值并受既有 Lattice 上限、曲率横向加速度上限和车辆速度上限约束。原已超速状态不能瞬间停车，预测不得继续提速；不改变 SAC 状态和 Action Mapping。
++5. **P2 Recovery Latch：已修复。** `full_valid=False` 但近期安全且具有精确检查通过的同前缀制动延续时，不再强制锁定。只有近期失败、无可行延续或实际停滞触发；退出仍需实测速度和连续进度。1714 Recovery 从 8 步降到 0。
++6. **P2 横向筛选：保留已有修正。** 任务开始时的工作区已删除额外横向改善比例硬门槛，本轮没有重复实现。安全、进度层级、共同 WM/风险/偏离/平滑评分继续有效；没有把横向指标变成放宽道路阈值的替代品。现有评分仍不足以挽救 559，具体证据见下文。
++
++共同执行链为候选预筛选→进度/恢复资格→有效 WM 排序→精确检查→连续性提议→重新精确检查与证书→执行边界核对。无效 Cost 会被拒绝作为分数，仅可使用另行精确验证的几何回退；评分保留 NaN/不可用状态，不伪造为零分。未验证 Cost 门控和原搜索预算均不变。
++
++## 单元测试
++
++`python -m pytest tests -q --disable-warnings --junitxml=reports/round2/unit_tests_passed.xml`：**325 passed，0 failures，0 errors**。
++
++新增覆盖：制动释放至 0/正油门、转向限速、重新发证、真实执行动作与证书不一致、已验证/未验证 Emergency 及连续失败、仿真不推进、统计与日志失败标记、可恢复远期风险不强制 Latch、正负零目标速度及上限、无效 WM 几何回退、双模型同一实测状态诊断、缺失/畸形/未通过/过期/域外/代码变化证据，以及有效证据也不能放过真实几何碰撞和越界。保留全部现有测试，仅调整旧 Cost 错误测试以同时验证底层拒绝与生产回退。`git diff --check`、启动脚本语法检查通过。
++
++## 固定场景前后对比
++
++相同 checkpoint、seed=1、episode_seed=(1+scenario)%2**32、记录动作前缀、环境参数和正常 64/8/4 搜索预算。559 回放至第 600 步前，1714 至第 250 步前；本轮修改前后初始航向、横向位置与路线进度差均为 0。全部事故统计包括 crash_vehicle/object/building/human/sidewalk。
++
++| 指标 | 559 修改前 | 559 修改后 | 1714 修改前 | 1714 修改后 |
++|---|---:|---:|---:|---:|
++| 请求/真实执行步 | 120/120 | 120/10 | 60/60 | 60/60 |
++| 规划尝试 | 120 | 11 | 60 | 60 |
++| 平均速度 m/s | 0.110 | 0.413 | 4.516 | 4.350 |
++| 最高速度 m/s | 1.068 | 1.064 | 8.731 | 8.484 |
++| 路线增量 | 0.001336 | 0.001322 | 0.066981 | 0.064537 |
++| 低于 0.3m/s 步数 | 115 | 6（仅10步） | 1 | 1 |
++| Recovery 步数 | 96 | 3 | 8 | 0 |
++| Emergency 执行步数 | 19 | 3 | 0 | 0 |
++| 未验证动作执行数 | 13 | 0 | 0 | 0 |
++| 未验证 Emergency 提议数 | 13 | 1（终止，未执行） | 0 | 0 |
++| Crash / Out of road | 0 / 0 | 0 / 0（提前终止） | 0 / 0 | 0 / 0 |
++| 平均规划 ms | 288.76 | 638.94 | 447.34 | 363.13 |
++| P50 / P95 ms | 204.57 / 718.81 | 346.99 / 1757.39 | 327.70 / 787.64 | 347.34 / 448.26 |
++| 最大规划 ms | 1761.07 | 1832.71 | 1165.13 | 888.43 |
++
++559 在第 11 次规划时所有候选和 Emergency 都无证书，按 P0 终止，因此**没有完成 120 个控制步，验收失败**；不能为了凑步数继续执行未验证动作。提前停止的零事故与更少低速/紧急步数不证明驾驶能力改善，前后整体均值也不能作等长性能比较。两版前 11 次规划均值为 864.31/638.94ms，状态已随不同动作演化，仅作描述性参考。
++
++1714 闭环路线增量保持率为 **96.35%**，低于 98%；终点总完成度保持率为 99.51%，其中含相同的长回放前缀，本报告没有用它掩盖本轮闭环增量退化。平均规划相比本轮修改前下降 18.82%，但仍高于 233ms 和 100ms 目标。
++
++## 559 仍失败的具体证据
++
++第 9 步 `recovery_center_full_fast` 已通过 Center、Legacy 近期和精确可恢复性检查，首动作 [-0.40636, +0.25]，预测进度 0.59038m、终点横向误差 1.47716m；偏离惩罚 104.13565，最终分数 69.39696。被选的 `recovery_lattice_ramp` 首动作 [+0.17664, +0.25]，进度 0.69521m、终点横向误差 1.60316m，偏离惩罚 3.16508，最终分数 195.78789。
++
++这表明后半程不仅有模型拒绝，**SAC 参考下的偏离惩罚与 WM Value 还压制了已经可行、向道路内侧修正的候选**。第 5 步 16 个正向候选近期均通过，但未来可恢复性均失败；第 10/11 步 14 个正向候选近期道路检查全部失败。因此既存在通过后被评分淘汰，也存在真正的模型安全拒绝，不能只归因于未生成正油门。原始候选证据在 `after_559_unprofiled.candidates.jsonl.gz`。没有为两场景单独调大权重或修改统一评分来刷验收。
++
++## 双模型实测与校准限制
++
++只读重放 1525/539 各 300 控制步作为误差包络拟合集，1714 的 310 步与 559 的 660 步作为独立场景留出集，共 1,570 控制步。每控制步记录 5 个实际物理 tick；157 个非重叠 10 步窗口，未训练 WM/SAC、未改其权重。当前点模型保持原配置，拟合的是经验误差包络，而非声称加速度参数已获认证。
++
++留出集 Center 一步位置误差最大约 0.04811m；Legacy 约 0.02699m；Center 十步位置误差最大约 2.25949m，速度误差最大约 5.45321m/s。只有第 6 步时域的包络覆盖检查通过；10 步未通过。157 个近期事件窗口没有真实碰撞或越界阳性，无法评估漏检召回率。Center 有 1 个预测越界而环境未报越界的窗口；这也可能来自更严格的车身边界与 MetaDrive 事件定义不同，不能直接当成放宽道路检查的证据。
++
++**validated=false，Legacy 没有降为影子否决关闭模式。** 不扩大留出集误差阈值来冒充验证成功。校准日志保存两个模型各时域的位置/航向/横向/速度 P50/P95/P99/max；离线 lateral 为初始车体法向误差，在线诊断另外提供道路参考下误差，两种定义不混为一项。数据签名绑定几何、轴距、最大转角、质量、发动机/制动力、摩擦、物理周期及 decision_repeat。
++
++## 耗时诊断
++
++| 1714 阶段均值 ms | 修改前 | 修改后 |
++|---|---:|---:|
++| Safety check | 281.94 | 197.64 |
++| WM rollout | 56.63 | 48.15 |
++| Recovery search | 104.75 | 0.00 |
++| Candidate evaluation | 69.80 | 72.73 |
++| Final verification | 61.03 | 58.01 |
++
++计时阶段存在包含关系，不可直接相加。单次冷启动 profile 另存 `reports/round2/profile_559.559.profile.txt`，不参与上述无 profiler 耗时表。该次约 875ms 中 prepare 约 471ms，Local MPPI 约 386ms；原 SAC 特征几何检查约 205ms、WM 轨迹后果评价约 162ms、MPPI 安全检查约 157ms、连续碰撞 primitive 约 106ms（相互包含）。证明瓶颈不只在新增恢复部分；本轮没有改动冻结 SAC 的几何特征来换取表面速度。
++
++## 交付与剩余工作
++
++- `reports/round2/acceptance_final.json`：逐项验收、源码/权重指纹、前后统计和阻塞原因。正式 B/D 启动脚本默认拒绝未通过的本轮版本。
++- `reports/round2/code_changes.diff`：以本轮开始工作区为基准的完整增量补丁；不会把用户此前未提交修改混为本轮改动。
++- `reports/round2/unit_tests_passed.xml`：最终完整测试结果；失败调试过程另有历史 XML，不能把它误作最终结果。
++- `before_559.json`、`before_1714.json`、`after_559_unprofiled.json`、`after_1714_final.json`：原始逐步数据和分位数；每次使用新路径，没有覆盖旧实验 CSV、模型或日志。
++- `motion_calibration_final/validation.json` 与 `measured_windows.jsonl.gz`：校准判断和真实物理回放窗口。
++
++未解决：559 的长期脱困、符合留出集的主模型误差补偿、恢复轨迹共同评分与偏离项的冲突，以及达到目标延迟。下一步应在不变安全标准下，用独立状态集验证候选评分尺度与物理预测误差；不能直接用两场景调权后宣称普遍提升。先通过本轮 120/60 步固定协议，再进行相同场景/随机种子/终止条件的 B/D 配对统计，不运行本轮正式 100 场实验。
++
++Checkpoint SHA256：`4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a`（前后相同）。

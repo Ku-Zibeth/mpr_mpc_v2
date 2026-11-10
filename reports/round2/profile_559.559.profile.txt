@@ -1,0 +1,38 @@
+         179082 function calls (170518 primitive calls) in 0.874 seconds
+
+   Ordered by: cumulative time
+   List reduced from 933 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.875    0.875 /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/agent.py:192(act)
+        1    0.000    0.000    0.875    0.875 /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/coordinator.py:711(plan)
+     66/2    0.002    0.000    0.875    0.437 /home/kzb/anaconda3/envs/tdmpc2/lib/python3.11/site-packages/torch/utils/_contextlib.py:113(decorate_context)
+        1    0.000    0.000    0.471    0.471 /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/coordinator.py:202(prepare)
+        1    0.000    0.000    0.404    0.404 /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/coordinator.py:407(refine_and_plan)
+        1    0.017    0.017    0.386    0.386 /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/local_mppi.py:463(plan)
+       10    0.017    0.002    0.251    0.025 /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/local_mppi.py:512(check_actions)
+        1    0.010    0.010    0.205    0.205 /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/safety.py:233(check)
+        5    0.000    0.000    0.162    0.032 /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/evaluator.py:129(evaluate_trajectory_consequence)
+        5    0.006    0.001    0.162    0.032 /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/evaluator.py:37(evaluate)
+        6    0.001    0.000    0.157    0.026 /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/mppi_safety.py:649(check)
+       12    0.006    0.000    0.155    0.013 /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/mppi_safety.py:683(_check_nominal)
+ 1420/162    0.001    0.000    0.154    0.001 /home/kzb/anaconda3/envs/tdmpc2/lib/python3.11/site-packages/torch/nn/modules/module.py:1747(_wrapped_call_impl)
+ 1420/162    0.002    0.000    0.154    0.001 /home/kzb/anaconda3/envs/tdmpc2/lib/python3.11/site-packages/torch/nn/modules/module.py:1755(_call_impl)
+      165    0.001    0.000    0.145    0.001 /home/kzb/anaconda3/envs/tdmpc2/lib/python3.11/site-packages/torch/nn/modules/container.py:238(forward)
+       32    0.018    0.001    0.137    0.004 /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/mppi_safety.py:397(_strict_check)
+      375    0.002    0.000    0.130    0.000 /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/vendor/tdmpc2_runtime/common/layers.py:107(forward)
+       33    0.000    0.000    0.106    0.003 /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/safety.py:227(_swept_check)
+      491    0.001    0.000    0.106    0.000 /home/kzb/anaconda3/envs/tdmpc2/lib/python3.11/site-packages/torch/nn/modules/linear.py:124(forward)
+       33    0.010    0.000    0.106    0.003 /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/swept_collision.py:64(swept_collisions)
+      491    0.105    0.000    0.105    0.000 {built-in method torch._C._nn.linear}
+        4    0.001    0.000    0.104    0.026 /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/local_mppi.py:635(verified_choice)
+        1    0.000    0.000    0.094    0.094 /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/evaluator.py:24(encode)
+        1    0.000    0.000    0.093    0.093 /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/vendor/tdmpc2_runtime/common/world_model.py:158(encode)
+        1    0.000    0.000    0.093    0.093 /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/vendor/tdmpc2_runtime/common/layers.py:168(forward)
+        4    0.000    0.000    0.076    0.019 /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/local_mppi.py:611(evaluate)
+        4    0.009    0.002    0.075    0.019 /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/local_mppi.py:426(_evaluate_cached)
+       37    0.003    0.000    0.073    0.002 /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/mppi_safety.py:336(_rollout)
+       71    0.071    0.001    0.071    0.001 {method 'nonzero' of 'torch._C.TensorBase' objects}
+        4    0.003    0.001    0.059    0.015 /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/mppi_safety.py:558(preview)
+
+

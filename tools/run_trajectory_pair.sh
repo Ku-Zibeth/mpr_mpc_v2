@@ -35,7 +35,7 @@ fi
 import hashlib, json, sys
 from pathlib import Path
 from tools.benchmark_mppi import source_fingerprint
-report = Path('reports/trajectory_filter/acceptance.json')
+report = Path('reports/round2/acceptance_final.json')
 if not report.is_file():
     raise SystemExit('No smoke acceptance report. Run and validate the prescribed unit/closed-loop tests first.')
 data = json.loads(report.read_text())

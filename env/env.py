@@ -285,6 +285,9 @@ class MetaDriveTDMPC2Env(gym.Env):
         self._risk_calculator = RiskFieldCalculator(self.risk_config)
         self._rng = np.random.RandomState(seed)
         self._last_info: dict[str, Any] = {}
+        self._last_observation = None
+        self._pending_safety_failure = None
+        self._planner_failed = False
         self._active_cost_events: set[str] = set()
         self._safety_cost_calculator = self._make_safety_cost_calculator()
         self.action_space.seed(seed)
@@ -341,7 +344,10 @@ class MetaDriveTDMPC2Env(gym.Env):
         self._active_cost_events.clear()
         self._safety_cost_calculator.reset()
         self._last_info = dict(info)
-        return self._observation(observation)
+        self._pending_safety_failure = None
+        self._planner_failed = False
+        self._last_observation = self._observation(observation)
+        return self._last_observation
 
     def rand_act(self) -> torch.Tensor:
         action = self.action_space.sample().astype(np.float32)
@@ -406,7 +412,27 @@ class MetaDriveTDMPC2Env(gym.Env):
 
         return SafetyCostV3(self.cost_config, _flag)
 
+    def request_safety_failure(self, reason):
+        """Abort at the adapter boundary; never advance Bullet on an uncertified action."""
+        self._pending_safety_failure = str(reason)
+
     def step(self, action: torch.Tensor | np.ndarray):
+        if getattr(self, "_pending_safety_failure", None) is not None:
+            if self._last_observation is None:
+                raise RuntimeError("Reset the environment before reporting a planner failure.")
+            info = dict(self._last_info)
+            info.update(safety_failure=1., safety_failure_reason=self._pending_safety_failure,
+                action_executed=0., success=0., terminated=torch.tensor(1.), truncated=0.,
+                end_reason="safety_failure", cost=0., metadrive_reward=0., tdmpc2_reward=0.)
+            for key in tuple(info):
+                if (key.startswith(("safety_", "risk_field_")) and key.endswith("_cost")) or key in (
+                    "risk_field_cost", "risk_field_normalized_cost", "risk_field_reward_penalty"):
+                    info[key] = 0.
+            self._last_info, self._planner_failed = info, True
+            self._pending_safety_failure = None
+            return self._last_observation.clone(), torch.tensor(0.), True, info
+        if getattr(self, "_planner_failed", False):
+            raise RuntimeError("Reset after planner safety_failure.")
         if torch.is_tensor(action):
             action = action.detach().cpu().numpy()
         action_array = np.asarray(action, dtype=np.float32).reshape(self.action_space.shape)
@@ -457,8 +483,10 @@ class MetaDriveTDMPC2Env(gym.Env):
         for name in ("dynamic_collision", "static_collision", "road_event", "other_event", "unallocated_event"):
             info[f"safety_{name}_cost"] = float(components.get(name, 0.0))
         self._last_info = info
+        self._last_observation = self._observation(observation)
+        info["action_executed"] = 1.
         return (
-            self._observation(observation),
+            self._last_observation,
             torch.tensor(reward, dtype=torch.float32),
             done,
             info,

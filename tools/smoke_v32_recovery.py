@@ -23,6 +23,7 @@ from common.seed import set_seed
 from env import make_env
 import evaluate_model_suite as suite
 from mpr_mpc.planning.safety import _corners
+from mpr_mpc.planning.mppi_safety import motion_response_errors
 from shapely.geometry import Polygon
 
 
@@ -98,7 +99,15 @@ def main():
                 if profile: profile.enable()
                 action = agent.act(obs, t0=False, eval_mode=True)
                 if profile:
-                    profile.disable(); pstats.Stats(profile).sort_stats("cumtime").print_stats(20)
+                    profile.disable()
+                    stream = io.StringIO()
+                    pstats.Stats(profile, stream=stream).sort_stats("cumtime").print_stats(30)
+                    profile_path = args.output.with_suffix(f".{seed}.profile.txt")
+                    if profile_path.exists():
+                        raise FileExistsError(profile_path)
+                    profile_path.parent.mkdir(parents=True, exist_ok=True)
+                    profile_path.write_text(stream.getvalue())
+                    print(stream.getvalue(), flush=True)
                 result, context = agent.last_plan, agent.planner.last_context.mppi_safety_context
                 if candidate_stream is not None:
                     candidate_stream.write(json.dumps(dict(scenario=seed, step=i+1,
@@ -119,10 +128,16 @@ def main():
                 prediction, predicted_heading, predicted_speed = agent.planner.local_mppi.candidate_safety._rollout(
                     result.debug["selected_mppi_actions"][None, :2], context)
                 obs, _, done, info = env.step(action)
+                executed = bool(info.get("action_executed", True))
+                result.metrics.update({f"mppi/{key}": value for key, value in motion_response_errors(
+                    result.debug.get("motion_prediction"), env.unwrapped_metadrive.agent, info).items()})
                 crash = any(bool(info.get(k, False)) for k in
                     ("crash", "crash_vehicle", "crash_object", "crash_building", "crash_human", "crash_sidewalk"))
                 offroad = bool(info.get("out_of_road", False))
                 smoke.append(dict(step=i+1, mode=result.planning_mode, action=action.tolist(),
+                    action_executed=executed, safety_failure=bool(info.get("safety_failure", False)),
+                    safety_failure_reason=info.get("safety_failure_reason", ""),
+                    safety_certificate=result.debug.get("safety_certificate"),
                     heading_before=context.heading, predicted_heading=float(predicted_heading[0, -1]),
                     actual_heading=float(env.unwrapped_metadrive.agent.heading_theta),
                     lateral_before=float(context.road_reference.project(context.position)[1]),
@@ -136,8 +151,8 @@ def main():
                     baseline_near_offroad=result.metrics["mppi/baseline_near_offroad"],
                     baseline_future_hard=result.metrics["mppi/baseline_future_hard_reject"],
                     emergency_reason=result.metrics["mppi/emergency_reason"],
-                    one_step_position_error_m=float(np.linalg.norm(prediction[0, -1].numpy()-env.unwrapped_metadrive.agent.position)),
-                    one_step_speed_error_mps=abs(float(predicted_speed[0, -1])-float(np.linalg.norm(env.unwrapped_metadrive.agent.velocity))),
+                    one_step_position_error_m=float(np.linalg.norm(prediction[0, -1].numpy()-env.unwrapped_metadrive.agent.position)) if executed else float("nan"),
+                    one_step_speed_error_mps=abs(float(predicted_speed[0, -1])-float(np.linalg.norm(env.unwrapped_metadrive.agent.velocity))) if executed else float("nan"),
                     risk=result.metrics["mppi/long_risk_score"], planning_ms=result.metrics["mpr/total_planning_ms"]))
                 smoke[-1]["diagnostics"] = {k: float(v) for k, v in result.metrics.items() if k.startswith("mppi/")
                     and not k.endswith("cpu_wall_ms")}
@@ -153,9 +168,16 @@ def main():
                 values = [float(v) for v in values if np.isfinite(v)]
                 return dict(mean=float(np.mean(values)), **{f"p{q}": float(np.percentile(values, q)) for q in (50, 95, 99)},
                     max=float(max(values))) if values else None
-            results[-1]["summary"] = dict(steps=len(smoke), route_gain=smoke[-1]["route"]-start_route,
-                mean_speed=float(np.mean([s["speed"] for s in smoke])), max_speed=max(s["speed"] for s in smoke),
-                stall_steps=sum(s["speed"] < .3 for s in smoke), crash=any(s["crash"] for s in smoke),
+            physical = [s for s in smoke if s["action_executed"]]
+            results[-1]["summary"] = dict(steps=len(physical), requested_steps=args.steps, planning_attempts=len(smoke),
+                safety_failure=any(s["safety_failure"] for s in smoke),
+                unverified_action_executions=sum(s["action_executed"] and not s["safety_certificate"]["valid"] for s in smoke),
+                emergency_steps=sum(s["mode"].startswith("emergency") for s in physical),
+                emergency_unverified_attempts=sum(s["mode"] == "emergency_model_check_failed" for s in smoke),
+                route_gain=smoke[-1]["route"]-start_route,
+                mean_speed=float(np.mean([s["speed"] for s in physical])) if physical else 0.,
+                max_speed=max((s["speed"] for s in physical), default=0.),
+                stall_steps=sum(s["speed"] < .3 for s in physical), crash=any(s["crash"] for s in smoke),
                 offroad=any(s["offroad"] for s in smoke), planning=distribution([s["planning_ms"] for s in smoke]),
                 modes={mode: sum(s["mode"] == mode for s in smoke) for mode in sorted(set(s["mode"] for s in smoke))},
                 distributions={key: distribution([s["diagnostics"].get(key, float("nan")) for s in smoke])

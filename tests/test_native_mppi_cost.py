@@ -86,7 +86,12 @@ def test_exact_candidates_are_never_rolled_out_twice_within_plan():
 def test_invalid_predicted_cost_is_explicit_error(bad):
     planner, _, baseline = fixed_planner(bad_cost=bad)
     with pytest.raises(RuntimeError, match="cumulative WM Cost"):
-        planner.plan(torch.zeros(1, 2), baseline, eval_mode=True)
+        planner._evaluate_cached(torch.zeros(1, 2), baseline[None], {}, None, {})
+    # Production safety-enabled recovery is covered in trajectory selection;
+    # the legacy safety-disabled fixture still must not report a finite score.
+    result = planner.plan(torch.zeros(1, 2), baseline, eval_mode=True)
+    assert not np.isfinite(result.selected_score)
+    assert result.metrics["scoring_unavailable_fallback"] == 1
 
 
 @pytest.mark.parametrize("parameter", ["cost_coef", "deviation_coef", "smoothness_coef", "temperature"])
