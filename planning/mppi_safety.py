@@ -19,6 +19,31 @@ from .swept_collision import swept_collisions
 @dataclass
 class MPPISafetyContext(SafetyContext):
     brake_action_mapping_verified: bool = False
+    target_speed: float | None = None
+    lattice_actions: torch.Tensor | None = None
+    lattice_positions: np.ndarray | torch.Tensor | None = None
+    lane_width: float | None = None
+
+
+@dataclass
+class MPPISafetyResult(SafetyResult):
+    near_valid: torch.Tensor | None = None
+    near_collision: torch.Tensor | None = None
+    near_offroad: torch.Tensor | None = None
+    near_kinematic: torch.Tensor | None = None
+    full_valid: torch.Tensor | None = None
+    risk_score: torch.Tensor | None = None
+    road_risk: torch.Tensor | None = None
+    collision_risk: torch.Tensor | None = None
+    clearance_risk: torch.Tensor | None = None
+    speed_risk: torch.Tensor | None = None
+    lateral_risk: torch.Tensor | None = None
+    kinematic_risk: torch.Tensor | None = None
+    unrecoverable: torch.Tensor | None = None
+    interval_offroad: torch.Tensor | None = None
+    interval_kinematic: torch.Tensor | None = None
+    speeds: torch.Tensor | None = None
+    headings: torch.Tensor | None = None
 
 
 class MPPISafetyFilter:
@@ -28,6 +53,10 @@ class MPPISafetyFilter:
         # of small CUDA launches and CPU synchronizations in swept geometry.
         self.geometry = TrajectorySafetyEvaluator(cfg, control_dt=control_dt, device="cpu")
         self.safe_roads = {}
+        self.two_layer = bool(cfg.get("two_layer", False))
+        self.action_delay_s = float(cfg.get("action_delay_s", 0.))
+        if not math.isfinite(self.action_delay_s) or self.action_delay_s < 0:
+            raise ValueError("Action delay must be finite and nonnegative.")
         for name, default in (("max_acceleration", 4.), ("max_deceleration", 6.),
                               ("max_steering_rate", 7.0), ("max_lateral_acceleration", 6.)):
             value = float(cfg.get(name, default))
@@ -62,7 +91,7 @@ class MPPISafetyFilter:
         return MPPISafetyContext(**values, brake_action_mapping_verified=True)
 
     @torch.no_grad()
-    def check(self, actions, context):
+    def _strict_check(self, actions, context):
         if context is None or context.road is None:
             raise RuntimeError("MPPI independent safety requires a live safety_context with road geometry.")
         if actions.ndim != 3 or actions.shape[-1] != 2 or actions.shape[1] < 2 or not len(actions):
@@ -86,9 +115,10 @@ class MPPISafetyFilter:
         rate = torch.diff(torch.cat((previous, explicit), 1)[:, :, 0], dim=1).abs()*context.max_steering/self.geometry.dt
         curvature = (explicit[:, :, 0]*context.max_steering).tan().abs()/context.wheelbase
         acceleration = torch.maximum(speeds[:, :-1], speeds[:, 1:]).square()*curvature.repeat_interleave(self.geometry.substeps, 1)
-        kinematic = (~finite | (rate > float(self.cfg.get("max_steering_rate", 7.0))).any(1)
-                     | (acceleration > float(self.cfg.get("max_lateral_acceleration", 6.))).any(1)
-                     | (headings.diff(dim=1).abs() >= math.pi).any(1))
+        interval_kinematic = ((rate > float(self.cfg.get("max_steering_rate", 7.0))).repeat_interleave(self.geometry.substeps, 1)
+            | (acceleration > float(self.cfg.get("max_lateral_acceleration", 6.)))
+            | (headings.diff(dim=1).abs() >= math.pi))
+        kinematic = ~finite | interval_kinematic.any(1)
         # Enclose the full translation/rotation between adjacent substeps, not
         # just the center or endpoint corners. The same arc-error bound is used
         # by the continuous collision primitive.
@@ -114,6 +144,16 @@ class MPPISafetyFilter:
         # interval's exact conservative swept-envelope test below.
         whole = torch.cat((lower.amin(1), upper.amax(1)), -1).numpy()
         whole_inside = np.asarray(shapely.covers(safe_road, shapely.box(*whole.T)))
+        # Rotated cars in a narrow road often fail the axis-aligned box test
+        # although their complete swept footprint fits. A conservative hull
+        # of ALL interval vertices, inflated by the largest interval error,
+        # can certify the same set with N queries instead of N*substeps.
+        uncertain = np.flatnonzero(~whole_inside)
+        if len(uncertain):
+            hull = shapely.convex_hull(shapely.multipoints(vertices[uncertain].numpy().reshape(len(uncertain), -1, 2)))
+            inflated = shapely.buffer(hull, pad[uncertain].amax(1).numpy()/math.cos(math.pi/32)+1e-6, quad_segs=8)
+            whole_inside[uncertain] = shapely.covers(safe_road, inflated)
+        road_inside = np.ones((len(actions), positions.shape[1]-1), dtype=bool)
         first_offroad = np.zeros(len(actions), dtype=bool)
         paths = np.flatnonzero(~whole_inside)
         if len(paths):
@@ -127,6 +167,7 @@ class MPPISafetyFilter:
                 swept = shapely.buffer(hulls, pad[paths].numpy().reshape(-1)[ambiguous]/math.cos(math.pi/32)+1e-6, quad_segs=8)
                 inside[ambiguous] = shapely.covers(safe_road, swept)
             whole_inside[paths] = inside.reshape(len(paths), -1).all(1)
+            road_inside[paths] = inside.reshape(len(paths), -1)
             first_offroad[paths] = ~inside.reshape(len(paths), -1)[:, :self.geometry.substeps].all(1)
         offroad = torch.from_numpy(~whole_inside)
         interval = controls.new_full((len(actions), positions.shape[1]-1), torch.inf)
@@ -175,9 +216,118 @@ class MPPISafetyFilter:
             details = self.geometry.check(controls, context)
             valid &= details.valid
             clearance, ttc = details.min_clearance, details.min_ttc
-        return SafetyResult(valid, collision, offroad, kinematic, clearance, ttc,
+        return MPPISafetyResult(valid, collision, offroad, kinematic, clearance, ttc,
                             unavailable, torch.zeros_like(ttc), positions, unavailable, torch.isfinite(interval),
-                            torch.isfinite(interval[:, :self.geometry.substeps]).any(1), torch.from_numpy(first_offroad))
+                            torch.isfinite(interval[:, :self.geometry.substeps]).any(1), torch.from_numpy(first_offroad),
+                            full_valid=valid.clone(), interval_offroad=torch.from_numpy(~road_inside),
+                            interval_kinematic=interval_kinematic, speeds=speeds, headings=headings)
+
+    def committed_controls(self, horizon):
+        # MetaDrive applies the new command in before_step, then holds it for
+        # decision_repeat physics ticks. There is no queued actuator delay.
+        # Additional deployment delay must be explicitly configured, not inferred
+        # from wall time while this synchronous simulator is paused.
+        return min(horizon, 1+math.ceil(self.action_delay_s/self.geometry.dt))
+
+    def _braking_continuations(self, actions, context, committed):
+        hold = actions.clone()
+        hold[:, committed:, 0] = actions[:, committed-1:committed, 0]
+        hold[:, committed:, 1] = self.emergency_throttle
+        guidance = getattr(context, "lattice_actions", None)
+        if guidance is None:
+            return hold
+        guided = hold.clone()
+        limit = float(self.cfg.get("max_steering_rate", 7.))*self.geometry.dt/context.max_steering
+        previous = actions[:, committed-1, 0]
+        for step in range(committed, actions.shape[1]):
+            previous = previous+(float(guidance[step, 0])-previous).clamp(-limit, limit)
+            guided[:, step, 0] = previous
+        return torch.cat((hold, guided), 0)
+
+    @torch.no_grad()
+    def check(self, actions, context):
+        result = self._strict_check(actions, context)
+        if not self.two_layer:
+            return result
+        horizon = actions.shape[1]-1
+        committed = self.committed_controls(horizon)
+        near = committed*self.geometry.substeps
+        finite = torch.isfinite(actions).all((1, 2)) & (actions.abs() <= 1).all((1, 2))
+        result.near_offroad = result.interval_offroad[:, :near].any(1)
+        result.near_collision = result.interval_collision[:, :near].any(1)
+        result.near_kinematic = result.interval_kinematic[:, :near].any(1)
+        near_valid = finite.cpu() & ~result.near_offroad & ~result.near_collision & ~result.near_kinematic
+        if self.action_delay_s+self.geometry.dt > horizon*self.geometry.dt+1e-9:
+            near_valid[:] = False  # cannot certify an uncovered committed interval
+        if float(self.cfg.get("hard_ttc", 0.)) > 0 or float(self.cfg.get("hard_clearance", 0.)) > 0:
+            near_valid &= self._strict_check(actions[:, :committed+1], context).valid
+        # Future conflicts remain checked. A risky tail is admissible only when
+        # at least one rate-limited braking continuation from the SAME committed
+        # prefix passes the unchanged full swept/body/kinematic checks. Failure
+        # is a model viability rejection, not a proof of physical inevitability.
+        unrecoverable = torch.zeros_like(near_valid)
+        risky = (near_valid & ~result.full_valid).nonzero().flatten()
+        if len(risky) and not getattr(context, "brake_action_mapping_verified", False):
+            unrecoverable[risky] = True
+        elif len(risky):
+            witnesses = self._braking_continuations(actions[risky].cpu(), context, committed)
+            checked = self._strict_check(witnesses, context)
+            viable = checked.valid.reshape(-1, len(risky)).any(0)
+            unrecoverable[risky] = ~viable
+        result.near_valid, result.unrecoverable = near_valid, unrecoverable
+        result.valid = near_valid & ~unrecoverable
+        # Only the uncommitted tail contributes soft risk. Immediate violations
+        # are filtered, rather than charged repeatedly through soft penalties.
+        tail = slice(near, None)
+        zero = torch.zeros(len(actions))
+        mean_tail = lambda tensor: tensor[:, tail].float().mean(1) if near < tensor.shape[1] else zero.clone()
+        result.road_risk = mean_tail(result.interval_offroad)
+        result.kinematic_risk = mean_tail(result.interval_kinematic)
+        result.collision_risk = mean_tail(result.interval_collision)
+        # Continuous swept intervals above remain authoritative. Soft boundary
+        # distance only needs control-rate samples, not repeated GEOS queries
+        # at every physics substep.
+        corners = _corners(result.positions[:, near::self.geometry.substeps], result.headings[:, near::self.geometry.substeps],
+                            context.length+2*self.geometry.model_margin, context.width+2*self.geometry.model_margin)
+        _, margin = self.geometry._road_metrics(corners, context.road)
+        result.boundary_margin = margin
+        boundary_risk = torch.exp(-margin.clamp_min(0)/context.width)
+        # Bounding-circle separation is a conservative lower bound on clearance;
+        # continuous contact/TTC still comes from swept_collisions above.
+        result.clearance_risk = zero.clone()
+        if context.obstacles:
+            times = torch.arange(result.positions.shape[1])*self.geometry.dt/self.geometry.substeps
+            xy = result.positions.new_tensor(np.asarray([o.position for o in context.obstacles]))
+            velocity = result.positions.new_tensor(np.asarray([o.velocity for o in context.obstacles]))
+            other = xy[None]+times[:, None, None]*velocity[None]
+            distance = (result.positions[:, :, None]-other[None]).norm(dim=-1)
+            radii = result.positions.new_tensor([math.hypot(o.length, o.width)/2 for o in context.obstacles])
+            clearance = (distance-radii-math.hypot(context.length, context.width)/2).clamp_min(0).amin(2)
+            result.min_clearance = clearance.amin(1)
+            result.clearance_risk = (torch.exp(-clearance[:, near+1:]/context.width).mean(1)
+                                    if near+1 < clearance.shape[1] else zero.clone())
+        target = getattr(context, "target_speed", None)
+        result.speed_risk = zero.clone()
+        if target is not None and math.isfinite(target) and target >= 0:
+            reachable = min(target, context.speed+float(self.cfg.get("max_acceleration", 4.))*horizon*self.geometry.dt)
+            result.speed_risk = ((result.speeds[:, -1]-reachable)/max(reachable, 1.)).square()
+        result.lateral_risk = zero.clone()
+        reference = getattr(context, "lattice_positions", None)
+        if reference is not None and len(reference) >= 2:
+            # Both trajectories are in world XY. Closest segment distance,
+            # rather than equal-time distance, avoids treating slower progress
+            # as lateral error on the nominal Frenet path.
+            reference = result.positions.new_tensor(np.asarray(reference))
+            segment = reference[1:]-reference[:-1]
+            delta = result.positions[:, near:, None]-reference[None, None, :-1]
+            u = (delta*segment).sum(-1)/segment.square().sum(-1).clamp_min(1e-12)
+            distance = (delta-u.clamp(0, 1)[..., None]*segment).square().sum(-1).amin(-1)
+            scale = float(getattr(context, "lane_width", None) or context.width)
+            result.lateral_risk = distance.mean(1)/(scale*scale)
+        ttc_risk = torch.where(torch.isfinite(result.min_ttc), 1/(1+result.min_ttc/self.geometry.dt), 0.)
+        result.risk_score = (result.road_risk+result.collision_risk+result.kinematic_risk
+                             +boundary_risk+result.clearance_risk+ttc_risk+result.speed_risk+result.lateral_risk)
+        return result
 
     def stopping_diagnostics(self, context, horizon):
         # Model estimate only: MetaDrive Bullet brake force/mass/tire friction

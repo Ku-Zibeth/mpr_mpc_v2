@@ -1,0 +1,135 @@
+"""Read-only bounded recovery smoke from recorded V3.1.1 stopped states."""
+
+import argparse
+import contextlib
+import hashlib
+import io
+import json
+from pathlib import Path
+import sys
+import cProfile
+import pstats
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+import numpy as np
+import torch
+from omegaconf import OmegaConf
+from mpr_mpc._bootstrap import bootstrap
+bootstrap()
+from common.seed import set_seed
+from env import make_env
+import evaluate_model_suite as suite
+from mpr_mpc.planning.safety import _corners
+from shapely.geometry import Polygon
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--run", type=Path, default=ROOT / "logs/benchmark/mpr_mpc_v311_sac_vs_sac_mppi_fixed100_20261109_202823")
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--steps", type=int, default=60)
+    parser.add_argument("--snapshots", nargs="+", default=["1714:250", "559:600"])
+    parser.add_argument("--profile-first", action="store_true")
+    args = parser.parse_args()
+    if args.output.exists() or not 0 < args.steps <= 200:
+        parser.error("Require a fresh output path and 1..200 smoke steps.")
+    snapshots = dict(tuple(map(int, s.split(":"))) for s in args.snapshots)
+    records = {seed: [] for seed in snapshots}
+    for line in next((args.run / "steps").glob("*_full_mpr_mpc_seed1.jsonl")).open():
+        row = json.loads(line); seed = row["scenario"]
+        if seed in snapshots and row["episode_step"] <= snapshots[seed]:
+            records[seed].append(row)
+        if all(len(records[s]) >= step for s, step in snapshots.items()):
+            break
+    raw = OmegaConf.load(args.run / "config_D_lattice_sac_mppi_seed1.yaml")
+    raw.mpr_mpc.mppi = OmegaConf.load(ROOT / "config.yaml").mpr_mpc.mppi
+    raw.restore_mppi_runtime = False
+    raw.enable_wandb = raw.save_agent = raw.save_video = False
+    raw.residual_rl.buffer_size = 8
+    checkpoint = Path(json.loads((args.run / "manifest.json").read_text())["checkpoint"])
+    checksum = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+    scenarios = json.loads((args.run / "scenarios.json").read_text())["scenarios"]
+    _, cfg = suite._make_cfg(raw, checkpoint.parent.parent.name, checkpoint, scenarios)
+    cfg.residual_rl["buffer_size"] = 8
+    torch.set_float32_matmul_precision("high"); set_seed(cfg.seed)
+    env = make_env(cfg)
+    results = []
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            agent = suite._make_agent(cfg, env); loaded = agent.load(checkpoint)
+        agent.eval(); suite._apply_evaluation_stack(agent.planner, "full_mpr_mpc", loaded)
+        agent.set_global_step(max(agent.global_env_step, agent.planner.mppi_start_step))
+        for seed, step in snapshots.items():
+            episode_seed = (int(cfg.seed)+seed) % 2**32
+            set_seed(episode_seed); agent.planner.reset(seed=episode_seed)
+            obs = env.reset(seed=seed); replay_error = 0.; info = {}
+            for row in records[seed][:-1]:
+                speed = float(np.linalg.norm(env.unwrapped_metadrive.agent.velocity))
+                replay_error = max(replay_error, abs(speed-row["mpr/actual_speed_mps"]))
+                obs, _, done, info = env.step(np.asarray(row["executed_action"], dtype=np.float32))
+                if done:
+                    raise RuntimeError("Recorded-action replay terminated early.")
+            if replay_error > 1e-4:
+                raise RuntimeError(f"Replay state mismatch in {seed}: speed error={replay_error}")
+            start_route = float(info.get("route_completion", 0.))
+            smoke = []
+            lattice_audit = None
+            geometry_audit = None
+            for i in range(args.steps):
+                profile = cProfile.Profile() if args.profile_first and i == 0 else None
+                if profile: profile.enable()
+                action = agent.act(obs, t0=False, eval_mode=True)
+                if profile:
+                    profile.disable(); pstats.Stats(profile).sort_stats("cumtime").print_stats(20)
+                result, context = agent.last_plan, agent.planner.last_context.mppi_safety_context
+                if i == 0:
+                    f = agent.planner.local_mppi.candidate_safety
+                    r = f.check(result.coarse_actions[None].cpu(), context)
+                    lattice_audit = dict(near_valid=bool(r.near_valid[0]), full_valid=bool(r.full_valid[0]),
+                        admissible=bool(r.valid[0]), unrecoverable=bool(r.unrecoverable[0]))
+                    footprint = _corners(torch.tensor(context.position)[None, None], torch.tensor([[context.heading]]),
+                                         context.length, context.width)[0, 0].numpy()
+                    vehicle = env.unwrapped_metadrive.agent
+                    geometry_audit = dict(length=context.length, width=context.width, wheelbase=context.wheelbase,
+                        max_steering_rad=context.max_steering, control_dt=agent.planner.control_dt,
+                        footprint_hausdorff_m=Polygon(footprint).hausdorff_distance(Polygon(vehicle.bounding_box)))
+                prediction, _, predicted_speed = agent.planner.local_mppi.candidate_safety.geometry.rollout(
+                    result.debug["selected_mppi_actions"][None, :2], context)
+                obs, _, done, info = env.step(action)
+                crash = any(bool(info.get(k, False)) for k in ("crash", "crash_vehicle", "crash_object"))
+                offroad = bool(info.get("out_of_road", False))
+                smoke.append(dict(step=i+1, mode=result.planning_mode, action=action.tolist(),
+                    speed=float(np.linalg.norm(env.unwrapped_metadrive.agent.velocity)),
+                    route=float(info.get("route_completion", 0.)), crash=crash, offroad=offroad,
+                    emergency_streak=result.metrics["mppi/emergency_streak"],
+                    baseline_near=result.metrics["mppi/baseline_near_valid"], baseline_full=result.metrics["mppi/baseline_full_valid"],
+                    baseline_near_offroad=result.metrics["mppi/baseline_near_offroad"],
+                    baseline_future_hard=result.metrics["mppi/baseline_future_hard_reject"],
+                    emergency_reason=result.metrics["mppi/emergency_reason"],
+                    one_step_position_error_m=float(np.linalg.norm(prediction[0, -1].numpy()-env.unwrapped_metadrive.agent.position)),
+                    one_step_speed_error_mps=abs(float(predicted_speed[0, -1])-float(np.linalg.norm(env.unwrapped_metadrive.agent.velocity))),
+                    risk=result.metrics["mppi/long_risk_score"], planning_ms=result.metrics["mpr/total_planning_ms"]))
+                if i == 0 or (i+1) % 20 == 0:
+                    print(f"[smoke] seed={seed} step={i+1} speed={smoke[-1]['speed']:.3f} route={smoke[-1]['route']:.4f} mode={result.planning_mode}", flush=True)
+                if done or crash or offroad:
+                    break
+            results.append(dict(scenario=seed, snapshot_before_step=step, replay_max_speed_error=replay_error,
+                start_route=start_route, end_route=smoke[-1]["route"], initial_lattice=lattice_audit, records=smoke))
+            results[-1]["geometry_audit"] = geometry_audit
+        assert agent.planner.residual_state_dim == 535
+    finally:
+        env.close()
+    assert hashlib.sha256(checkpoint.read_bytes()).hexdigest() == checksum
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(dict(checkpoint=str(checkpoint), checkpoint_sha256=checksum,
+        note="Bounded live-physics smoke from recorded states; not a success-rate benchmark.", results=results), indent=2))
+    print(json.dumps([dict(scenario=r["scenario"], steps=len(r["records"]), route_gain=r["end_route"]-r["start_route"],
+        max_speed=max(s["speed"] for s in r["records"]), max_emergency_streak=max(s["emergency_streak"] for s in r["records"]),
+        crash=any(s["crash"] for s in r["records"]), offroad=any(s["offroad"] for s in r["records"]),
+        initial_lattice=r["initial_lattice"]) for r in results], indent=2), flush=True)
+
+
+if __name__ == "__main__":
+    main()

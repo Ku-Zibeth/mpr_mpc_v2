@@ -168,13 +168,14 @@ def test_selected_safety_positions_match_h_transitions_and_global_vehicle_pose()
 
 def test_mppi_context_preparation_does_not_require_sac_features_or_residual_state():
     from unittest.mock import Mock
+    from tests.test_mpr_mpc import make_path
 
     p = object.__new__(MPRMPCPlanner)
-    coarse = SimpleNamespace(target_d=0., target_speed=5., horizon=3.)
+    coarse = make_path(target_d=0., target_speed=5., horizon=3.)
     selection = StructuredSelection((coarse,), (coarse,), coarse, 0)
     p.device, p.horizon, p.control_dt = "cpu", 3, .1
     p.safety = None
-    p.structured = SimpleNamespace(select_coarse=lambda vehicle: selection, planner=object())
+    p.structured = SimpleNamespace(select_coarse=lambda vehicle: selection, planner=SimpleNamespace(last_lane_width=3.5))
     p.action_adapter = SimpleNamespace(path_to_actions=lambda *args, **kwargs: torch.zeros(4, 2))
     p.residual_bounds = lambda path: torch.ones(1, 2)
     p._vehicle_geometry = lambda vehicle: (2., 2.5, .6)
@@ -185,6 +186,7 @@ def test_mppi_context_preparation_does_not_require_sac_features_or_residual_stat
                        need_world_model_features=False, need_mppi_safety=True)
     assert result.residual_state is result.safety_context is None
     assert result.mppi_safety_context is physical
+    assert result.mppi_safety_context.lattice_positions.shape == (4, 2)
     assert candidate_filter.context.call_args.kwargs["snapshot"] is None
     p.safety = SimpleNamespace(context=Mock(), check=Mock())
     p.evaluator = SimpleNamespace(encode=Mock(return_value=torch.zeros(1, 512)),

@@ -1,0 +1,2437 @@
+{
+  "checkpoint": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt",
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "note": "Bounded live-physics smoke from recorded states; not a success-rate benchmark.",
+  "results": [
+    {
+      "scenario": 1714,
+      "snapshot_before_step": 250,
+      "replay_max_speed_error": 0.0,
+      "start_route": 0.4333385672819936,
+      "end_route": 0.4964459020760455,
+      "initial_lattice": {
+        "near_valid": true,
+        "full_valid": false,
+        "admissible": true,
+        "unrecoverable": false
+      },
+      "records": [
+        {
+          "step": 1,
+          "mode": "normal",
+          "action": [
+            -0.0010045766830444336,
+            0.9324484467506409
+          ],
+          "speed": 0.2526015932859694,
+          "route": 0.43335383318999954,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 1.6074542999267578,
+          "planning_ms": 1147.489762006444
+        },
+        {
+          "step": 2,
+          "mode": "normal",
+          "action": [
+            0.020170103758573532,
+            0.8848102688789368
+          ],
+          "speed": 0.49496945507006973,
+          "route": 0.4334302635129881,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 1.7336233854293823,
+          "planning_ms": 657.1592850086745
+        },
+        {
+          "step": 3,
+          "mode": "normal",
+          "action": [
+            -0.3951767683029175,
+            0.75
+          ],
+          "speed": 0.6816819741866029,
+          "route": 0.4335650542736761,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 1.807623267173767,
+          "planning_ms": 688.9241020107875
+        },
+        {
+          "step": 4,
+          "mode": "normal",
+          "action": [
+            -0.2832298278808594,
+            0.9629393815994263
+          ],
+          "speed": 0.9437529070857141,
+          "route": 0.43375370627661863,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 1.9238431453704834,
+          "planning_ms": 644.987637992017
+        },
+        {
+          "step": 5,
+          "mode": "normal",
+          "action": [
+            -0.2836777865886688,
+            0.9434375762939453
+          ],
+          "speed": 1.1998039693482878,
+          "route": 0.43400841173717175,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 1.9799695014953613,
+          "planning_ms": 749.6126040059607
+        },
+        {
+          "step": 6,
+          "mode": "normal",
+          "action": [
+            -0.2556118965148926,
+            1.0
+          ],
+          "speed": 1.4725141619875362,
+          "route": 0.43432979793216236,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 1.698146104812622,
+          "planning_ms": 715.9443510026904
+        },
+        {
+          "step": 7,
+          "mode": "normal",
+          "action": [
+            -0.2869083881378174,
+            0.8636495471000671
+          ],
+          "speed": 1.7050739251030702,
+          "route": 0.434718281274618,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 1.1112966537475586,
+          "planning_ms": 686.2804919946939
+        },
+        {
+          "step": 8,
+          "mode": "normal",
+          "action": [
+            -0.3032607436180115,
+            1.0
+          ],
+          "speed": 1.9742034634143522,
+          "route": 0.4351688346629645,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 1.2235280275344849,
+          "planning_ms": 790.0693120027427
+        },
+        {
+          "step": 9,
+          "mode": "normal",
+          "action": [
+            -0.18786148726940155,
+            0.9342072010040283
+          ],
+          "speed": 2.2325319137680397,
+          "route": 0.4356873560944635,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 1.592786431312561,
+          "planning_ms": 688.8182510010665
+        },
+        {
+          "step": 10,
+          "mode": "baseline",
+          "action": [
+            -0.1947876513004303,
+            1.0
+          ],
+          "speed": 2.5060563629254182,
+          "route": 0.43627332908444844,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 1.252646565437317,
+          "planning_ms": 579.5352979912423
+        },
+        {
+          "step": 11,
+          "mode": "normal",
+          "action": [
+            -0.1624191850423813,
+            0.9683519601821899
+          ],
+          "speed": 2.7721164249743735,
+          "route": 0.43692877821552617,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 1.4223761558532715,
+          "planning_ms": 704.9412100022892
+        },
+        {
+          "step": 12,
+          "mode": "normal",
+          "action": [
+            -0.10355918854475021,
+            0.974385142326355
+          ],
+          "speed": 3.040592637958309,
+          "route": 0.4376526924912867,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 1.4216527938842773,
+          "planning_ms": 628.3631810074439
+        },
+        {
+          "step": 13,
+          "mode": "normal",
+          "action": [
+            -0.08618549257516861,
+            1.0
+          ],
+          "speed": 3.315268388468015,
+          "route": 0.43844575823552967,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 1.3072726726531982,
+          "planning_ms": 477.9932800011011
+        },
+        {
+          "step": 14,
+          "mode": "normal",
+          "action": [
+            -0.09684658795595169,
+            0.8709920048713684
+          ],
+          "speed": 3.553290884233289,
+          "route": 0.4393068497728127,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 1.1895172595977783,
+          "planning_ms": 441.3933340110816
+        },
+        {
+          "step": 15,
+          "mode": "normal",
+          "action": [
+            -0.08892855048179626,
+            0.979706346988678
+          ],
+          "speed": 3.8216045975439834,
+          "route": 0.4402311735419273,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 1.3082386255264282,
+          "planning_ms": 589.9086419958621
+        },
+        {
+          "step": 16,
+          "mode": "normal",
+          "action": [
+            -0.07899542152881622,
+            0.9637267589569092
+          ],
+          "speed": 4.085770717719393,
+          "route": 0.4412236892567494,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.982694149017334,
+          "planning_ms": 476.3187609933084
+        },
+        {
+          "step": 17,
+          "mode": "normal",
+          "action": [
+            -0.08465148508548737,
+            0.971680223941803
+          ],
+          "speed": 4.35141303681338,
+          "route": 0.4422840063215856,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.980091392993927,
+          "planning_ms": 407.70271500514355
+        },
+        {
+          "step": 18,
+          "mode": "normal",
+          "action": [
+            -0.09383848309516907,
+            0.9275290369987488
+          ],
+          "speed": 4.6043847881739675,
+          "route": 0.4434115859088149,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.9369338750839233,
+          "planning_ms": 518.0171810061438
+        },
+        {
+          "step": 19,
+          "mode": "normal",
+          "action": [
+            -0.09781312942504883,
+            0.9162455201148987
+          ],
+          "speed": 4.854367436931685,
+          "route": 0.44460395699015937,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.9094329476356506,
+          "planning_ms": 355.8841229969403
+        },
+        {
+          "step": 20,
+          "mode": "normal",
+          "action": [
+            -0.0936565101146698,
+            0.971909761428833
+          ],
+          "speed": 5.120193080006536,
+          "route": 0.44586145312038494,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.8715440034866333,
+          "planning_ms": 349.8652870039223
+        },
+        {
+          "step": 21,
+          "mode": "normal",
+          "action": [
+            -0.10052543133497238,
+            0.9462788701057434
+          ],
+          "speed": 5.378167995227752,
+          "route": 0.4471864763044924,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.8694970607757568,
+          "planning_ms": 343.7647850078065
+        },
+        {
+          "step": 22,
+          "mode": "normal",
+          "action": [
+            -0.10488339513540268,
+            0.9078873991966248
+          ],
+          "speed": 5.625475390993647,
+          "route": 0.4485770992957987,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.8571942448616028,
+          "planning_ms": 342.1159900026396
+        },
+        {
+          "step": 23,
+          "mode": "normal",
+          "action": [
+            -0.08440995216369629,
+            0.9206069707870483
+          ],
+          "speed": 5.8783105330704055,
+          "route": 0.45003183381997286,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.8484424948692322,
+          "planning_ms": 437.74616801238153
+        },
+        {
+          "step": 24,
+          "mode": "normal",
+          "action": [
+            -0.07673319429159164,
+            1.0
+          ],
+          "speed": 6.152448732013977,
+          "route": 0.45155309431790597,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.8397352695465088,
+          "planning_ms": 328.5201280086767
+        },
+        {
+          "step": 25,
+          "mode": "normal",
+          "action": [
+            -0.06665032356977463,
+            0.9659156203269958
+          ],
+          "speed": 6.417313656235441,
+          "route": 0.4531444400260007,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.8303364515304565,
+          "planning_ms": 322.48791299934965
+        },
+        {
+          "step": 26,
+          "mode": "normal",
+          "action": [
+            -0.06434214860200882,
+            0.9373106360435486
+          ],
+          "speed": 6.673883343398397,
+          "route": 0.4548038901042016,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.8122403025627136,
+          "planning_ms": 322.2370049916208
+        },
+        {
+          "step": 27,
+          "mode": "normal",
+          "action": [
+            -0.048910677433013916,
+            0.9800416231155396
+          ],
+          "speed": 6.942810456033312,
+          "route": 0.4565307668037837,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.8068830966949463,
+          "planning_ms": 414.0278050035704
+        },
+        {
+          "step": 28,
+          "mode": "normal",
+          "action": [
+            -0.0688517764210701,
+            0.9479722380638123
+          ],
+          "speed": 7.200513790122799,
+          "route": 0.4583265017149106,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.8193308711051941,
+          "planning_ms": 313.1546220101882
+        },
+        {
+          "step": 29,
+          "mode": "normal",
+          "action": [
+            -0.10541853308677673,
+            1.0
+          ],
+          "speed": 7.467614150625892,
+          "route": 0.4601892314335118,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.8122221231460571,
+          "planning_ms": 338.5376170044765
+        },
+        {
+          "step": 30,
+          "mode": "normal",
+          "action": [
+            -0.09328456223011017,
+            0.9312459826469421
+          ],
+          "speed": 7.721632248487675,
+          "route": 0.46211992216808473,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.8153003454208374,
+          "planning_ms": 315.1302059995942
+        },
+        {
+          "step": 31,
+          "mode": "normal",
+          "action": [
+            -0.1247706413269043,
+            0.9544298648834229
+          ],
+          "speed": 7.9754418451729165,
+          "route": 0.46411612200730984,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.815112829208374,
+          "planning_ms": 392.8255290084053
+        },
+        {
+          "step": 32,
+          "mode": "normal",
+          "action": [
+            -0.07950388640165329,
+            0.7162403464317322
+          ],
+          "speed": 8.173862182545088,
+          "route": 0.4661747249953402,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.7619560360908508,
+          "planning_ms": 294.37380700255744
+        },
+        {
+          "step": 33,
+          "mode": "normal",
+          "action": [
+            -0.020828716456890106,
+            0.6504349708557129
+          ],
+          "speed": 8.352864934652693,
+          "route": 0.4682864909530619,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.7381176948547363,
+          "planning_ms": 283.7783310096711
+        },
+        {
+          "step": 34,
+          "mode": "normal",
+          "action": [
+            -0.06665387749671936,
+            -0.7511618137359619
+          ],
+          "speed": 7.326326910047424,
+          "route": 0.4702459123114813,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 1.0738483667373657,
+          "planning_ms": 353.1303449999541
+        },
+        {
+          "step": 35,
+          "mode": "normal",
+          "action": [
+            -0.061206504702568054,
+            -0.23714953660964966
+          ],
+          "speed": 6.966051898413436,
+          "route": 0.47200806410134805,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.6630365252494812,
+          "planning_ms": 293.70209100306965
+        },
+        {
+          "step": 36,
+          "mode": "normal",
+          "action": [
+            -0.08541632443666458,
+            -0.2855479121208191
+          ],
+          "speed": 6.530090452356012,
+          "route": 0.4736701117245793,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.6015656590461731,
+          "planning_ms": 394.3430210056249
+        },
+        {
+          "step": 37,
+          "mode": "normal",
+          "action": [
+            -0.008657865226268768,
+            -0.2987842559814453
+          ],
+          "speed": 6.0765196351658,
+          "route": 0.4752243752825891,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.4299302101135254,
+          "planning_ms": 290.21188100159634
+        },
+        {
+          "step": 38,
+          "mode": "normal",
+          "action": [
+            -0.07549832761287689,
+            -0.8777818083763123
+          ],
+          "speed": 4.983248372849855,
+          "route": 0.4766264903483541,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.7074141502380371,
+          "planning_ms": 291.4024710044032
+        },
+        {
+          "step": 39,
+          "mode": "normal",
+          "action": [
+            0.04212494567036629,
+            -0.13595573604106903
+          ],
+          "speed": 4.771540268729804,
+          "route": 0.47782560469487706,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.3649061918258667,
+          "planning_ms": 291.9540859875269
+        },
+        {
+          "step": 40,
+          "mode": "normal",
+          "action": [
+            0.02946965955197811,
+            -0.27567601203918457
+          ],
+          "speed": 4.3534293931593835,
+          "route": 0.478957238756593,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.5252054333686829,
+          "planning_ms": 288.34496600029524
+        },
+        {
+          "step": 41,
+          "mode": "normal",
+          "action": [
+            0.024159103631973267,
+            0.13739410042762756
+          ],
+          "speed": 4.39109996858225,
+          "route": 0.4800168539949345,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.3864615857601166,
+          "planning_ms": 414.86475900455844
+        },
+        {
+          "step": 42,
+          "mode": "normal",
+          "action": [
+            0.07205019146203995,
+            -0.1772567331790924
+          ],
+          "speed": 4.119800316609986,
+          "route": 0.4810639773383891,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.45070111751556396,
+          "planning_ms": 301.96948698721826
+        },
+        {
+          "step": 43,
+          "mode": "normal",
+          "action": [
+            0.04792597144842148,
+            -0.14856302738189697
+          ],
+          "speed": 3.8949113673195264,
+          "route": 0.48205244947548487,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.4495452344417572,
+          "planning_ms": 310.4152739979327
+        },
+        {
+          "step": 44,
+          "mode": "normal",
+          "action": [
+            0.10053946822881699,
+            -0.067424476146698
+          ],
+          "speed": 3.789325425119922,
+          "route": 0.482993600968501,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.4122653007507324,
+          "planning_ms": 279.10201299528126
+        },
+        {
+          "step": 45,
+          "mode": "normal",
+          "action": [
+            0.09172437340021133,
+            -0.08659949898719788
+          ],
+          "speed": 3.657853082964426,
+          "route": 0.4839078757840192,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.45844095945358276,
+          "planning_ms": 306.4697730005719
+        },
+        {
+          "step": 46,
+          "mode": "normal",
+          "action": [
+            0.09800276160240173,
+            -0.047918811440467834
+          ],
+          "speed": 3.5847935044641184,
+          "route": 0.4847945527096366,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.3507985472679138,
+          "planning_ms": 385.0060149998171
+        },
+        {
+          "step": 47,
+          "mode": "normal",
+          "action": [
+            0.10712885111570358,
+            -0.17187567055225372
+          ],
+          "speed": 3.323752365669168,
+          "route": 0.48565247325659544,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.43447691202163696,
+          "planning_ms": 283.79530599340796
+        },
+        {
+          "step": 48,
+          "mode": "normal",
+          "action": [
+            0.15093658864498138,
+            0.10699472576379776
+          ],
+          "speed": 3.349080882284075,
+          "route": 0.48646595916774094,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.25969070196151733,
+          "planning_ms": 278.93137600040063
+        },
+        {
+          "step": 49,
+          "mode": "normal",
+          "action": [
+            0.1459922343492508,
+            -0.09419772773981094
+          ],
+          "speed": 3.205837189044803,
+          "route": 0.4872734418867233,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.3749665319919586,
+          "planning_ms": 272.4547460093163
+        },
+        {
+          "step": 50,
+          "mode": "normal",
+          "action": [
+            0.09834334999322891,
+            0.05177290737628937
+          ],
+          "speed": 3.221593955873951,
+          "route": 0.48805707059895675,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.3079970180988312,
+          "planning_ms": 377.7530170045793
+        },
+        {
+          "step": 51,
+          "mode": "normal",
+          "action": [
+            0.14666712284088135,
+            0.81479412317276
+          ],
+          "speed": 3.4413259894173924,
+          "route": 0.48885482266114405,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.19573557376861572,
+          "planning_ms": 278.47210099571384
+        },
+        {
+          "step": 52,
+          "mode": "normal",
+          "action": [
+            0.09180545061826706,
+            -0.13560651242733002
+          ],
+          "speed": 3.2374239703745213,
+          "route": 0.4896793704680171,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.3588854968547821,
+          "planning_ms": 281.2652279972099
+        },
+        {
+          "step": 53,
+          "mode": "normal",
+          "action": [
+            0.10109922289848328,
+            0.8158829212188721
+          ],
+          "speed": 3.460767623155966,
+          "route": 0.4904832929079798,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.1879662424325943,
+          "planning_ms": 285.7535729999654
+        },
+        {
+          "step": 54,
+          "mode": "normal",
+          "action": [
+            0.048888690769672394,
+            0.24437031149864197
+          ],
+          "speed": 3.52844105053081,
+          "route": 0.4913283344601355,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.23436646163463593,
+          "planning_ms": 292.8499020054005
+        },
+        {
+          "step": 55,
+          "mode": "normal",
+          "action": [
+            0.086848184466362,
+            0.09468606859445572
+          ],
+          "speed": 3.552915543014444,
+          "route": 0.49218881145344684,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.31421396136283875,
+          "planning_ms": 394.17283701186534
+        },
+        {
+          "step": 56,
+          "mode": "normal",
+          "action": [
+            0.04480563849210739,
+            -0.11686280369758606
+          ],
+          "speed": 3.376334873246056,
+          "route": 0.4930437482600653,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.34668755531311035,
+          "planning_ms": 290.8278149989201
+        },
+        {
+          "step": 57,
+          "mode": "normal",
+          "action": [
+            0.006210861727595329,
+            0.21164822578430176
+          ],
+          "speed": 3.434110595740892,
+          "route": 0.4938714335560875,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.23245586454868317,
+          "planning_ms": 288.32052199868485
+        },
+        {
+          "step": 58,
+          "mode": "normal",
+          "action": [
+            -0.09947533905506134,
+            0.3494100868701935
+          ],
+          "speed": 3.521645848602984,
+          "route": 0.4947126085197204,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.23484371602535248,
+          "planning_ms": 286.9307469954947
+        },
+        {
+          "step": 59,
+          "mode": "normal",
+          "action": [
+            -0.06140856817364693,
+            0.2524024546146393
+          ],
+          "speed": 3.5909651996932177,
+          "route": 0.49557385895194717,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.21643677353858948,
+          "planning_ms": 284.36847700504586
+        },
+        {
+          "step": 60,
+          "mode": "normal",
+          "action": [
+            -0.11504034698009491,
+            -0.01995217055082321
+          ],
+          "speed": 3.5572118115415527,
+          "route": 0.4964459020760455,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 1.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 0.28907856345176697,
+          "planning_ms": 384.4674839929212
+        }
+      ]
+    },
+    {
+      "scenario": 559,
+      "snapshot_before_step": 600,
+      "replay_max_speed_error": 5.774979254802304e-06,
+      "start_route": 0.48314154935065085,
+      "end_route": 0.4843994835442492,
+      "initial_lattice": {
+        "near_valid": true,
+        "full_valid": false,
+        "admissible": true,
+        "unrecoverable": false
+      },
+      "records": [
+        {
+          "step": 1,
+          "mode": "normal",
+          "action": [
+            0.17663529515266418,
+            0.9970723390579224
+          ],
+          "speed": 0.2861297460221287,
+          "route": 0.4831690064762317,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 1.733390212059021,
+          "planning_ms": 352.07785600505304
+        },
+        {
+          "step": 2,
+          "mode": "normal",
+          "action": [
+            0.18374863266944885,
+            0.9641916751861572
+          ],
+          "speed": 0.559541064973167,
+          "route": 0.4833033685682618,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 1.8425132036209106,
+          "planning_ms": 345.6244019907899
+        },
+        {
+          "step": 3,
+          "mode": "normal",
+          "action": [
+            0.15296155214309692,
+            0.9911742806434631
+          ],
+          "speed": 0.8412279424666572,
+          "route": 0.48354653441808215,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 1.8949899673461914,
+          "planning_ms": 446.78569299867377
+        },
+        {
+          "step": 4,
+          "mode": "normal",
+          "action": [
+            0.13147351145744324,
+            1.0
+          ],
+          "speed": 1.125628123525512,
+          "route": 0.48390109602657083,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 2.003793239593506,
+          "planning_ms": 578.4575900033815
+        },
+        {
+          "step": 5,
+          "mode": "emergency_model_checked",
+          "action": [
+            0.015254691243171692,
+            -1.0
+          ],
+          "speed": 0.15793938634137367,
+          "route": 0.48418983286857364,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 1.0,
+          "baseline_near": 1.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 1.0,
+          "emergency_reason": 3.0,
+          "risk": 2.0197393894195557,
+          "planning_ms": 257.59292900329456
+        },
+        {
+          "step": 6,
+          "mode": "normal",
+          "action": [
+            0.19741103053092957,
+            1.0
+          ],
+          "speed": 0.44095805481438294,
+          "route": 0.48426726135992076,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 2.005969524383545,
+          "planning_ms": 365.95733600552194
+        },
+        {
+          "step": 7,
+          "mode": "emergency_model_checked",
+          "action": [
+            0.03366100788116455,
+            -1.0
+          ],
+          "speed": 0.11790203684692083,
+          "route": 0.4843383605467981,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 1.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 3.0,
+          "risk": 2.0209412574768066,
+          "planning_ms": 276.0035959945526
+        },
+        {
+          "step": 8,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.04779966175556183,
+            0.10000000149011612
+          ],
+          "speed": 0.1458627860804881,
+          "route": 0.4843623516246931,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 1.0,
+          "emergency_reason": 0.0,
+          "risk": 2.717421770095825,
+          "planning_ms": 243.7172229983844
+        },
+        {
+          "step": 9,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.12736473977565765,
+            0.10000000149011612
+          ],
+          "speed": 0.17399366104014674,
+          "route": 0.484422118342615,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 2.7623722553253174,
+          "planning_ms": 184.82213000243064
+        },
+        {
+          "step": 10,
+          "mode": "emergency_model_checked",
+          "action": [
+            -0.12484954297542572,
+            -1.0
+          ],
+          "speed": 0.207266856591341,
+          "route": 0.4844296833684337,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 1.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 3.0,
+          "risk": 2.0336828231811523,
+          "planning_ms": 160.85933499562088
+        },
+        {
+          "step": 11,
+          "mode": "emergency_model_checked",
+          "action": [
+            -0.13717246055603027,
+            -1.0
+          ],
+          "speed": 0.10343229849979098,
+          "route": 0.4844208223421759,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 2.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 3.0,
+          "risk": 2.0351040363311768,
+          "planning_ms": 164.90065300604329
+        },
+        {
+          "step": 12,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.13013222813606262,
+            0.0
+          ],
+          "speed": 0.0670501486413965,
+          "route": 0.4844315520202295,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 3.015455961227417,
+          "planning_ms": 174.1636090009706
+        },
+        {
+          "step": 13,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.13230766355991364,
+            0.10000000149011612
+          ],
+          "speed": 0.09548715339251038,
+          "route": 0.4844612093326022,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 2.847885847091675,
+          "planning_ms": 275.0656610005535
+        },
+        {
+          "step": 14,
+          "mode": "emergency_model_checked",
+          "action": [
+            -0.12941445410251617,
+            -1.0
+          ],
+          "speed": 0.220745708058329,
+          "route": 0.4844623244957707,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 1.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 3.0,
+          "risk": 2.0378775596618652,
+          "planning_ms": 175.6470120017184
+        },
+        {
+          "step": 15,
+          "mode": "emergency_model_check_failed",
+          "action": [
+            -0.12941445410251617,
+            -1.0
+          ],
+          "speed": 0.09903843978335362,
+          "route": 0.48445418681859526,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 2.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 1.0,
+          "risk": 0.0,
+          "planning_ms": 155.4315990069881
+        },
+        {
+          "step": 16,
+          "mode": "emergency_model_checked",
+          "action": [
+            -0.1294431984424591,
+            -1.0
+          ],
+          "speed": 0.23852988102037453,
+          "route": 0.48441337787453764,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 3.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 3.0,
+          "risk": 2.037032127380371,
+          "planning_ms": 164.66245900664944
+        },
+        {
+          "step": 17,
+          "mode": "emergency_model_checked",
+          "action": [
+            -0.13637126982212067,
+            -1.0
+          ],
+          "speed": 0.1099961951997325,
+          "route": 0.4843984286601709,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 4.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 3.0,
+          "risk": 2.033566474914551,
+          "planning_ms": 165.03589400963392
+        },
+        {
+          "step": 18,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.12911105155944824,
+            0.10000000149011612
+          ],
+          "speed": 0.13825674696009102,
+          "route": 0.48441762755039597,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 2.831411600112915,
+          "planning_ms": 167.6575360033894
+        },
+        {
+          "step": 19,
+          "mode": "emergency_model_checked",
+          "action": [
+            -0.1262628138065338,
+            -1.0
+          ],
+          "speed": 0.21439733652156984,
+          "route": 0.48441765768994105,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 1.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 3.0,
+          "risk": 2.0329060554504395,
+          "planning_ms": 167.71943400090095
+        },
+        {
+          "step": 20,
+          "mode": "emergency_model_checked",
+          "action": [
+            -0.13573873043060303,
+            -1.0
+          ],
+          "speed": 0.10031295669607512,
+          "route": 0.484411901036828,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 2.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 3.0,
+          "risk": 2.0339183807373047,
+          "planning_ms": 163.0501459876541
+        },
+        {
+          "step": 21,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.1291951835155487,
+            0.10000000149011612
+          ],
+          "speed": 0.1285908846554664,
+          "route": 0.48442778457709273,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 2.835111379623413,
+          "planning_ms": 268.0078620032873
+        },
+        {
+          "step": 22,
+          "mode": "emergency_model_checked",
+          "action": [
+            -0.12637844681739807,
+            -1.0
+          ],
+          "speed": 0.2091238084642234,
+          "route": 0.48442446922713234,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 1.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 3.0,
+          "risk": 2.034182071685791,
+          "planning_ms": 168.82864099170547
+        },
+        {
+          "step": 23,
+          "mode": "emergency_model_checked",
+          "action": [
+            -0.1352153867483139,
+            -1.0
+          ],
+          "speed": 0.1066096124989845,
+          "route": 0.48441832075993313,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 2.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 3.0,
+          "risk": 2.034823417663574,
+          "planning_ms": 187.13377899257466
+        },
+        {
+          "step": 24,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.1281711906194687,
+            0.0
+          ],
+          "speed": 0.07016662352944275,
+          "route": 0.4844304971361512,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 3.014108896255493,
+          "planning_ms": 166.1848820076557
+        },
+        {
+          "step": 25,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.13027551770210266,
+            0.10000000149011612
+          ],
+          "speed": 0.09860777283251174,
+          "route": 0.4844613600303277,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 2.846804141998291,
+          "planning_ms": 172.36652699648403
+        },
+        {
+          "step": 26,
+          "mode": "emergency_model_checked",
+          "action": [
+            -0.12741045653820038,
+            -1.0
+          ],
+          "speed": 0.2219641361809192,
+          "route": 0.4844612696116924,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 1.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 3.0,
+          "risk": 2.0382747650146484,
+          "planning_ms": 164.01543898973614
+        },
+        {
+          "step": 27,
+          "mode": "emergency_model_check_failed",
+          "action": [
+            -0.12741045653820038,
+            -1.0
+          ],
+          "speed": 0.09875791573523282,
+          "route": 0.4844520770504387,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 2.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 1.0,
+          "risk": 0.0,
+          "planning_ms": 152.52136600611266
+        },
+        {
+          "step": 28,
+          "mode": "emergency_model_checked",
+          "action": [
+            -0.1276460438966751,
+            -1.0
+          ],
+          "speed": 0.23858947539322803,
+          "route": 0.48441096671093015,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 3.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 3.0,
+          "risk": 2.0371031761169434,
+          "planning_ms": 165.2183510013856
+        },
+        {
+          "step": 29,
+          "mode": "emergency_model_checked",
+          "action": [
+            -0.13453511893749237,
+            -1.0
+          ],
+          "speed": 0.11102072655487898,
+          "route": 0.48439601749656336,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 4.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 3.0,
+          "risk": 2.033604145050049,
+          "planning_ms": 167.06058800627943
+        },
+        {
+          "step": 30,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.12723219394683838,
+            0.10000000149011612
+          ],
+          "speed": 0.1392881633321491,
+          "route": 0.48441557806132957,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 2.831167697906494,
+          "planning_ms": 280.8431450102944
+        },
+        {
+          "step": 31,
+          "mode": "emergency_model_checked",
+          "action": [
+            -0.12438996136188507,
+            -1.0
+          ],
+          "speed": 0.21329793493900878,
+          "route": 0.4844158493172354,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 1.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 3.0,
+          "risk": 2.0330026149749756,
+          "planning_ms": 174.8441969975829
+        },
+        {
+          "step": 32,
+          "mode": "emergency_model_checked",
+          "action": [
+            -0.13390859961509705,
+            -1.0
+          ],
+          "speed": 0.1009484348171843,
+          "route": 0.48441027350139293,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 2.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 3.0,
+          "risk": 2.0340240001678467,
+          "planning_ms": 168.15475300245453
+        },
+        {
+          "step": 33,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.12734368443489075,
+            0.10000000149011612
+          ],
+          "speed": 0.1292310543191919,
+          "route": 0.4844264584371086,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 2.8350107669830322,
+          "planning_ms": 178.17139699764084
+        },
+        {
+          "step": 34,
+          "mode": "emergency_model_checked",
+          "action": [
+            -0.12453398108482361,
+            -1.0
+          ],
+          "speed": 0.20795459217107737,
+          "route": 0.48442326364532856,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 1.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 3.0,
+          "risk": 2.034369945526123,
+          "planning_ms": 174.39953700522892
+        },
+        {
+          "step": 35,
+          "mode": "emergency_model_checked",
+          "action": [
+            -0.13339054584503174,
+            -1.0
+          ],
+          "speed": 0.10793979491592123,
+          "route": 0.484417326154945,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 2.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 3.0,
+          "risk": 2.035004138946533,
+          "planning_ms": 169.25059900677297
+        },
+        {
+          "step": 36,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.12626706063747406,
+            0.0
+          ],
+          "speed": 0.07148930799868233,
+          "route": 0.4844300149034297,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 3.0136265754699707,
+          "planning_ms": 185.5238350108266
+        },
+        {
+          "step": 37,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.12837572395801544,
+            0.0
+          ],
+          "speed": 0.03519908041976139,
+          "route": 0.48445533212130887,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 2.975405693054199,
+          "planning_ms": 288.4252180083422
+        },
+        {
+          "step": 38,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.1305278241634369,
+            0.0
+          ],
+          "speed": 0.0005310860996287183,
+          "route": 0.48446633305526826,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 2.981837749481201,
+          "planning_ms": 177.60482401354238
+        },
+        {
+          "step": 39,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.13292460143566132,
+            0.0
+          ],
+          "speed": 0.0036019178679695374,
+          "route": 0.4844675989161622,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 2.0379860401153564,
+          "planning_ms": 176.1054230009904
+        },
+        {
+          "step": 40,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.1326276957988739,
+            0.0
+          ],
+          "speed": 0.005363229078003025,
+          "route": 0.48446699612526034,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 2.316039562225342,
+          "planning_ms": 174.04457299562637
+        },
+        {
+          "step": 41,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.13290399312973022,
+            0.0
+          ],
+          "speed": 0.0019049622810524095,
+          "route": 0.4844666043111741,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 2.5937204360961914,
+          "planning_ms": 174.41164000774734
+        },
+        {
+          "step": 42,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.132791668176651,
+            0.0
+          ],
+          "speed": 0.004714450741855281,
+          "route": 0.4844656699852762,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 2.0380377769470215,
+          "planning_ms": 171.6871690005064
+        },
+        {
+          "step": 43,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.13293114304542542,
+            0.0
+          ],
+          "speed": 0.0026179107162541855,
+          "route": 0.4844655494270958,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 2.4268910884857178,
+          "planning_ms": 172.9150619939901
+        },
+        {
+          "step": 44,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.13274843990802765,
+            0.0
+          ],
+          "speed": 0.004641531108418351,
+          "route": 0.4844648863571037,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 2.0379395484924316,
+          "planning_ms": 170.45776499435306
+        },
+        {
+          "step": 45,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.13294216990470886,
+            0.0
+          ],
+          "speed": 0.002624793692816781,
+          "route": 0.4844647959384684,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 2.315635919570923,
+          "planning_ms": 275.438042008318
+        },
+        {
+          "step": 46,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.1327594816684723,
+            0.0
+          ],
+          "speed": 0.004641710159974143,
+          "route": 0.48446413286847634,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 2.037837266921997,
+          "planning_ms": 176.55175698746461
+        },
+        {
+          "step": 47,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.13295656442642212,
+            0.0
+          ],
+          "speed": 0.0026244927726508183,
+          "route": 0.4844640424498411,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 2.259981393814087,
+          "planning_ms": 177.649488003226
+        },
+        {
+          "step": 48,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.13277466595172882,
+            0.0
+          ],
+          "speed": 0.004641731842896017,
+          "route": 0.484463379379849,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 2.037738800048828,
+          "planning_ms": 173.95497699908447
+        },
+        {
+          "step": 49,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.1329701840877533,
+            0.0
+          ],
+          "speed": 0.0026246094885989464,
+          "route": 0.4844632889612137,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 2.259883403778076,
+          "planning_ms": 180.92736299149692
+        },
+        {
+          "step": 50,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.13278816640377045,
+            0.10000000149011612
+          ],
+          "speed": 0.031044938904916067,
+          "route": 0.48446645361344864,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 2.874030113220215,
+          "planning_ms": 166.0569130035583
+        },
+        {
+          "step": 51,
+          "mode": "emergency_model_checked",
+          "action": [
+            -0.13053646683692932,
+            -1.0
+          ],
+          "speed": 0.2194828622012855,
+          "route": 0.4844587378899045,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 1.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 3.0,
+          "risk": 2.038435459136963,
+          "planning_ms": 163.0275619972963
+        },
+        {
+          "step": 52,
+          "mode": "emergency_model_check_failed",
+          "action": [
+            -0.13053646683692932,
+            -1.0
+          ],
+          "speed": 0.10432717358549726,
+          "route": 0.48444791779321567,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 2.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 1.0,
+          "risk": 0.0,
+          "planning_ms": 156.40334800991695
+        },
+        {
+          "step": 53,
+          "mode": "emergency_model_checked",
+          "action": [
+            -0.12532804906368256,
+            -1.0
+          ],
+          "speed": 0.24085538537325887,
+          "route": 0.48440774177960505,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 3.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 3.0,
+          "risk": 2.0370028018951416,
+          "planning_ms": 267.8604440006893
+        },
+        {
+          "step": 54,
+          "mode": "emergency_model_checked",
+          "action": [
+            -0.13258694112300873,
+            -1.0
+          ],
+          "speed": 0.09529986632576867,
+          "route": 0.4843946612170341,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 4.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 3.0,
+          "risk": 2.0335826873779297,
+          "planning_ms": 166.22647999611218
+        },
+        {
+          "step": 55,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.12649913132190704,
+            0.10000000149011612
+          ],
+          "speed": 0.1235277941893402,
+          "route": 0.48440831443096183,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 2.781778573989868,
+          "planning_ms": 175.90848200779874
+        },
+        {
+          "step": 56,
+          "mode": "recovery_controlled",
+          "action": [
+            -0.12374547868967056,
+            0.0
+          ],
+          "speed": 0.0872201582665011,
+          "route": 0.48445310179497186,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 3.006432294845581,
+          "planning_ms": 183.1355050089769
+        },
+        {
+          "step": 57,
+          "mode": "emergency_model_checked",
+          "action": [
+            -0.12555857002735138,
+            -1.0
+          ],
+          "speed": 0.2080696530755468,
+          "route": 0.48446012430897883,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 1.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 3.0,
+          "risk": 2.037600517272949,
+          "planning_ms": 175.93077699712012
+        },
+        {
+          "step": 58,
+          "mode": "emergency_model_check_failed",
+          "action": [
+            -0.12555857002735138,
+            -1.0
+          ],
+          "speed": 0.1031526137384538,
+          "route": 0.4844550307258579,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 2.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 1.0,
+          "risk": 0.0,
+          "planning_ms": 156.33142899605446
+        },
+        {
+          "step": 59,
+          "mode": "emergency_model_checked",
+          "action": [
+            -0.12484486401081085,
+            -1.0
+          ],
+          "speed": 0.24329439931225336,
+          "route": 0.48441446289816104,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 3.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 3.0,
+          "risk": 2.038027763366699,
+          "planning_ms": 163.94262199173681
+        },
+        {
+          "step": 60,
+          "mode": "emergency_model_checked",
+          "action": [
+            -0.13199275732040405,
+            -1.0
+          ],
+          "speed": 0.09629890571313618,
+          "route": 0.4843994835442492,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 4.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 3.0,
+          "risk": 2.0345940589904785,
+          "planning_ms": 164.87432399298996
+        }
+      ]
+    }
+  ]
+}

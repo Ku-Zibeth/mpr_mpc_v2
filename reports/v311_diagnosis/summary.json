@@ -1,0 +1,53 @@
+{
+  "B_lattice_sac": {
+    "episodes": 100,
+    "steps": 37817,
+    "termination_reasons": {
+      "arrive_dest": 75,
+      "out_of_road": 24,
+      "crash_vehicle": 1
+    },
+    "success": 75.0,
+    "mean_speed_mps": 8.547424852221274,
+    "mean_route_completion": 0.8814673192521925
+  },
+  "D_lattice_sac_mppi": {
+    "episodes": 100,
+    "steps": 93380,
+    "termination_reasons": {
+      "max_step": 90,
+      "arrive_dest": 8,
+      "out_of_road": 2
+    },
+    "success": 8.0,
+    "mean_speed_mps": 1.932166703738173,
+    "mean_route_completion": 0.3831784264154714,
+    "step_weighted_metrics": {
+      "baseline_safety_valid": 0.1435639323195545,
+      "baseline_corridor_valid": 0.9847826086956522,
+      "recovery_search": 0.8564360676804454,
+      "emergency_fallback": 0.3491432855001071,
+      "safety_fallback_unverified": 0.3464767616191904,
+      "cost_enabled": 0.0,
+      "cost_penalty": 0.0
+    },
+    "mode_steps": {
+      "baseline": 814,
+      "normal": 13241,
+      "recovery_lattice": 827,
+      "recovery_controlled": 45895,
+      "lattice_fallback": 0,
+      "emergency_model_checked": 249,
+      "emergency_model_check_failed": 32354
+    }
+  },
+  "step_trace_findings": {
+    "total_steps": 93380,
+    "stopped_steps_speed_lt_01": 43288,
+    "stopped_nonpositive_throttle_steps": 43031,
+    "stopped_sac_positive_throttle_steps": 43288,
+    "road_reject_present_steps": 79823,
+    "timeout_episodes_final200_mean_speed_lt_01": 65
+  },
+  "source_run": "logs/benchmark/mpr_mpc_v311_sac_vs_sac_mppi_fixed100_20261109_202823"
+}

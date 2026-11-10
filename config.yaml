@@ -113,11 +113,17 @@ mpr_mpc:
       iterations: 2
       initial_std: [0.06, 0.20]
       max_delta: [0.20, 0.50]
-      # Controlled candidates: smooth steering return, never instant snapping.
+      # In guided mode these blend held steering toward the live Lattice trend.
       straighten_fractions: [0.0, 0.5, 1.0]
       throttle_levels: [0.0, -0.5, -1.0]
+      lattice_guided: true
+      positive_throttle: 0.1
     safety:
       enabled: true
+      two_layer: true
+      # Synchronous MetaDrive commits exactly decision_repeat physics ticks.
+      action_delay_s: 0.0
+      long_risk_coef: 1.0
       substeps: 2
       model_margin: 0.05
       road_margin: 0.05

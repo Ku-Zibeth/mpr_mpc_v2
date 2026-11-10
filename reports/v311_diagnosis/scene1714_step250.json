@@ -1,0 +1,139 @@
+{
+  "scenario": 1714,
+  "before_step": 250,
+  "recorded_action_replay_max_speed_error": 0.0,
+  "logged_sac_action": [
+    0.051206966396421194,
+    1.0
+  ],
+  "reconstructed_sac_action": [
+    0.05120696499943733,
+    1.0
+  ],
+  "position": [
+    104.75598907470703,
+    -82.35850524902344
+  ],
+  "speed": 0.0028468132342887435,
+  "actual_out_of_road": false,
+  "route_completion": 0.4333385672819936,
+  "candidates": [
+    {
+      "candidate": "SAC",
+      "valid": false,
+      "offroad": true,
+      "kinematic": false,
+      "collision": false,
+      "displacement_m": 2.002401828765869,
+      "predicted_end_speed": 4.002847194671631,
+      "first_action": [
+        0.05120696499943733,
+        1.0
+      ]
+    },
+    {
+      "candidate": "Lattice",
+      "valid": false,
+      "offroad": true,
+      "kinematic": false,
+      "collision": false,
+      "displacement_m": 2.0019516944885254,
+      "predicted_end_speed": 4.002847194671631,
+      "first_action": [
+        0.16233207285404205,
+        1.0
+      ]
+    },
+    {
+      "candidate": "straight_throttle_0.0",
+      "valid": true,
+      "offroad": false,
+      "kinematic": false,
+      "collision": false,
+      "displacement_m": 0.0028951517306268215,
+      "predicted_end_speed": 0.0028468132950365543,
+      "first_action": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "candidate": "straight_throttle_0.05",
+      "valid": true,
+      "offroad": false,
+      "kinematic": false,
+      "collision": false,
+      "displacement_m": 0.10285885632038116,
+      "predicted_end_speed": 0.20284684002399445,
+      "first_action": [
+        0.0,
+        0.05000000074505806
+      ]
+    },
+    {
+      "candidate": "straight_throttle_0.1",
+      "valid": true,
+      "offroad": false,
+      "kinematic": false,
+      "collision": false,
+      "displacement_m": 0.20283913612365723,
+      "predicted_end_speed": 0.4028468728065491,
+      "first_action": [
+        0.0,
+        0.10000000149011612
+      ]
+    },
+    {
+      "candidate": "straight_throttle_0.2",
+      "valid": false,
+      "offroad": true,
+      "kinematic": false,
+      "collision": false,
+      "displacement_m": 0.40284818410873413,
+      "predicted_end_speed": 0.8028469681739807,
+      "first_action": [
+        0.0,
+        0.20000000298023224
+      ]
+    },
+    {
+      "candidate": "straight_throttle_0.5",
+      "valid": false,
+      "offroad": true,
+      "kinematic": false,
+      "collision": false,
+      "displacement_m": 1.0028417110443115,
+      "predicted_end_speed": 2.002847194671631,
+      "first_action": [
+        0.0,
+        0.5
+      ]
+    },
+    {
+      "candidate": "straight_throttle_0.75",
+      "valid": false,
+      "offroad": true,
+      "kinematic": false,
+      "collision": false,
+      "displacement_m": 1.5028475522994995,
+      "predicted_end_speed": 3.002847194671631,
+      "first_action": [
+        0.0,
+        0.75
+      ]
+    },
+    {
+      "candidate": "straight_throttle_1.0",
+      "valid": false,
+      "offroad": true,
+      "kinematic": false,
+      "collision": false,
+      "displacement_m": 2.0028483867645264,
+      "predicted_end_speed": 4.002847194671631,
+      "first_action": [
+        0.0,
+        1.0
+      ]
+    }
+  ]
+}

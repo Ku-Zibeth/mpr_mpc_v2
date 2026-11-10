@@ -258,6 +258,12 @@ class MPRMPCPlanner:
                 self.structured.planner, vehicle, width=width, wheelbase=wheelbase,
                 max_steering=steering, snapshot=safety_context,
             )
+            # World-frame guidance is independent of the frozen SAC state.
+            mppi_safety_context.target_speed = float(coarse_path.target_speed)
+            mppi_safety_context.lattice_actions = coarse_actions.detach().cpu()
+            mppi_safety_context.lattice_positions = align_frenet_path(
+                coarse_path, required_steps=self.horizon+1, control_dt=self.control_dt).positions
+            mppi_safety_context.lane_width = float(self.structured.planner.last_lane_width)
         context = MPRPlanContext(
             observation=observation,
             latent=latent,

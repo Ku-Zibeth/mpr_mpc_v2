@@ -48,9 +48,11 @@ def prediction_outcomes(info, result):
 class StepDiagnosticsLogger:
     """Optional per-step evidence for the existing evaluation entry points."""
 
-    def __init__(self, directory, name, *, wandb_cfg=None):
+    def __init__(self, directory, name, *, wandb_cfg=None, compact=False, stride=1):
         self.stream = self.run = None
         self.upload_failed = False
+        self.compact, self.stride = bool(compact), max(1, int(stride))
+        self._last_state = None
         if directory is not None:
             directory = Path(directory)
             directory.mkdir(parents=True, exist_ok=True)
@@ -68,14 +70,25 @@ class StepDiagnosticsLogger:
     def log(self, scenario, step, action, result, info=None):
         if self.stream is None and self.run is None:
             return
+        state = (int(scenario), getattr(result, "planning_mode", "unknown"))
+        incident = info is not None and any(bool(info.get(k, False)) for k in
+            ("crash", "crash_vehicle", "crash_object", "out_of_road", "success", "truncated"))
+        changed = state != self._last_state
+        self._last_state = state
+        if self.compact and not (changed or incident or step == 1 or step % self.stride == 0):
+            return
         row = dict(scenario=int(scenario), episode_step=int(step),
                    executed_action=np.asarray(action.detach().cpu() if torch.is_tensor(action) else action).tolist())
         if result is not None:
-            row.update(result.metrics)
+            row.update({k: v for k, v in result.metrics.items() if not self.compact or
+                (k.startswith("mppi/") and not k.endswith("cpu_wall_ms")) or k in
+                {"mpr/actual_speed_mps", "mpr/coarse_target_speed_mps", "mpr/refined_target_speed_mps", "mpr/total_planning_ms"}})
             row.update(prediction_outcomes(info, result) if info is not None else {})
             row.update(residual_enabled=bool(result.stage.use_residual), mppi_enabled=bool(result.stage.use_mppi))
             row["planning_mode"] = getattr(result, "planning_mode", "unknown")
             row["recovery_reason"] = getattr(result, "recovery_reason", "unknown")
+        if info is not None:
+            row["route_completion"] = float(info.get("route_completion", 0.))
         row = {key: None if isinstance(value, (float, np.floating)) and not np.isfinite(value) else value
                for key, value in row.items()}
         if self.stream is not None:
@@ -148,6 +161,11 @@ class EpisodeDiagnostics:
             self.sums[f"safety_{key}_cost"] += float(info.get(f"safety_{key}_cost", 0))
         if result is not None:
             result.metrics.update(prediction_outcomes(info, result))
+            code = result.metrics.get("mppi/planning_mode", float("nan"))
+            if result.stage.use_mppi and np.isfinite(code):
+                self.sums[f"mode{int(code)}_steps"] += 1
+                self.sums[f"mode{int(code)}_collision_steps"] += result.metrics["mppi/actual_collision"]
+                self.sums[f"mode{int(code)}_offroad_steps"] += result.metrics["mppi/actual_offroad"]
             predicted_step = float(result.metrics.get("mppi/predicted_step_cost", float("nan")))
             if result.stage.use_mppi and np.isfinite(predicted_step):
                 self.sums["predicted_step_cost"] += predicted_step
@@ -187,6 +205,11 @@ class EpisodeDiagnostics:
             **{f"mppi_mode_{name}_rate": mean([float(v == code) for v in self.plans["mppi/planning_mode"]])
                 for code, name in enumerate(("baseline", "normal", "recovery_lattice", "recovery_controlled",
                                              "lattice_fallback", "emergency_model_checked", "emergency_model_check_failed"))},
+            **{f"mppi_mode_{name}_{event}_steps": (self.sums[f"mode{code}_{event}_steps"]
+                if self.plans["mppi/planning_mode"] else float("nan"))
+               for code, name in enumerate(("baseline", "normal", "recovery_lattice", "recovery_controlled",
+                    "lattice_fallback", "emergency_model_checked", "emergency_model_check_failed"))
+               for event in ("collision", "offroad")},
             "collision": float(self.crash), "offroad": float(self.offroad),
             "collision_and_success_rate": float(self.crash and bool(info.get("success", False))),
             "collision_and_offroad_rate": float(self.crash and self.offroad),

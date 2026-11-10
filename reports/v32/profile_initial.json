@@ -1,0 +1,62 @@
+{
+  "checkpoint": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt",
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "note": "Bounded live-physics smoke from recorded states; not a success-rate benchmark.",
+  "results": [
+    {
+      "scenario": 1714,
+      "snapshot_before_step": 250,
+      "replay_max_speed_error": 0.0,
+      "start_route": 0.4333385672819936,
+      "end_route": 0.4334302635129881,
+      "initial_lattice": {
+        "near_valid": true,
+        "full_valid": false,
+        "admissible": true,
+        "unrecoverable": false
+      },
+      "records": [
+        {
+          "step": 1,
+          "mode": "normal",
+          "action": [
+            -0.0009658969938755035,
+            0.9324865937232971
+          ],
+          "speed": 0.25261203539153004,
+          "route": 0.43335383318999954,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 1.5994137525558472,
+          "planning_ms": 1567.6315370074008
+        },
+        {
+          "step": 2,
+          "mode": "normal",
+          "action": [
+            0.020207129418849945,
+            0.8848467469215393
+          ],
+          "speed": 0.49498988847287995,
+          "route": 0.4334302635129881,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 0.0,
+          "baseline_near": 1.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 0.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 0.0,
+          "risk": 1.725603699684143,
+          "planning_ms": 883.551033999538
+        }
+      ]
+    }
+  ]
+}

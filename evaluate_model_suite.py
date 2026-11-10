@@ -324,6 +324,10 @@ def _apply_checkpoint_runtime_config(cfg_raw: DictConfig, checkpoint: Path) -> N
             cfg_raw.mpr_mpc.mppi.safety.enabled = False
         if "recovery" not in mppi_config:
             cfg_raw.mpr_mpc.mppi.recovery.enabled = False
+        if "two_layer" not in mppi_config.get("safety", {}):
+            cfg_raw.mpr_mpc.mppi.safety.two_layer = False
+        if "lattice_guided" not in mppi_config.get("recovery", {}):
+            cfg_raw.mpr_mpc.mppi.recovery.lattice_guided = False
 
     residual_config = planner_state.get("residual_config")
     if isinstance(residual_config, dict):
@@ -399,7 +403,8 @@ def _evaluate_checkpoint(
     step_dir = (Path(str(benchmark.get("output_dir", SCRIPT_ROOT / "logs/benchmark"))) / "steps"
                 if save_steps or benchmark.get("enable_wandb", False) else None)
     step_log = StepDiagnosticsLogger(step_dir, f"{version}_{cfg_raw.get('evaluation_stack', 'checkpoint')}_seed{cfg.seed}",
-        wandb_cfg=cfg_raw if benchmark.get("enable_wandb", False) else None)
+        wandb_cfg=cfg_raw if benchmark.get("enable_wandb", False) else None,
+        compact=bool(benchmark.get("compact_step_logs", True)), stride=int(benchmark.get("step_log_stride", 10)))
     try:
         agent = _make_agent(cfg, env)
         checkpoint_state = agent.load(checkpoint)
