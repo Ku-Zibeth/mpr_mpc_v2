@@ -117,10 +117,16 @@ mpr_mpc:
       straighten_fractions: [0.0, 0.5, 1.0]
       throttle_levels: [0.0, -0.5, -1.0]
       lattice_guided: true
+      anti_stall: true
+      stall_speed_mps: 0.3
+      stall_duration_s: 2.0
+      stall_progress_m: 0.2
+      stall_exit_s: 1.0
       positive_throttle: 0.1
     safety:
       enabled: true
       two_layer: true
+      staged: true
       # Synchronous MetaDrive commits exactly decision_repeat physics ticks.
       action_delay_s: 0.0
       long_risk_coef: 1.0

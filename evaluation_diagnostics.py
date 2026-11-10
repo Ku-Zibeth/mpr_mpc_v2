@@ -195,6 +195,11 @@ class EpisodeDiagnostics:
         return {
             **{f"planning_p{q}_ms": float(np.percentile(planning, q)) if planning else float("nan")
                for q in (50, 95, 99)},
+            **{f"{name}_p{q}": float(np.percentile(self.plans[f"mppi/{name}"], q))
+                if self.plans[f"mppi/{name}"] else float("nan")
+               for name in ("physics_position_error_m", "physics_speed_error_mps", "physics_heading_error_rad",
+                    "physics_acceleration_bias_mps2", "physics_braking_response_bias_mps2", "execution_action_error")
+               for q in (50, 95, 99)},
             **{f"mean_{key.replace('/', '_')}": mean(values) for key, values in self.plans.items()},
             **{name: mean(self.plans[key]) for name, key in PLAN_ALIASES.items()},
             **{name: mean(self.plans[key] or self.plans.get(legacy.get(name, ""), []))

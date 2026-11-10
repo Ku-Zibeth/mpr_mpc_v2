@@ -12,6 +12,7 @@ from .config import mapping, section
 from .evaluator import TrajectoryWorldModelEvaluator
 from .kinematic_filter import CorridorContext
 from .local_mppi import LocalMPPI
+from .mppi_safety import geometric_recovery_reference
 from .timing import PhaseTimings
 from mpr_mpc.residual_rl import ResidualActionAdapter, ResidualStateBuilder
 from mpr_mpc.residual_rl.types import ResidualPolicyOutput
@@ -264,6 +265,11 @@ class MPRMPCPlanner:
             mppi_safety_context.lattice_positions = align_frenet_path(
                 coarse_path, required_steps=self.horizon+1, control_dt=self.control_dt).positions
             mppi_safety_context.lane_width = float(self.structured.planner.last_lane_width)
+            mppi_safety_context.route_progress = float(getattr(getattr(vehicle, "navigation", None), "route_completion", float("nan")))
+            reference = getattr(self.structured.planner, "last_reference", None)
+            if reference is not None:
+                mppi_safety_context.road_reference = reference
+                geometric_recovery_reference(mppi_safety_context, reference, self.structured.planner.last_lane_centers, self.control_dt)
         context = MPRPlanContext(
             observation=observation,
             latent=latent,
@@ -541,6 +547,10 @@ class MPRMPCPlanner:
                 coarse_row = sac_row
             diagnostics.update({f"mppi/{key}": value for key, value in mppi.metrics.items()})
             diagnostics.update({f"mpr/{key}": value for key, value in mppi.metrics.items()})
+            response = self.local_mppi.candidate_safety.response_errors(vehicle)
+            diagnostics.update({f"mppi/{key}": value for key, value in response.items()})
+            if context.mppi_safety_context is not None:
+                self.local_mppi.candidate_safety.predict_response(selected_actions, context.mppi_safety_context, vehicle)
         else:
             sac_row = selected_row = consequence_row(refined_consequence if context.latent is not None else None)
         for name, row in (("lattice", coarse_row), ("sac", sac_row), ("mppi", selected_row)):

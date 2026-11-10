@@ -32,6 +32,7 @@ def main():
     parser.add_argument("--steps", type=int, default=60)
     parser.add_argument("--snapshots", nargs="+", default=["1714:250", "559:600"])
     parser.add_argument("--profile-first", action="store_true")
+    parser.add_argument("--disable-anti-stall", action="store_true", help="Bounded recovery ablation only")
     args = parser.parse_args()
     if args.output.exists() or not 0 < args.steps <= 200:
         parser.error("Require a fresh output path and 1..200 smoke steps.")
@@ -46,6 +47,8 @@ def main():
     raw = OmegaConf.load(args.run / "config_D_lattice_sac_mppi_seed1.yaml")
     raw.mpr_mpc.mppi = OmegaConf.load(ROOT / "config.yaml").mpr_mpc.mppi
     raw.restore_mppi_runtime = False
+    if args.disable_anti_stall:
+        raw.mpr_mpc.mppi.recovery.anti_stall = False
     raw.enable_wandb = raw.save_agent = raw.save_video = False
     raw.residual_rl.buffer_size = 8
     checkpoint = Path(json.loads((args.run / "manifest.json").read_text())["checkpoint"])
@@ -95,6 +98,8 @@ def main():
                     geometry_audit = dict(length=context.length, width=context.width, wheelbase=context.wheelbase,
                         max_steering_rad=context.max_steering, control_dt=agent.planner.control_dt,
                         footprint_hausdorff_m=Polygon(footprint).hausdorff_distance(Polygon(vehicle.bounding_box)))
+                    geometry_audit.update(longitudinal_parameter_source=context.longitudinal_parameter_source,
+                        dynamics_parameters=context.dynamics_parameters)
                 prediction, _, predicted_speed = agent.planner.local_mppi.candidate_safety.geometry.rollout(
                     result.debug["selected_mppi_actions"][None, :2], context)
                 obs, _, done, info = env.step(action)
@@ -111,6 +116,8 @@ def main():
                     one_step_position_error_m=float(np.linalg.norm(prediction[0, -1].numpy()-env.unwrapped_metadrive.agent.position)),
                     one_step_speed_error_mps=abs(float(predicted_speed[0, -1])-float(np.linalg.norm(env.unwrapped_metadrive.agent.velocity))),
                     risk=result.metrics["mppi/long_risk_score"], planning_ms=result.metrics["mpr/total_planning_ms"]))
+                smoke[-1]["diagnostics"] = {k: float(v) for k, v in result.metrics.items() if k.startswith("mppi/")
+                    and not k.endswith("cpu_wall_ms")}
                 if i == 0 or (i+1) % 20 == 0:
                     print(f"[smoke] seed={seed} step={i+1} speed={smoke[-1]['speed']:.3f} route={smoke[-1]['route']:.4f} mode={result.planning_mode}", flush=True)
                 if done or crash or offroad:
@@ -118,12 +125,24 @@ def main():
             results.append(dict(scenario=seed, snapshot_before_step=step, replay_max_speed_error=replay_error,
                 start_route=start_route, end_route=smoke[-1]["route"], initial_lattice=lattice_audit, records=smoke))
             results[-1]["geometry_audit"] = geometry_audit
+            def distribution(values):
+                values = [float(v) for v in values if np.isfinite(v)]
+                return dict(mean=float(np.mean(values)), **{f"p{q}": float(np.percentile(values, q)) for q in (50, 95, 99)},
+                    max=float(max(values))) if values else None
+            results[-1]["summary"] = dict(steps=len(smoke), route_gain=smoke[-1]["route"]-start_route,
+                mean_speed=float(np.mean([s["speed"] for s in smoke])), max_speed=max(s["speed"] for s in smoke),
+                stall_steps=sum(s["speed"] < .3 for s in smoke), crash=any(s["crash"] for s in smoke),
+                offroad=any(s["offroad"] for s in smoke), planning=distribution([s["planning_ms"] for s in smoke]),
+                modes={mode: sum(s["mode"] == mode for s in smoke) for mode in sorted(set(s["mode"] for s in smoke))},
+                distributions={key: distribution([s["diagnostics"].get(key, float("nan")) for s in smoke])
+                    for key in sorted(set().union(*(s["diagnostics"].keys() for s in smoke)))})
         assert agent.planner.residual_state_dim == 535
     finally:
         env.close()
     assert hashlib.sha256(checkpoint.read_bytes()).hexdigest() == checksum
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(dict(checkpoint=str(checkpoint), checkpoint_sha256=checksum,
+        anti_stall=not args.disable_anti_stall,
         note="Bounded live-physics smoke from recorded states; not a success-rate benchmark.", results=results), indent=2))
     print(json.dumps([dict(scenario=r["scenario"], steps=len(r["records"]), route_gain=r["end_route"]-r["start_route"],
         max_speed=max(s["speed"] for s in r["records"]), max_emergency_streak=max(s["emergency_streak"] for s in r["records"]),

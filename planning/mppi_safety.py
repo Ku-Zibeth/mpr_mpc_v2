@@ -23,6 +23,44 @@ class MPPISafetyContext(SafetyContext):
     lattice_actions: torch.Tensor | None = None
     lattice_positions: np.ndarray | torch.Tensor | None = None
     lane_width: float | None = None
+    road_reference: object | None = None
+    route_progress: float | None = None
+    longitudinal_parameter_source: str = "configured_unvalidated_point_estimate"
+    geometric_steer: float | None = None
+    road_tangent_steer: float | None = None
+    geometric_lateral_error: float = 0.
+    geometric_heading_error: float = 0.
+    geometric_body_margin: float = float("nan")
+    dynamics_parameters: dict | None = None
+    measurement_step: int | None = None
+
+
+def geometric_recovery_reference(context, reference, lane_centers, control_dt):
+    """One pure-pursuit proposal toward the nearest lane, never a safety override.
+
+    Lookahead is one wheelbase or one planning horizon of measured travel.
+    Nearest-lane and Lattice directions are offered separately; obstacle and
+    body clearance are resolved by the existing exact candidate checker.
+    """
+    s, lateral, _ = reference.project(context.position)
+    yaw = reference.calc_yaw(s)
+    context.geometric_lateral_error = float(lateral)
+    context.geometric_heading_error = math.atan2(math.sin(yaw-context.heading), math.cos(yaw-context.heading))
+    lane = min(lane_centers, key=lambda d: abs(d-lateral)) if lane_centers else lateral
+    lookahead = max(context.wheelbase, context.speed*(len(context.lattice_actions)-1)*control_dt)
+    target_s = min(reference.length, s+lookahead)
+    target = reference.calc_position(target_s)+lane*np.array([-math.sin(reference.calc_yaw(target_s)), math.cos(reference.calc_yaw(target_s))])
+    delta = target-context.position
+    bearing = math.atan2(delta[1], delta[0])-context.heading
+    steering = math.atan2(2*context.wheelbase*math.sin(bearing), max(float(np.linalg.norm(delta)), 1e-6))
+    context.geometric_steer = float(np.clip(steering/context.max_steering, -1, 1))
+    # A second, lane-tangent proposal avoids the rear-corner swing caused by
+    # immediately aiming across the lane from a nearly parallel boundary pose.
+    context.road_tangent_steer = float(np.clip(math.atan2(context.wheelbase*context.geometric_heading_error,
+        lookahead)/context.max_steering, -1, 1))
+    body = shapely.polygons(_corners(torch.tensor(context.position)[None, None], torch.tensor([[context.heading]]),
+        context.length, context.width)[0, 0].numpy())
+    context.geometric_body_margin = float(shapely.distance(body, context.road.boundary)) if context.road.covers(body) else -float(shapely.distance(body, context.road))
 
 
 @dataclass
@@ -44,6 +82,7 @@ class MPPISafetyResult(SafetyResult):
     interval_kinematic: torch.Tensor | None = None
     speeds: torch.Tensor | None = None
     headings: torch.Tensor | None = None
+    progress_estimate: torch.Tensor | None = None
 
 
 class MPPISafetyFilter:
@@ -53,7 +92,9 @@ class MPPISafetyFilter:
         # of small CUDA launches and CPU synchronizations in swept geometry.
         self.geometry = TrajectorySafetyEvaluator(cfg, control_dt=control_dt, device="cpu")
         self.safe_roads = {}
+        self._response_prediction = None
         self.two_layer = bool(cfg.get("two_layer", False))
+        self.staged = self.two_layer and bool(cfg.get("staged", False))
         self.action_delay_s = float(cfg.get("action_delay_s", 0.))
         if not math.isfinite(self.action_delay_s) or self.action_delay_s < 0:
             raise ValueError("Action delay must be finite and nonnegative.")
@@ -77,6 +118,7 @@ class MPPISafetyFilter:
     def reset(self):
         self.geometry.reset()
         self.safe_roads.clear()
+        self._response_prediction = None
 
     def context(self, planner, vehicle, *, width, wheelbase, max_steering, snapshot=None):
         config = getattr(vehicle, "config", {})
@@ -88,7 +130,59 @@ class MPPISafetyFilter:
         values["cache"] = {}
         # BaseVehicle._apply_throttle_brake: negative action[1] applies setBrake
         # (and zero engine force) exactly when enable_reverse is false.
-        return MPPISafetyContext(**values, brake_action_mapping_verified=True)
+        result = MPPISafetyContext(**values, brake_action_mapping_verified=True)
+        result.measurement_step = getattr(getattr(vehicle, "engine", None), "episode_step", None)
+        # Bullet engine/brake forces are NOT longitudinal acceleration bounds:
+        # load transfer, tire traction, drag and speed dependence intervene.
+        # MetaDrive exposes geometry but no certified acceleration/deceleration
+        # envelope. Keep the existing point model and report its provenance.
+        result.dynamics_parameters = {key: config.get(key) for key in ("mass", "max_engine_force", "max_brake_force")}
+        result.dynamics_parameters.update(model_acceleration=float(self.cfg.get("max_acceleration", 4.)),
+            model_deceleration=float(self.cfg.get("max_deceleration", 6.)), longitudinal_bounds_calibrated=False)
+        return result
+
+    def response_errors(self, vehicle):
+        """Compare a stored executed-action model prediction after ONE env step.
+
+        Repeated fixed-state planning is excluded by the simulator step token.
+        These are kinematic/actuation residuals, not latent WM errors.
+        """
+        pending = self._response_prediction
+        step = getattr(getattr(vehicle, "engine", None), "episode_step", None)
+        if pending is None or step is None or step != pending["step"]+1:
+            return {}
+        actual_speed = float(np.linalg.norm(vehicle.velocity))
+        angle = float(vehicle.heading_theta)-pending["heading"]
+        actual_action = np.asarray(getattr(vehicle, "current_action", pending["action"]))
+        speed_residual = actual_speed-pending["speed"]
+        return {"physics_position_error_m": float(np.linalg.norm(vehicle.position-pending["position"])),
+            "physics_speed_error_mps": abs(speed_residual),
+            "physics_heading_error_rad": abs(math.atan2(math.sin(angle), math.cos(angle))),
+            "physics_acceleration_bias_mps2": speed_residual/self.geometry.dt,
+            "physics_braking_response_bias_mps2": speed_residual/self.geometry.dt if pending["action"][1] < 0 else float("nan"),
+            "execution_action_error": float(np.linalg.norm(actual_action-pending["action"]))}
+
+    def predict_response(self, actions, context, vehicle):
+        positions, headings, speeds = self.geometry.rollout(actions[None, :2].detach().cpu(), context)
+        step = getattr(getattr(vehicle, "engine", None), "episode_step", None)
+        if step is not None:
+            self._response_prediction = dict(step=step, position=positions[0, -1].numpy(), heading=float(headings[0, -1]),
+                speed=float(speeds[0, -1]), action=actions[0].detach().cpu().numpy())
+
+    def _rollout(self, controls, context):
+        # Observation-local cache: exact promotion can reuse a preview rollout
+        # without re-integrating it. Prefix and full-horizon keys are distinct.
+        signature = (tuple(np.asarray(context.position)), context.heading, context.speed,
+            context.wheelbase, context.max_steering, str(controls.dtype), self.geometry.dt,
+            self.geometry.substeps, self.cfg.get("max_acceleration", 4.), self.cfg.get("max_deceleration", 6.))
+        cache = context.cache.setdefault(("mppi_rollouts", signature), {})
+        keys = [row.tobytes() for row in controls.contiguous().numpy()]
+        missing = {key: i for i, key in enumerate(keys) if key not in cache}
+        if missing:
+            packed = self.geometry.rollout(controls[list(missing.values())], context)
+            for i, key in enumerate(missing):
+                cache[key] = tuple(tensor[i] for tensor in packed)
+        return tuple(torch.stack([cache[key][j] for key in keys]) for j in range(3))
 
     @torch.no_grad()
     def _strict_check(self, actions, context):
@@ -108,7 +202,7 @@ class MPPISafetyFilter:
             if (not np.isfinite([*obj.position, *obj.velocity, obj.heading, obj.length, obj.width]).all()
                     or min(obj.length, obj.width) <= 0):
                 raise RuntimeError("MPPI traffic snapshot contains invalid measured geometry/velocity.")
-        positions, headings, speeds = self.geometry.rollout(controls, context)
+        positions, headings, speeds = self._rollout(controls, context)
         finite = torch.isfinite(controls).all((1, 2)) & (controls.abs() <= 1).all((1, 2))
         previous = controls.new_tensor(context.previous_action).view(1, 1, 2).expand(len(controls), -1, -1)
         explicit = controls[:, :-1]
@@ -245,6 +339,78 @@ class MPPISafetyFilter:
         return torch.cat((hold, guided), 0)
 
     @torch.no_grad()
+    def preview(self, actions, context):
+        """Exact committed prefix, approximate tail. NEVER an execution certificate.
+
+        Tail footprint/circle samples are priority estimates only. check() still
+        uses swept OBBs and, when needed, the same-prefix braking witnesses.
+        """
+        if not self.staged:
+            return self.check(actions, context)
+        controls = actions.detach().cpu()
+        horizon = controls.shape[1]-1
+        committed = self.committed_controls(horizon)
+        result = self._strict_check(controls[:, :committed+1], context)
+        result.near_valid = result.valid.clone()
+        result.near_collision = result.collision.clone()
+        result.near_offroad = result.offroad.clone()
+        result.near_kinematic = result.kinematic_violation.clone()
+        result.near_valid &= torch.isfinite(controls).all((1, 2)) & (controls.abs() <= 1).all((1, 2))
+        if self.action_delay_s+self.geometry.dt > horizon*self.geometry.dt+1e-9:
+            result.near_valid[:] = False
+        # Do not run expensive tail geometry for candidates already rejected.
+        live = result.near_valid.nonzero().flatten()
+        count = len(controls)
+        result.risk_score = torch.full((count,), float("inf"))
+        result.full_valid = torch.zeros(count, dtype=torch.bool)
+        result.unrecoverable = torch.zeros(count, dtype=torch.bool)
+        result.progress_estimate = torch.zeros(count)
+        for name in ("road_risk", "collision_risk", "clearance_risk", "speed_risk", "lateral_risk", "kinematic_risk"):
+            setattr(result, name, torch.zeros(count))
+        if len(live):
+            positions, headings, speeds = self._rollout(controls[live], context)
+            direction = positions.new_tensor([math.cos(context.heading), math.sin(context.heading)])
+            result.progress_estimate[live] = (positions[:, -1]-positions[:, 0])@direction
+            # Discrete body footprints cannot certify between-sample safety.
+            corners = _corners(positions[:, ::self.geometry.substeps], headings[:, ::self.geometry.substeps],
+                context.length+2*self.geometry.model_margin, context.width+2*self.geometry.model_margin)
+            # One hull query per candidate replaces H+1 polygon queries. This
+            # over-approximates discrete body samples for PRIORITY only; curved
+            # swept intervals are still checked exactly at promotion.
+            hulls = shapely.convex_hull(shapely.multipoints(corners.numpy().reshape(len(live), -1, 2)))
+            key = (id(context.road), float(self.cfg.get("road_margin", .15)))
+            safe_road = self.safe_roads[key][1]  # already built by prefix check
+            road = torch.from_numpy(np.asarray(shapely.covers(safe_road, hulls)))
+            boundary = context.cache.setdefault("mppi_road_boundary", context.road.boundary)
+            margin = torch.as_tensor(shapely.distance(boundary, hulls), dtype=positions.dtype)
+            margin = margin.masked_fill(~road, 0.)
+            result.road_risk[live] = (~road).float()
+            result.offroad[live] |= ~road
+            result.collision_risk[live] = 0.
+            if context.obstacles:
+                xy = positions.new_tensor(np.asarray([o.position for o in context.obstacles]))
+                velocity = positions.new_tensor(np.asarray([o.velocity for o in context.obstacles]))
+                times = torch.arange(positions.shape[1])*self.geometry.dt/self.geometry.substeps
+                other = xy[None]+times[:, None, None]*velocity[None]
+                radii = positions.new_tensor([math.hypot(o.length, o.width)/2 for o in context.obstacles])
+                gap = (positions[:, :, None]-other[None]).norm(dim=-1)-radii-math.hypot(context.length, context.width)/2
+                clearance = gap.clamp_min(0).amin((1, 2))
+                result.clearance_risk[live] = torch.exp(-clearance/context.width)
+                result.collision_risk[live] = (gap <= 0).any(2).float().mean(1)
+            target = getattr(context, "target_speed", None)
+            if target is not None and math.isfinite(target) and target >= 0:
+                result.speed_risk[live] = ((speeds[:, -1]-target).clamp_min(0)/max(target, 1.)).square()
+            rate = torch.diff(torch.cat((controls.new_tensor(context.previous_action)[None, None].expand(len(live), -1, -1),
+                controls[live, :-1]), 1)[:, :, 0], dim=1).abs()*context.max_steering/self.geometry.dt
+            lateral = speeds[:, 1:].square()*(controls[live, :-1, 0]*context.max_steering).tan().abs().repeat_interleave(self.geometry.substeps, 1)/context.wheelbase
+            result.kinematic_risk[live] = (((rate > float(self.cfg.get("max_steering_rate", 7.))).float().mean(1))
+                +(lateral > float(self.cfg.get("max_lateral_acceleration", 6.))).float().mean(1))
+            result.risk_score[live] = (result.road_risk[live]+torch.exp(-margin.clamp_min(0)/context.width)
+                +result.clearance_risk[live]+result.collision_risk[live]+result.speed_risk[live]+result.kinematic_risk[live])
+        result.valid = result.near_valid.clone()  # provisional; callers MUST check() before execution
+        return result
+
+    @torch.no_grad()
     def check(self, actions, context):
         result = self._strict_check(actions, context)
         if not self.two_layer:
@@ -310,7 +476,7 @@ class MPPISafetyFilter:
         result.speed_risk = zero.clone()
         if target is not None and math.isfinite(target) and target >= 0:
             reachable = min(target, context.speed+float(self.cfg.get("max_acceleration", 4.))*horizon*self.geometry.dt)
-            result.speed_risk = ((result.speeds[:, -1]-reachable)/max(reachable, 1.)).square()
+            result.speed_risk = ((result.speeds[:, -1]-reachable).clamp_min(0)/max(reachable, 1.)).square()
         result.lateral_risk = zero.clone()
         reference = getattr(context, "lattice_positions", None)
         if reference is not None and len(reference) >= 2:
@@ -327,6 +493,8 @@ class MPPISafetyFilter:
         ttc_risk = torch.where(torch.isfinite(result.min_ttc), 1/(1+result.min_ttc/self.geometry.dt), 0.)
         result.risk_score = (result.road_risk+result.collision_risk+result.kinematic_risk
                              +boundary_risk+result.clearance_risk+ttc_risk+result.speed_risk+result.lateral_risk)
+        direction = result.positions.new_tensor([math.cos(context.heading), math.sin(context.heading)])
+        result.progress_estimate = (result.positions[:, -1]-result.positions[:, 0])@direction
         return result
 
     def stopping_diagnostics(self, context, horizon):

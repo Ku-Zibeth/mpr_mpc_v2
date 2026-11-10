@@ -149,7 +149,8 @@ def main():
                 for name in ("safety_check_ms", "first_action_delta_norm", "baseline_safety_valid", "safety_valid_ratio",
                              "safety_reject_count", "wm_evaluated_candidates", "unique_candidate_count",
                              "emergency_fallback", "lattice_fallback", "safety_fallback_unverified",
-                             "world_model_rollout_ms", "cost_prediction_ms", "elite_update_ms"):
+                             "world_model_rollout_ms", "cost_prediction_ms", "elite_update_ms", "recovery_search_ms",
+                             "final_safety_verification_ms", "exact_candidate_count", "preview_candidate_count", "selected_exact_verified"):
                     records[-1][name] = result.metrics.get(f"mppi/{name}")
             if args.profile_calls:
                 from planning_profiler import PlanningProfiler
