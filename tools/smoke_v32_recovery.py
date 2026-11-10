@@ -9,6 +9,7 @@ from pathlib import Path
 import sys
 import cProfile
 import pstats
+import gzip
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -33,9 +34,12 @@ def main():
     parser.add_argument("--snapshots", nargs="+", default=["1714:250", "559:600"])
     parser.add_argument("--profile-first", action="store_true")
     parser.add_argument("--disable-anti-stall", action="store_true", help="Bounded recovery ablation only")
+    parser.add_argument("--save-candidates", action="store_true", help="Scalar candidate ledger, gzip JSONL; no trajectory tensors")
     args = parser.parse_args()
     if args.output.exists() or not 0 < args.steps <= 200:
         parser.error("Require a fresh output path and 1..200 smoke steps.")
+    if args.save_candidates and args.output.with_suffix(".candidates.jsonl.gz").exists():
+        parser.error("Candidate evidence path already exists.")
     snapshots = dict(tuple(map(int, s.split(":"))) for s in args.snapshots)
     records = {seed: [] for seed in snapshots}
     for line in next((args.run / "steps").glob("*_full_mpr_mpc_seed1.jsonl")).open():
@@ -59,6 +63,13 @@ def main():
     torch.set_float32_matmul_precision("high"); set_seed(cfg.seed)
     env = make_env(cfg)
     results = []
+    candidate_stream = None
+    if args.save_candidates:
+        path = args.output.with_suffix(".candidates.jsonl.gz")
+        if path.exists():
+            raise FileExistsError(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        candidate_stream = gzip.open(path, "wt", encoding="utf-8")
     try:
         with contextlib.redirect_stdout(io.StringIO()):
             agent = suite._make_agent(cfg, env); loaded = agent.load(checkpoint)
@@ -77,6 +88,8 @@ def main():
             if replay_error > 1e-4:
                 raise RuntimeError(f"Replay state mismatch in {seed}: speed error={replay_error}")
             start_route = float(info.get("route_completion", 0.))
+            initial_contacts = {key: bool(info.get(key, False)) for key in
+                ("crash", "crash_vehicle", "crash_object", "crash_building", "crash_human", "crash_sidewalk", "out_of_road")}
             smoke = []
             lattice_audit = None
             geometry_audit = None
@@ -87,6 +100,9 @@ def main():
                 if profile:
                     profile.disable(); pstats.Stats(profile).sort_stats("cumtime").print_stats(20)
                 result, context = agent.last_plan, agent.planner.last_context.mppi_safety_context
+                if candidate_stream is not None:
+                    candidate_stream.write(json.dumps(dict(scenario=seed, step=i+1,
+                        candidates=result.debug.get("mppi_candidates", [])), allow_nan=False)+"\n")
                 if i == 0:
                     f = agent.planner.local_mppi.candidate_safety
                     r = f.check(result.coarse_actions[None].cpu(), context)
@@ -100,12 +116,19 @@ def main():
                         footprint_hausdorff_m=Polygon(footprint).hausdorff_distance(Polygon(vehicle.bounding_box)))
                     geometry_audit.update(longitudinal_parameter_source=context.longitudinal_parameter_source,
                         dynamics_parameters=context.dynamics_parameters)
-                prediction, _, predicted_speed = agent.planner.local_mppi.candidate_safety.geometry.rollout(
+                prediction, predicted_heading, predicted_speed = agent.planner.local_mppi.candidate_safety._rollout(
                     result.debug["selected_mppi_actions"][None, :2], context)
                 obs, _, done, info = env.step(action)
-                crash = any(bool(info.get(k, False)) for k in ("crash", "crash_vehicle", "crash_object"))
+                crash = any(bool(info.get(k, False)) for k in
+                    ("crash", "crash_vehicle", "crash_object", "crash_building", "crash_human", "crash_sidewalk"))
                 offroad = bool(info.get("out_of_road", False))
                 smoke.append(dict(step=i+1, mode=result.planning_mode, action=action.tolist(),
+                    heading_before=context.heading, predicted_heading=float(predicted_heading[0, -1]),
+                    actual_heading=float(env.unwrapped_metadrive.agent.heading_theta),
+                    lateral_before=float(context.road_reference.project(context.position)[1]),
+                    predicted_lateral=float(context.road_reference.project(prediction[0, -1].numpy())[1]),
+                    actual_lateral=float(context.road_reference.project(env.unwrapped_metadrive.agent.position)[1]),
+                    contacts={key: bool(info.get(key, False)) for key in initial_contacts},
                     speed=float(np.linalg.norm(env.unwrapped_metadrive.agent.velocity)),
                     route=float(info.get("route_completion", 0.)), crash=crash, offroad=offroad,
                     emergency_streak=result.metrics["mppi/emergency_streak"],
@@ -123,6 +146,7 @@ def main():
                 if done or crash or offroad:
                     break
             results.append(dict(scenario=seed, snapshot_before_step=step, replay_max_speed_error=replay_error,
+                initial_contacts=initial_contacts,
                 start_route=start_route, end_route=smoke[-1]["route"], initial_lattice=lattice_audit, records=smoke))
             results[-1]["geometry_audit"] = geometry_audit
             def distribution(values):
@@ -139,6 +163,8 @@ def main():
         assert agent.planner.residual_state_dim == 535
     finally:
         env.close()
+        if candidate_stream is not None:
+            candidate_stream.close()
     assert hashlib.sha256(checkpoint.read_bytes()).hexdigest() == checksum
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(dict(checkpoint=str(checkpoint), checkpoint_sha256=checksum,

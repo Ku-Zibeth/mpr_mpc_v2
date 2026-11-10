@@ -4,6 +4,7 @@ from collections import defaultdict
 from pathlib import Path
 import csv
 import json
+import gzip
 
 import numpy as np
 import torch
@@ -53,6 +54,7 @@ class StepDiagnosticsLogger:
         self.upload_failed = False
         self.compact, self.stride = bool(compact), max(1, int(stride))
         self._last_state = None
+        self.candidate_stream = None
         if directory is not None:
             directory = Path(directory)
             directory.mkdir(parents=True, exist_ok=True)
@@ -87,6 +89,16 @@ class StepDiagnosticsLogger:
             row.update(residual_enabled=bool(result.stage.use_residual), mppi_enabled=bool(result.stage.use_mppi))
             row["planning_mode"] = getattr(result, "planning_mode", "unknown")
             row["recovery_reason"] = getattr(result, "recovery_reason", "unknown")
+            candidates = getattr(result, "debug", {}).get("mppi_candidates", [])
+            if candidates and self.stream is not None:
+                candidate_path = Path(self.stream.name).with_suffix(".candidates.jsonl.gz")
+                if self.candidate_stream is None:
+                    self.candidate_stream = gzip.open(candidate_path, "at", encoding="utf-8")
+                self.candidate_stream.write(json.dumps(dict(scenario=int(scenario), episode_step=int(step),
+                    candidates=candidates), allow_nan=False)+"\n")
+                self.candidate_stream.flush()
+                row["candidate_records_file"] = candidate_path.name
+                row["candidate_records_count"] = len(candidates)
         if info is not None:
             row["route_completion"] = float(info.get("route_completion", 0.))
         row = {key: None if isinstance(value, (float, np.floating)) and not np.isfinite(value) else value
@@ -96,12 +108,14 @@ class StepDiagnosticsLogger:
             self.stream.flush()
         if self.run is not None and not self.upload_failed:
             try:
-                self.run.log(row)
+                self.run.log({key: value for key, value in row.items() if key != "candidates"})
             except Exception as error:
                 print(f"[evaluation] W&B step upload failed: {error}; local step evidence continues.", flush=True)
                 self.upload_failed = True
 
     def close(self):
+        if self.candidate_stream is not None:
+            self.candidate_stream.close()
         if self.stream is not None:
             self.stream.close()
         if self.run is not None:
@@ -195,6 +209,12 @@ class EpisodeDiagnostics:
         return {
             **{f"planning_p{q}_ms": float(np.percentile(planning, q)) if planning else float("nan")
                for q in (50, 95, 99)},
+            "forward_progress_candidate_pass_count": sum(self.plans["mppi/forward_verified_candidates"]),
+            "forward_progress_candidate_selected_count": sum(self.plans["mppi/forward_candidate_selected"]),
+            "emergency_steps": sum(v in (5., 6.) for v in self.plans["mppi/planning_mode"]),
+            "emergency_entries": sum(v in (5., 6.) and (i == 0 or self.plans["mppi/planning_mode"][i-1] not in (5., 6.))
+                for i, v in enumerate(self.plans["mppi/planning_mode"])),
+            "low_speed_steps": sum(v < .3 for v in self.speeds),
             **{f"{name}_p{q}": float(np.percentile(self.plans[f"mppi/{name}"], q))
                 if self.plans[f"mppi/{name}"] else float("nan")
                for name in ("physics_position_error_m", "physics_speed_error_mps", "physics_heading_error_rad",

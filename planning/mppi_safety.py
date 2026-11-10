@@ -4,7 +4,7 @@ This never constructs SAC inputs. It reuses the legacy swept-OBB primitive,
 but owns its settings, road cache and per-observation traffic snapshot.
 """
 
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, fields, replace
 import math
 
 import numpy as np
@@ -33,6 +33,8 @@ class MPPISafetyContext(SafetyContext):
     geometric_body_margin: float = float("nan")
     dynamics_parameters: dict | None = None
     measurement_step: int | None = None
+    lane_centers: tuple = ()
+    rear_axle_to_center: float | None = None
 
 
 def geometric_recovery_reference(context, reference, lane_centers, control_dt):
@@ -83,6 +85,44 @@ class MPPISafetyResult(SafetyResult):
     speeds: torch.Tensor | None = None
     headings: torch.Tensor | None = None
     progress_estimate: torch.Tensor | None = None
+    route_progress_estimate: torch.Tensor | None = None
+    terminal_speed: torch.Tensor | None = None
+    terminal_lateral_error: torch.Tensor | None = None
+    committed_lateral_error: torch.Tensor | None = None
+    center_model_valid: torch.Tensor | None = None
+    legacy_model_valid: torch.Tensor | None = None
+
+
+def projected_route_progress(positions, context, *, with_lateral=False):
+    """World XY -> the SAME road polyline's longitudinal coordinate.
+
+    Vectorized PolylineReference.project for endpoints; generic references use
+    their project() directly. Heading displacement is never a substitute.
+    """
+    reference = getattr(context, "road_reference", None)
+    if reference is None:
+        missing = positions.new_full((len(positions),), float("nan"))
+        return (missing, missing.clone()) if with_lateral else missing
+    start = float(reference.project(context.position)[0])
+    endpoints = positions[:, -1].detach().cpu().numpy()
+    if all(hasattr(reference, name) for name in ("segments", "segment_lengths", "points", "s")):
+        segments, lengths = reference.segments, reference.segment_lengths
+        delta = endpoints[:, None]-reference.points[None, :-1]
+        ratio = np.clip((delta*segments).sum(-1)/(lengths*lengths), 0., 1.)
+        distances = ((delta-ratio[..., None]*segments)**2).sum(-1)
+        index = distances.argmin(1)
+        values = reference.s[index]+ratio[np.arange(len(index)), index]*lengths[index]
+        offset = delta[np.arange(len(index)), index]-ratio[np.arange(len(index)), index, None]*segments[index]
+        normal = np.stack((-segments[index, 1], segments[index, 0]), -1)/lengths[index, None]
+        lateral = (offset*normal).sum(-1)
+    else:
+        projections = [reference.project(point) for point in endpoints]
+        values = np.array([p[0] for p in projections])
+        lateral = np.array([p[1] for p in projections])
+    progress = positions.new_tensor(values-start)
+    centers = np.asarray(getattr(context, "lane_centers", ()) or (0.,))
+    error = positions.new_tensor(np.abs(lateral[:, None]-centers[None]).min(1))
+    return (progress, error) if with_lateral else progress
 
 
 class MPPISafetyFilter:
@@ -95,6 +135,8 @@ class MPPISafetyFilter:
         self._response_prediction = None
         self.two_layer = bool(cfg.get("two_layer", False))
         self.staged = self.two_layer and bool(cfg.get("staged", False))
+        self.center_bicycle = bool(cfg.get("center_bicycle", False))
+        self.center_model_guard = bool(cfg.get("center_model_guard", False))
         self.action_delay_s = float(cfg.get("action_delay_s", 0.))
         if not math.isfinite(self.action_delay_s) or self.action_delay_s < 0:
             raise ValueError("Action delay must be finite and nonnegative.")
@@ -132,6 +174,9 @@ class MPPISafetyFilter:
         # (and zero engine force) exactly when enable_reverse is false.
         result = MPPISafetyContext(**values, brake_action_mapping_verified=True)
         result.measurement_step = getattr(getattr(vehicle, "engine", None), "episode_step", None)
+        rear = getattr(vehicle, "REAR_WHEELBASE", None)
+        if rear is not None and math.isfinite(float(rear)) and 0 < float(rear) < wheelbase:
+            result.rear_axle_to_center = float(rear)
         # Bullet engine/brake forces are NOT longitudinal acceleration bounds:
         # load transfer, tire traction, drag and speed dependence intervene.
         # MetaDrive exposes geometry but no certified acceleration/deceleration
@@ -163,7 +208,7 @@ class MPPISafetyFilter:
             "execution_action_error": float(np.linalg.norm(actual_action-pending["action"]))}
 
     def predict_response(self, actions, context, vehicle):
-        positions, headings, speeds = self.geometry.rollout(actions[None, :2].detach().cpu(), context)
+        positions, headings, speeds = self._rollout(actions[None, :2].detach().cpu(), context)
         step = getattr(getattr(vehicle, "engine", None), "episode_step", None)
         if step is not None:
             self._response_prediction = dict(step=step, position=positions[0, -1].numpy(), heading=float(headings[0, -1]),
@@ -174,15 +219,50 @@ class MPPISafetyFilter:
         # without re-integrating it. Prefix and full-horizon keys are distinct.
         signature = (tuple(np.asarray(context.position)), context.heading, context.speed,
             context.wheelbase, context.max_steering, str(controls.dtype), self.geometry.dt,
-            self.geometry.substeps, self.cfg.get("max_acceleration", 4.), self.cfg.get("max_deceleration", 6.))
+            self.geometry.substeps, self.cfg.get("max_acceleration", 4.), self.cfg.get("max_deceleration", 6.),
+            self.center_bicycle, getattr(context, "rear_axle_to_center", None))
         cache = context.cache.setdefault(("mppi_rollouts", signature), {})
         keys = [row.tobytes() for row in controls.contiguous().numpy()]
         missing = {key: i for i, key in enumerate(keys) if key not in cache}
         if missing:
-            packed = self.geometry.rollout(controls[list(missing.values())], context)
+            requested = controls[list(missing.values())]
+            packed = (self._center_rollout(requested, context) if self.center_bicycle and context.rear_axle_to_center is not None
+                      else self.geometry.rollout(requested, context))
             for i, key in enumerate(missing):
                 cache[key] = tuple(tensor[i] for tensor in packed)
         return tuple(torch.stack([cache[key][j] for key in keys]) for j in range(3))
+
+    def _center_rollout(self, actions, context):
+        """Kinematic bicycle at the measured chassis CENTER, not rear axle.
+
+        Bullet wheel locations are +FRONT_WHEELBASE/-REAR_WHEELBASE relative
+        to this origin. beta rotates CENTER velocity relative to chassis yaw.
+        The swept checker uses endpoints/chord and body-yaw increments, so its
+        continuous arc enclosure remains applicable without changing thresholds.
+        Legacy geometry.rollout still constructs the frozen SAC features.
+        """
+        controls = actions[:, :-1].nan_to_num().clamp(-1, 1)
+        xy = actions.new_tensor(context.position).expand(len(actions), -1).clone()
+        yaw = actions.new_full((len(actions),), context.heading)
+        speed = actions.new_full((len(actions),), context.speed)
+        positions, headings, speeds = [xy.clone()], [yaw.clone()], [speed.clone()]
+        dt = self.geometry.dt/self.geometry.substeps
+        for action in controls.unbind(1):
+            delta = action[:, 0]*context.max_steering
+            beta = (context.rear_axle_to_center/context.wheelbase*delta.tan()).atan()
+            acceleration = action[:, 1]*torch.where(action[:, 1] >= 0,
+                action.new_tensor(float(self.cfg.get("max_acceleration", 4.))),
+                action.new_tensor(float(self.cfg.get("max_deceleration", 6.))))
+            for _ in range(self.geometry.substeps):
+                next_speed = (speed+dt*acceleration).clamp_min(0)
+                middle = (speed+next_speed)/2
+                turn = dt*middle*beta.cos()*delta.tan()/context.wheelbase
+                direction = yaw+turn/2+beta
+                distance = dt*middle*torch.sinc(turn/(2*math.pi))
+                xy = xy+distance[:, None]*torch.stack((direction.cos(), direction.sin()), -1)
+                yaw, speed = yaw+turn, next_speed
+                positions.append(xy.clone()); headings.append(yaw.clone()); speeds.append(speed.clone())
+        return torch.stack(positions, 1), torch.stack(headings, 1), torch.stack(speeds, 1)
 
     @torch.no_grad()
     def _strict_check(self, actions, context):
@@ -351,6 +431,12 @@ class MPPISafetyFilter:
         horizon = controls.shape[1]-1
         committed = self.committed_controls(horizon)
         result = self._strict_check(controls[:, :committed+1], context)
+        if self.center_bicycle and self.center_model_guard and context.rear_axle_to_center is not None:
+            guard = self._strict_check(controls[:, :committed+1], replace(context, rear_axle_to_center=None))
+            result.valid &= guard.valid
+            result.collision |= guard.collision
+            result.offroad |= guard.offroad
+            result.kinematic_violation |= guard.kinematic_violation
         result.near_valid = result.valid.clone()
         result.near_collision = result.collision.clone()
         result.near_offroad = result.offroad.clone()
@@ -365,12 +451,22 @@ class MPPISafetyFilter:
         result.full_valid = torch.zeros(count, dtype=torch.bool)
         result.unrecoverable = torch.zeros(count, dtype=torch.bool)
         result.progress_estimate = torch.zeros(count)
+        result.route_progress_estimate = torch.full((count,), float("nan"))
+        result.terminal_speed = torch.full((count,), float("nan"))
+        result.terminal_lateral_error = torch.full((count,), float("nan"))
+        result.committed_lateral_error = torch.full((count,), float("nan"))
+        result.boundary_margin = torch.full((count,), float("nan"))
         for name in ("road_risk", "collision_risk", "clearance_risk", "speed_risk", "lateral_risk", "kinematic_risk"):
             setattr(result, name, torch.zeros(count))
         if len(live):
             positions, headings, speeds = self._rollout(controls[live], context)
             direction = positions.new_tensor([math.cos(context.heading), math.sin(context.heading)])
             result.progress_estimate[live] = (positions[:, -1]-positions[:, 0])@direction
+            progress, lateral_error = projected_route_progress(positions, context, with_lateral=True)
+            result.route_progress_estimate[live], result.terminal_lateral_error[live] = progress, lateral_error
+            _, result.committed_lateral_error[live] = projected_route_progress(
+                positions[:, :committed*self.geometry.substeps+1], context, with_lateral=True)
+            result.terminal_speed[live] = speeds[:, -1]
             # Discrete body footprints cannot certify between-sample safety.
             corners = _corners(positions[:, ::self.geometry.substeps], headings[:, ::self.geometry.substeps],
                 context.length+2*self.geometry.model_margin, context.width+2*self.geometry.model_margin)
@@ -384,6 +480,7 @@ class MPPISafetyFilter:
             boundary = context.cache.setdefault("mppi_road_boundary", context.road.boundary)
             margin = torch.as_tensor(shapely.distance(boundary, hulls), dtype=positions.dtype)
             margin = margin.masked_fill(~road, 0.)
+            result.boundary_margin[live] = margin
             result.road_risk[live] = (~road).float()
             result.offroad[live] |= ~road
             result.collision_risk[live] = 0.
@@ -395,6 +492,7 @@ class MPPISafetyFilter:
                 radii = positions.new_tensor([math.hypot(o.length, o.width)/2 for o in context.obstacles])
                 gap = (positions[:, :, None]-other[None]).norm(dim=-1)-radii-math.hypot(context.length, context.width)/2
                 clearance = gap.clamp_min(0).amin((1, 2))
+                result.min_clearance[live] = clearance
                 result.clearance_risk[live] = torch.exp(-clearance/context.width)
                 result.collision_risk[live] = (gap <= 0).any(2).float().mean(1)
             target = getattr(context, "target_speed", None)
@@ -412,7 +510,42 @@ class MPPISafetyFilter:
 
     @torch.no_grad()
     def check(self, actions, context):
+        result = self._check_nominal(actions, context)
+        result.center_model_valid = result.valid.clone() if self.center_bicycle and context.rear_axle_to_center is not None else None
+        if self.center_bicycle and self.center_model_guard and context.rear_axle_to_center is not None:
+            # Preserve the original geometric standard as a second hypothesis.
+            # Bullet tire transients need not instantly reach steady beta. Both
+            # hypotheses receive FULL swept/body checks and braking witnesses;
+            # neither a failed check nor missing evidence can be averaged away.
+            guard = self._check_nominal(actions, replace(context, rear_axle_to_center=None))
+            result.legacy_model_valid = guard.valid.clone()
+            for name in ("valid", "near_valid", "full_valid"):
+                a, b = getattr(result, name), getattr(guard, name)
+                if a is not None and b is not None:
+                    setattr(result, name, a & b)
+            for name in ("collision", "offroad", "kinematic_violation", "near_collision", "near_offroad", "near_kinematic", "unrecoverable"):
+                a, b = getattr(result, name), getattr(guard, name)
+                if a is not None and b is not None:
+                    setattr(result, name, a | b)
+            for name in ("risk_score", "road_risk", "collision_risk", "clearance_risk", "speed_risk", "lateral_risk", "kinematic_risk",
+                         "terminal_lateral_error", "committed_lateral_error"):
+                a, b = getattr(result, name), getattr(guard, name)
+                if a is not None and b is not None:
+                    setattr(result, name, torch.maximum(a, b))
+            for name in ("route_progress_estimate", "boundary_margin", "min_clearance", "min_ttc"):
+                a, b = getattr(result, name), getattr(guard, name)
+                if a is not None and b is not None:
+                    setattr(result, name, torch.minimum(a, b))
+        return result
+
+    @torch.no_grad()
+    def _check_nominal(self, actions, context):
         result = self._strict_check(actions, context)
+        result.route_progress_estimate, result.terminal_lateral_error = projected_route_progress(result.positions, context, with_lateral=True)
+        result.terminal_speed = result.speeds[:, -1]
+        committed = self.committed_controls(actions.shape[1]-1)
+        _, result.committed_lateral_error = projected_route_progress(
+            result.positions[:, :committed*self.geometry.substeps+1], context, with_lateral=True)
         if not self.two_layer:
             return result
         horizon = actions.shape[1]-1

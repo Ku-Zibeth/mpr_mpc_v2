@@ -28,6 +28,20 @@ DEFAULT_CHECKPOINT = (
 )
 
 
+def _select_variants(benchmark):
+    available = COST_VARIANTS if bool(benchmark.get("cost_ablation", False)) else VARIANTS
+    requested = benchmark.get("variants")
+    if requested is None:
+        return available
+    if isinstance(requested, str) or not requested:
+        raise ValueError("benchmark.variants must be a nonempty list of configuration names.")
+    names = list(requested)
+    by_name = dict(available)
+    if len(set(names)) != len(names) or any(name not in by_name for name in names):
+        raise ValueError(f"Unknown or duplicate variants; available: {list(by_name)}")
+    return tuple((name, by_name[name]) for name in names)
+
+
 class _EpisodeCSVWriter:
     """Flush each episode and expand the schema when optional metrics appear."""
 
@@ -88,7 +102,7 @@ def main(raw_cfg: DictConfig) -> None:
     scenarios = suite._scenarios(raw_cfg)
     repeat_seeds = _repeat_seeds(benchmark, int(raw_cfg.seed))
     cost_ablation = bool(benchmark.get("cost_ablation", False))
-    variants = COST_VARIANTS if cost_ablation else VARIANTS
+    variants = _select_variants(benchmark)
     bootstrap_samples = int(benchmark.get("bootstrap_samples", 2000))
     bootstrap_seed = int(benchmark.get("bootstrap_seed", benchmark.scenario_seed))
     if bootstrap_samples <= 0 or bootstrap_seed < 0:

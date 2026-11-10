@@ -107,6 +107,15 @@ mpr_mpc:
     eval_seed: 0
     proposal_init: structured_baseline
     blend_alpha: 0.8
+    trajectory_selection:
+      enabled: true
+      record_candidates: true
+      # Behavioral progress constraints, never collision/road thresholds.
+      min_progress_m: 0.05
+      normal_progress_ratio: 0.9
+      recovery_progress_ratio: 0.8
+      recovery_lateral_ratio: 0.5
+      max_throttle_step: 0.25
     recovery:
       enabled: true
       num_samples: 32
@@ -123,10 +132,17 @@ mpr_mpc:
       stall_progress_m: 0.2
       stall_exit_s: 1.0
       positive_throttle: 0.1
+      progressive: true
+      positive_throttles: [0.1, 0.25, 0.4]
+      transition_fractions: [0.2, 0.9]
+      controlled_deceleration: -0.3
     safety:
       enabled: true
       two_layer: true
       staged: true
+      # MetaDrive pose is at chassis center; measured rear axle offset supplies beta.
+      center_bicycle: true
+      center_model_guard: true
       # Synchronous MetaDrive commits exactly decision_repeat physics ticks.
       action_delay_s: 0.0
       long_risk_coef: 1.0

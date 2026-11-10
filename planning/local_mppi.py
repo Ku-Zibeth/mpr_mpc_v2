@@ -68,6 +68,10 @@ MPPI_DIAGNOSTIC_KEYS = (
     "positive_throttle_future_hard_rejected", "positive_throttle_exact_offroad_rejected",
     "positive_throttle_exact_collision_rejected", "positive_throttle_exact_kinematic_rejected", "candidate_evaluation_ms",
     "accelerate_road_clear", "accelerate_kinematic_valid", "positive_throttle_near_safe_count",
+    "predicted_route_progress", "predicted_terminal_speed", "forward_verified_candidates", "forward_candidate_selected",
+    "progress_guard_active", "progress_rejected_candidates", "recovery_latched", "continuity_changed", "continuity_rejected",
+    "center_model_active", "model_guard_active",
+    "positive_sequence_candidate_count", "positive_sequence_verified_count",
 )
 MPPI_EPISODE_METRICS = {
     (key if key.startswith("mppi_") else f"mppi_{key}"): f"mppi/{key}"
@@ -115,6 +119,7 @@ class LocalMPPIResult:
     selected_positions: torch.Tensor | None = None
     planning_mode: str = "baseline"
     recovery_reason: str = "none"
+    candidate_diagnostics: list = field(default_factory=list)
 
 
 class LocalMPPI:
@@ -165,6 +170,29 @@ class LocalMPPI:
         if not math.isfinite(self.long_risk_coef) or self.long_risk_coef < 0:
             raise ValueError("Long-horizon risk coefficient must be finite and nonnegative.")
         recovery = dict(cfg.get("recovery", {}))
+        selection = dict(cfg.get("trajectory_selection", {}))
+        self.trajectory_selection = bool(selection.get("enabled", False))
+        self.record_candidates = bool(selection.get("record_candidates", False))
+        self.min_progress = float(selection.get("min_progress_m", .05))
+        self.progress_ratio = float(selection.get("recovery_progress_ratio", .8))
+        self.lateral_ratio = float(selection.get("recovery_lateral_ratio", .5))
+        self.normal_progress_ratio = float(selection.get("normal_progress_ratio", .9))
+        self.throttle_step = float(selection.get("max_throttle_step", .25))
+        if (not math.isfinite(self.min_progress) or self.min_progress <= 0 or
+                not 0 < self.progress_ratio <= 1 or not 0 < self.normal_progress_ratio <= 1 or not 0 < self.lateral_ratio <= 1 or
+                not math.isfinite(self.throttle_step) or not 0 < self.throttle_step <= 2):
+            raise ValueError("Invalid trajectory progress/continuity settings.")
+        if self.trajectory_selection and not self.safety_enabled:
+            raise ValueError("Trajectory selection requires independent safety.")
+        self.progressive_recovery = bool(recovery.get("progressive", False))
+        self.positive_levels = tuple(float(v) for v in recovery.get("positive_throttles", [.1, .25, .4]))
+        self.transition_fractions = tuple(float(v) for v in recovery.get("transition_fractions", [.4, .9]))
+        self.controlled_deceleration = float(recovery.get("controlled_deceleration", -.3))
+        if (len(self.positive_levels) != 3 or any(not math.isfinite(v) or not 0 < v <= 1 for v in self.positive_levels)
+                or tuple(sorted(self.positive_levels)) != self.positive_levels
+                or len(self.transition_fractions) != 2 or any(not math.isfinite(v) or v <= 0 for v in self.transition_fractions)
+                or not -1 < self.controlled_deceleration < 0):
+            raise ValueError("Progressive recovery needs 3 positive throttle levels, 2 transition times and controlled deceleration.")
         self.recovery_enabled = bool(recovery.get("enabled", self.safety_enabled))
         if self.recovery_enabled and not self.safety_enabled:
             raise ValueError("Recovery Search requires independent safety to be enabled.")
@@ -195,6 +223,9 @@ class LocalMPPI:
         self._stall_count = 0
         self._last_position = self._last_progress = None
         self._last_measurement_step = None
+        self._recovery_latched = False
+        self._recovery_exit_count = 0
+        self._last_selected_sequence = None
         if not math.isfinite(self.positive_throttle) or not 0 < self.positive_throttle <= 1:
             raise ValueError("Recovery positive_throttle must be in (0,1].")
         if (not self.straighten_fractions or not self.throttle_levels
@@ -219,6 +250,79 @@ class LocalMPPI:
         self._stall_clear = self._stall_count = 0
         self._last_position = self._last_progress = None
         self._last_measurement_step = None
+        self._recovery_latched = False
+        self._recovery_exit_count = 0
+        self._last_selected_sequence = None
+
+    def _continuous(self, actions, context):
+        """Slew-limit a proposal; caller must exact-check the resulting sequence."""
+        result = actions.clone()
+        previous = result.new_tensor(context.previous_action)
+        steer_step = float(self.candidate_safety.cfg.get("max_steering_rate", 7.))*self.candidate_safety.geometry.dt/context.max_steering
+        limits = result.new_tensor([steer_step, self.throttle_step])
+        for i in range(len(result)):
+            result[i] = previous+(result[i]-previous).clamp(-limits, limits)
+            previous = result[i].clone()
+        return result.clamp(-1, 1)
+
+    def _controlled_candidates(self, context, lattice, baseline):
+        """At most 16 time-varying references, not another sampling algorithm."""
+        previous = baseline.new_tensor(context.previous_action)
+        horizon_s = self.horizon*self.candidate_safety.geometry.dt
+        t = torch.arange(1, self.horizon+2, device=self.device)*self.candidate_safety.geometry.dt
+        tangent = getattr(context, "road_tangent_steer", None)
+        tangent = float(previous[0] if tangent is None else tangent)
+        geometric = getattr(context, "geometric_steer", None)
+        geometric = float(previous[0] if geometric is None else geometric)
+        guide = lattice[:, 0] if lattice is not None else torch.full_like(t, tangent)
+        def ramp(target, duration, amplitude=1.):
+            ratio = (t/max(duration*horizon_s, self.candidate_safety.geometry.dt)).clamp(0, 1)
+            blend = ratio.square()*(3-2*ratio)
+            return previous[0]+amplitude*blend*(target-previous[0])
+        fast, slow = self.transition_fractions
+        steers = [torch.full_like(t, previous[0]), ramp(tangent, fast), ramp(tangent, slow),
+            ramp(geometric, slow, .25), ramp(geometric, slow, .5), ramp(geometric, slow), ramp(guide, slow), ramp(geometric, fast)]
+        target = getattr(context, "target_speed", None)
+        cap = (max(0., (target-context.speed)/(horizon_s*float(self.candidate_safety.cfg.get("max_acceleration", 4.))))
+               if target is not None and math.isfinite(target) else 0.)
+        low, middle, high = [min(v, cap) for v in self.positive_levels]
+        # Preserve all direction families without a Cartesian product explosion.
+        specs = [(0, low, "hold"), (0, 0., "coast"), (0, self.controlled_deceleration, "decelerate"),
+            (1, low, "tangent_fast"), (1, middle, "tangent_fast"), (1, high, "tangent_fast"),
+            (7, middle, "center_full_fast"), (2, high, "tangent_slow"),
+            (3, middle, "center_quarter"), (3, high, "center_quarter"),
+            (4, low, "center_half"), (4, high, "center_half"), (5, middle, "center_full"),
+            (6, middle, "lattice_ramp"), (6, high, "lattice_ramp")]
+        choices, types = [], []
+        for index, throttle, label in specs:
+            proposal = torch.stack((steers[index], torch.full_like(t, throttle)), -1)
+            choices.append(self._continuous(proposal, context))
+            types.append("recovery_"+label)
+        if self._recovery_latched and self._last_selected_sequence is not None:
+            last = self._last_selected_sequence
+            proposal = torch.cat((last[1:], last[-1:]), 0)
+            label = "recovery_continuation"
+        else:
+            proposal = torch.stack((ramp(geometric, fast, .5), torch.full_like(t, middle)), -1)
+            label = "recovery_center_half_fast"
+        choices.append(self._continuous(proposal, context)); types.append(label)
+        return torch.stack(choices), types
+
+    def _progress_eligible(self, progress, safe, *, recovery, baseline_progress=float("nan"), recovery_target=None):
+        """Dimensionless retention constraints; never a weighted safety tradeoff."""
+        eligible = safe & torch.isfinite(progress)
+        if not bool(eligible.any()):
+            return eligible
+        if recovery:
+            maximum = float(progress[eligible].max())
+            if maximum >= self.min_progress:
+                target = self.progress_ratio*maximum
+                if recovery_target is not None:
+                    target = min(target, recovery_target)
+                eligible &= progress >= max(self.min_progress, target)
+        elif math.isfinite(baseline_progress) and baseline_progress >= self.min_progress:
+            eligible &= progress >= self.normal_progress_ratio*baseline_progress
+        return eligible
 
     def _observe_motion(self, context):
         """Distance/speed hysteresis uses measured motion, never requested throttle."""
@@ -339,8 +443,20 @@ class LocalMPPI:
         generator = self.generator if eval_mode else None
         phase = PhaseTimings(self.device)
         timing, cache, safety_cache, unique, corridor_snapshots = {}, {}, {}, set(), {}
+        candidate_data = {}
+        candidate_kinds = {}
+        candidate_aliases = {}
+        decision_reasons = {}
+        progress_active = self.trajectory_selection and getattr(safety_context, "road_reference", None) is not None
+        previous_measurement = self._last_measurement_step
         progress_delta, progress_distance, recovery_success = self._observe_motion(safety_context)
+        fresh_motion = getattr(safety_context, "measurement_step", None) is None or previous_measurement != safety_context.measurement_step
+        seconds = self.horizon*self.candidate_safety.geometry.dt
+        recovery_progress_target = (max(self.min_progress, min(float(getattr(safety_context, "target_speed", None) or 0.)*seconds,
+            float(getattr(safety_context, "speed", 0.))*seconds+.5*float(self.candidate_safety.cfg.get("max_acceleration", 4.))*self.positive_levels[1]*seconds**2))
+            if progress_active else None)
         positive_count = positive_rejected = positive_wm_rejected = 0
+        positive_sequence_count = positive_sequence_verified = 0
         positive_reasons = {name: 0 for name in ("collision", "offroad", "kinematic")}
         positive_keys = []
         can_accelerate = accelerate_below_target = accelerate_no_collision = False
@@ -361,13 +477,28 @@ class LocalMPPI:
                        for key in ("value", "cost", "step_cost", "reward", "terminal_q")},
                     "validated": False, "ranking_validated": False, "long_risk": 0.}
 
-        def check_actions(actions, reference, corridor_ctx, *, exact=False):
+        def check_actions(actions, reference, corridor_ctx, *, exact=False, kind="normal"):
             nonlocal checked, rejected, safety_rejected, collision_rejected, road_rejected, kinematic_rejected
             nonlocal safe_fallback, near_checked, future_hard_rejected
             with phase.measure("safety_check"):
                 host = actions.detach().cpu().contiguous()
                 keys = [row.tobytes() for row in host.numpy()]
                 unique.update(keys)
+                for i, key in enumerate(keys):
+                    label = "sac_baseline" if key == baseline_key else kind[i] if isinstance(kind, list) else kind
+                    candidate_kinds.setdefault(key, label)
+                    aliases = candidate_aliases.setdefault(key, [])
+                    if label not in aliases:
+                        aliases.append(label)
+                if self.record_candidates:
+                    bounds = self.max_delta.detach().cpu()
+                    deviation, smooth = self._penalties(host, baseline_host, bounds)
+                    for i, key in enumerate(keys):
+                        if key not in candidate_data:
+                            candidate_data[key] = dict(candidate_id=f"c{len(candidate_data):04d}",
+                                candidate_type="sac_baseline" if key == baseline_key else kind[i] if isinstance(kind, list) else kind,
+                                first_action=host[i, 0].tolist(), steering_change=float(host[i, :, 0].diff().abs().sum()),
+                                deviation_penalty=float(self.deviation_coef*deviation[i]), smoothness_penalty=float(self.smoothness_coef*smooth[i]))
                 if self.safety_enabled:
                     if corridor_ctx is not None and id(corridor_ctx) not in corridor_snapshots:
                         corridor_snapshots[id(corridor_ctx)] = replace(corridor_ctx, refined_lateral=corridor_ctx.refined_lateral.cpu())
@@ -401,7 +532,9 @@ class LocalMPPI:
                             if value is not None:
                                 columns[name] = value.tolist()
                         for name in ("near_valid", "near_collision", "near_offroad", "near_kinematic", "full_valid", "risk_score", "road_risk", "collision_risk",
-                                     "clearance_risk", "speed_risk", "lateral_risk", "kinematic_risk", "unrecoverable", "progress_estimate"):
+                                     "clearance_risk", "speed_risk", "lateral_risk", "kinematic_risk", "unrecoverable", "progress_estimate",
+                                     "route_progress_estimate", "terminal_speed", "terminal_lateral_error", "committed_lateral_error", "boundary_margin", "min_clearance",
+                                     "center_model_valid", "legacy_model_valid"):
                             value = getattr(result, name, None)
                             if value is not None:
                                 columns[name] = value.tolist()
@@ -455,10 +588,49 @@ class LocalMPPI:
             timing["candidate_evaluation_ms"] = timing.get("candidate_evaluation_ms", 0.)+1000*(time.perf_counter()-started_evaluation)
             return rows, *scored, values
 
-        def verified_choice(actions, keys, rows, scores, indices):
+        def verified_choice(actions, keys, rows, scores, indices, *, recovery=False):
             """Promote candidates by priority; preview flags never authorize execution."""
             nonlocal exact_checked, exact_failed
-            if not self.candidate_safety.staged:
+            if progress_active:
+                if recovery:
+                    # Small recovery pools receive complete evidence before
+                    # their progress tiers compete; preview-only cannot win.
+                    was_exact = [safety_cache[k].get("exact", False) for k in keys]
+                    valid, _, _ = check_actions(actions, baseline, None, exact=True)
+                    exact_checked += sum(not v for v in was_exact)
+                    exact_failed += sum(not old and not bool(v) for old, v in zip(was_exact, valid.cpu().tolist()))
+                    adjusted = []
+                    for key, row, score_value in zip(keys, rows, scores):
+                        risk = float(safety_cache[key].get("risk_score", 0.))
+                        adjusted.append(float(score_value)+self.long_risk_coef*(row.get("long_risk", 0.)-risk))
+                        row["long_risk"] = risk
+                    scores = actions.new_tensor(adjusted)
+                progress = actions.new_tensor([safety_cache[k].get("route_progress_estimate", float("nan")) for k in keys])
+                admissible = torch.tensor([safety_cache[k]["valid"] for k in keys], device=self.device)
+                eligible = self._progress_eligible(progress, admissible & torch.isfinite(scores), recovery=recovery,
+                    baseline_progress=safety_cache.get(baseline_key, {}).get("route_progress_estimate", float("nan")))
+                if recovery:
+                    # Full-safe and same-prefix-recoverable trajectories BOTH
+                    # passed the required exact certificate. Preferring even a
+                    # crawling full-safe tail here would recreate the deadlock.
+                    feasible = recovery_direction_filter(keys, progress, admissible & torch.isfinite(scores))
+                    eligible = self._progress_eligible(progress, feasible, recovery=True, recovery_target=recovery_progress_target)
+                    # Progress is an adequacy constraint, not a contest for
+                    # maximum predicted speed. Within that set prefer fewer
+                    # future violating intervals, then use the shared WM score.
+                    future_risk = actions.new_tensor([tail_risk(k) for k in keys])
+                    if bool(eligible.any()):
+                        eligible &= future_risk <= future_risk[eligible].min()+1/(self.horizon*self.candidate_safety.geometry.substeps)
+                indices = eligible.nonzero().flatten()
+                indices = indices[scores[indices].argsort(descending=True)]
+                if recovery and self._recovery_latched and len(indices):
+                    best_score = float(scores[indices[0]])
+                    gate = max(self.min_improvement_abs, self.min_improvement_ratio*abs(best_score))
+                    for i in indices.cpu().tolist():
+                        if "recovery_continuation" in candidate_aliases.get(keys[i], ()) and best_score-float(scores[i]) <= gate:
+                            indices = torch.cat((indices.new_tensor([i]), indices[indices != i]))
+                            break
+            if not self.candidate_safety.staged and not progress_active:
                 i = int(indices[0])
                 return (float(scores[i]), actions[i].clone(), rows[i], keys[i])
             for i in indices.cpu().tolist():
@@ -478,6 +650,104 @@ class LocalMPPI:
                 if math.isfinite(checked_score):
                     return (checked_score, actions[i].clone(), rows[i], keys[i])
             return None
+
+        def improves_interior(key):
+            if not progress_active or not self._recovery_latched:
+                return False
+            reference = safety_context.road_reference
+            lateral = reference.project(safety_context.position)[1]
+            centers = getattr(safety_context, "lane_centers", ()) or (0.,)
+            initial = min(abs(lateral-center) for center in centers)
+            end = safety_cache[key].get("terminal_lateral_error", float("inf"))
+            resolution = float(self.candidate_safety.cfg.get("swept_position_tolerance", .002))
+            return end+resolution < initial
+
+        def interior_gain(key):
+            if not progress_active or not self._recovery_latched:
+                return 0.
+            lateral = safety_context.road_reference.project(safety_context.position)[1]
+            centers = getattr(safety_context, "lane_centers", ()) or (0.,)
+            initial = min(abs(lateral-center) for center in centers)
+            return max(0., initial-safety_cache[key].get("terminal_lateral_error", float("inf")))
+
+        def recovery_direction_filter(keys, progress, eligible):
+            # Recovery quality constraint, NOT relaxed safety and NOT a command
+            # to turn toward the center. Only exact-safe forward alternatives
+            # may activate it; otherwise keep all existing feasible choices.
+            nondegrading = torch.tensor([prefix_nondegrading(k) for k in keys], device=self.device)
+            nondegrading &= eligible & (progress >= self.min_progress)
+            if bool(nondegrading.any()):
+                eligible = nondegrading
+                gains = progress.new_tensor([prefix_gain(k) for k in keys])
+                best_gain = float(gains[eligible].max())
+                if best_gain > projection_tolerance():
+                    eligible &= gains >= self.lateral_ratio*best_gain
+            returning = torch.tensor([improves_interior(k) for k in keys], device=self.device)
+            returning &= eligible & (progress >= self.min_progress)
+            if bool(returning.any()):
+                gain = progress.new_tensor([interior_gain(k) for k in keys])
+                returning &= gain >= self.lateral_ratio*gain[returning].max()
+            return returning if bool(returning.any()) else eligible
+
+        def prefix_nondegrading(key):
+            if not progress_active or not self._recovery_latched:
+                return False
+            lateral = safety_context.road_reference.project(safety_context.position)[1]
+            centers = getattr(safety_context, "lane_centers", ()) or (0.,)
+            initial = min(abs(lateral-center) for center in centers)
+            # Quantization tolerance of world positions, not a relaxed road
+            # boundary. Do not reward a tail that promises to recenter later
+            # while EACH committed prefix moves farther toward the edge.
+            tolerance = projection_tolerance()
+            return bool(safety_cache[key].get("committed_lateral_error", float("inf")) <= initial+tolerance)
+
+        def projection_tolerance():
+            return 2*torch.finfo(baseline.dtype).eps*max(1., *map(abs, safety_context.position))
+
+        def prefix_gain(key):
+            if not progress_active or not self._recovery_latched:
+                return 0.
+            lateral = safety_context.road_reference.project(safety_context.position)[1]
+            centers = getattr(safety_context, "lane_centers", ()) or (0.,)
+            return min(abs(lateral-center) for center in centers)-safety_cache[key].get("committed_lateral_error", float("inf"))
+
+        def prefer(new, old):
+            if new is None:
+                return False
+            if old is None:
+                return True
+            if progress_active:
+                progress = baseline.new_tensor([safety_cache[c[3]].get("route_progress_estimate", float("nan")) for c in (old, new)])
+                near_ok = [float(p) >= self.min_progress and prefix_nondegrading(c[3]) for c, p in zip((old, new), progress)]
+                if near_ok[0] != near_ok[1]:
+                    return near_ok[1]
+                if all(near_ok):
+                    gains = [prefix_gain(c[3]) for c in (old, new)]
+                    gate = self.lateral_ratio*max(gains)
+                    if max(gains) > projection_tolerance() and (gains[1] >= gate) != (gains[0] >= gate):
+                        return gains[1] >= gate
+                returning = [float(p) >= self.min_progress and improves_interior(c[3]) for c, p in zip((old, new), progress)]
+                if returning[0] != returning[1]:
+                    return returning[1]
+                if all(returning):
+                    gains = [interior_gain(c[3]) for c in (old, new)]
+                    gate = self.lateral_ratio*max(gains)
+                    if (gains[1] >= gate) != (gains[0] >= gate):
+                        return gains[1] >= gate
+                eligible = self._progress_eligible(progress, torch.ones(2, dtype=torch.bool, device=self.device), recovery=True,
+                    recovery_target=recovery_progress_target if self._recovery_latched else None)
+                if bool(eligible[1]) != bool(eligible[0]):
+                    return bool(eligible[1])
+                if self._recovery_latched and bool(eligible.all()):
+                    old_risk, new_risk = tail_risk(old[3]), tail_risk(new[3])
+                    interval = 1/(self.horizon*self.candidate_safety.geometry.substeps)
+                    if abs(new_risk-old_risk) > interval:
+                        return new_risk < old_risk
+            return new[0] > old[0]
+
+        def tail_risk(key):
+            row = safety_cache[key]
+            return sum(float(row.get(f"{name}_risk", 0.)) for name in ("road", "collision", "kinematic"))
 
         baseline_key = baseline.detach().cpu().numpy().tobytes()
         if self.safety_enabled and self.candidate_safety.staged:
@@ -514,7 +784,7 @@ class LocalMPPI:
                 first = indices[torch.multinomial(weights, 1)]
                 priority = torch.cat((first, priority[priority != first]))
             choice = verified_choice(candidate_actions, candidate_keys, rows, scores, priority)
-            if choice is not None and (best is None or choice[0] > best[0]):
+            if prefer(choice, best):
                 best = choice
             if self.recovery_enabled and not baseline_safe:
                 break
@@ -539,15 +809,29 @@ class LocalMPPI:
         recovery_checked = recovery_rejects = recovery_evaluated = 0
         lattice_checked = lattice_passed = 0
         recovery_best = None
-        if self.recovery_enabled and (not baseline_safe or best is None or self._stall_active):
+        baseline_tail_risk = progress_active and not safety_cache.get(baseline_key, {}).get("full_valid", False)
+        if progress_active:
+            if self._stall_active:
+                self._recovery_latched = True
+            if not baseline_safe or baseline_tail_risk:
+                self._recovery_latched, self._recovery_exit_count = True, 0
+            elif self._recovery_latched and fresh_motion:
+                actual_progress = progress_delta if math.isfinite(progress_delta) else progress_distance
+                moving = safety_context.speed >= 2*self.stall_speed and actual_progress > 0
+                self._recovery_exit_count = self._recovery_exit_count+1 if moving else 0
+                if not self._stall_active and self._recovery_exit_count*self.candidate_safety.geometry.dt >= self.stall_exit:
+                    self._recovery_latched = False
+        if self.recovery_enabled and (not baseline_safe or best is None or self._stall_active or self._recovery_latched):
             recovery_used = True
             recovery_reason = ("low_speed_stall" if self._stall_active else
+                "future_sac_risk" if baseline_tail_risk and baseline_safe else
+                "recovery_hysteresis" if self._recovery_latched and baseline_safe and best is not None else
                 "unsafe_sac_baseline" if not baseline_safe else "no_usable_normal_candidate")
             start_checked, start_rejects, start_evaluated = checked, safety_rejected, evaluated
             with phase.measure("recovery_search"):
                 lattice = lattice_actions.to(self.device).clamp(-1, 1) if lattice_actions is not None else None
                 if lattice is not None:
-                    valid, keys, _ = check_actions(lattice[None], lattice, lattice_corridor_context, exact=True)
+                    valid, keys, _ = check_actions(lattice[None], lattice, lattice_corridor_context, exact=True, kind="lattice_baseline")
                     lattice_safe = bool(valid[0])
                 if lattice is not None and lattice_safe and not self._stall_active:
                     # Same Gaussian/elite/WM scorer, recentered on checked
@@ -560,7 +844,7 @@ class LocalMPPI:
                                 device=self.device, generator=generator)
                             actions = project(rmean+rstd*noise)
                             actions[0], actions[1] = lattice, project(rmean)
-                        valid, keys, _ = check_actions(actions, lattice, lattice_corridor_context)
+                        valid, keys, _ = check_actions(actions, lattice, lattice_corridor_context, kind="recovery_lattice")
                         lattice_checked += len(actions)
                         lattice_passed += int(valid.sum())
                         indices = valid.nonzero().flatten()
@@ -586,12 +870,12 @@ class LocalMPPI:
                         common_finite = torch.isfinite(common_scores).nonzero().flatten()
                         if len(common_finite):
                             priority = common_finite[common_scores[common_finite].argsort(descending=True)]
-                            choice = verified_choice(choices, candidate_keys, rows, common_scores, priority)
-                            if choice is not None and (recovery_best is None or choice[0] > recovery_best[0]):
+                            choice = verified_choice(choices, candidate_keys, rows, common_scores, priority, recovery=True)
+                            if prefer(choice, recovery_best):
                                 recovery_best = choice
                     if recovery_best is not None:
                         recovery_reference, mode = lattice, "recovery_lattice"
-                else:
+                if self.progressive_recovery or not (lattice is not None and lattice_safe and not self._stall_active):
                     # Small deterministic controls, not another search mode
                     # bank/controller. Rate-limited first step uses measured
                     # previous steering; every trajectory is independently checked.
@@ -618,7 +902,7 @@ class LocalMPPI:
                                 (target-safety_context.speed)/(self.horizon*self.candidate_safety.geometry.dt
                                     *float(self.candidate_safety.cfg.get("max_acceleration", 4.))))
                             levels = (requested, 0., self.candidate_safety.emergency_throttle)
-                    for fraction in self.straighten_fractions:
+                    for fraction in (() if self.progressive_recovery else self.straighten_fractions):
                         for throttle in levels:
                             steer = (previous[0]+fraction*(guidance[:, 0]-previous[0]) if guidance is not None
                                      else previous[0]*(1-fraction*progress))
@@ -633,9 +917,16 @@ class LocalMPPI:
                                 steer[i] = last+(steer[i]-last).clamp(-step_limit, step_limit)
                                 last = steer[i].clone()
                             controlled.append(torch.stack((steer, torch.full_like(steer, throttle)), -1))
-                    choices = torch.stack(controlled).clamp(-1, 1)
-                    valid, keys, _ = check_actions(choices, baseline, None)
-                    positive = choices[:, 0, 1] > 0
+                    if self.progressive_recovery:
+                        choices, types = self._controlled_candidates(safety_context, lattice, baseline)
+                    else:
+                        choices, types = torch.stack(controlled).clamp(-1, 1), "recovery_controlled"
+                    controlled_reference = choices[0].clone()
+                    valid, keys, _ = check_actions(choices, baseline, None, exact=self.progressive_recovery, kind=types)
+                    positive = choices[:, 0, 1] > 0  # preserve the existing first-action metric
+                    positive_sequence = (choices[:, :self.horizon, 1] > 0).any(1)
+                    positive_sequence_count = int(positive_sequence.sum())
+                    positive_sequence_verified = int((positive_sequence & valid).sum()) if self.progressive_recovery else 0
                     positive_count = int(positive.sum())
                     positive_keys = [key for key, flag in zip(keys, positive.cpu().tolist()) if flag]
                     positive_rejected = int((positive & ~valid).sum())
@@ -648,8 +939,9 @@ class LocalMPPI:
                     if len(indices):
                         choices = choices[indices]
                         candidate_keys = [keys[i] for i in indices.cpu().tolist()]
-                        reference = self.candidate_safety.braking_sequence(safety_context,
-                            horizon=self.horizon, device=self.device, dtype=baseline.dtype)
+                        reference = (controlled_reference if self.progressive_recovery else
+                            self.candidate_safety.braking_sequence(safety_context,
+                                horizon=self.horizon, device=self.device, dtype=baseline.dtype))
                         rows, _, _, _, _, values = evaluate(choices, candidate_keys, reference, self.recovery_delta)
                         common_scores, *_ = score(choices, values)
                         finite = torch.isfinite(common_scores).nonzero().flatten()
@@ -664,14 +956,31 @@ class LocalMPPI:
                                 finite = finite[non_emergency[finite]]
                         if len(finite):
                             priority = finite[common_scores[finite].argsort(descending=True)]
-                            recovery_best = verified_choice(choices, candidate_keys, rows, common_scores, priority)
-                            recovery_reference, mode = reference, "recovery_controlled"
+                            choice = verified_choice(choices, candidate_keys, rows, common_scores, priority, recovery=True)
+                            if prefer(choice, recovery_best):
+                                recovery_best = choice
+                                recovery_reference, mode = reference, "recovery_controlled"
             recovery_checked, recovery_rejects = checked-start_checked, safety_rejected-start_rejects
             recovery_evaluated = evaluated-start_evaluated
-        choose_recovery = recovery_best is not None and (best is None or recovery_best[0] > best[0])
+        choose_recovery = prefer(recovery_best, best)
         winner = recovery_best if choose_recovery else best
         baseline_selected = baseline_safe and (winner is None or
             (baseline_finite and winner[0]-float(baseline_score) <= threshold))
+        if progress_active and baseline_safe and winner is not None:
+            base_progress = safety_cache[baseline_key].get("route_progress_estimate", float("nan"))
+            winner_progress = safety_cache[winner[3]].get("route_progress_estimate", float("nan"))
+            if self._recovery_latched and winner_progress >= self.min_progress and prefix_nondegrading(winner[3]) and not prefix_nondegrading(baseline_key):
+                baseline_selected = False
+            elif self._recovery_latched and winner_progress >= self.min_progress and prefix_gain(winner[3]) > projection_tolerance() and prefix_gain(baseline_key) < self.lateral_ratio*prefix_gain(winner[3]):
+                baseline_selected = False
+            elif self._recovery_latched and winner_progress >= self.min_progress and improves_interior(winner[3]) and interior_gain(baseline_key) < self.lateral_ratio*interior_gain(winner[3]):
+                baseline_selected = False
+            elif self._recovery_latched and winner_progress >= self.min_progress and improves_interior(winner[3]) and not improves_interior(baseline_key):
+                baseline_selected = False
+            elif winner_progress >= self.min_progress and base_progress < self.min_progress:
+                baseline_selected = False
+            elif base_progress >= self.min_progress and winner_progress < self.normal_progress_ratio*base_progress:
+                baseline_selected = True
         scoring_unavailable = False
         if baseline_selected:
             sequence, selected, selected_key, mode = baseline, base, baseline_key, "baseline"
@@ -686,7 +995,7 @@ class LocalMPPI:
             mode = "baseline" if baseline_selected else "normal"
         else:
             sequence, selected = None, blank()
-            if lattice_actions is not None:
+            if lattice_actions is not None and not progress_active:
                 lattice = lattice_actions.to(self.device).clamp(-1, 1)
                 valid, keys, _ = check_actions(lattice.unsqueeze(0), lattice, lattice_corridor_context, exact=True)
                 if bool(valid[0]):
@@ -698,7 +1007,10 @@ class LocalMPPI:
             if sequence is None and safe_fallback is not None:
                 # WM scores can be unavailable while geometric candidates are
                 # feasible. This is not an emergency-braking condition.
-                for _, _, fallback, key in sorted(fallback_candidates.values(), key=lambda row: row[:2]):
+                def fallback_priority(row):
+                    progress = safety_cache[row[3]].get("route_progress_estimate", float("nan"))
+                    return (-progress if math.isfinite(progress) else float("inf"), *row[:2]) if progress_active else row[:2]
+                for _, _, fallback, key in sorted(fallback_candidates.values(), key=fallback_priority):
                     fallback = fallback.to(self.device)
                     valid, _, _ = check_actions(fallback[None], baseline, None, exact=True)
                     if bool(valid[0]):
@@ -711,7 +1023,7 @@ class LocalMPPI:
                                                                  device=self.device, dtype=baseline.dtype)
                 # Emergency braking is not tied to an unsafe SAC reference or
                 # its trust region, but must pass the same physical safety check.
-                valid, keys, _ = check_actions(sequence.unsqueeze(0), sequence, None, exact=True)
+                valid, keys, _ = check_actions(sequence.unsqueeze(0), sequence, None, exact=True, kind="emergency_braking")
                 emergency_fallback, unverified = True, not bool(valid[0])
                 mode = "emergency_model_check_failed" if unverified else "emergency_model_checked"
                 mean, std = sequence.clone(), torch.zeros_like(sequence)
@@ -720,6 +1032,24 @@ class LocalMPPI:
                     rows, *_ = evaluate(sequence.unsqueeze(0), keys)
                     selected = rows[0]
 
+        continuity_changed = continuity_rejected = False
+        if progress_active and not emergency_fallback and not baseline_selected:
+            adjusted = self._continuous(sequence, safety_context)
+            if not torch.equal(adjusted, sequence):
+                # The handoff is a new trajectory. It has no inherited safety
+                # certificate or WM score until both are computed for it.
+                valid, adjusted_keys, _ = check_actions(adjusted[None], baseline, None, exact=True, kind="continuity_adjusted")
+                adjusted_progress = safety_cache[adjusted_keys[0]].get("route_progress_estimate", float("nan"))
+                old_progress = safety_cache[selected_key].get("route_progress_estimate", float("nan"))
+                retained_progress = old_progress < self.min_progress or adjusted_progress >= self.normal_progress_ratio*old_progress
+                if bool(valid[0]) and retained_progress:
+                    sequence, selected_key, continuity_changed = adjusted, adjusted_keys[0], True
+                    rows, *_ = evaluate(adjusted[None], adjusted_keys)
+                    selected = rows[0]
+                else:
+                    continuity_rejected = True  # retain the original exact-checked action
+                    if bool(valid[0]) and not retained_progress:
+                        decision_reasons[adjusted_keys[0]] = "continuity_progress_loss"
         if self.safety_enabled and not unverified:
             certificate = safety_cache[selected_key]
             if not certificate.get("exact", False) or not certificate["valid"]:
@@ -748,6 +1078,11 @@ class LocalMPPI:
         max_delta = (sequence-baseline).abs().amax(0)
         metrics = {
             **timing,
+            "progress_guard_active": float(progress_active), "recovery_latched": float(self._recovery_latched),
+            "continuity_changed": float(continuity_changed), "continuity_rejected": float(continuity_rejected),
+            "center_model_active": float(self.candidate_safety.center_bicycle and getattr(safety_context, "rear_axle_to_center", None) is not None),
+            "model_guard_active": float(self.candidate_safety.center_bicycle and self.candidate_safety.center_model_guard
+                and getattr(safety_context, "rear_axle_to_center", None) is not None),
             "exact_checked_candidates": float(exact_checked), "exact_failed_candidates": float(exact_failed),
             "selected_exact_verified": float(self.safety_enabled and not unverified),
             "recovery_stall_count": float(self._stall_count), "stall_active": float(self._stall_active),
@@ -760,6 +1095,8 @@ class LocalMPPI:
             "accelerate_kinematic_valid": float(any(not safety_cache[k].get("near_kinematic", False) for k in positive_keys)),
             "positive_throttle_near_safe_count": float(sum(safety_cache[k].get("near_valid", safety_cache[k]["valid"]) for k in positive_keys)),
             "positive_throttle_candidate_count": float(positive_count), "positive_throttle_rejected_count": float(positive_rejected),
+            "positive_sequence_candidate_count": float(positive_sequence_count),
+            "positive_sequence_verified_count": float(positive_sequence_verified),
             "positive_throttle_exact_rejected_count": float(sum(safety_cache[k].get("exact", False) and not safety_cache[k]["valid"] for k in positive_keys)),
             "positive_throttle_wm_rejected_count": float(positive_wm_rejected),
             "positive_throttle_feasible_not_selected_count": float(sum(safety_cache[k]["valid"] and safety_cache[k].get("exact", False) and k != selected_key for k in positive_keys)),
@@ -806,7 +1143,7 @@ class LocalMPPI:
             "recovery_search": float(recovery_used), "recovery_wm_evaluated_candidates": float(recovery_evaluated),
             "planning_mode": float({"baseline": 0, "normal": 1, "recovery_lattice": 2, "recovery_controlled": 3,
                                      "lattice_fallback": 4, "emergency_model_checked": 5, "emergency_model_check_failed": 6}[mode]),
-            "recovery_reason": float({"none": 0, "unsafe_sac_baseline": 1, "no_usable_normal_candidate": 2, "low_speed_stall": 3}[recovery_reason]),
+            "recovery_reason": float({"none": 0, "unsafe_sac_baseline": 1, "no_usable_normal_candidate": 2, "low_speed_stall": 3, "recovery_hysteresis": 4, "future_sac_risk": 5}[recovery_reason]),
             "selected_full_braking": float(full_braking),
             "near_hard_valid_ratio": near_checked/max(checked, 1) if self.safety_enabled else float("nan"),
             "normal_near_valid_ratio": normal_near_checked/max(normal_checked, 1) if self.safety_enabled else float("nan"),
@@ -826,6 +1163,14 @@ class LocalMPPI:
             metrics.update({f"{label}_delta": float(part.norm()), f"{label}_steer_delta": float(part[0]),
                             f"{label}_throttle_delta": float(part[1])})
         flags = safety_cache.get(selected_key, {})
+        metrics["predicted_route_progress"] = float(flags.get("route_progress_estimate", float("nan")))
+        metrics["predicted_terminal_speed"] = float(flags.get("terminal_speed", float("nan")))
+        metrics["forward_verified_candidates"] = float(sum(row.get("exact", False) and row["valid"]
+            and row.get("route_progress_estimate", float("nan")) >= self.min_progress for row in safety_cache.values()))
+        metrics["forward_candidate_selected"] = float(not unverified and not emergency_fallback and
+            flags.get("route_progress_estimate", float("nan")) >= self.min_progress)
+        metrics["progress_rejected_candidates"] = float(sum(row.get("exact", False) and row["valid"]
+            and row.get("route_progress_estimate", float("nan")) < self.min_progress for row in safety_cache.values()))
         for name, field in (("future_hard", "unrecoverable"), ("exact_offroad", "offroad"),
                             ("exact_collision", "collision"), ("exact_kinematic", "kinematic_violation")):
             metrics[f"positive_throttle_{name}_rejected"] = float(sum(safety_cache[k].get("exact", False)
@@ -880,6 +1225,83 @@ class LocalMPPI:
             emergency_reason=float((3 if recovery_best is not None and full_braking else
                                     1 if near_checked == 0 else 2) if emergency_fallback else 0))
         self._prev_mean = mean.detach().clone()
+        self._last_selected_sequence = sequence.detach().clone() if not emergency_fallback and not unverified else None
+        candidate_records = []
+        if self.record_candidates:
+            def number(value):
+                value = float(value)
+                return value if math.isfinite(value) else None
+            selected_progress = flags.get("route_progress_estimate", float("nan"))
+            wm_names = ("value", "cost", "reward", "terminal_q")
+            wm_keys = list(cache)
+            packed_wm = (torch.stack([torch.stack([cache[k][name] for name in wm_names]) for k in wm_keys]).detach().cpu().tolist()
+                         if wm_keys else [])
+            host_wm = {key: {**cache[key], **dict(zip(wm_names, row))} for key, row in zip(wm_keys, packed_wm)}
+            selected_value = float(selected["value"])
+            selected_deviation = float(self.deviation_coef*deviation[0])
+            for key, item in candidate_data.items():
+                state, wm = safety_cache.get(key, {}), host_wm.get(key, {})
+                exact = bool(state.get("exact", False))
+                valid = bool(state.get("valid", False))
+                progress = state.get("route_progress_estimate", float("nan"))
+                cost_scored_here = enabled and (wm.get("ranking_validated", False) or self.allow_unvalidated_cost)
+                value = float(wm.get("value", float("nan")))
+                cost = self.cost_coef*float(wm.get("cost", 0.)) if cost_scored_here else 0.
+                risk = float(state.get("risk_score", 0.))
+                final = value-cost-item["deviation_penalty"]-item["smoothness_penalty"]-self.long_risk_coef*risk
+                if key == selected_key:
+                    reason = "selected_unverified_emergency" if unverified else "selected"
+                elif not state.get("near_valid", valid):
+                    reason = ("near_collision" if state.get("near_collision", state.get("collision", False)) else
+                        "near_offroad" if state.get("near_offroad", state.get("offroad", False)) else "near_kinematic")
+                elif exact and not valid:
+                    reason = ("future_recoverability_failed_offroad" if state.get("offroad", False) else
+                        "future_recoverability_failed_collision" if state.get("collision", False) else "future_recoverability_failed_kinematic")
+                elif not exact:
+                    reason = "not_finally_verified"
+                elif key in decision_reasons:
+                    reason = decision_reasons[key]
+                elif progress_active and self._recovery_latched and selected_progress >= self.min_progress and prefix_nondegrading(selected_key) and not prefix_nondegrading(key):
+                    reason = "committed_prefix_outward"
+                elif progress_active and self._recovery_latched and prefix_gain(selected_key) > projection_tolerance() and prefix_gain(key) < self.lateral_ratio*prefix_gain(selected_key):
+                    reason = "insufficient_committed_recovery"
+                elif progress_active and self._recovery_latched and improves_interior(selected_key) and interior_gain(key) < self.lateral_ratio*interior_gain(selected_key):
+                    reason = "insufficient_lateral_recovery"
+                elif progress_active and selected_progress >= self.min_progress and progress < max(self.min_progress,
+                        min(self.progress_ratio*selected_progress, recovery_progress_target) if self._recovery_latched else self.progress_ratio*selected_progress):
+                    reason = "insufficient_progress"
+                elif progress_active and self._recovery_latched and tail_risk(key) > tail_risk(selected_key)+1/(self.horizon*self.candidate_safety.geometry.substeps):
+                    reason = "future_risk_tier"
+                elif not math.isfinite(final):
+                    reason = "wm_score_unavailable"
+                elif baseline_selected:
+                    reason = "sac_baseline_retained"
+                elif value > selected_value and item["deviation_penalty"] > selected_deviation:
+                    reason = "deviation_penalty"
+                else:
+                    reason = "wm_score_lower" if value < selected_value else "trajectory_quality_score_lower"
+                candidate_records.append(dict(**item, exact_verified=exact and valid,
+                    candidate_types=candidate_aliases.get(key, [item["candidate_type"]]),
+                    center_model_valid=bool(state["center_model_valid"]) if "center_model_valid" in state else None,
+                    legacy_model_valid=bool(state["legacy_model_valid"]) if "legacy_model_valid" in state else None,
+                    near_safety_valid=bool(state.get("near_valid", valid)),
+                    full_safety_valid=bool(state.get("full_valid", valid)) if exact else None,
+                    future_recoverable=valid if exact else None,
+                    predicted_route_progress=number(progress), predicted_terminal_speed=number(state.get("terminal_speed", float("nan"))),
+                    terminal_lateral_error=number(state.get("terminal_lateral_error", float("nan"))),
+                    committed_lateral_error=number(state.get("committed_lateral_error", float("nan"))),
+                    min_boundary_margin=number(state.get("boundary_margin", float("nan"))),
+                    min_obstacle_clearance=number(state.get("min_clearance", float("nan"))),
+                    boundary_margin_basis="body_samples" if exact else "body_hull_preview",
+                    obstacle_clearance_basis="bounding_circle_lower_bound",
+                    predicted_collision=bool(state.get("collision", False)), predicted_offroad=bool(state.get("offroad", False)),
+                    predicted_reward=number(wm.get("reward", float("nan"))), terminal_q=number(wm.get("terminal_q", float("nan"))),
+                    wm_value=number(value), long_risk=number(risk), cost_penalty=number(cost), final_score=number(final),
+                    score_basis="exact" if exact else "preview", rejection_reason=reason, selected=key == selected_key, selected_rank=None))
+            ranked = sorted([r for r in candidate_records if r["exact_verified"] and r["final_score"] is not None],
+                key=lambda r: (not r["selected"], r["rejection_reason"] == "insufficient_progress", -r["final_score"]))
+            for rank, row in enumerate(ranked, 1):
+                row["selected_rank"] = rank
         if corridor_context is None:
             lateral = 0.
         elif self.safety_enabled:
@@ -902,6 +1324,7 @@ class LocalMPPI:
                                 if self.safety_enabled and "positions" in safety_cache.get(selected_key, {})
                                 else None),
             planning_mode=mode, recovery_reason=recovery_reason,
+            candidate_diagnostics=candidate_records,
         )
 
 

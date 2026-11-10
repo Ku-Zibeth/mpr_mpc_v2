@@ -266,6 +266,7 @@ class MPRMPCPlanner:
                 coarse_path, required_steps=self.horizon+1, control_dt=self.control_dt).positions
             mppi_safety_context.lane_width = float(self.structured.planner.last_lane_width)
             mppi_safety_context.route_progress = float(getattr(getattr(vehicle, "navigation", None), "route_completion", float("nan")))
+            mppi_safety_context.lane_centers = tuple(getattr(self.structured.planner, "last_lane_centers", ()))
             reference = getattr(self.structured.planner, "last_reference", None)
             if reference is not None:
                 mppi_safety_context.road_reference = reference
@@ -662,6 +663,7 @@ class MPRMPCPlanner:
                 "mpr/planning_ms": elapsed_ms,
             },
             debug={
+                "mppi_candidates": mppi.candidate_diagnostics if stage.use_mppi else [],
                 "selected_mppi_actions": selected_actions.detach().cpu(),
                 "final_mppi_xy": final_mppi_xy,
                 "initial_mppi_mean": initial_mean.detach().cpu(),
