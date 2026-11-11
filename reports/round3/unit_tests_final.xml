@@ -1,0 +1,354 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="17" failures="0" skipped="0" tests="17" time="5.130" timestamp="2026-11-11T01:01:27.644313+08:00" hostname="kzb"><testcase classname="" name="tests.test_evaluation_ablation" time="0.000"><error message="collection failure">../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/python.py:508: in importtestmodule
+    mod = import_path(
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:562: in import_path
+    mod = _import_module_using_spec(module_name, path, insert_modules=False)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:686: in _import_module_using_spec
+    parent_module = _import_module_using_spec(
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:686: in _import_module_using_spec
+    parent_module = _import_module_using_spec(
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:716: in _import_module_using_spec
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+&lt;frozen importlib._bootstrap_external&gt;:940: in exec_module
+    ???
+&lt;frozen importlib._bootstrap&gt;:241: in _call_with_frames_removed
+    ???
+__init__.py:13: in &lt;module&gt;
+    from .agent import MPRMPCAgent
+agent.py:12: in &lt;module&gt;
+    from .planning.config import mapping, section
+planning/__init__.py:3: in &lt;module&gt;
+    from .coordinator import MPRMPCPlanner
+planning/coordinator.py:14: in &lt;module&gt;
+    from .local_mppi import LocalMPPI
+E     File "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/local_mppi.py", line 1205
+E       if bool(valid[0]) and retained_progress:
+E                                               ^
+E   IndentationError: unindent does not match any outer indentation level</error></testcase><testcase classname="" name="tests.test_mppi_v3" time="0.000"><error message="collection failure">../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/python.py:508: in importtestmodule
+    mod = import_path(
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:562: in import_path
+    mod = _import_module_using_spec(module_name, path, insert_modules=False)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:716: in _import_module_using_spec
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/assertion/rewrite.py:188: in exec_module
+    exec(co, module.__dict__)
+tests/test_mppi_v3.py:14: in &lt;module&gt;
+    import evaluate_model_suite as suite
+evaluate_model_suite.py:44: in &lt;module&gt;
+    from mpr_mpc.agent import MPRMPCAgent
+agent.py:12: in &lt;module&gt;
+    from .planning.config import mapping, section
+planning/__init__.py:3: in &lt;module&gt;
+    from .coordinator import MPRMPCPlanner
+planning/coordinator.py:14: in &lt;module&gt;
+    from .local_mppi import LocalMPPI
+E     File "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/local_mppi.py", line 1205
+E       if bool(valid[0]) and retained_progress:
+E                                               ^
+E   IndentationError: unindent does not match any outer indentation level</error></testcase><testcase classname="" name="tests.test_mppi_v31" time="0.000"><error message="collection failure">../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/python.py:508: in importtestmodule
+    mod = import_path(
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:562: in import_path
+    mod = _import_module_using_spec(module_name, path, insert_modules=False)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:716: in _import_module_using_spec
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/assertion/rewrite.py:188: in exec_module
+    exec(co, module.__dict__)
+tests/test_mppi_v31.py:10: in &lt;module&gt;
+    from mpr_mpc.evaluation_diagnostics import EpisodeDiagnostics, StepDiagnosticsLogger
+evaluation_diagnostics.py:13: in &lt;module&gt;
+    from mpr_mpc.planning.local_mppi import MPPI_DIAGNOSTIC_KEYS, MPPI_EPISODE_METRICS
+planning/__init__.py:3: in &lt;module&gt;
+    from .coordinator import MPRMPCPlanner
+planning/coordinator.py:14: in &lt;module&gt;
+    from .local_mppi import LocalMPPI
+E     File "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/local_mppi.py", line 1205
+E       if bool(valid[0]) and retained_progress:
+E                                               ^
+E   IndentationError: unindent does not match any outer indentation level</error></testcase><testcase classname="" name="tests.test_mppi_v32" time="0.000"><error message="collection failure">../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/python.py:508: in importtestmodule
+    mod = import_path(
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:562: in import_path
+    mod = _import_module_using_spec(module_name, path, insert_modules=False)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:716: in _import_module_using_spec
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/assertion/rewrite.py:188: in exec_module
+    exec(co, module.__dict__)
+tests/test_mppi_v32.py:11: in &lt;module&gt;
+    from mpr_mpc.evaluation_diagnostics import EpisodeDiagnostics, StepDiagnosticsLogger
+evaluation_diagnostics.py:13: in &lt;module&gt;
+    from mpr_mpc.planning.local_mppi import MPPI_DIAGNOSTIC_KEYS, MPPI_EPISODE_METRICS
+planning/__init__.py:3: in &lt;module&gt;
+    from .coordinator import MPRMPCPlanner
+planning/coordinator.py:14: in &lt;module&gt;
+    from .local_mppi import LocalMPPI
+E     File "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/local_mppi.py", line 1205
+E       if bool(valid[0]) and retained_progress:
+E                                               ^
+E   IndentationError: unindent does not match any outer indentation level</error></testcase><testcase classname="" name="tests.test_mppi_v321" time="0.000"><error message="collection failure">../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/python.py:508: in importtestmodule
+    mod = import_path(
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:562: in import_path
+    mod = _import_module_using_spec(module_name, path, insert_modules=False)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:716: in _import_module_using_spec
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/assertion/rewrite.py:188: in exec_module
+    exec(co, module.__dict__)
+tests/test_mppi_v321.py:10: in &lt;module&gt;
+    from mpr_mpc.planning.mppi_safety import MPPISafetyFilter, geometric_recovery_reference
+planning/__init__.py:3: in &lt;module&gt;
+    from .coordinator import MPRMPCPlanner
+planning/coordinator.py:14: in &lt;module&gt;
+    from .local_mppi import LocalMPPI
+E     File "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/local_mppi.py", line 1205
+E       if bool(valid[0]) and retained_progress:
+E                                               ^
+E   IndentationError: unindent does not match any outer indentation level</error></testcase><testcase classname="" name="tests.test_mpr_mpc" time="0.000"><error message="collection failure">../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/python.py:508: in importtestmodule
+    mod = import_path(
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:562: in import_path
+    mod = _import_module_using_spec(module_name, path, insert_modules=False)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:716: in _import_module_using_spec
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/assertion/rewrite.py:188: in exec_module
+    exec(co, module.__dict__)
+tests/test_mpr_mpc.py:10: in &lt;module&gt;
+    from mpr_mpc.planning.coordinator import MPRMPCPlanner
+planning/__init__.py:3: in &lt;module&gt;
+    from .coordinator import MPRMPCPlanner
+planning/coordinator.py:14: in &lt;module&gt;
+    from .local_mppi import LocalMPPI
+E     File "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/local_mppi.py", line 1205
+E       if bool(valid[0]) and retained_progress:
+E                                               ^
+E   IndentationError: unindent does not match any outer indentation level</error></testcase><testcase classname="" name="tests.test_native_mppi_cost" time="0.000"><error message="collection failure">../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/python.py:508: in importtestmodule
+    mod = import_path(
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:562: in import_path
+    mod = _import_module_using_spec(module_name, path, insert_modules=False)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:716: in _import_module_using_spec
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/assertion/rewrite.py:188: in exec_module
+    exec(co, module.__dict__)
+tests/test_native_mppi_cost.py:9: in &lt;module&gt;
+    from mpr_mpc.planning.local_mppi import LocalMPPI
+planning/__init__.py:3: in &lt;module&gt;
+    from .coordinator import MPRMPCPlanner
+planning/coordinator.py:14: in &lt;module&gt;
+    from .local_mppi import LocalMPPI
+E     File "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/local_mppi.py", line 1205
+E       if bool(valid[0]) and retained_progress:
+E                                               ^
+E   IndentationError: unindent does not match any outer indentation level</error></testcase><testcase classname="" name="tests.test_prompt_completion" time="0.000"><error message="collection failure">../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/python.py:508: in importtestmodule
+    mod = import_path(
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:562: in import_path
+    mod = _import_module_using_spec(module_name, path, insert_modules=False)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:716: in _import_module_using_spec
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/assertion/rewrite.py:188: in exec_module
+    exec(co, module.__dict__)
+tests/test_prompt_completion.py:11: in &lt;module&gt;
+    import evaluate_improvements as improvements
+evaluate_improvements.py:13: in &lt;module&gt;
+    import evaluate_model_suite as suite
+evaluate_model_suite.py:49: in &lt;module&gt;
+    from mpr_mpc.planning.coordinator import MPRMPCPlanner
+planning/__init__.py:3: in &lt;module&gt;
+    from .coordinator import MPRMPCPlanner
+planning/coordinator.py:14: in &lt;module&gt;
+    from .local_mppi import LocalMPPI
+E     File "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/local_mppi.py", line 1205
+E       if bool(valid[0]) and retained_progress:
+E                                               ^
+E   IndentationError: unindent does not match any outer indentation level</error></testcase><testcase classname="" name="tests.test_residual_rl" time="0.000"><error message="collection failure">../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/python.py:508: in importtestmodule
+    mod = import_path(
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:562: in import_path
+    mod = _import_module_using_spec(module_name, path, insert_modules=False)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:716: in _import_module_using_spec
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/assertion/rewrite.py:188: in exec_module
+    exec(co, module.__dict__)
+tests/test_residual_rl.py:12: in &lt;module&gt;
+    from mpr_mpc.planning.coordinator import MPRMPCPlanner
+planning/__init__.py:3: in &lt;module&gt;
+    from .coordinator import MPRMPCPlanner
+planning/coordinator.py:14: in &lt;module&gt;
+    from .local_mppi import LocalMPPI
+E     File "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/local_mppi.py", line 1205
+E       if bool(valid[0]) and retained_progress:
+E                                               ^
+E   IndentationError: unindent does not match any outer indentation level</error></testcase><testcase classname="" name="tests.test_road_geometry" time="0.000"><error message="collection failure">../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/python.py:508: in importtestmodule
+    mod = import_path(
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:562: in import_path
+    mod = _import_module_using_spec(module_name, path, insert_modules=False)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:716: in _import_module_using_spec
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/assertion/rewrite.py:188: in exec_module
+    exec(co, module.__dict__)
+tests/test_road_geometry.py:9: in &lt;module&gt;
+    from mpr_mpc.planning import safety
+planning/__init__.py:3: in &lt;module&gt;
+    from .coordinator import MPRMPCPlanner
+planning/coordinator.py:14: in &lt;module&gt;
+    from .local_mppi import LocalMPPI
+E     File "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/local_mppi.py", line 1205
+E       if bool(valid[0]) and retained_progress:
+E                                               ^
+E   IndentationError: unindent does not match any outer indentation level</error></testcase><testcase classname="" name="tests.test_round3" time="0.000"><error message="collection failure">../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/python.py:508: in importtestmodule
+    mod = import_path(
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:562: in import_path
+    mod = _import_module_using_spec(module_name, path, insert_modules=False)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:716: in _import_module_using_spec
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/assertion/rewrite.py:188: in exec_module
+    exec(co, module.__dict__)
+tests/test_round3.py:11: in &lt;module&gt;
+    from mpr_mpc.planning.local_mppi import LocalMPPI
+planning/__init__.py:3: in &lt;module&gt;
+    from .coordinator import MPRMPCPlanner
+planning/coordinator.py:14: in &lt;module&gt;
+    from .local_mppi import LocalMPPI
+E     File "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/local_mppi.py", line 1205
+E       if bool(valid[0]) and retained_progress:
+E                                               ^
+E   IndentationError: unindent does not match any outer indentation level</error></testcase><testcase classname="" name="tests.test_round4" time="0.000"><error message="collection failure">../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/python.py:508: in importtestmodule
+    mod = import_path(
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:562: in import_path
+    mod = _import_module_using_spec(module_name, path, insert_modules=False)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:716: in _import_module_using_spec
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/assertion/rewrite.py:188: in exec_module
+    exec(co, module.__dict__)
+tests/test_round4.py:12: in &lt;module&gt;
+    from mpr_mpc.planning.local_mppi import LocalMPPI
+planning/__init__.py:3: in &lt;module&gt;
+    from .coordinator import MPRMPCPlanner
+planning/coordinator.py:14: in &lt;module&gt;
+    from .local_mppi import LocalMPPI
+E     File "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/local_mppi.py", line 1205
+E       if bool(valid[0]) and retained_progress:
+E                                               ^
+E   IndentationError: unindent does not match any outer indentation level</error></testcase><testcase classname="" name="tests.test_training_evaluation" time="0.000"><error message="collection failure">../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/python.py:508: in importtestmodule
+    mod = import_path(
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:562: in import_path
+    mod = _import_module_using_spec(module_name, path, insert_modules=False)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:716: in _import_module_using_spec
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/assertion/rewrite.py:188: in exec_module
+    exec(co, module.__dict__)
+tests/test_training_evaluation.py:7: in &lt;module&gt;
+    from mpr_mpc.trainer import MPROnlineTrainer
+trainer.py:14: in &lt;module&gt;
+    from mpr_mpc.evaluation_diagnostics import EpisodeDiagnostics
+evaluation_diagnostics.py:13: in &lt;module&gt;
+    from mpr_mpc.planning.local_mppi import MPPI_DIAGNOSTIC_KEYS, MPPI_EPISODE_METRICS
+planning/__init__.py:3: in &lt;module&gt;
+    from .coordinator import MPRMPCPlanner
+planning/coordinator.py:14: in &lt;module&gt;
+    from .local_mppi import LocalMPPI
+E     File "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/local_mppi.py", line 1205
+E       if bool(valid[0]) and retained_progress:
+E                                               ^
+E   IndentationError: unindent does not match any outer indentation level</error></testcase><testcase classname="" name="tests.test_training_recovery" time="0.000"><error message="collection failure">../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/python.py:508: in importtestmodule
+    mod = import_path(
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:562: in import_path
+    mod = _import_module_using_spec(module_name, path, insert_modules=False)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:716: in _import_module_using_spec
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/assertion/rewrite.py:188: in exec_module
+    exec(co, module.__dict__)
+tests/test_training_recovery.py:9: in &lt;module&gt;
+    from mpr_mpc.trainer import MPROnlineTrainer
+trainer.py:14: in &lt;module&gt;
+    from mpr_mpc.evaluation_diagnostics import EpisodeDiagnostics
+evaluation_diagnostics.py:13: in &lt;module&gt;
+    from mpr_mpc.planning.local_mppi import MPPI_DIAGNOSTIC_KEYS, MPPI_EPISODE_METRICS
+planning/__init__.py:3: in &lt;module&gt;
+    from .coordinator import MPRMPCPlanner
+planning/coordinator.py:14: in &lt;module&gt;
+    from .local_mppi import LocalMPPI
+E     File "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/local_mppi.py", line 1205
+E       if bool(valid[0]) and retained_progress:
+E                                               ^
+E   IndentationError: unindent does not match any outer indentation level</error></testcase><testcase classname="" name="tests.test_trajectory_selection" time="0.000"><error message="collection failure">../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/python.py:508: in importtestmodule
+    mod = import_path(
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:562: in import_path
+    mod = _import_module_using_spec(module_name, path, insert_modules=False)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:716: in _import_module_using_spec
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/assertion/rewrite.py:188: in exec_module
+    exec(co, module.__dict__)
+tests/test_trajectory_selection.py:10: in &lt;module&gt;
+    from mpr_mpc.planning.local_mppi import LocalMPPI
+planning/__init__.py:3: in &lt;module&gt;
+    from .coordinator import MPRMPCPlanner
+planning/coordinator.py:14: in &lt;module&gt;
+    from .local_mppi import LocalMPPI
+E     File "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/local_mppi.py", line 1205
+E       if bool(valid[0]) and retained_progress:
+E                                               ^
+E   IndentationError: unindent does not match any outer indentation level</error></testcase><testcase classname="" name="tests.test_v2_reporting" time="0.000"><error message="collection failure">../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/python.py:508: in importtestmodule
+    mod = import_path(
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:562: in import_path
+    mod = _import_module_using_spec(module_name, path, insert_modules=False)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:716: in _import_module_using_spec
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/assertion/rewrite.py:188: in exec_module
+    exec(co, module.__dict__)
+tests/test_v2_reporting.py:7: in &lt;module&gt;
+    from mpr_mpc.evaluation_diagnostics import EpisodeDiagnostics, fixed_scenarios, write_report
+evaluation_diagnostics.py:13: in &lt;module&gt;
+    from mpr_mpc.planning.local_mppi import MPPI_DIAGNOSTIC_KEYS, MPPI_EPISODE_METRICS
+planning/__init__.py:3: in &lt;module&gt;
+    from .coordinator import MPRMPCPlanner
+planning/coordinator.py:14: in &lt;module&gt;
+    from .local_mppi import LocalMPPI
+E     File "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/local_mppi.py", line 1205
+E       if bool(valid[0]) and retained_progress:
+E                                               ^
+E   IndentationError: unindent does not match any outer indentation level</error></testcase><testcase classname="" name="tests.test_v2_safety" time="0.000"><error message="collection failure">../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/python.py:508: in importtestmodule
+    mod = import_path(
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:562: in import_path
+    mod = _import_module_using_spec(module_name, path, insert_modules=False)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/pathlib.py:716: in _import_module_using_spec
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../anaconda3/envs/tdmpc2/lib/python3.11/site-packages/_pytest/assertion/rewrite.py:188: in exec_module
+    exec(co, module.__dict__)
+tests/test_v2_safety.py:9: in &lt;module&gt;
+    from mpr_mpc.planning.safety import SafetyContext, TrajectorySafetyEvaluator
+planning/__init__.py:3: in &lt;module&gt;
+    from .coordinator import MPRMPCPlanner
+planning/coordinator.py:14: in &lt;module&gt;
+    from .local_mppi import LocalMPPI
+E     File "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/planning/local_mppi.py", line 1205
+E       if bool(valid[0]) and retained_progress:
+E                                               ^
+E   IndentationError: unindent does not match any outer indentation level</error></testcase></testsuite></testsuites>

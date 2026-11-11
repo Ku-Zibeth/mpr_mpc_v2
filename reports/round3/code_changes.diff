@@ -1,0 +1,1225 @@
+diff --git a/planning/local_mppi.py b/planning/local_mppi.py
+index 4d81bd1..108738a 100644
+--- a/planning/local_mppi.py
++++ b/planning/local_mppi.py
+@@ -82,6 +82,8 @@ MPPI_DIAGNOSTIC_KEYS = (
+     "baseline_future_recoverable", "recovery_forced_near", "recovery_forced_unrecoverable",
+     "primary_calibrated", "legacy_shadow",
+     "center_near_collision", "legacy_near_collision", "center_near_offroad", "legacy_near_offroad",
++    "boundary_trend_delta", "boundary_decline_mps", "active_boundary_recovery", "continuation_effective", "recovery_scoring_active",
++    "recovery_progress_unavailable",
+     *(f"motion_{model}_{metric}" for model in ("center", "legacy") for metric in
+       ("position_error_m", "heading_error_rad", "lateral_error_m", "speed_error_mps", "collision_false_positive", "collision_false_negative", "offroad_false_positive", "offroad_false_negative")),
+ )
+@@ -246,6 +248,10 @@ class LocalMPPI:
+         self._recovery_latched = False
+         self._recovery_exit_count = 0
+         self._last_selected_sequence = None
++        self._boundary_history = deque(maxlen=3)
++        self._boundary_active = False
++        self._continuation_effective = False
++        self._last_recovery_observation = None
+         if not math.isfinite(self.positive_throttle) or not 0 < self.positive_throttle <= 1:
+             raise ValueError("Recovery positive_throttle must be in (0,1].")
+         if (not self.straighten_fractions or not self.throttle_levels
+@@ -275,6 +281,113 @@ class LocalMPPI:
+         self._recovery_latched = False
+         self._recovery_exit_count = 0
+         self._last_selected_sequence = None
++        self._boundary_history.clear()
++        self._boundary_active = self._continuation_effective = False
++        self._last_recovery_observation = None
++
++    def _observe_boundary(self, context, distance, fresh, route_delta=float("nan")):
++        """Measured trend only. No predicted tail risk can alone trigger this."""
++        self._continuation_effective = False
++        if context is None or not fresh:
++            return {}
++        if math.isfinite(route_delta) and route_delta <= 0:
++            distance = 0.  # sideways motion is not forward route progress
++        margin = float(getattr(context, "geometric_body_margin", float("nan")))
++        lateral = abs(float(getattr(context, "geometric_lateral_error", 0.))-
++            min(getattr(context, "lane_centers", ()) or (0.,), key=lambda d: abs(d-getattr(context, "geometric_lateral_error", 0.))))
++        lane_width = float(getattr(context, "lane_width", None) or context.width)
++        tolerance = float(self.candidate_safety.geometry.swept_position_tolerance)
++        road_token = (id(context.road), round(lane_width, 4))
++        old = self._last_recovery_observation
++        if old is not None and old["step"] is not None:
++            self._continuation_effective = bool(old["verified"] and
++                old.get("road_token", road_token) == road_token and
++                getattr(context, "measurement_step", None) == old["step"]+1 and
++                torch.allclose(torch.as_tensor(context.previous_action).float(), old["action"].cpu(), atol=1e-6, rtol=0) and
++                margin >= old["margin"]-tolerance and lateral <= old["lateral"]+tolerance and
++                (margin > old["margin"]+tolerance or lateral < old["lateral"]-tolerance) and
++                distance >= self.min_progress*self.candidate_safety.geometry.dt/(self.horizon*self.candidate_safety.geometry.dt))
++        if not math.isfinite(margin):
++            return {}
++        if self._boundary_history and self._boundary_history[-1][3] != road_token:
++            self._boundary_history.clear()  # road scope / width change is not vehicle motion
++        self._boundary_history.append((margin, lateral, distance, road_token))
++        delta = self._boundary_history[-1][0]-self._boundary_history[0][0]
++        duration = max(1, len(self._boundary_history)-1)*self.candidate_safety.geometry.dt
++        free_half_width = max(tolerance, (lane_width-context.width)/2)
++        if len(self._boundary_history) == self._boundary_history.maxlen:
++            margins = [r[0] for r in self._boundary_history]
++            inward = lateral < self._boundary_history[0][1]-tolerance
++            declining = all(a-b > tolerance for a, b in zip(margins, margins[1:]))
++            insufficient = sum(r[2] for r in list(self._boundary_history)[1:]) < self.stall_speed*duration
++            if margin < free_half_width and lateral > free_half_width and declining and insufficient and not inward:
++                self._boundary_active = True
++            elif self._boundary_active and delta > tolerance and inward and not self._recovery_latched:
++                self._boundary_active = False
++        return dict(boundary_trend_delta=delta, boundary_decline_mps=delta/duration,
++            active_boundary_recovery=float(self._boundary_active), continuation_effective=float(self._continuation_effective))
++
++    def _recovery_penalties(self, actions, baseline, reference, context):
++        """Bounded action quality, shared across ALL recovery candidate families."""
++        squared = ((actions-reference)/self.recovery_delta).square()
++        to_reference = (squared/(1+squared)).mean((1, 2))
++        sac_squared = ((actions-baseline)/self.max_delta).square()
++        to_sac = (sac_squared/(1+sac_squared)).mean((1, 2))
++        smoothness = actions.diff(dim=1).square().sum(-1).mean(1)
++        previous = actions.new_tensor(context.previous_action)
++        step = actions.new_tensor([float(self.candidate_safety.cfg.get("max_steering_rate", 7.))*self.candidate_safety.geometry.dt/context.max_steering,
++            self.throttle_increase_step])
++        first = ((actions[:, 0]-previous)/step).square()
++        continuity = (first/(1+first)).mean(1)
++        return to_reference, to_sac, smoothness, continuity
++
++    def _recovery_order(self, keys, scores, states, context):
++        """Hard safety/progress precede epsilon-Pareto recovery quality, then WM.
++
++        No geometric objective can admit an unsafe action. Near-equal changes
++        below the existing body model margin do not create a privileged tier.
++        """
++        width = max(float(getattr(context, "lane_width", None) or context.width), context.width)
++        scale = max(context.width, width-context.width)
++        epsilon = max(self.candidate_safety.geometry.model_margin,
++            self.candidate_safety.geometry.swept_position_tolerance)/scale
++        def value(k, name, default):
++            x = float(states[k].get(name, default))
++            return x if math.isfinite(x) else default
++        objectives = []
++        for key in keys:
++            row = states[key]
++            clearance = value(key, "min_clearance", 1e6)
++            objectives.append([
++                value(key, "terminal_lateral_error", 0.)/scale,
++                value(key, "committed_lateral_error", 0.)/scale,
++                -value(key, "near_boundary_margin", 0.)/scale,
++                -value(key, "terminal_boundary_margin", 0.)/scale,
++                -value(key, "boundary_margin_change", 0.)/scale,
++                1/(1+max(0., clearance)/context.width),
++                sum(float(row.get(f"{n}_risk", 0.)) for n in ("road", "collision", "kinematic")),
++                -value(key, "boundary_margin", 0.)/scale])
++        matrix = torch.tensor(objectives, dtype=torch.float64)
++        score_values = scores.detach().cpu().tolist()
++        # Epsilon dominance: at least one material improvement, no material
++        # deterioration. Nondominated choices keep WM/quality ordering.
++        primary = matrix[:, [0, 3]]  # terminal lateral error and terminal body margin
++        no_worse = (primary[:, None] <= primary[None]+epsilon).all(-1)
++        better = (primary[:, None] < primary[None]-epsilon).any(-1)
++        dominates = no_worse & better
++        remaining = list(range(len(keys))); ordered = []; fronts = {}
++        while remaining:
++            ids = torch.tensor(remaining, dtype=torch.long)
++            front = ids[~dominates[ids][:, ids].any(0)].tolist()
++            if not front: front = remaining[:]  # epsilon ties can form cycles
++            for i in front: fronts[keys[i]] = len(ordered)
++            secondary = matrix[front][:, [1, 2, 4, 5, 6, 7]]
++            dominance = ((secondary[:, None] <= secondary[None]+epsilon).all(-1)
++                & (secondary[:, None] < secondary[None]-epsilon).any(-1))
++            counts = dominance.sum(0).tolist()
++            ordered.extend(sorted(front, key=lambda i: (counts[front.index(i)], -score_values[i])))
++            remaining = [i for i in remaining if i not in front]
++        return ordered, fronts
+ 
+     def _continuous(self, actions, context):
+         """Slew-limit a proposal; caller must exact-check the resulting sequence."""
+@@ -314,23 +427,31 @@ class LocalMPPI:
+         fast, slow = self.transition_fractions
+         steers = [torch.full_like(t, previous[0]), ramp(tangent, fast), ramp(tangent, slow),
+             ramp(geometric, slow, .25), ramp(geometric, slow, .5), ramp(geometric, slow), ramp(guide, slow), ramp(geometric, fast)]
++        # Replace two slow inward families with bounded inward-then-tangent
++        # shapes. Persistent full lock can keep swinging the rear body outward.
++        # Reuse the existing transition times and the SAME 16-slot budget.
++        return_ratio = ((t-fast*horizon_s)/max((slow-fast)*horizon_s, self.candidate_safety.geometry.dt)).clamp(0, 1)
++        blend_back = return_ratio.square()*(3-2*return_ratio)
++        for index, amplitude in ((3, .25), (4, .5)):
++            inward = ramp(geometric, fast, amplitude)
++            steers[index] = inward+blend_back*(tangent-inward)
+         target = getattr(context, "target_speed", None)
+         cap = (max(0., (target-context.speed)/(horizon_s*float(self.candidate_safety.cfg.get("max_acceleration", 4.))))
+                if target is not None and math.isfinite(target) else 0.)
+         low, middle, high = [min(v, cap) for v in self.positive_levels]
+         # Preserve all direction families without a Cartesian product explosion.
+         specs = [(0, low, "hold"), (0, 0., "coast"), (0, self.controlled_deceleration, "decelerate"),
+-            (1, low, "tangent_fast"), (1, middle, "tangent_fast"), (1, high, "tangent_fast"),
++            (1, low, "tangent_fast"), (1, 0., "tangent_coast"), (1, high, "tangent_fast"),
+             (7, middle, "center_full_fast"), (2, high, "tangent_slow"),
+-            (3, middle, "center_quarter"), (3, high, "center_quarter"),
+-            (4, low, "center_half"), (4, high, "center_half"), (5, middle, "center_full"),
++            (3, middle, "center_quarter"), (3, self.controlled_deceleration, "center_quarter_decelerate"),
++            (4, low, "center_half"), (4, 0., "center_half_coast"), (5, middle, "center_full"),
+             (6, middle, "lattice_ramp"), (6, high, "lattice_ramp")]
+         choices, types = [], []
+         for index, throttle, label in specs:
+             proposal = torch.stack((steers[index], torch.full_like(t, throttle)), -1)
+             choices.append(self._continuous(proposal, context))
+             types.append("recovery_"+label)
+-        if self._recovery_latched and self._last_selected_sequence is not None:
++        if self._recovery_latched and self._continuation_effective and self._last_selected_sequence is not None:
+             last = self._last_selected_sequence
+             proposal = torch.cat((last[1:], last[-1:]), 0)
+             label = "recovery_continuation"
+@@ -350,8 +471,12 @@ class LocalMPPI:
+             if maximum >= self.min_progress:
+                 target = self.progress_ratio*maximum
+                 if recovery_target is not None:
+-                    target = min(target, recovery_target)
++                    # Turning recovery need only retain the SAME configured
++                    # progress fraction of a straight-line reachable estimate.
++                    target = min(target, self.progress_ratio*recovery_target)
+                 eligible &= progress >= max(self.min_progress, target)
++            else:
++                eligible &= progress >= self.min_progress  # stationary plans are fallbacks, not successful recovery
+         elif math.isfinite(baseline_progress) and baseline_progress >= self.min_progress:
+             eligible &= progress >= self.normal_progress_ratio*baseline_progress
+         return eligible
+@@ -483,6 +608,13 @@ class LocalMPPI:
+         previous_measurement = self._last_measurement_step
+         progress_delta, progress_distance, recovery_success = self._observe_motion(safety_context)
+         fresh_motion = getattr(safety_context, "measurement_step", None) is None or previous_measurement != safety_context.measurement_step
++        boundary_diagnostics = self._observe_boundary(safety_context, progress_distance, fresh_motion, progress_delta) if progress_active else {}
++        if progress_active and self._boundary_active:
++            self._recovery_latched = True
++        recovery_scoring = False
++        active_recovery_reference = baseline
++        recovery_reference_kind = "none"
++        recovery_fronts = {}
+         seconds = self.horizon*self.candidate_safety.geometry.dt
+         recovery_progress_target = (max(self.min_progress, min(float(getattr(safety_context, "target_speed", None) or 0.)*seconds,
+             float(getattr(safety_context, "speed", 0.))*seconds+.5*float(self.candidate_safety.cfg.get("max_acceleration", 4.))*self.positive_levels[1]*seconds**2))
+@@ -530,7 +662,9 @@ class LocalMPPI:
+                             candidate_data[key] = dict(candidate_id=f"c{len(candidate_data):04d}",
+                                 candidate_type="sac_baseline" if key == baseline_key else kind[i] if isinstance(kind, list) else kind,
+                                 first_action=host[i, 0].tolist(), steering_change=float(host[i, :, 0].diff().abs().sum()),
+-                                deviation_penalty=float(self.deviation_coef*deviation[i]), smoothness_penalty=float(self.smoothness_coef*smooth[i]))
++                                deviation_penalty=float(self.deviation_coef*deviation[i]), smoothness_penalty=float(self.smoothness_coef*smooth[i]),
++                                deviation_to_sac=float(deviation[i]), deviation_to_recovery_reference=None,
++                                smoothness=float(smooth[i]), first_action_continuity=None, recovery_reference="none")
+                 if self.safety_enabled:
+                     if corridor_ctx is not None and id(corridor_ctx) not in corridor_snapshots:
+                         corridor_snapshots[id(corridor_ctx)] = replace(corridor_ctx, refined_lateral=corridor_ctx.refined_lateral.cpu())
+@@ -567,10 +701,16 @@ class LocalMPPI:
+                                      "clearance_risk", "speed_risk", "lateral_risk", "kinematic_risk", "unrecoverable", "progress_estimate",
+                                      "route_progress_estimate", "terminal_speed", "terminal_lateral_error", "committed_lateral_error", "boundary_margin", "min_clearance",
+                                      "center_model_valid", "legacy_model_valid", "primary_calibrated", "legacy_shadow",
+-                                     "center_near_collision", "legacy_near_collision", "center_near_offroad", "legacy_near_offroad"):
++                                     "center_near_collision", "legacy_near_collision", "center_near_offroad", "legacy_near_offroad",
++                                     "near_boundary_margin", "terminal_boundary_margin", "boundary_margin_change", "committed_margin_change",
++                                     "center_first_failure_substep", "legacy_first_failure_substep", "braking_continuation_valid"):
+                             value = getattr(result, name, None)
+                             if value is not None:
+                                 columns[name] = value.tolist()
++                        for model in ("center", "legacy"):
++                            for field in ("collision", "offroad", "kinematic_violation", "braking_continuation_valid"):
++                                value = getattr(result, model+"_"+field, None)
++                                if value is not None: columns[model+"_"+field] = value.tolist()
+                         for i, key in enumerate(missing):
+                             safety_cache[key] = {name: values[i] for name, values in columns.items()}
+                             safety_cache[key]["exact"] = exact or not self.candidate_safety.staged
+@@ -602,6 +742,10 @@ class LocalMPPI:
+ 
+         def score(actions, values, reference=baseline, bounds=None):
+             deviation, smoothness = self._penalties(actions, reference, bounds)
++            if recovery_scoring:
++                primary, secondary, smoothness, continuity = self._recovery_penalties(actions, baseline, active_recovery_reference, safety_context)
++                deviation = primary+secondary  # each in [0,1], never an unbounded SAC veto
++                smoothness = smoothness+continuity
+             cost_penalty = (torch.where(values["ranking_validated"] | self.allow_unvalidated_cost,
+                 self.cost_coef*values["cost"], 0.) if enabled else torch.zeros_like(values["value"]))
+             scores = (values["value"]-cost_penalty-self.deviation_coef*deviation-self.smoothness_coef*smoothness
+@@ -663,11 +807,15 @@ class LocalMPPI:
+                     # maximum predicted speed. Within that set prefer fewer
+                     # future violating intervals, then use the shared WM score.
+                     future_risk = actions.new_tensor([tail_risk(k) for k in keys])
+-                    if bool(eligible.any()):
++                    if bool(eligible.any()) and not recovery_scoring:
+                         eligible &= future_risk <= future_risk[eligible].min()+1/(self.horizon*self.candidate_safety.geometry.substeps)
+                 indices = eligible.nonzero().flatten()
+-                indices = indices[scores[indices].argsort(descending=True)]
+-                if recovery and self._recovery_latched and len(indices):
++                if recovery_scoring and len(indices):
++                    priority, _ = self._recovery_order([keys[i] for i in indices.cpu().tolist()], scores[indices], safety_cache, safety_context)
++                    indices = indices[indices.new_tensor(priority)]
++                else:
++                    indices = indices[scores[indices].argsort(descending=True)]
++                if recovery and self._recovery_latched and self._continuation_effective and len(indices):
+                     best_score = float(scores[indices[0]])
+                     gate = max(self.min_improvement_abs, self.min_improvement_ratio*abs(best_score))
+                     for i in indices.cpu().tolist():
+@@ -700,6 +848,9 @@ class LocalMPPI:
+                 return False
+             if old is None:
+                 return True
++            if recovery_scoring:
++                order, _ = self._recovery_order([old[3], new[3]], baseline.new_tensor([old[0], new[0]]), safety_cache, safety_context)
++                return order[0] == 1
+             if progress_active:
+                 progress = baseline.new_tensor([safety_cache[c[3]].get("route_progress_estimate", float("nan")) for c in (old, new)])
+                 eligible = self._progress_eligible(progress, torch.ones(2, dtype=torch.bool, device=self.device), recovery=True,
+@@ -715,7 +866,11 @@ class LocalMPPI:
+ 
+         def tail_risk(key):
+             row = safety_cache[key]
+-            return sum(float(row.get(f"{name}_risk", 0.)) for name in ("road", "collision", "kinematic"))
++            discrete = sum(float(row.get(f"{name}_risk", 0.)) for name in ("road", "collision", "kinematic"))
++            width = float(getattr(safety_context, "width", 1.))
++            margin = max(0., float(row.get("near_boundary_margin", width)))
++            clearance = max(0., float(row.get("min_clearance", 1e6)))
++            return discrete+1/(1+margin/width)+1/(1+clearance/width)
+ 
+         baseline_key = baseline.detach().cpu().numpy().tobytes()
+         if self.safety_enabled and self.candidate_safety.staged:
+@@ -787,10 +942,14 @@ class LocalMPPI:
+                 self._recovery_latched, self._recovery_exit_count = True, 0
+             elif self._recovery_latched and fresh_motion:
+                 actual_progress = progress_delta if math.isfinite(progress_delta) else progress_distance
+-                moving = safety_context.speed >= 2*self.stall_speed and actual_progress > 0
++                moving = (safety_context.speed >= 2*self.stall_speed and actual_progress > 0
++                    and (not self._boundary_active or (len(self._boundary_history) >= 2
++                        and self._boundary_history[-1][0] >= self._boundary_history[-2][0]
++                        and self._boundary_history[-1][1] <= self._boundary_history[-2][1])))
+                 self._recovery_exit_count = self._recovery_exit_count+1 if moving else 0
+                 if not self._stall_active and self._recovery_exit_count*self.candidate_safety.geometry.dt >= self.stall_exit:
+                     self._recovery_latched = False
++                    self._boundary_active = False
+         if self.recovery_enabled and (not baseline_safe or best is None or self._stall_active or self._recovery_latched):
+             recovery_used = True
+             recovery_reason = ("low_speed_stall" if self._stall_active else
+@@ -802,6 +961,30 @@ class LocalMPPI:
+                 if lattice is not None:
+                     valid, keys, _ = check_actions(lattice[None], lattice, lattice_corridor_context, exact=True, kind="lattice_baseline")
+                     lattice_safe = bool(valid[0])
++                if progress_active:
++                    # ONE reference for all recovery families AND normal
++                    # finalists compared in this planning call.
++                    recovery_scoring = True
++                    if lattice is not None and lattice_safe and safety_cache[keys[0]].get("full_valid", False):
++                        active_recovery_reference, recovery_reference_kind = lattice, "lattice_full_checked"
++                    else:
++                        prepared, prepared_types = self._controlled_candidates(safety_context, lattice, baseline)
++                        safe, prepared_keys, _ = check_actions(prepared, baseline, None, exact=True, kind=prepared_types)
++                        progress = baseline.new_tensor([safety_cache[k].get("route_progress_estimate", float("nan")) for k in prepared_keys])
++                        eligible = self._progress_eligible(progress, safe, recovery=True, recovery_target=recovery_progress_target)
++                        if not bool(eligible.any()): eligible = safe
++                        indices = eligible.nonzero().flatten()
++                        if len(indices):
++                            order, _ = self._recovery_order([prepared_keys[i] for i in indices.cpu().tolist()],
++                                baseline.new_zeros(len(indices)), safety_cache, safety_context)
++                            i = int(indices[order[0]])
++                            active_recovery_reference = prepared[i]
++                            recovery_reference_kind = prepared_types[i]
++                        elif best is not None:
++                            active_recovery_reference, recovery_reference_kind = best[1], "normal_exact_checked"
++                        elif lattice is not None and lattice_safe:
++                            active_recovery_reference, recovery_reference_kind = lattice, "lattice_recoverable_checked"
++                    recovery_reference = active_recovery_reference
+                 if lattice is not None and lattice_safe and not self._stall_active:
+                     # Same Gaussian/elite/WM scorer, recentered on checked
+                     # Lattice. Neither SAC delta bounds nor SAC corridor apply.
+@@ -932,10 +1115,34 @@ class LocalMPPI:
+             recovery_checked, recovery_rejects = checked-start_checked, safety_rejected-start_rejects
+             recovery_evaluated = evaluated-start_evaluated
+         choose_recovery = prefer(recovery_best, best)
++        if recovery_scoring:
++            # Global exact pool: never compare a Normal raw score with a
++            # Recovery raw score, or Lattice and Controlled local references.
++            pool_keys = [k for k, r in safety_cache.items() if r.get("exact", False) and r["valid"] and k in cache]
++            if pool_keys:
++                import numpy as np
++                actions = torch.stack([torch.from_numpy(np.frombuffer(k, dtype=baseline_host.numpy().dtype).copy()).reshape_as(baseline_host)
++                    for k in pool_keys]).to(self.device)
++                rows, scores, *unused = evaluate(actions, pool_keys)
++                progress = baseline.new_tensor([safety_cache[k].get("route_progress_estimate", float("nan")) for k in pool_keys])
++                eligible = self._progress_eligible(progress, torch.isfinite(scores), recovery=True, recovery_target=recovery_progress_target)
++                ids = eligible.nonzero().flatten()
++                if len(ids):
++                    order, _ = self._recovery_order([pool_keys[i] for i in ids.cpu().tolist()], scores[ids], safety_cache, safety_context)
++                    recovery_fronts = {pool_keys[int(ids[i])]: rank for rank, i in enumerate(order, 1)}
++                    i = int(ids[order[0]])
++                    recovery_best = (float(scores[i]), actions[i].clone(), rows[i], pool_keys[i])
++                    choose_recovery = True
++                    recovery_reference = active_recovery_reference
++                    mode = "recovery_lattice" if "recovery_lattice" in candidate_aliases.get(pool_keys[i], ()) else "recovery_controlled"
++                else:
++                    recovery_best, best, choose_recovery = None, None, False
+         winner = recovery_best if choose_recovery else best
+         baseline_selected = baseline_safe and (winner is None or
+             (baseline_finite and winner[0]-float(baseline_score) <= threshold))
+-        if progress_active and baseline_safe and winner is not None:
++        if recovery_scoring:
++            baseline_selected = False
++        elif progress_active and baseline_safe and winner is not None:
+             base_progress = safety_cache[baseline_key].get("route_progress_estimate", float("nan"))
+             winner_progress = safety_cache[winner[3]].get("route_progress_estimate", float("nan"))
+             if winner_progress >= self.min_progress and base_progress < self.min_progress:
+@@ -978,7 +1185,7 @@ class LocalMPPI:
+                     if bool(valid[0]):
+                         sequence, selected_key = fallback, key
+                         selected = cache.get(key, blank())
+-                        mode, scoring_unavailable = "normal", True
++                        mode, scoring_unavailable = ("recovery_controlled" if recovery_scoring else "normal"), True
+                         break
+             if sequence is None:
+                 sequence = self.candidate_safety.braking_sequence(safety_context, horizon=self.horizon,
+@@ -1004,6 +1211,9 @@ class LocalMPPI:
+                 adjusted_progress = safety_cache[adjusted_keys[0]].get("route_progress_estimate", float("nan"))
+                 old_progress = safety_cache[selected_key].get("route_progress_estimate", float("nan"))
+                 retained_progress = old_progress < self.min_progress or adjusted_progress >= self.normal_progress_ratio*old_progress
++                if bool(valid[0]) and retained_progress and recovery_scoring:
++                    order, _ = self._recovery_order([selected_key, adjusted_keys[0]], baseline.new_zeros(2), safety_cache, safety_context)
++                    retained_progress = order[0] == 1 or order[0] == 0 and torch.equal(adjusted, sequence)
+                 if bool(valid[0]) and retained_progress:
+                     sequence, selected_key, continuity_changed = adjusted, adjusted_keys[0], True
+                     rows, *_ = evaluate(adjusted[None], adjusted_keys)
+@@ -1030,6 +1240,9 @@ class LocalMPPI:
+             # braking action, not evidence of improved search corrections.
+             mode, emergency_fallback = "emergency_model_checked", True
+         deviation, smoothness = self._penalties(sequence.unsqueeze(0), score_reference, score_bounds)
++        if recovery_scoring:
++            primary, secondary, smoothness, continuity = self._recovery_penalties(sequence[None], baseline, active_recovery_reference, safety_context)
++            deviation, smoothness = primary+secondary, smoothness+continuity
+         cost_scored = enabled and (selected["ranking_validated"] or self.allow_unvalidated_cost)
+         cost_penalty = self.cost_coef*selected["cost"] if cost_scored else baseline.new_tensor(0.)
+         long_penalty = self.long_risk_coef*selected.get("long_risk", 0.)
+@@ -1047,6 +1260,10 @@ class LocalMPPI:
+         delta = sequence[0]-baseline[0]
+         max_delta = (sequence-baseline).abs().amax(0)
+         metrics = {
++            **boundary_diagnostics,
++            "recovery_scoring_active": float(recovery_scoring),
++            "recovery_progress_unavailable": float(recovery_scoring and not any(r.get("exact", False) and r["valid"]
++                and r.get("route_progress_estimate", -1) >= self.min_progress for r in safety_cache.values())),
+             **timing,
+             "brake_released": float(safety_context is not None and float(safety_context.previous_action[1]) < 0 and float(sequence[0, 1]) >= 0),
+             "longitudinal_mode": float(1 if safety_context is not None and float(safety_context.previous_action[1]) < 0 and float(sequence[0, 1]) >= 0
+@@ -1209,6 +1426,13 @@ class LocalMPPI:
+                                     1 if near_checked == 0 else 2) if emergency_fallback else 0))
+         self._prev_mean = mean.detach().clone()
+         self._last_selected_sequence = sequence.detach().clone() if not emergency_fallback and not unverified else None
++        self._last_recovery_observation = (dict(step=getattr(safety_context, "measurement_step", -2),
++            road_token=(id(safety_context.road), round(float(getattr(safety_context, "lane_width", None) or safety_context.width), 4)),
++            action=sequence[0].detach().clone(), verified=certificate_valid,
++            margin=float(getattr(safety_context, "geometric_body_margin", float("nan"))),
++            lateral=abs(float(getattr(safety_context, "geometric_lateral_error", 0.))-
++                min(getattr(safety_context, "lane_centers", ()) or (0.,), key=lambda d: abs(d-getattr(safety_context, "geometric_lateral_error", 0.)))))
++            if recovery_scoring and not emergency_fallback and certificate_valid else None)
+         candidate_records = []
+         if self.record_candidates:
+             def number(value):
+@@ -1222,6 +1446,14 @@ class LocalMPPI:
+             host_wm = {key: {**cache[key], **dict(zip(wm_names, row))} for key, row in zip(wm_keys, packed_wm)}
+             selected_value = float(selected["value"])
+             selected_deviation = float(self.deviation_coef*deviation[0])
++            recovery_components = {}
++            if recovery_scoring and candidate_data:
++                import numpy as np
++                archive_keys = list(candidate_data)
++                archive_actions = torch.stack([torch.from_numpy(np.frombuffer(k, dtype=baseline_host.numpy().dtype).copy()).reshape_as(baseline_host)
++                    for k in archive_keys]).to(self.device)
++                parts = torch.stack(self._recovery_penalties(archive_actions, baseline, active_recovery_reference, safety_context), 1).cpu().tolist()
++                recovery_components = dict(zip(archive_keys, parts))
+             for key, item in candidate_data.items():
+                 state, wm = safety_cache.get(key, {}), host_wm.get(key, {})
+                 exact = bool(state.get("exact", False))
+@@ -1231,9 +1463,17 @@ class LocalMPPI:
+                 value = float(wm.get("value", float("nan")))
+                 cost = self.cost_coef*float(wm.get("cost", 0.)) if cost_scored_here else 0.
+                 risk = float(state.get("risk_score", 0.))
++                if key in recovery_components:
++                    ref_deviation, sac_deviation, raw_smoothness, first_continuity = recovery_components[key]
++                    item["deviation_penalty"] = self.deviation_coef*(ref_deviation+sac_deviation)
++                    item["smoothness_penalty"] = self.smoothness_coef*(raw_smoothness+first_continuity)
++                    item.update(deviation_to_sac=sac_deviation, deviation_to_recovery_reference=ref_deviation,
++                        smoothness=raw_smoothness, first_action_continuity=first_continuity,
++                        recovery_reference=recovery_reference_kind)
+                 final = value-cost-item["deviation_penalty"]-item["smoothness_penalty"]-self.long_risk_coef*risk
+                 if key == selected_key:
+-                    reason = "selected_unverified_emergency" if unverified else "selected"
++                    reason = ("selected_unverified_emergency" if unverified else
++                        "selected_verified_no_progress_fallback" if metrics["recovery_progress_unavailable"] and not emergency_fallback else "selected")
+                 elif not state.get("near_valid", valid):
+                     reason = ("near_collision" if state.get("near_collision", state.get("collision", False)) else
+                         "near_offroad" if state.get("near_offroad", state.get("offroad", False)) else "near_kinematic")
+@@ -1244,10 +1484,14 @@ class LocalMPPI:
+                     reason = "not_finally_verified"
+                 elif key in decision_reasons:
+                     reason = decision_reasons[key]
++                elif recovery_scoring and progress < self.min_progress:
++                    reason = "insufficient_progress"
++                elif recovery_scoring and key in recovery_fronts and selected_key in recovery_fronts and recovery_fronts[key] > recovery_fronts[selected_key]:
++                    reason = "recovery_geometry_front"
+                 elif progress_active and selected_progress >= self.min_progress and progress < max(self.min_progress,
+                         min(self.progress_ratio*selected_progress, recovery_progress_target) if self._recovery_latched else self.progress_ratio*selected_progress):
+                     reason = "insufficient_progress"
+-                elif progress_active and self._recovery_latched and tail_risk(key) > tail_risk(selected_key)+1/(self.horizon*self.candidate_safety.geometry.substeps):
++                elif progress_active and self._recovery_latched and not recovery_scoring and tail_risk(key) > tail_risk(selected_key)+1/(self.horizon*self.candidate_safety.geometry.substeps):
+                     reason = "future_risk_tier"
+                 elif not math.isfinite(final):
+                     reason = "wm_score_unavailable"
+@@ -1258,6 +1502,25 @@ class LocalMPPI:
+                 else:
+                     reason = "wm_score_lower" if value < selected_value else "trajectory_quality_score_lower"
+                 candidate_records.append(dict(**item, exact_verified=exact and valid,
++                    scoring_mode="recovery" if recovery_scoring else "normal",
++                    reward=number(wm.get("reward", float("nan"))), route_progress=number(progress),
++                    boundary_risk=number(1/(1+max(0., float(state.get("near_boundary_margin", 0.)))/safety_context.width)) if safety_context is not None else None,
++                    lateral_improvement=number(min(abs(float(getattr(safety_context, "geometric_lateral_error", 0.))-c)
++                        for c in (getattr(safety_context, "lane_centers", ()) or (0.,)))-float(state.get("terminal_lateral_error", float("nan")))),
++                    near_boundary_margin=number(state.get("near_boundary_margin", float("nan"))),
++                    terminal_boundary_margin=number(state.get("terminal_boundary_margin", float("nan"))),
++                    boundary_margin_change=number(state.get("boundary_margin_change", float("nan"))),
++                    center_first_failure_substep=number(state.get("center_first_failure_substep", -1)),
++                    legacy_first_failure_substep=number(state.get("legacy_first_failure_substep", -1)),
++                    braking_continuation_valid=bool(state.get("braking_continuation_valid", False)),
++                    model_rejections={model: {field: state.get(model+"_"+field) for field in
++                        ("collision", "offroad", "kinematic_violation", "braking_continuation_valid")} for model in ("center", "legacy")},
++                    first_failure_time_upper_s={model: (state[model+"_first_failure_substep"]*self.candidate_safety.geometry.dt/self.candidate_safety.geometry.substeps
++                        if state.get(model+"_first_failure_substep", -1) > 0 else None) for model in ("center", "legacy")},
++                    first_failure_physics_tick_upper_bound={model: (math.ceil(state[model+"_first_failure_substep"]*self.candidate_safety.geometry.dt/
++                        self.candidate_safety.geometry.substeps/float((getattr(safety_context, "motion_signature", None) or {}).get("physics_dt") or
++                            self.candidate_safety.geometry.dt/self.candidate_safety.geometry.substeps))
++                        if state.get(model+"_first_failure_substep", -1) > 0 else None) for model in ("center", "legacy")},
+                     candidate_types=candidate_aliases.get(key, [item["candidate_type"]]),
+                     center_model_valid=bool(state["center_model_valid"]) if "center_model_valid" in state else None,
+                     legacy_model_valid=bool(state["legacy_model_valid"]) if "legacy_model_valid" in state else None,
+@@ -1279,6 +1542,11 @@ class LocalMPPI:
+                 key=lambda r: (not r["selected"], r["rejection_reason"] == "insufficient_progress", -r["final_score"]))
+             for rank, row in enumerate(ranked, 1):
+                 row["selected_rank"] = rank
++            if recovery_scoring:
++                for key, item in zip(candidate_data, candidate_records):
++                    item["selected_rank"] = (1 if key == selected_key and certificate_valid else
++                        recovery_fronts.get(key) if selected_key in recovery_fronts else
++                        recovery_fronts[key]+1 if key in recovery_fronts else None)
+         if corridor_context is None:
+             lateral = 0.
+         elif self.safety_enabled:
+diff --git a/planning/mppi_safety.py b/planning/mppi_safety.py
+index cbee0e7..e710e98 100644
+--- a/planning/mppi_safety.py
++++ b/planning/mppi_safety.py
+@@ -20,6 +20,74 @@ from .swept_collision import _position_bound
+ from .swept_collision import swept_collisions
+ 
+ 
++def repair_proven_lane_seams(road, lanes):
++    """Remove ONLY holes wholly covered by an actual analytic circular lane.
++
++    MetaDrive samples CircularLane polygons at equal longitudinal distances;
++    neighboring radii therefore use different angles on their shared edge.
++    Their union can contain millimeter slivers along an INTERNAL lane line.
++    No buffer/area cutoff is used here. The convex hull must be contained in
++    a single analytic annular sector; medians, exterior edges and unknown lane
++    types are retained. This is independent of frozen SAC feature geometry.
++    """
++    from metadrive.component.lane.circular_lane import CircularLane
++    circles = [lane for lane in lanes if type(lane) is CircularLane and not lane.forbidden]
++    seams = []
++    for lane in circles:
++        shared = lane.radius+lane.width/2
++        for other in circles:
++            if (lane is other or lane.direction != other.direction or
++                not np.array_equal(np.asarray(lane.center), np.asarray(other.center)) or
++                abs(shared-(other.radius-other.width/2)) > 1e-10 or
++                abs(math.atan2(math.sin(lane.start_phase-other.start_phase), math.cos(lane.start_phase-other.start_phase))) > 1e-10 or
++                abs(lane.angle-other.angle) > 1e-10):
++                continue
++            # Error bound from MetaDrive's ACTUAL longitudinal tessellation,
++            # not a configurable hole-size or road-clearance relaxation.
++            step = max(lane.POLYGON_SAMPLE_RATE/lane.radius, other.POLYGON_SAMPLE_RATE/other.radius)
++            sagitta = shared*(1-math.cos(step/2))
++            seams.append((lane, shared, sagitta))
++    def covered(hole):
++        hull = hole.convex_hull
++        vertices = np.asarray(hull.exterior.coords)[:-1]
++        for lane, shared, sagitta in seams:
++            center = np.asarray(lane.center, dtype=float)
++            inner, outer = lane.radius-lane.width/2, lane.radius+lane.width/2
++            # Only a floating-point error bound (64 float64 ULPs at this map
++            # coordinate scale), typically ~1e-12 m. This is NOT a millimeter
++            # road tolerance; the full physical road_margin is still applied.
++            roundoff = 64*float(np.spacing(max(1., float(np.abs(center).max()), outer)))
++            if inner <= 0 or hull.distance(shapely.Point(center)) < inner-roundoff:
++                continue
++            delta = vertices-center
++            radial_max = np.linalg.norm(delta, axis=1).max()
++            if radial_max > outer+roundoff or radial_max > shared+roundoff or hull.distance(shapely.Point(center)) < shared-sagitta-roundoff:
++                continue
++            mid = lane.start_phase+lane.direction*lane.angle/2
++            angle = np.arctan2(delta[:, 1], delta[:, 0])-mid
++            angle = np.arctan2(np.sin(angle), np.cos(angle))
++            # A hull excluding the center and spanning <pi has no hidden
++            # angular extrema between its vertices. Restrict to supported arcs.
++            if lane.angle <= math.pi and angle.max()-angle.min() < math.pi and np.abs(angle).max() <= lane.angle/2+roundoff/inner:
++                return True
++        return False
++    repaired, removed = [], 0
++    for polygon in ([road] if road.geom_type == "Polygon" else road.geoms):
++        holes = []
++        for ring in polygon.interiors:
++            if covered(shapely.Polygon(ring)):
++                removed += 1
++            else:
++                holes.append(ring)
++        repaired.append(shapely.Polygon(polygon.exterior, holes))
++    if not removed:
++        return road, 0
++    result = shapely.union_all(repaired)
++    if not result.is_valid or result.is_empty:
++        raise RuntimeError("Analytically proven lane-seam repair produced invalid geometry.")
++    return result, removed
++
++
+ @dataclass
+ class MPPISafetyContext(SafetyContext):
+     brake_action_mapping_verified: bool = False
+@@ -43,12 +111,15 @@ class MPPISafetyContext(SafetyContext):
+     sac_target_speed: float | None = None
+     mppi_target_speed: float | None = None
+     motion_signature: dict | None = None
++    road_seams_repaired: int = 0
+ 
+ 
+ def geometric_recovery_reference(context, reference, lane_centers, control_dt):
+     """One pure-pursuit proposal toward the nearest lane, never a safety override.
+ 
+-    Lookahead is one wheelbase or one planning horizon of measured travel.
++    Lookahead clears the front footprint plus one wheelbase, or one planning
++    horizon of measured travel. At a low-speed bend, a rearward target can
++    incorrectly aim across the lane just before the front body reaches a turn.
+     Nearest-lane and Lattice directions are offered separately; obstacle and
+     body clearance are resolved by the existing exact candidate checker.
+     """
+@@ -57,7 +128,7 @@ def geometric_recovery_reference(context, reference, lane_centers, control_dt):
+     context.geometric_lateral_error = float(lateral)
+     context.geometric_heading_error = math.atan2(math.sin(yaw-context.heading), math.cos(yaw-context.heading))
+     lane = min(lane_centers, key=lambda d: abs(d-lateral)) if lane_centers else lateral
+-    lookahead = max(context.wheelbase, context.speed*(len(context.lattice_actions)-1)*control_dt)
++    lookahead = max(context.length/2+context.wheelbase, context.speed*(len(context.lattice_actions)-1)*control_dt)
+     target_s = min(reference.length, s+lookahead)
+     target = reference.calc_position(target_s)+lane*np.array([-math.sin(reference.calc_yaw(target_s)), math.cos(reference.calc_yaw(target_s))])
+     delta = target-context.position
+@@ -66,7 +137,9 @@ def geometric_recovery_reference(context, reference, lane_centers, control_dt):
+     context.geometric_steer = float(np.clip(steering/context.max_steering, -1, 1))
+     # A second, lane-tangent proposal avoids the rear-corner swing caused by
+     # immediately aiming across the lane from a nearly parallel boundary pose.
+-    context.road_tangent_steer = float(np.clip(math.atan2(context.wheelbase*context.geometric_heading_error,
++    future_yaw = reference.calc_yaw(target_s)
++    future_error = math.atan2(math.sin(future_yaw-context.heading), math.cos(future_yaw-context.heading))
++    context.road_tangent_steer = float(np.clip(math.atan2(2*context.wheelbase*math.sin(future_error),
+         lookahead)/context.max_steering, -1, 1))
+     body = shapely.polygons(_corners(torch.tensor(context.position)[None, None], torch.tensor([[context.heading]]),
+         context.length, context.width)[0, 0].numpy())
+@@ -105,6 +178,13 @@ class MPPISafetyResult(SafetyResult):
+     legacy_near_collision: torch.Tensor | None = None
+     center_near_offroad: torch.Tensor | None = None
+     legacy_near_offroad: torch.Tensor | None = None
++    near_boundary_margin: torch.Tensor | None = None
++    terminal_boundary_margin: torch.Tensor | None = None
++    boundary_margin_change: torch.Tensor | None = None
++    committed_margin_change: torch.Tensor | None = None
++    center_first_failure_substep: torch.Tensor | None = None
++    legacy_first_failure_substep: torch.Tensor | None = None
++    braking_continuation_valid: torch.Tensor | None = None
+ 
+ 
+ def projected_route_progress(positions, context, *, with_lateral=False):
+@@ -146,6 +226,7 @@ class MPPISafetyFilter:
+         # of small CUDA launches and CPU synchronizations in swept geometry.
+         self.geometry = TrajectorySafetyEvaluator(cfg, control_dt=control_dt, device="cpu")
+         self.safe_roads = {}
++        self._lane_seam_cache = {}
+         self._response_prediction = None
+         self.two_layer = bool(cfg.get("two_layer", False))
+         self.staged = self.two_layer and bool(cfg.get("staged", False))
+@@ -190,6 +271,7 @@ class MPPISafetyFilter:
+     def reset(self):
+         self.geometry.reset()
+         self.safe_roads.clear()
++        self._lane_seam_cache.clear()
+         self._response_prediction = None
+ 
+     def context(self, planner, vehicle, *, width, wheelbase, max_steering, snapshot=None):
+@@ -203,6 +285,12 @@ class MPPISafetyFilter:
+         # BaseVehicle._apply_throttle_brake: negative action[1] applies setBrake
+         # (and zero engine force) exactly when enable_reverse is false.
+         result = MPPISafetyContext(**values, brake_action_mapping_verified=True)
++        token = id(source.road)
++        if token not in self._lane_seam_cache:
++            road, count = repair_proven_lane_seams(source.road, source.source_lanes)
++            # Holding source prevents id reuse while this observation cache lives.
++            self._lane_seam_cache[token] = (source.road, road, count)
++        _, result.road, result.road_seams_repaired = self._lane_seam_cache[token]
+         result.measurement_step = getattr(getattr(vehicle, "engine", None), "episode_step", None)
+         rear = getattr(vehicle, "REAR_WHEELBASE", None)
+         if rear is not None and math.isfinite(float(rear)) and 0 < float(rear) < wheelbase:
+@@ -651,6 +739,9 @@ class MPPISafetyFilter:
+         result = self._check_nominal(actions, context)
+         result.center_model_valid = result.valid.clone() if self.center_bicycle and context.rear_axle_to_center is not None else None
+         result.center_near_collision, result.center_near_offroad = result.near_collision, result.near_offroad
++        for name in ("collision", "offroad", "kinematic_violation", "braking_continuation_valid"):
++            value = getattr(result, name)
++            setattr(result, "center_"+name, value.clone() if value is not None else None)
+         if self.center_bicycle and self.center_model_guard and context.rear_axle_to_center is not None:
+             # Preserve the original geometric standard as a second hypothesis.
+             # Bullet tire transients need not instantly reach steady beta. Both
+@@ -658,6 +749,9 @@ class MPPISafetyFilter:
+             # neither a failed check nor missing evidence can be averaged away.
+             guard = self._check_nominal(actions, replace(context, rear_axle_to_center=None))
+             result.legacy_model_valid = guard.valid.clone()
++            for name in ("collision", "offroad", "kinematic_violation", "braking_continuation_valid"):
++                value = getattr(guard, name)
++                setattr(result, "legacy_"+name, value.clone() if value is not None else None)
+             result.legacy_near_collision, result.legacy_near_offroad = guard.near_collision, guard.near_offroad
+             shadow = result.primary_calibrated
+             result.legacy_shadow = shadow.clone()
+@@ -678,12 +772,20 @@ class MPPISafetyFilter:
+                 a, b = getattr(result, name), getattr(guard, name)
+                 if a is not None and b is not None:
+                     setattr(result, name, torch.where(shadow, a, torch.minimum(a, b)))
++            result.legacy_first_failure_substep = guard.center_first_failure_substep
++            for name in ("near_boundary_margin", "terminal_boundary_margin", "boundary_margin_change", "committed_margin_change"):
++                if getattr(result, name) is not None and getattr(guard, name) is not None:
++                    setattr(result, name, torch.minimum(getattr(result, name), getattr(guard, name)))
++            result.braking_continuation_valid &= guard.braking_continuation_valid
+         return result
+ 
+     @torch.no_grad()
+     def _check_nominal(self, actions, context):
+         result = self._strict_check(actions, context)
+         result.primary_calibrated = self.calibrated_mask(actions, context)
++        failures = result.interval_offroad | result.interval_collision | result.interval_kinematic
++        result.center_first_failure_substep = torch.where(failures.any(1), failures.int().argmax(1)+1, -1)
++        result.braking_continuation_valid = result.full_valid.clone()
+         result.route_progress_estimate, result.terminal_lateral_error = projected_route_progress(result.positions, context, with_lateral=True)
+         result.terminal_speed = result.speeds[:, -1]
+         committed = self.committed_controls(actions.shape[1]-1)
+@@ -715,6 +817,7 @@ class MPPISafetyFilter:
+             witnesses = self._braking_continuations(actions[risky].cpu(), context, committed)
+             checked = self._strict_check(witnesses, context)
+             viable = checked.valid.reshape(-1, len(risky)).any(0)
++            result.braking_continuation_valid[risky] = viable
+             unrecoverable[risky] = ~viable
+             calibrated_viable = (checked.valid & self.calibrated_mask(witnesses, context)).reshape(-1, len(risky)).any(0)
+             result.primary_calibrated[risky] &= calibrated_viable
+@@ -735,6 +838,21 @@ class MPPISafetyFilter:
+                             context.length+2*self.geometry.model_margin, context.width+2*self.geometry.model_margin)
+         _, margin = self.geometry._road_metrics(corners, context.road)
+         result.boundary_margin = margin
++        # Continuous signed BODY clearance is a ranking diagnostic, never a
++        # substitute for the unchanged swept-interval certificate above.
++        body_corners = _corners(result.positions[:, ::self.geometry.substeps], result.headings[:, ::self.geometry.substeps],
++            context.length, context.width).numpy()
++        bodies = shapely.polygons(body_corners)
++        inside = shapely.covers(context.road, bodies)
++        distances = shapely.distance(bodies, context.road.boundary)
++        point_inside = shapely.covers(context.road, shapely.points(body_corners))
++        penetration = np.where(point_inside, 0., shapely.distance(shapely.points(body_corners), context.road.boundary)).max(-1)
++        signed_margin = torch.from_numpy(np.where(inside, distances, -np.maximum(penetration, 1e-6))).float()
++        result.boundary_margin = signed_margin.amin(1)
++        result.near_boundary_margin = signed_margin[:, :committed+1].amin(1)
++        result.terminal_boundary_margin = signed_margin[:, -1]
++        result.boundary_margin_change = signed_margin[:, -1]-signed_margin[:, 0]
++        result.committed_margin_change = signed_margin[:, committed]-signed_margin[:, 0]
+         boundary_risk = torch.exp(-margin.clamp_min(0)/context.width)
+         # Bounding-circle separation is a conservative lower bound on clearance;
+         # continuous contact/TTC still comes from swept_collisions above.
+diff --git a/planning/safety.py b/planning/safety.py
+index 8dbad2f..acbaaa2 100644
+--- a/planning/safety.py
++++ b/planning/safety.py
+@@ -35,6 +35,7 @@ class SafetyContext:
+     road: Any
+     obstacles: tuple
+     cache: dict = field(default_factory=dict, repr=False)
++    source_lanes: tuple = field(default=(), repr=False)  # geometry provenance, never a SAC feature
+ 
+ 
+ @dataclass
+@@ -167,6 +168,7 @@ class TrajectorySafetyEvaluator:
+             length=float(getattr(vehicle, "LENGTH", 4.5)), width=width, wheelbase=wheelbase,
+             max_steering=max_steering, previous_action=previous,
+             road=self._road_cache[key], obstacles=tuple(planner._collect_obstacles(vehicle)),
++            source_lanes=tuple(lanes),
+         )
+ 
+     def rollout(self, actions, context):
+diff --git a/tests/test_trajectory_selection.py b/tests/test_trajectory_selection.py
+index 82a3d66..91f1ee1 100644
+--- a/tests/test_trajectory_selection.py
++++ b/tests/test_trajectory_selection.py
+@@ -414,3 +414,213 @@ def test_motion_evidence_gates_legacy_shadow_and_conservative_tube(tmp_path, sta
+         assert not f.check(a, c).valid[0]  # calibration cannot override real geometry
+         c.obstacles = (); c.road = box(0, 5, 11., 15); c.cache.clear()
+         assert not f.check(a, c).valid[0]
++
++
++def test_recovery_reference_and_geometry_front_override_unbounded_sac_preference():
++    p = make_planner(); baseline = stuck_baseline(p)
++    p.deviation_coef = 1.
++    p.candidate_safety.geometry.model_margin = .05
++    c = road_context(speed=2); c.position[1] = 11.5
++    c.geometric_lateral_error = 1.5
++    p.evaluator.value = lambda a: 1000*a[:, 0, 0]  # deliberately favors outward steering
++    r = p.plan(torch.zeros(1, 2), baseline, eval_mode=True, safety_context=c, lattice_actions=torch.zeros(11, 2))
++    assert r.metrics["recovery_scoring_active"] and r.action[0] < 0
++    assert r.safety_certificate["valid"] and not r.safety_failure
++    selected = next(row for row in r.candidate_diagnostics if row["selected"])
++    assert selected["deviation_to_sac"] <= 1 and selected["deviation_to_recovery_reference"] <= 1
++    assert selected["final_score"] == pytest.approx(float(r.selected_score), abs=1e-3)
++    references = {row["recovery_reference"] for row in r.candidate_diagnostics}
++    assert references == {"lattice_full_checked"}
++
++
++def test_recovery_secondary_sac_penalty_is_bounded_without_zeroing_coefficient():
++    p = make_planner(); c = road_context()
++    p.deviation_coef = 1.
++    a = torch.full((2, 11, 2), -1.); a[1] = .9
++    reference = torch.full((11, 2), -.9); sac = torch.ones(11, 2)
++    primary, secondary, smoothness, first = p._recovery_penalties(a, sac, reference, c)
++    assert p.deviation_coef > 0 and (secondary <= 1).all() and primary[0] < primary[1]
++    assert (first <= 1).all() and not smoothness.any()
++
++
++def test_recovery_margin_order_retains_finite_wm_only_within_geometry_front():
++    p = make_planner(); c = road_context()
++    states = {"near": dict(terminal_lateral_error=1., committed_lateral_error=1., near_boundary_margin=.02,
++        terminal_boundary_margin=.02, boundary_margin_change=-.2, valid=True),
++        "inside": dict(terminal_lateral_error=.7, committed_lateral_error=.9, near_boundary_margin=.3,
++        terminal_boundary_margin=.4, boundary_margin_change=.18, valid=True)}
++    order, _ = p._recovery_order(["near", "inside"], torch.tensor([1e6, 1.]), states, c)
++    assert order[0] == 1
++    states["near"] = states["inside"].copy()
++    order, _ = p._recovery_order(["near", "inside"], torch.tensor([2., 1.]), states, c)
++    assert order[0] == 0  # no tiny/noise-only geometric improvement suppresses WM
++
++
++@pytest.mark.parametrize("worsening", ["margin", "lateral", "action"])
++def test_recovery_continuation_requires_measured_improvement(worsening):
++    p = make_planner(); c = road_context(speed=1)
++    c.measurement_step=2; c.lane_width=3.5; c.geometric_body_margin=.4; c.geometric_lateral_error=.8
++    p._last_recovery_observation=dict(verified=True, step=1, action=torch.zeros(2), margin=.3, lateral=1.)
++    p._observe_boundary(c, .1, True)
++    assert p._continuation_effective
++    if worsening == "margin": c.geometric_body_margin=.2
++    if worsening == "lateral": c.geometric_lateral_error=1.1
++    if worsening == "action": c.previous_action=np.array([0., .2])
++    p._observe_boundary(c, .1, True)
++    assert not p._continuation_effective
++
++
++def test_continuation_candidate_is_removed_after_outward_actual_motion():
++    p = make_planner(); p._recovery_latched=True; p._last_selected_sequence=torch.zeros(11, 2)
++    c = road_context(); p._continuation_effective=False
++    _, types = p._controlled_candidates(c, None, torch.zeros(11, 2))
++    assert len(types) <= 16 and "recovery_continuation" not in types
++    p._continuation_effective=True
++    _, types = p._controlled_candidates(c, None, torch.zeros(11, 2))
++    assert "recovery_continuation" in types
++
++
++def test_measured_boundary_decline_triggers_but_healthy_corner_or_width_change_does_not():
++    for kind in ("boundary", "corner", "width_change"):
++        p=make_planner(); c=road_context(speed=.1); c.lane_width=3.5
++        c.geometric_lateral_error=1.3 if kind != "corner" else .1
++        for i, margin in enumerate([.5, .4, .3]):
++            c.geometric_body_margin=margin
++            if i==2 and kind=="width_change": c.lane_width=4.
++            p._observe_boundary(c, .001, True)
++        assert p._boundary_active == (kind=="boundary")
++
++
++@pytest.mark.parametrize("side", [-1., 1.])
++@pytest.mark.parametrize("heading", [0., np.pi])
++def test_geometric_recovery_left_right_mirrors_in_world_and_frenet(side, heading):
++    from mpr_mpc.planning.mppi_safety import geometric_recovery_reference
++    c=road_context(speed=2)
++    direction=np.array([np.cos(heading),np.sin(heading)])
++    normal=np.array([-direction[1],direction[0]])
++    c.position=10*direction+side*.7*normal; c.heading=heading
++    c.lattice_actions=torch.zeros(11,2)
++    reference=PolylineReference([np.zeros(2),100*direction]); c.road_reference=reference
++    geometric_recovery_reference(c,reference,[0.],.1)
++    assert c.geometric_steer*side < 0
++    a=torch.zeros(1,11,2); a[:,:,0]=c.geometric_steer
++    f=MPPISafetyFilter(safety_cfg(center_bicycle=True),control_dt=.1)
++    c.rear_axle_to_center=c.wheelbase*.57
++    xy, _, _=f._rollout(a,c)
++    assert abs(reference.project(xy[0,-1].numpy())[1]) < .7
++
++
++def test_recovery_pulse_steers_back_toward_tangent_without_more_candidates():
++    p=make_planner(); c=road_context(); c.geometric_steer=-.8; c.road_tangent_steer=.1
++    a,types=p._controlled_candidates(c,None,torch.zeros(11,2))
++    pulse=a[types.index("recovery_center_half"),:,0]
++    assert len(a)==16 and pulse.min()<pulse[-1]
++
++
++@pytest.mark.parametrize("side", [-1., 1.])
++def test_front_footprint_lookahead_anticipates_mirrored_bend(side):
++    from mpr_mpc.planning.mppi_safety import geometric_recovery_reference
++    c=road_context(); c.position=np.array([10., side*.7]); c.lattice_actions=torch.zeros(11,2)
++    reference=PolylineReference([[0.,0.],[12.,0.],[12.,side*30.]])
++    geometric_recovery_reference(c,reference,[0.],.1)
++    assert c.geometric_steer*side > 0 and c.road_tangent_steer*side > 0
++
++
++def test_stationary_recovery_is_explicit_fallback_not_progress_eligible():
++    p=make_planner()
++    eligible=p._progress_eligible(torch.tensor([0.,-.1,.01]),torch.ones(3,dtype=torch.bool),recovery=True,recovery_target=.5)
++    assert not eligible.any()
++
++
++def test_controlled_recovery_couples_turning_with_coasting_and_deceleration():
++    p=make_planner(); c=road_context(); c.geometric_steer=-.8; c.road_tangent_steer=.1
++    actions,types=p._controlled_candidates(c,None,torch.zeros(11,2))
++    assert len(actions)==16
++    turn=actions[types.index("recovery_center_quarter_decelerate")]
++    assert turn[:,0].min()<0 and (turn[:,1]<0).any()
++    coast=actions[types.index("recovery_center_half_coast")]
++    assert coast[:,0].min()<0 and not coast[:,1].any()
++
++
++def test_verified_zero_progress_fallback_is_not_reported_as_successful_recovery():
++    p=make_planner(); p._stall_active=True
++    c=road_context(); c.target_speed=0.; c.lattice_speed_limit=0.
++    base=torch.zeros(11,2)
++    r=p.plan(torch.zeros(1,2),base,eval_mode=True,safety_context=c,lattice_actions=base)
++    assert r.safety_certificate["valid"] and r.metrics["recovery_progress_unavailable"] == 1
++    assert r.metrics["forward_candidate_selected"] == 0
++    assert next(row for row in r.candidate_diagnostics if row["selected"])["rejection_reason"] == "selected_verified_no_progress_fallback"
++
++
++def circular_road_fixture(lane_class=None):
++    from metadrive.component.lane.circular_lane import CircularLane
++    from shapely.ops import unary_union
++    cls=lane_class or CircularLane
++    lanes=[cls([0.,0.],radius,0.,np.pi/2,clockwise=False,width=3.5) for radius in (10.,13.5,17.)]
++    return lanes,unary_union([lane.shapely_polygon for lane in lanes])
++
++
++def test_only_proven_internal_circular_lane_seams_are_filled():
++    from mpr_mpc.planning.mppi_safety import repair_proven_lane_seams
++    from shapely.geometry import Point
++    lanes,road=circular_road_fixture()
++    old=road.wkb;new,count=repair_proven_lane_seams(road,lanes)
++    assert count > 0 and len(new.interiors) < len(road.interiors)
++    assert road.wkb==old and new.exterior.equals(road.exterior)
++    assert new.covers(road) and not new.covers(Point(0.,0.))  # inner median stays outside
++    assert not new.covers(Point(20.,20.))  # real exterior never expanded
++
++
++def test_real_hole_inside_lane_but_away_from_shared_boundary_is_preserved():
++    from mpr_mpc.planning.mppi_safety import repair_proven_lane_seams
++    from shapely.geometry import Point
++    lanes,road=circular_road_fixture()
++    island=Point(10/np.sqrt(2),10/np.sqrt(2)).buffer(.05)
++    modified=road.difference(island)
++    repaired,_=repair_proven_lane_seams(modified,lanes)
++    assert not repaired.covers(island.centroid)
++
++
++def test_unknown_lane_geometry_and_radial_median_are_not_closed():
++    from metadrive.component.lane.circular_lane import CircularLane
++    from shapely.ops import unary_union
++    from shapely.geometry import Point
++    from mpr_mpc.planning.mppi_safety import repair_proven_lane_seams
++    class CustomLane(CircularLane): pass
++    lanes,road=circular_road_fixture(CustomLane)
++    new,count=repair_proven_lane_seams(road,lanes)
++    assert not count and new.equals(road)
++    lanes=[CircularLane([0.,0.],radius,0.,np.pi/2,clockwise=False,width=3.5) for radius in (10.,14.)]
++    road=unary_union([l.shapely_polygon for l in lanes]);new,count=repair_proven_lane_seams(road,lanes)
++    median=Point(12/np.sqrt(2),12/np.sqrt(2))
++    assert not count and not new.covers(median)
++
++
++def test_seam_repair_still_rejects_real_continuous_vehicle_collision():
++    from mpr_mpc.planning.mppi_safety import repair_proven_lane_seams
++    from tests.test_v2_safety import obstacle
++    lanes,road=circular_road_fixture();new,_=repair_proven_lane_seams(road,lanes)
++    c=road_context(speed=1,road=new,obstacles=(obstacle(11.,10.),)); c.rear_axle_to_center=c.wheelbase*.57
++    f=MPPISafetyFilter(safety_cfg(two_layer=True,center_bicycle=True,center_model_guard=True),control_dt=.1)
++    result=f.check(torch.zeros(1,11,2),c)
++    assert not result.valid[0] and result.near_collision[0]
++
++
++def test_mppi_seam_repair_leaves_frozen_sac_source_geometry_unchanged():
++    from types import SimpleNamespace
++    lanes,road=circular_road_fixture();c=road_context(road=road);c.source_lanes=tuple(lanes)
++    f=MPPISafetyFilter(safety_cfg(two_layer=True),control_dt=.1)
++    vehicle=SimpleNamespace(config={"enable_reverse":False},enable_reverse=False)
++    before=c.road.wkb
++    result=f.context(None,vehicle,width=c.width,wheelbase=c.wheelbase,max_steering=c.max_steering,snapshot=c)
++    assert result.road_seams_repaired > 0 and c.road.wkb==before and c.road is road
++    assert result.source_lanes==c.source_lanes and result.road is not road
++
++
++def test_recovery_considers_minimum_body_margin_between_matching_endpoints():
++    p=make_planner();c=road_context()
++    common=dict(terminal_lateral_error=.5,committed_lateral_error=.5,near_boundary_margin=.4,
++        terminal_boundary_margin=.4,boundary_margin_change=0.,valid=True)
++    states={"dip":dict(common,boundary_margin=.01),"clear":dict(common,boundary_margin=.3)}
++    order,_=p._recovery_order(["dip","clear"],torch.tensor([1e6,1.]),states,c)
++    assert order[0]==1
+diff --git a/tools/run_trajectory_pair.sh b/tools/run_trajectory_pair.sh
+index 1005068..76e0777 100644
+--- a/tools/run_trajectory_pair.sh
++++ b/tools/run_trajectory_pair.sh
+@@ -35,7 +35,7 @@ fi
+ import hashlib, json, sys
+ from pathlib import Path
+ from tools.benchmark_mppi import source_fingerprint
+-report = Path('reports/round2/acceptance_final.json')
++report = Path('reports/round3/acceptance_final.json')
+ if not report.is_file():
+     raise SystemExit('No smoke acceptance report. Run and validate the prescribed unit/closed-loop tests first.')
+ data = json.loads(report.read_text())
+diff --git a/tools/smoke_v32_recovery.py b/tools/smoke_v32_recovery.py
+index 24bc786..2bd9a9a 100644
+--- a/tools/smoke_v32_recovery.py
++++ b/tools/smoke_v32_recovery.py
+@@ -124,7 +124,23 @@ def main():
+                         max_steering_rad=context.max_steering, control_dt=agent.planner.control_dt,
+                         footprint_hausdorff_m=Polygon(footprint).hausdorff_distance(Polygon(vehicle.bounding_box)))
+                     geometry_audit.update(longitudinal_parameter_source=context.longitudinal_parameter_source,
+-                        dynamics_parameters=context.dynamics_parameters)
++                        dynamics_parameters=context.dynamics_parameters,
++                        initial_speed=context.speed, body_margin=context.geometric_body_margin,
++                        lateral_error=context.geometric_lateral_error, heading_error=context.geometric_heading_error,
++                        geometric_steer=context.geometric_steer, lane_width=context.lane_width,
++                        future_tangent_steer=context.road_tangent_steer,
++                        reference_ahead=[dict(distance=d, xy=context.road_reference.calc_position(min(context.road_reference.length,
++                            context.road_reference.project(context.position)[0]+d)).tolist(),
++                            yaw=context.road_reference.calc_yaw(min(context.road_reference.length,
++                                context.road_reference.project(context.position)[0]+d))) for d in (0., context.length/2+context.wheelbase, 10.)],
++                        obstacle_count=len(context.obstacles),
++                        forward_obstacle_count=sum(float((np.asarray(o.position)-context.position)@np.array([np.cos(context.heading),np.sin(context.heading)])) > 0
++                            for o in context.obstacles),
++                        road_seams_repaired=context.road_seams_repaired,
++                        source_circular_lanes=[dict(center=list(map(float,l.center)),radius=float(l.radius),width=float(l.width),
++                            start_phase=float(l.start_phase),angle=float(l.angle),direction=int(l.direction),forbidden=bool(l.forbidden))
++                            for l in context.source_lanes if type(l).__name__ == "CircularLane"],
++                        nearest_obstacle_center_m=min((float(np.linalg.norm(np.asarray(o.position)-context.position)) for o in context.obstacles), default=None))
+                 prediction, predicted_heading, predicted_speed = agent.planner.local_mppi.candidate_safety._rollout(
+                     result.debug["selected_mppi_actions"][None, :2], context)
+                 obs, _, done, info = env.step(action)
+@@ -135,6 +151,10 @@ def main():
+                     ("crash", "crash_vehicle", "crash_object", "crash_building", "crash_human", "crash_sidewalk"))
+                 offroad = bool(info.get("out_of_road", False))
+                 smoke.append(dict(step=i+1, mode=result.planning_mode, action=action.tolist(),
++                    sac_action=result.refined_actions[0].detach().cpu().tolist(),
++                    lattice_action=result.coarse_actions[0].detach().cpu().tolist(),
++                    geometric_steer=context.geometric_steer, body_margin_before=context.geometric_body_margin,
++                    minimum_obstacle_clearance=result.metrics.get("mppi/min_clearance", result.metrics.get("mpr/mppi_min_clearance")),
+                     action_executed=executed, safety_failure=bool(info.get("safety_failure", False)),
+                     safety_failure_reason=info.get("safety_failure_reason", ""),
+                     safety_certificate=result.debug.get("safety_certificate"),
+diff --git a/ROUND3_RECOVERY_SCORING_REPORT.md b/ROUND3_RECOVERY_SCORING_REPORT.md
+new file mode 100644
+--- /dev/null
++++ b/ROUND3_RECOVERY_SCORING_REPORT.md
+@@ -0,0 +1,190 @@
++# 第三轮：Recovery 统一评分与主动安全修正
++
++本轮以用户指定的 `main@6b8271dc9e4e87f39e87f0caca383eab4eac78b6` 为起点，启动时工作区干净。代码已实施并回归；**559 的 120 步脱困验收通过，当前 main 的正常驾驶回归及 5 个额外场景通过。历史 1714 数值的 98% 目标仍未恢复，因此默认正式 100 场 B/D 入口保持关闭。**
++
++没有训练 WM/SAC、修改网络/535 维特征顺序/Action Mapping/模型权重；没有改 Lattice 轨迹生成、训练阶段、1000 步上限、MetaDrive 碰撞/越界/成功判定；没有 reset、checkout、clean、commit 或 push。
++
++## 1. 修改文件
++
++| 文件 | 修改内容与原因 |
++|---|---|
++| `planning/local_mppi.py` | Normal/Recovery 评分语境分离；统一恢复参考和有界动作质量项；精确可行候选的分层/Pareto 排序；实测边界趋势；有实效的恢复延续；16 条受控候选中的转向-滑行/减速组合；进度不足回退的明确诊断。 |
++| `planning/mppi_safety.py` | 增加完整时域/近端/终点车身裕度与变化、双模型拒绝和首次失败区间诊断；改进车头尺度前视及道路切线建议；修补经解析车道几何严格证明的内部拼接缝，并缓存结果。 |
++| `planning/safety.py` | 仅给 SafetyContext 增加 source_lanes 溯源元数据并在构建上下文时传递；原道路多边形和 SAC 风险特征计算不改。只有知道原 union 的贡献车道，MPPI 才能证明补缝，避免拿全地图其他道路作为错误证据。 |
++| `tests/test_trajectory_selection.py` | 保留全部原有测试，在现有文件扩展 24 个参数化用例：评分、统一参考、裕度、延续、实测触发、镜像符号、无进度回退、耦合候选、内部细缝证明与真实边界/碰撞保持。 |
++| `tools/smoke_v32_recovery.py` | 记录每步 SAC/Lattice/最终动作与几何提示；记录车道几何溯源、前方障碍物、补缝数量、真实物理步和规划尝试、证书与逐候选评分归档。 |
++| `tools/run_trajectory_pair.sh` | 正式 B/D 入口改为读取本轮验收及源码/权重指纹。主模型单独校准和 233ms 时延不作为独立门槛；历史进度条件尚未满足时保留关闭。 |
++
++`config.yaml`、Cost 验证机制、`allow_unvalidated_cost=false` 和未通过的 `motion_calibration_final/validation.json` 均未修改。Normal 仍使用 64 samples / 8 elites / 4 iterations；Recovery Lattice 仍为 32 samples / 2 iterations；Controlled Recovery 最多 16 条。参考预检查与后续检查复用同一候选和缓存，没有扩大受控候选池。
++
++## 2. 关键根因：内部车道拼接细缝被当成真实道路边界
++
++只修改评分和候选形状时，559 仍反复制动并提前安全终止。进一步查看道路轮廓发现：MetaDrive 的 `CircularLane.polygon` 按固定 **1m 纵向距离**采样，相邻圆弧半径不同，于是共享车道边缘使用不同角度的弦。union 后产生毫米级内部细缝，车身扫掠与负 road_margin 缓冲会将其当成不可跨越的道路孔洞。
++
++这既污染了精确可行性判断，也污染了边界裕度和恢复排序。559 前方约 0.436m 的“边界”实际是内部拼接缝，不能据此认定车辆已经面对真实路缘或不可恢复死角。此前只根据最近边界的位置作出的“前方几何危险”解释被本次解析车道核查纠正。
++
++补缝不使用任意面积过滤或 buffer close，而要求：
++
++- 车道来自构建该道路 union 的原始 `source_lanes`，类型必须是已知的 `CircularLane`，且非 forbidden。
++- 两条源车道具有相同圆心、方向和角域，半径与宽度证明它们共享内部边缘，没有径向中央隔离带。
++- 孔洞的整个凸包落在真实解析环形扇区内，并位于实际采样步长推导出的弦高误差带中。
++- 只允许约 64 个 float64 ULP 的运算舍入界（本地图约 1e-12m），不是新增的毫米级道路容忍度。
++- 只移除被证明的内部孔洞；不改外轮廓，不删除无法证明的孔洞、真实隔离区或未知车道类型。
++
++559 初始道路有 108 个孔洞，证明并移除 107 个，保留 1 个；填回面积 0.279976m²，**外轮廓完全相同**。实际车身对真实外边界的裕度约 2.720m，原始含缝几何却报 0.436m。
++
++![同一外轮廓，修补解析证明的内部细缝](reports/round3/proven_seam_comparison_559.png)
++
++所有原碰撞、连续扫掠、车辆尺寸、运动学和 road_margin 检查继续执行；Center AND Legacy 都使用经过证明的同一可行驶区域。SAC 的源道路多边形对象与特征值保持不变，单元测试检查源 WKB 未被改动。没有把运动学模型检查通过称作真实环境安全保证。
++
++## 3. 修改前后评分公式
++
++令 `V=discounted reward + discounted terminal Q`，`C` 只有在原有候选排序验证通过时才计入，`R` 为原长时域风险。所有评分项均保留原权重，尤其 `deviation_coef=1.0`、`smoothness_coef=0.3`，没有通过将偏离权重调零绕过问题。
++
++**原实现及保留的 Normal：**
++
++```text
++D_SAC = mean[(delta_steer/b_steer)^2 + 0.25*(delta_throttle/b_throttle)^2]
++M_N   = mean ||diff(action - SAC_baseline)||²
++S_N   = V - validated_cost_penalty - lambda_dev*D_SAC
++          - lambda_smooth*M_N - lambda_risk*R
++```
++
++Normal 继续围绕 SAC 单高斯搜索，保留原 baseline 替换改善阈值。真实安全、正常进度与裕度足够时，不启用恢复参考或改 SAC 行为。
++
++**新的 Recovery：**
++
++```text
++rho(q) = q/(1+q)
++D_ref  = mean rho(((action - recovery_reference)/recovery_bounds)^2)
++D_SAC  = mean rho(((action - SAC_baseline)/normal_bounds)^2)
++M_R    = mean ||diff(action)||²
++U_0    = mean rho(((first_action - actual_previous_action)/control_step_bounds)^2)
++S_R    = V - validated_cost_penalty - lambda_dev*(D_ref + D_SAC)
++          - lambda_smooth*(M_R + U_0) - lambda_risk*R
++```
++
++`D_ref`、`D_SAC` 各在 [0,1]，所以不会再产生 104 分的 SAC 偏离惩罚。Steering 连续性仍受实际转向速率约束，Throttle 仍沿用独立制动释放/增减油门规则；评分里的连续性不能替代这些约束。
++
++Recovery 的唯一参考优先取完整验证通过的 Lattice，否则从经过精确检查、具备合理进度的几何候选选择；只有实测改善并验证动作一致的上一条恢复轨迹才可能作为延续候选。无几何候选时仅能使用另行精确验证的正常候选或可恢复 Lattice，不能把未验证参考当作执行凭证。
++
++进入 Recovery 后，Lattice、Controlled 和参与最终比较的 Normal 候选全部针对该参考、同一 bounds、同一 WM/Cost/风险计算重评分。正常阶段旧分数不与恢复阶段新分数直接比较，最终选中分数、连续性调整后的分数和归档分数保持一致。
++
++## 4. Recovery 排序与边界趋势
++
++排序层级为：
++
++1. 原精确安全检查与同前缀可恢复性。预筛选结果不能授权执行。
++2. 合理正向进度。恢复可以使用既有保留比例评价直线可达进度，不要求转向恢复同时达到最大预测速度；零进度只可作为明确标记的安全回退。
++3. 按车辆尺寸/可用车道宽度归一化的几何层级：先比较终点横向误差和终点车身边界裕度的 epsilon-Pareto 层；再比较近端/全时域最小车身裕度、裕度趋势、已提交段横向误差、障碍物距离和未来风险。epsilon 来自原 model_margin/数值扫掠分辨率，小于模型分辨能力的变化不会获得绝对优先级。
++4. 在几何可比候选中再比较统一 WM/驾驶质量评分。未显著改善横向误差的可行候选仍保留在后续层，不会因为一个横向改善比例被硬性删除。
++
++`tail_risk()` 不再仅有 road/collision/kinematic 的区间比例，还包含归一化的车身裕度和障碍物间距。米制裕度不直接与二值越界混作同一种量；硬安全判断始终先于这些排序量。
++
++主动边界干预使用连续 3 个实际控制观测：车身裕度连续下降、车辆相对可用车道宽度已接近外侧、路线前进不足且没有向内改善时进入恢复。道路作用域/宽度变化时清空趋势，正常弯道、合理换道不会仅因曲率或 full_valid=False 触发。退出仍需持续的实际速度/路线进展与边界改善迟滞。
++
++上一条恢复轨迹只有在精确验证通过、实际动作匹配、横向/边界不恶化且有合理实际路线前进时才允许移位延续。侧向抖动不算路线前进。没有安全动作时继续原 P0 safety_failure，不会为脱困强制正油门。
++
++16 条候选保留保持转向、道路切线、几何向内、Lattice 引导、不同变化速率与有效延续；增加向内后回到道路切线的时变形状，并以少量转向＋滑行/减速替换重复正油门组合。所有新序列经过同一检查，没有新增规划器或控制网络。
++
++## 5. 转向符号和诊断
++
++左右镜像直道（世界航向 0/π）及镜像弯道测试通过。MetaDrive 实际 `_set_action` 仍直接使用 normalized steering × max_steering；没有给所有 steering 取反。实际回放的正负转向/航向响应与模型方向一致，短暂轮胎响应偏差仍记录为执行误差。
++
++原轴距前视在低速下可能落在车头附近，因此恢复提示改用车头半长＋轴距的几何尺度，并同时提供未来道路切线方向，避免把“最近车道中心”当作所有弯道的唯一正确恢复方向。
++
++逐候选归档包含 WM Value、Reward、Terminal Q、SAC/恢复参考偏离、平滑度、首动作连续性、边界风险、横向改善、路线进度、最终分数、拒绝原因、选中排名、双模型拒绝原因、制动延续和首次失败区间。模型默认 substeps=2，实际物理 tick=0.02s，因此首次失败物理 tick 标为**区间上界**，没有伪造精确的实际碰撞时刻。拒绝原因区分近端道路失败、远期可恢复性失败、进度不足、几何层级和 WM 分数问题。
++
++最终选中分数与归档分数最大绝对差 0.00001760（float32/host 运算舍入），测试阈值 1e-3。完整实际分布保存在 `reports/round3/scoring_audit.json`。
++
++## 6. 单元测试
++
++`/home/kzb/anaconda3/envs/tdmpc2/bin/python -m pytest tests -q --disable-warnings --junitxml=reports/round3/unit_tests_final_passed.xml`
++
++**349 passed，0 failures，0 errors**。原始 325 项测试全部保留，扩展 24 个参数化用例。覆盖统一参考、有界惩罚、几何优先级、时域中间裕度下降、无进度回退、实效延续、边界趋势、镜像转向、受控转向减速、真实碰撞/外边界/隔离区保持、未知车道不补缝，以及原 SAC 几何不被修改。`git diff --check`、脚本语法及完整补丁反向校验另行通过。
++
++## 7. 559：严格 120 步回放
++
++| 指标 | 修改前当前 main | 本轮定稿 | 要求 |
++|---|---:|---:|---:|
++| 实际控制步/规划尝试 | 10/11 | 120/120 | 120 个真实控制步 |
++| 平均速度 m/s | 0.413 | 8.007 | ≥0.5 |
++| 最高速度 m/s | 1.064 | 15.467 | 记录 |
++| 路线增量 | 0.001322 | 0.391251 | ≥0.01 |
++| 低速步数 <0.3m/s | 6/10 | 1/120 | ≤20 |
++| Emergency 执行步 | 3 | 0 | ≤10 |
++| 未验证动作执行 | 0 | 0 | 0 |
++| Safety Failure | 1 | 0 | 0 |
++| Crash / Out of Road | 0/0（提前终止） | 0/0 | 0/0 |
++
++本轮 559 各项固定步数条件通过。修改前只执行 10 步，不能把其平均值与 120 步当作等长统计检验；本轮没有截断后补零或把提前终止算成功。只改评分、尚未补缝时的试验仍提前失败，说明**修复几何误拒绝是主要进展，不能把整段提升全部归因于 Recovery 评分**。
++
++## 8. 1714：正常驾驶保持与基准差异
++
++执行 60/60 步，无 Crash、Out of Road、Safety Failure、Emergency 或未验证动作，Recovery 步数为 0。平均速度 4.341m/s，路线增量 0.064408074。
++
++| 参考 | 参考路线增量 | 本轮保持率 | 98% 条件 |
++|---|---:|---:|---|
++| 任务指定当前 main（本轮修改前） | 0.064537146 | 99.80% | 通过 |
++| prompt 同时引用的更早历史版本 | 0.066981243 | 96.16% | 尚未通过 |
++
++没有通过切换参考值把历史 96.16% 写成历史达标。当前 main 的增量回归通过，但历史目标仍保留为默认正式门控中的阻塞项；没有为单一场景强制加速或改 Normal 权重。
++
++## 9. 五个额外固定场景（另含一处曲线入口状态）
++
++| 场景/记录前状态 | 覆盖重点 | 真步数 | 路线增量 | 均速 m/s | 最小实测裕度 m | 恢复步数 | Safety Failure/Crash/OOR/未验证执行 |
++|---|---|---:|---:|---:|---:|---:|---|
++| 694 / 30 | 正常直行 | 60/60 | 0.210002 | 13.051 | 3.695 | 0 | 0/0/0/0 |
++| 420 / 200 | 高速与前方障碍、真实恢复 | 60/60 | 0.196096 | 12.866 | 1.008 | 11 | 0/0/0/0 |
++| 1084 / 1 | 干净 reset 的正常启动 | 60/60 | 0.200992 | 6.860 | 2.743 | 0 | 0/0/0/0 |
++| 808 / 200 | 真实外边界附近、前方车辆 | 60/60 | 0.114971 | 7.587 | 0.169 | 0 | 0/0/0/0 |
++| 822 / 100 | 原低速停滞状态 | 60/60 | 0.109985 | 7.087 | 3.164 | 0 | 0/0/0/0 |
++| 822 / 30 | 连续弯道入口 | 60/60 | 0.152099 | 9.353 | 2.314 | 0 | 0/0/0/0 |
++
++全部五个额外场景均完成预定真实控制步、产生正向路线进度且无事故或未验证执行；822 的两个不同初始状态用于同时覆盖曲线与低速状态，不当作两个独立场景计算成功率。808 的真实边界裕度最低约 0.169m，仍通过原几何安全标准。Normal-only 用例在最后恢复排序补全时不调用被改分支；实际调用 Recovery 的 559/420 已用定稿重跑。
++
++初次批量重放在 1084 第 300 步初始化出现 0.0110856m/s 的速度偏差，该尝试不计入结果，也没有放宽 1e-4 的重放阈值。最终 1084 用同一 seed 的干净 reset 作为泛化启动用例。核心 559/1714 仍严格使用指定的原始记录前缀。每个最终用例单独进程，避免把不同批次交通历史当作逐位相同状态。
++
++## 10. 完整规划耗时
++
++| 用例 | 均值 ms | P50 ms | P95 ms | 最大 ms |
++|---|---:|---:|---:|---:|
++| 559 / 600 | 371.63 | 351.09 | 542.31 | 747.08 |
++| 1714 / 250 | 339.38 | 325.32 | 431.15 | 761.94 |
++| 694 / 30 | 352.77 | 337.29 | 437.66 | 693.38 |
++| 420 / 200 | 431.57 | 387.62 | 689.98 | 790.54 |
++| 1084 / 1 | 321.40 | 318.89 | 394.64 | 647.84 |
++| 808 / 200 | 369.88 | 331.41 | 472.43 | 1400.81 |
++| 822 / 100 | 353.95 | 338.77 | 426.67 | 746.50 |
++| 822 / 30 | 352.21 | 332.70 | 437.13 | 715.40 |
++
++这是包含上下文、WM、Native MPPI、安全与最终处理的实际壁钟时间，阶段计时有嵌套，不能直接相加。仍未达到 100ms 参考值，不宣称实时性问题已解决；依 prompt，该数值和未达 233ms 不单独阻止成功率配对实验。评分阶段的 Pareto 层计算已批量处理，未减采样预算或省略安全检查。
++
++## 11. 正式 B/D 是否启动
++
++**尚未启动正式 100 场 B/D。** 当前 main 基准回归、559 验收和五场景泛化均通过，已具备按当前 main 进行配对比较的技术条件；但题目同时给出的历史 1714 基准仍未达 98%。为避免擅自降低这个数字条件，`formal_evaluation_ready=false`，脚本默认明确报告该历史阻塞项。
++
++主模型单独校准不是阻塞项：`validated=false` 原样保留，仍执行 Center AND Legacy。未经候选排序验证的 WM Cost 只计算记录，实际 Cost Penalty 全为 0，没有启用 allow_unvalidated_cost。权重与环境终止条件完全相同，后续 B/D 必须比较 Success、Crash、Out of Road、Route Completion、Reward、Timeout、Safety Failure、Speed、Emergency，不能只报越界改善。
++
++120/60 步固定回归通过不等于整回合 Success，也不能据此说 D 已超过 B 的 75%；该结论仍须正式配对统计。本轮没有通过移除真实安全检查或删除失败回合来取得上述结果。
++
++## 12. 交付索引与剩余限制
++
++- **权威结构化结果**：`reports/round3/acceptance_final.json`，包含所有检查、两套 1714 基准、正式门控与源码/权重指纹。
++- **完整增量 Diff**：`reports/round3/code_changes.diff`，基于任务开始的干净 main，不自动提交。
++- **完整测试**：`reports/round3/unit_tests_final_passed.xml`（349 passed）；旧的中间 XML/开发回放保留，不作为最终验收。
++- **原始逐步数据及候选归档**：
++  - 559：`reports/round3/accepted_559.json` 与 `accepted_559.candidates.jsonl.gz`。
++  - 1714：`reports/round3/proven_1714_from250.json` 与 `proven_1714_from250.candidates.jsonl.gz`。
++  - 694：`reports/round3/proven_694_from30.json` 与 `proven_694_from30.candidates.jsonl.gz`。
++  - 420：`reports/round3/accepted_420.json` 与 `accepted_420.candidates.jsonl.gz`。
++  - 1084：`reports/round3/proven_1084_from1.json` 与 `proven_1084_from1.candidates.jsonl.gz`。
++  - 808：`reports/round3/proven_808_from200.json` 与 `proven_808_from200.candidates.jsonl.gz`。
++  - 822：`reports/round3/proven_822_from100.json` 与 `proven_822_from100.candidates.jsonl.gz`。
++  - 822_curve：`reports/round3/proven_822_from30.json` 与 `proven_822_from30.candidates.jsonl.gz`。
++- **几何证据**：`seam_proof_summary.json`、`proven_seam_comparison_559.png`、`seam_proof_audit_559.json`，均在 `reports/round3/`。
++- **评分分布**：`reports/round3/scoring_audit.json`。
++
++剩余限制：历史 1714 进度尚未恢复到 98%；规划时延仍较高；尚未获得正式 B/D 成功率；物理运动模型校准和 WM Cost 排序验证仍未通过。补缝仅支持能由真实源圆弧车道证明的内部误差，未知几何和不可证明孔洞原样保留。模型安全检查仍是有限时域、恒速障碍物假设下的验证，不是现实安全保证。
++
++早期“只改评分”“候选波形”“无溯源解析补缝”等开发试验及原有 `reports/round3/benchmark_*` 历史文件没有覆盖；请以本节权威文件为准。当前 checkpoint SHA256：`4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a`，前后相同。

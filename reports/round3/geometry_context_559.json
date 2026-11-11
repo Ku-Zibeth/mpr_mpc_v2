@@ -1,0 +1,22 @@
+{
+  "source": "round2 measured physical tick dataset, scene559 before control600",
+  "position": [
+    122.30036163330078,
+    5.04964017868042
+  ],
+  "heading": -0.02409601522692828,
+  "actual_body_boundary_margin_m": 0.43607517464575474,
+  "nearest_body_point": [
+    124.56405141576595,
+    5.279270687195215
+  ],
+  "nearest_road_boundary_point": [
+    125.0,
+    5.2687640299413765
+  ],
+  "nearest_edge_relative_to_body_axes_m": [
+    2.6935751746457552,
+    0.28410447317483367
+  ],
+  "note": "Nearest constraint is ahead of the front body, not simply a side-lane boundary; signed steering tests alone do not validate a short nearest-center target."
+}

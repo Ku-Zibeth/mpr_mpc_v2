@@ -20,6 +20,74 @@ from .swept_collision import _position_bound
 from .swept_collision import swept_collisions
 
 
+def repair_proven_lane_seams(road, lanes):
+    """Remove ONLY holes wholly covered by an actual analytic circular lane.
+
+    MetaDrive samples CircularLane polygons at equal longitudinal distances;
+    neighboring radii therefore use different angles on their shared edge.
+    Their union can contain millimeter slivers along an INTERNAL lane line.
+    No buffer/area cutoff is used here. The convex hull must be contained in
+    a single analytic annular sector; medians, exterior edges and unknown lane
+    types are retained. This is independent of frozen SAC feature geometry.
+    """
+    from metadrive.component.lane.circular_lane import CircularLane
+    circles = [lane for lane in lanes if type(lane) is CircularLane and not lane.forbidden]
+    seams = []
+    for lane in circles:
+        shared = lane.radius+lane.width/2
+        for other in circles:
+            if (lane is other or lane.direction != other.direction or
+                not np.array_equal(np.asarray(lane.center), np.asarray(other.center)) or
+                abs(shared-(other.radius-other.width/2)) > 1e-10 or
+                abs(math.atan2(math.sin(lane.start_phase-other.start_phase), math.cos(lane.start_phase-other.start_phase))) > 1e-10 or
+                abs(lane.angle-other.angle) > 1e-10):
+                continue
+            # Error bound from MetaDrive's ACTUAL longitudinal tessellation,
+            # not a configurable hole-size or road-clearance relaxation.
+            step = max(lane.POLYGON_SAMPLE_RATE/lane.radius, other.POLYGON_SAMPLE_RATE/other.radius)
+            sagitta = shared*(1-math.cos(step/2))
+            seams.append((lane, shared, sagitta))
+    def covered(hole):
+        hull = hole.convex_hull
+        vertices = np.asarray(hull.exterior.coords)[:-1]
+        for lane, shared, sagitta in seams:
+            center = np.asarray(lane.center, dtype=float)
+            inner, outer = lane.radius-lane.width/2, lane.radius+lane.width/2
+            # Only a floating-point error bound (64 float64 ULPs at this map
+            # coordinate scale), typically ~1e-12 m. This is NOT a millimeter
+            # road tolerance; the full physical road_margin is still applied.
+            roundoff = 64*float(np.spacing(max(1., float(np.abs(center).max()), outer)))
+            if inner <= 0 or hull.distance(shapely.Point(center)) < inner-roundoff:
+                continue
+            delta = vertices-center
+            radial_max = np.linalg.norm(delta, axis=1).max()
+            if radial_max > outer+roundoff or radial_max > shared+roundoff or hull.distance(shapely.Point(center)) < shared-sagitta-roundoff:
+                continue
+            mid = lane.start_phase+lane.direction*lane.angle/2
+            angle = np.arctan2(delta[:, 1], delta[:, 0])-mid
+            angle = np.arctan2(np.sin(angle), np.cos(angle))
+            # A hull excluding the center and spanning <pi has no hidden
+            # angular extrema between its vertices. Restrict to supported arcs.
+            if lane.angle <= math.pi and angle.max()-angle.min() < math.pi and np.abs(angle).max() <= lane.angle/2+roundoff/inner:
+                return True
+        return False
+    repaired, removed = [], 0
+    for polygon in ([road] if road.geom_type == "Polygon" else road.geoms):
+        holes = []
+        for ring in polygon.interiors:
+            if covered(shapely.Polygon(ring)):
+                removed += 1
+            else:
+                holes.append(ring)
+        repaired.append(shapely.Polygon(polygon.exterior, holes))
+    if not removed:
+        return road, 0
+    result = shapely.union_all(repaired)
+    if not result.is_valid or result.is_empty:
+        raise RuntimeError("Analytically proven lane-seam repair produced invalid geometry.")
+    return result, removed
+
+
 @dataclass
 class MPPISafetyContext(SafetyContext):
     brake_action_mapping_verified: bool = False
@@ -43,12 +111,15 @@ class MPPISafetyContext(SafetyContext):
     sac_target_speed: float | None = None
     mppi_target_speed: float | None = None
     motion_signature: dict | None = None
+    road_seams_repaired: int = 0
 
 
 def geometric_recovery_reference(context, reference, lane_centers, control_dt):
     """One pure-pursuit proposal toward the nearest lane, never a safety override.
 
-    Lookahead is one wheelbase or one planning horizon of measured travel.
+    Lookahead clears the front footprint plus one wheelbase, or one planning
+    horizon of measured travel. At a low-speed bend, a rearward target can
+    incorrectly aim across the lane just before the front body reaches a turn.
     Nearest-lane and Lattice directions are offered separately; obstacle and
     body clearance are resolved by the existing exact candidate checker.
     """
@@ -57,7 +128,7 @@ def geometric_recovery_reference(context, reference, lane_centers, control_dt):
     context.geometric_lateral_error = float(lateral)
     context.geometric_heading_error = math.atan2(math.sin(yaw-context.heading), math.cos(yaw-context.heading))
     lane = min(lane_centers, key=lambda d: abs(d-lateral)) if lane_centers else lateral
-    lookahead = max(context.wheelbase, context.speed*(len(context.lattice_actions)-1)*control_dt)
+    lookahead = max(context.length/2+context.wheelbase, context.speed*(len(context.lattice_actions)-1)*control_dt)
     target_s = min(reference.length, s+lookahead)
     target = reference.calc_position(target_s)+lane*np.array([-math.sin(reference.calc_yaw(target_s)), math.cos(reference.calc_yaw(target_s))])
     delta = target-context.position
@@ -66,7 +137,9 @@ def geometric_recovery_reference(context, reference, lane_centers, control_dt):
     context.geometric_steer = float(np.clip(steering/context.max_steering, -1, 1))
     # A second, lane-tangent proposal avoids the rear-corner swing caused by
     # immediately aiming across the lane from a nearly parallel boundary pose.
-    context.road_tangent_steer = float(np.clip(math.atan2(context.wheelbase*context.geometric_heading_error,
+    future_yaw = reference.calc_yaw(target_s)
+    future_error = math.atan2(math.sin(future_yaw-context.heading), math.cos(future_yaw-context.heading))
+    context.road_tangent_steer = float(np.clip(math.atan2(2*context.wheelbase*math.sin(future_error),
         lookahead)/context.max_steering, -1, 1))
     body = shapely.polygons(_corners(torch.tensor(context.position)[None, None], torch.tensor([[context.heading]]),
         context.length, context.width)[0, 0].numpy())
@@ -105,6 +178,13 @@ class MPPISafetyResult(SafetyResult):
     legacy_near_collision: torch.Tensor | None = None
     center_near_offroad: torch.Tensor | None = None
     legacy_near_offroad: torch.Tensor | None = None
+    near_boundary_margin: torch.Tensor | None = None
+    terminal_boundary_margin: torch.Tensor | None = None
+    boundary_margin_change: torch.Tensor | None = None
+    committed_margin_change: torch.Tensor | None = None
+    center_first_failure_substep: torch.Tensor | None = None
+    legacy_first_failure_substep: torch.Tensor | None = None
+    braking_continuation_valid: torch.Tensor | None = None
 
 
 def projected_route_progress(positions, context, *, with_lateral=False):
@@ -146,6 +226,7 @@ class MPPISafetyFilter:
         # of small CUDA launches and CPU synchronizations in swept geometry.
         self.geometry = TrajectorySafetyEvaluator(cfg, control_dt=control_dt, device="cpu")
         self.safe_roads = {}
+        self._lane_seam_cache = {}
         self._response_prediction = None
         self.two_layer = bool(cfg.get("two_layer", False))
         self.staged = self.two_layer and bool(cfg.get("staged", False))
@@ -190,6 +271,7 @@ class MPPISafetyFilter:
     def reset(self):
         self.geometry.reset()
         self.safe_roads.clear()
+        self._lane_seam_cache.clear()
         self._response_prediction = None
 
     def context(self, planner, vehicle, *, width, wheelbase, max_steering, snapshot=None):
@@ -203,6 +285,12 @@ class MPPISafetyFilter:
         # BaseVehicle._apply_throttle_brake: negative action[1] applies setBrake
         # (and zero engine force) exactly when enable_reverse is false.
         result = MPPISafetyContext(**values, brake_action_mapping_verified=True)
+        token = id(source.road)
+        if token not in self._lane_seam_cache:
+            road, count = repair_proven_lane_seams(source.road, source.source_lanes)
+            # Holding source prevents id reuse while this observation cache lives.
+            self._lane_seam_cache[token] = (source.road, road, count)
+        _, result.road, result.road_seams_repaired = self._lane_seam_cache[token]
         result.measurement_step = getattr(getattr(vehicle, "engine", None), "episode_step", None)
         rear = getattr(vehicle, "REAR_WHEELBASE", None)
         if rear is not None and math.isfinite(float(rear)) and 0 < float(rear) < wheelbase:
@@ -651,6 +739,9 @@ class MPPISafetyFilter:
         result = self._check_nominal(actions, context)
         result.center_model_valid = result.valid.clone() if self.center_bicycle and context.rear_axle_to_center is not None else None
         result.center_near_collision, result.center_near_offroad = result.near_collision, result.near_offroad
+        for name in ("collision", "offroad", "kinematic_violation", "braking_continuation_valid"):
+            value = getattr(result, name)
+            setattr(result, "center_"+name, value.clone() if value is not None else None)
         if self.center_bicycle and self.center_model_guard and context.rear_axle_to_center is not None:
             # Preserve the original geometric standard as a second hypothesis.
             # Bullet tire transients need not instantly reach steady beta. Both
@@ -658,6 +749,9 @@ class MPPISafetyFilter:
             # neither a failed check nor missing evidence can be averaged away.
             guard = self._check_nominal(actions, replace(context, rear_axle_to_center=None))
             result.legacy_model_valid = guard.valid.clone()
+            for name in ("collision", "offroad", "kinematic_violation", "braking_continuation_valid"):
+                value = getattr(guard, name)
+                setattr(result, "legacy_"+name, value.clone() if value is not None else None)
             result.legacy_near_collision, result.legacy_near_offroad = guard.near_collision, guard.near_offroad
             shadow = result.primary_calibrated
             result.legacy_shadow = shadow.clone()
@@ -678,12 +772,20 @@ class MPPISafetyFilter:
                 a, b = getattr(result, name), getattr(guard, name)
                 if a is not None and b is not None:
                     setattr(result, name, torch.where(shadow, a, torch.minimum(a, b)))
+            result.legacy_first_failure_substep = guard.center_first_failure_substep
+            for name in ("near_boundary_margin", "terminal_boundary_margin", "boundary_margin_change", "committed_margin_change"):
+                if getattr(result, name) is not None and getattr(guard, name) is not None:
+                    setattr(result, name, torch.minimum(getattr(result, name), getattr(guard, name)))
+            result.braking_continuation_valid &= guard.braking_continuation_valid
         return result
 
     @torch.no_grad()
     def _check_nominal(self, actions, context):
         result = self._strict_check(actions, context)
         result.primary_calibrated = self.calibrated_mask(actions, context)
+        failures = result.interval_offroad | result.interval_collision | result.interval_kinematic
+        result.center_first_failure_substep = torch.where(failures.any(1), failures.int().argmax(1)+1, -1)
+        result.braking_continuation_valid = result.full_valid.clone()
         result.route_progress_estimate, result.terminal_lateral_error = projected_route_progress(result.positions, context, with_lateral=True)
         result.terminal_speed = result.speeds[:, -1]
         committed = self.committed_controls(actions.shape[1]-1)
@@ -715,6 +817,7 @@ class MPPISafetyFilter:
             witnesses = self._braking_continuations(actions[risky].cpu(), context, committed)
             checked = self._strict_check(witnesses, context)
             viable = checked.valid.reshape(-1, len(risky)).any(0)
+            result.braking_continuation_valid[risky] = viable
             unrecoverable[risky] = ~viable
             calibrated_viable = (checked.valid & self.calibrated_mask(witnesses, context)).reshape(-1, len(risky)).any(0)
             result.primary_calibrated[risky] &= calibrated_viable
@@ -735,6 +838,21 @@ class MPPISafetyFilter:
                             context.length+2*self.geometry.model_margin, context.width+2*self.geometry.model_margin)
         _, margin = self.geometry._road_metrics(corners, context.road)
         result.boundary_margin = margin
+        # Continuous signed BODY clearance is a ranking diagnostic, never a
+        # substitute for the unchanged swept-interval certificate above.
+        body_corners = _corners(result.positions[:, ::self.geometry.substeps], result.headings[:, ::self.geometry.substeps],
+            context.length, context.width).numpy()
+        bodies = shapely.polygons(body_corners)
+        inside = shapely.covers(context.road, bodies)
+        distances = shapely.distance(bodies, context.road.boundary)
+        point_inside = shapely.covers(context.road, shapely.points(body_corners))
+        penetration = np.where(point_inside, 0., shapely.distance(shapely.points(body_corners), context.road.boundary)).max(-1)
+        signed_margin = torch.from_numpy(np.where(inside, distances, -np.maximum(penetration, 1e-6))).float()
+        result.boundary_margin = signed_margin.amin(1)
+        result.near_boundary_margin = signed_margin[:, :committed+1].amin(1)
+        result.terminal_boundary_margin = signed_margin[:, -1]
+        result.boundary_margin_change = signed_margin[:, -1]-signed_margin[:, 0]
+        result.committed_margin_change = signed_margin[:, committed]-signed_margin[:, 0]
         boundary_risk = torch.exp(-margin.clamp_min(0)/context.width)
         # Bounding-circle separation is a conservative lower bound on clearance;
         # continuous contact/TTC still comes from swept_collisions above.

@@ -1,0 +1,1686 @@
+{
+  "checkpoint": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt",
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "anti_stall": true,
+  "note": "Bounded live-physics smoke from recorded states; not a success-rate benchmark.",
+  "results": [
+    {
+      "scenario": 822,
+      "snapshot_before_step": 100,
+      "replay_max_speed_error": 2.8980123119026757e-06,
+      "initial_contacts": {
+        "crash": false,
+        "crash_vehicle": false,
+        "crash_object": false,
+        "crash_building": false,
+        "crash_human": false,
+        "crash_sidewalk": false,
+        "out_of_road": false
+      },
+      "start_route": 0.13211487357007035,
+      "end_route": 0.13211487357007035,
+      "initial_lattice": {
+        "near_valid": false,
+        "full_valid": false,
+        "admissible": false,
+        "unrecoverable": false
+      },
+      "records": [
+        {
+          "step": 1,
+          "mode": "emergency_model_check_failed",
+          "action": [
+            -0.116815485060215,
+            -1.0
+          ],
+          "sac_action": [
+            0.2933361530303955,
+            1.0
+          ],
+          "lattice_action": [
+            0.03539249300956726,
+            1.0
+          ],
+          "geometric_steer": 0.15167185551352436,
+          "body_margin_before": 0.024006490799176102,
+          "minimum_obstacle_clearance": null,
+          "action_executed": false,
+          "safety_failure": true,
+          "safety_failure_reason": "no_verified_action",
+          "safety_certificate": {
+            "valid": false,
+            "scope": "finite_horizon_model_check",
+            "sequence_sha256": "900fa6d43ea0477fe7533dde29015c965008893d145164f70832bae0e9de1fa5",
+            "horizon_controls": 10,
+            "action_executable": false
+          },
+          "heading_before": -0.2843575606546107,
+          "predicted_heading": -0.2844468355178833,
+          "actual_heading": -0.2843575606546107,
+          "lateral_before": -0.7216512515510194,
+          "predicted_lateral": -0.7219564277462996,
+          "actual_lateral": -0.7216512515510194,
+          "contacts": {
+            "crash": false,
+            "crash_vehicle": false,
+            "crash_object": false,
+            "crash_building": false,
+            "crash_human": false,
+            "crash_sidewalk": false,
+            "out_of_road": false
+          },
+          "speed": 0.10798884749805546,
+          "route": 0.13211487357007035,
+          "crash": false,
+          "offroad": false,
+          "emergency_streak": 1.0,
+          "baseline_near": 0.0,
+          "baseline_full": 0.0,
+          "baseline_near_offroad": 1.0,
+          "baseline_future_hard": 0.0,
+          "emergency_reason": 1.0,
+          "one_step_position_error_m": NaN,
+          "one_step_speed_error_mps": NaN,
+          "risk": 0.0,
+          "planning_ms": 611.654718988575,
+          "diagnostics": {
+            "mppi/boundary_trend_delta": 0.0,
+            "mppi/boundary_decline_mps": 0.0,
+            "mppi/active_boundary_recovery": 0.0,
+            "mppi/continuation_effective": 0.0,
+            "mppi/recovery_scoring_active": 1.0,
+            "mppi/safety_check_ms": 150.43231797218323,
+            "mppi/mppi_sampling_ms": 1.1296000480651855,
+            "mppi/recovery_search_ms": 142.2065887451172,
+            "mppi/world_model_rollout_ms": 0.0,
+            "mppi/cost_prediction_ms": 0.0,
+            "mppi/elite_update_ms": 0.0,
+            "mppi/brake_released": 0.0,
+            "mppi/longitudinal_mode": 0.0,
+            "mppi/baseline_future_recoverable": 0.0,
+            "mppi/recovery_forced_near": 1.0,
+            "mppi/recovery_forced_unrecoverable": 0.0,
+            "mppi/lattice_speed_limit": 4.055576485698806,
+            "mppi/sac_target_speed": 6.3281402587890625,
+            "mppi/mppi_target_speed": 4.055576485698806,
+            "mppi/safety_failure": 1.0,
+            "mppi/execution_authorized": 0.0,
+            "mppi/emergency_verified": 0.0,
+            "mppi/emergency_unverified": 1.0,
+            "mppi/safety_failure_streak": 1.0,
+            "mppi/progress_guard_active": 1.0,
+            "mppi/recovery_latched": 1.0,
+            "mppi/continuity_changed": 0.0,
+            "mppi/continuity_rejected": 0.0,
+            "mppi/center_model_active": 1.0,
+            "mppi/model_guard_active": 1.0,
+            "mppi/exact_checked_candidates": 0.0,
+            "mppi/exact_failed_candidates": 0.0,
+            "mppi/selected_exact_verified": 0.0,
+            "mppi/recovery_stall_count": 0.0,
+            "mppi/stall_active": 0.0,
+            "mppi/can_accelerate": 0.0,
+            "mppi/accelerate_below_target": 1.0,
+            "mppi/accelerate_no_near_collision": 1.0,
+            "mppi/accelerate_road_clear": 0.0,
+            "mppi/accelerate_kinematic_valid": 1.0,
+            "mppi/positive_throttle_near_safe_count": 0.0,
+            "mppi/positive_throttle_candidate_count": 14.0,
+            "mppi/positive_throttle_rejected_count": 14.0,
+            "mppi/positive_sequence_candidate_count": 14.0,
+            "mppi/positive_sequence_verified_count": 0.0,
+            "mppi/positive_throttle_exact_rejected_count": 14.0,
+            "mppi/positive_throttle_wm_rejected_count": 0.0,
+            "mppi/positive_throttle_feasible_not_selected_count": 0.0,
+            "mppi/positive_throttle_unverified_count": 0.0,
+            "mppi/positive_throttle_score_not_selected_count": 0.0,
+            "mppi/progress_delta": 0.0,
+            "mppi/progress_distance_m": 0.0,
+            "mppi/recovery_success": 0.0,
+            "mppi/selected_recovery_steer": NaN,
+            "mppi/selected_recovery_throttle": NaN,
+            "mppi/mode_transition_reason": 1.0,
+            "mppi/predicted_reward": NaN,
+            "mppi/terminal_q": NaN,
+            "mppi/predicted_cost": NaN,
+            "mppi/cost_penalty": 0.0,
+            "mppi/predicted_step_cost": NaN,
+            "mppi/cost_coef": 1.0,
+            "mppi/cost_enabled": 0.0,
+            "mppi/cost_scoring_requested": 1.0,
+            "mppi/allow_unvalidated_cost": 0.0,
+            "mppi/cost_validated": 0.0,
+            "mppi/cost_horizon_validated": 0.0,
+            "mppi/deviation_penalty": 1.5456427335739136,
+            "mppi/smoothness_penalty": 0.0,
+            "mppi/final_score": NaN,
+            "mppi/selected_candidate_cost": NaN,
+            "mppi/baseline_candidate_cost": NaN,
+            "mppi/wm_evaluated_candidates": 0.0,
+            "mppi/wm_cache_hits": 0.0,
+            "mppi/baseline_corridor_valid": 1.0,
+            "mppi/first_steer_delta": -0.4101516306400299,
+            "mppi/first_throttle_delta": -2.0,
+            "mppi/first_action_delta_norm": 2.0416228771209717,
+            "mppi/baseline_selected": 0.0,
+            "mppi/sac_to_selected_delta": 2.0416228771209717,
+            "mppi/sac_to_selected_steer_delta": -0.4101516306400299,
+            "mppi/sac_to_selected_throttle_delta": -2.0,
+            "mppi/recovery_lattice_baseline_selected": 0.0,
+            "mppi/score_gain": NaN,
+            "mppi/gate_threshold": NaN,
+            "mppi/initial_std_steer": 0.04000000283122063,
+            "mppi/initial_std_throttle": 0.11999999731779099,
+            "mppi/final_std_steer": 0.0,
+            "mppi/final_std_throttle": 0.0,
+            "mppi/max_delta_steer": 0.4101516306400299,
+            "mppi/max_delta_throttle": 2.0,
+            "mppi/unique_candidate_count": 81.0,
+            "mppi/safety_evaluated_candidates": 81.0,
+            "mppi/safety_valid_ratio": 0.0,
+            "mppi/safety_reject_count": 99.0,
+            "mppi/collision_reject_count": 0.0,
+            "mppi/road_boundary_reject_count": 99.0,
+            "mppi/kinematic_reject_count": 4.0,
+            "mppi/baseline_safety_valid": 0.0,
+            "mppi/emergency_fallback": 1.0,
+            "mppi/lattice_fallback": 0.0,
+            "mppi/safety_fallback_unverified": 1.0,
+            "mppi/selected_safety_valid": 0.0,
+            "mppi/normal_safety_valid_ratio": -0.015625,
+            "mppi/recovery_safety_valid_ratio": 0.0,
+            "mppi/lattice_baseline_safety_valid": 0.0,
+            "mppi/lattice_baseline_checked": 1.0,
+            "mppi/recovery_search": 1.0,
+            "mppi/recovery_wm_evaluated_candidates": 0.0,
+            "mppi/planning_mode": 6.0,
+            "mppi/recovery_reason": 1.0,
+            "mppi/selected_full_braking": 1.0,
+            "mppi/near_hard_valid_ratio": 0.0,
+            "mppi/normal_near_valid_ratio": 0.0,
+            "mppi/recovery_lattice_valid_ratio": NaN,
+            "mppi/future_unrecoverable_reject_count": 0.0,
+            "mppi/long_risk_score": 0.0,
+            "mppi/long_risk_penalty": 0.0,
+            "mppi/committed_horizon_s": 0.1,
+            "mppi/scoring_unavailable_fallback": 0.0,
+            "mppi/target_speed_mps": 4.055576485698806,
+            "mppi/actual_speed_mps": 0.10798884749805546,
+            "mppi/normal_search_delta": 0.0,
+            "mppi/normal_search_steer_delta": 0.0,
+            "mppi/normal_search_throttle_delta": 0.0,
+            "mppi/recovery_search_delta": 0.0,
+            "mppi/recovery_search_steer_delta": 0.0,
+            "mppi/recovery_search_throttle_delta": 0.0,
+            "mppi/lattice_fallback_delta": 0.0,
+            "mppi/lattice_fallback_steer_delta": 0.0,
+            "mppi/lattice_fallback_throttle_delta": 0.0,
+            "mppi/emergency_fallback_delta": 2.0416228771209717,
+            "mppi/emergency_fallback_steer_delta": -0.4101516306400299,
+            "mppi/emergency_fallback_throttle_delta": -2.0,
+            "mppi/primary_calibrated": 0.0,
+            "mppi/legacy_shadow": 0.0,
+            "mppi/center_near_collision": 0.0,
+            "mppi/legacy_near_collision": 0.0,
+            "mppi/center_near_offroad": 1.0,
+            "mppi/legacy_near_offroad": 1.0,
+            "mppi/predicted_route_progress": 0.002681564772501588,
+            "mppi/predicted_terminal_speed": 0.0,
+            "mppi/forward_verified_candidates": 0.0,
+            "mppi/forward_candidate_selected": 0.0,
+            "mppi/progress_rejected_candidates": 0.0,
+            "mppi/positive_throttle_future_hard_rejected": 0.0,
+            "mppi/positive_throttle_exact_offroad_rejected": 14.0,
+            "mppi/positive_throttle_exact_collision_rejected": 0.0,
+            "mppi/positive_throttle_exact_kinematic_rejected": 0.0,
+            "mppi/predicted_progress_m": 0.002695889910683036,
+            "mppi/preview_candidate_count": 62.0,
+            "mppi/exact_candidate_count": 19.0,
+            "mppi/positive_throttle_near_collision_rejected": 0.0,
+            "mppi/positive_throttle_near_offroad_rejected": 14.0,
+            "mppi/positive_throttle_kinematic_rejected": 0.0,
+            "mppi/geometric_steer": 0.15167185551352436,
+            "mppi/geometric_lateral_error": -0.7216512515510194,
+            "mppi/geometric_heading_error": 0.06628681944174777,
+            "mppi/geometric_body_margin": 0.024006490799176102,
+            "mppi/near_collision": 0.0,
+            "mppi/near_offroad": 1.0,
+            "mppi/future_hard": 0.0,
+            "mppi/progress_reward": 0.0,
+            "mppi/value_p50": NaN,
+            "mppi/risk_p50": 2.000458240509033,
+            "mppi/risk_p95": 2.0653069019317627,
+            "mppi/selected_near_valid": 0.0,
+            "mppi/selected_full_valid": 0.0,
+            "mppi/baseline_near_valid": 0.0,
+            "mppi/baseline_full_valid": 0.0,
+            "mppi/baseline_future_hard_reject": 0.0,
+            "mppi/baseline_near_collision": 0.0,
+            "mppi/baseline_near_offroad": 1.0,
+            "mppi/lattice_baseline_near_valid": 0.0,
+            "mppi/lattice_baseline_full_valid": 0.0,
+            "mppi/lattice_baseline_future_hard_reject": 0.0,
+            "mppi/lattice_baseline_near_collision": 0.0,
+            "mppi/lattice_baseline_near_offroad": 1.0,
+            "mppi/long_road_risk": 1.0,
+            "mppi/long_collision_risk": 0.0,
+            "mppi/long_clearance_risk": 5.853544644196518e-05,
+            "mppi/long_speed_risk": 0.0,
+            "mppi/long_lateral_risk": 2.087282124918488e-09,
+            "mppi/long_kinematic_risk": 0.0,
+            "mppi/predicted_collision": 0.0,
+            "mppi/predicted_offroad": 1.0,
+            "mppi/predicted_first_collision": 0.0,
+            "mppi/predicted_first_offroad": 1.0,
+            "mppi/stopping_distance_m": 0.011770684015135402,
+            "mppi/stopping_time_s": 0.01799814124967591,
+            "mppi/stopping_horizon_insufficient": 0.0,
+            "mppi/obstacle_uncertainty_radius_m": 0.0,
+            "mppi/emergency_horizon_limited": 0.0,
+            "mppi/emergency_streak": 1.0,
+            "mppi/braking_streak": 1.0,
+            "mppi/recovery_streak": 0.0,
+            "mppi/mode_switch_count": 0.0,
+            "mppi/emergency_reason": 1.0,
+            "mppi/total_planning_ms": 611.654718988575
+          }
+        }
+      ],
+      "geometry_audit": {
+        "length": 4.515,
+        "width": 1.852,
+        "wheelbase": 2.46894,
+        "max_steering_rad": 0.6981317007977318,
+        "control_dt": 0.1,
+        "footprint_hausdorff_m": 4.906678831087624e-05,
+        "longitudinal_parameter_source": "configured_unvalidated_point_estimate",
+        "dynamics_parameters": {
+          "mass": null,
+          "max_engine_force": 813.3716430664062,
+          "max_brake_force": 143.3716583251953,
+          "model_acceleration": 4.0,
+          "model_deceleration": 6.0,
+          "longitudinal_bounds_calibrated": false
+        },
+        "initial_speed": 0.10798884749805546,
+        "body_margin": 0.024006490799176102,
+        "lateral_error": -0.7216512515510194,
+        "heading_error": 0.06628681944174777,
+        "geometric_steer": 0.15167185551352436,
+        "lane_width": 3.5,
+        "future_tangent_steer": -0.24533919274426885,
+        "reference_ahead": [
+          {
+            "distance": 0.0,
+            "xy": [
+              52.78712339728887,
+              3.2467666613052875
+            ],
+            "yaw": -0.21807074121286293
+          },
+          {
+            "distance": 4.72644,
+            "xy": [
+              57.22969782113795,
+              1.688684889108463
+            ],
+            "yaw": -0.4506906097362998
+          },
+          {
+            "distance": 10.0,
+            "xy": [
+              61.38263063719236,
+              -1.5099388842396686
+            ],
+            "yaw": -0.836996846653126
+          }
+        ],
+        "obstacle_count": 2,
+        "forward_obstacle_count": 2,
+        "nearest_obstacle_center_m": 19.661590533104622
+      },
+      "summary": {
+        "steps": 0,
+        "requested_steps": 60,
+        "planning_attempts": 1,
+        "safety_failure": true,
+        "unverified_action_executions": 0,
+        "emergency_steps": 0,
+        "emergency_unverified_attempts": 1,
+        "route_gain": 0.0,
+        "mean_speed": 0.0,
+        "max_speed": 0.0,
+        "stall_steps": 0,
+        "crash": false,
+        "offroad": false,
+        "planning": {
+          "mean": 611.654718988575,
+          "p50": 611.654718988575,
+          "p95": 611.654718988575,
+          "p99": 611.654718988575,
+          "max": 611.654718988575
+        },
+        "modes": {
+          "emergency_model_check_failed": 1
+        },
+        "distributions": {
+          "mppi/accelerate_below_target": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/accelerate_kinematic_valid": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/accelerate_no_near_collision": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/accelerate_road_clear": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/active_boundary_recovery": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/actual_speed_mps": {
+            "mean": 0.10798884749805546,
+            "p50": 0.10798884749805546,
+            "p95": 0.10798884749805546,
+            "p99": 0.10798884749805546,
+            "max": 0.10798884749805546
+          },
+          "mppi/allow_unvalidated_cost": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/baseline_candidate_cost": null,
+          "mppi/baseline_corridor_valid": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/baseline_full_valid": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/baseline_future_hard_reject": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/baseline_future_recoverable": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/baseline_near_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/baseline_near_offroad": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/baseline_near_valid": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/baseline_safety_valid": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/baseline_selected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/boundary_decline_mps": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/boundary_trend_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/brake_released": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/braking_streak": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/can_accelerate": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/center_model_active": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/center_near_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/center_near_offroad": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/collision_reject_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/committed_horizon_s": {
+            "mean": 0.1,
+            "p50": 0.1,
+            "p95": 0.1,
+            "p99": 0.1,
+            "max": 0.1
+          },
+          "mppi/continuation_effective": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/continuity_changed": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/continuity_rejected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/cost_coef": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/cost_enabled": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/cost_horizon_validated": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/cost_penalty": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/cost_prediction_ms": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/cost_scoring_requested": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/cost_validated": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/deviation_penalty": {
+            "mean": 1.5456427335739136,
+            "p50": 1.5456427335739136,
+            "p95": 1.5456427335739136,
+            "p99": 1.5456427335739136,
+            "max": 1.5456427335739136
+          },
+          "mppi/elite_update_ms": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/emergency_fallback": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/emergency_fallback_delta": {
+            "mean": 2.0416228771209717,
+            "p50": 2.0416228771209717,
+            "p95": 2.0416228771209717,
+            "p99": 2.0416228771209717,
+            "max": 2.0416228771209717
+          },
+          "mppi/emergency_fallback_steer_delta": {
+            "mean": -0.4101516306400299,
+            "p50": -0.4101516306400299,
+            "p95": -0.4101516306400299,
+            "p99": -0.4101516306400299,
+            "max": -0.4101516306400299
+          },
+          "mppi/emergency_fallback_throttle_delta": {
+            "mean": -2.0,
+            "p50": -2.0,
+            "p95": -2.0,
+            "p99": -2.0,
+            "max": -2.0
+          },
+          "mppi/emergency_horizon_limited": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/emergency_reason": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/emergency_streak": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/emergency_unverified": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/emergency_verified": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/exact_candidate_count": {
+            "mean": 19.0,
+            "p50": 19.0,
+            "p95": 19.0,
+            "p99": 19.0,
+            "max": 19.0
+          },
+          "mppi/exact_checked_candidates": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/exact_failed_candidates": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/execution_authorized": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/final_score": null,
+          "mppi/final_std_steer": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/final_std_throttle": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/first_action_delta_norm": {
+            "mean": 2.0416228771209717,
+            "p50": 2.0416228771209717,
+            "p95": 2.0416228771209717,
+            "p99": 2.0416228771209717,
+            "max": 2.0416228771209717
+          },
+          "mppi/first_steer_delta": {
+            "mean": -0.4101516306400299,
+            "p50": -0.4101516306400299,
+            "p95": -0.4101516306400299,
+            "p99": -0.4101516306400299,
+            "max": -0.4101516306400299
+          },
+          "mppi/first_throttle_delta": {
+            "mean": -2.0,
+            "p50": -2.0,
+            "p95": -2.0,
+            "p99": -2.0,
+            "max": -2.0
+          },
+          "mppi/forward_candidate_selected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/forward_verified_candidates": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/future_hard": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/future_unrecoverable_reject_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/gate_threshold": null,
+          "mppi/geometric_body_margin": {
+            "mean": 0.024006490799176102,
+            "p50": 0.024006490799176102,
+            "p95": 0.024006490799176102,
+            "p99": 0.024006490799176102,
+            "max": 0.024006490799176102
+          },
+          "mppi/geometric_heading_error": {
+            "mean": 0.06628681944174777,
+            "p50": 0.06628681944174777,
+            "p95": 0.06628681944174777,
+            "p99": 0.06628681944174777,
+            "max": 0.06628681944174777
+          },
+          "mppi/geometric_lateral_error": {
+            "mean": -0.7216512515510194,
+            "p50": -0.7216512515510194,
+            "p95": -0.7216512515510194,
+            "p99": -0.7216512515510194,
+            "max": -0.7216512515510194
+          },
+          "mppi/geometric_steer": {
+            "mean": 0.15167185551352436,
+            "p50": 0.15167185551352436,
+            "p95": 0.15167185551352436,
+            "p99": 0.15167185551352436,
+            "max": 0.15167185551352436
+          },
+          "mppi/initial_std_steer": {
+            "mean": 0.04000000283122063,
+            "p50": 0.04000000283122063,
+            "p95": 0.04000000283122063,
+            "p99": 0.04000000283122063,
+            "max": 0.04000000283122063
+          },
+          "mppi/initial_std_throttle": {
+            "mean": 0.11999999731779099,
+            "p50": 0.11999999731779099,
+            "p95": 0.11999999731779099,
+            "p99": 0.11999999731779099,
+            "max": 0.11999999731779099
+          },
+          "mppi/kinematic_reject_count": {
+            "mean": 4.0,
+            "p50": 4.0,
+            "p95": 4.0,
+            "p99": 4.0,
+            "max": 4.0
+          },
+          "mppi/lattice_baseline_checked": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/lattice_baseline_full_valid": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_baseline_future_hard_reject": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_baseline_near_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_baseline_near_offroad": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/lattice_baseline_near_valid": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_baseline_safety_valid": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_fallback": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_fallback_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_fallback_steer_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_fallback_throttle_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/lattice_speed_limit": {
+            "mean": 4.055576485698806,
+            "p50": 4.055576485698806,
+            "p95": 4.055576485698806,
+            "p99": 4.055576485698806,
+            "max": 4.055576485698806
+          },
+          "mppi/legacy_near_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/legacy_near_offroad": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/legacy_shadow": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/long_clearance_risk": {
+            "mean": 5.853544644196518e-05,
+            "p50": 5.853544644196518e-05,
+            "p95": 5.853544644196518e-05,
+            "p99": 5.853544644196518e-05,
+            "max": 5.853544644196518e-05
+          },
+          "mppi/long_collision_risk": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/long_kinematic_risk": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/long_lateral_risk": {
+            "mean": 2.087282124918488e-09,
+            "p50": 2.087282124918488e-09,
+            "p95": 2.087282124918488e-09,
+            "p99": 2.087282124918488e-09,
+            "max": 2.087282124918488e-09
+          },
+          "mppi/long_risk_penalty": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/long_risk_score": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/long_road_risk": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/long_speed_risk": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/longitudinal_mode": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/max_delta_steer": {
+            "mean": 0.4101516306400299,
+            "p50": 0.4101516306400299,
+            "p95": 0.4101516306400299,
+            "p99": 0.4101516306400299,
+            "max": 0.4101516306400299
+          },
+          "mppi/max_delta_throttle": {
+            "mean": 2.0,
+            "p50": 2.0,
+            "p95": 2.0,
+            "p99": 2.0,
+            "max": 2.0
+          },
+          "mppi/mode_switch_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/mode_transition_reason": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/model_guard_active": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/mppi_sampling_ms": {
+            "mean": 1.1296000480651855,
+            "p50": 1.1296000480651855,
+            "p95": 1.1296000480651855,
+            "p99": 1.1296000480651855,
+            "max": 1.1296000480651855
+          },
+          "mppi/mppi_target_speed": {
+            "mean": 4.055576485698806,
+            "p50": 4.055576485698806,
+            "p95": 4.055576485698806,
+            "p99": 4.055576485698806,
+            "max": 4.055576485698806
+          },
+          "mppi/near_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/near_hard_valid_ratio": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/near_offroad": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/normal_near_valid_ratio": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/normal_safety_valid_ratio": {
+            "mean": -0.015625,
+            "p50": -0.015625,
+            "p95": -0.015625,
+            "p99": -0.015625,
+            "max": -0.015625
+          },
+          "mppi/normal_search_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/normal_search_steer_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/normal_search_throttle_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/obstacle_uncertainty_radius_m": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/planning_mode": {
+            "mean": 6.0,
+            "p50": 6.0,
+            "p95": 6.0,
+            "p99": 6.0,
+            "max": 6.0
+          },
+          "mppi/positive_sequence_candidate_count": {
+            "mean": 14.0,
+            "p50": 14.0,
+            "p95": 14.0,
+            "p99": 14.0,
+            "max": 14.0
+          },
+          "mppi/positive_sequence_verified_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_candidate_count": {
+            "mean": 14.0,
+            "p50": 14.0,
+            "p95": 14.0,
+            "p99": 14.0,
+            "max": 14.0
+          },
+          "mppi/positive_throttle_exact_collision_rejected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_exact_kinematic_rejected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_exact_offroad_rejected": {
+            "mean": 14.0,
+            "p50": 14.0,
+            "p95": 14.0,
+            "p99": 14.0,
+            "max": 14.0
+          },
+          "mppi/positive_throttle_exact_rejected_count": {
+            "mean": 14.0,
+            "p50": 14.0,
+            "p95": 14.0,
+            "p99": 14.0,
+            "max": 14.0
+          },
+          "mppi/positive_throttle_feasible_not_selected_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_future_hard_rejected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_kinematic_rejected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_near_collision_rejected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_near_offroad_rejected": {
+            "mean": 14.0,
+            "p50": 14.0,
+            "p95": 14.0,
+            "p99": 14.0,
+            "max": 14.0
+          },
+          "mppi/positive_throttle_near_safe_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_rejected_count": {
+            "mean": 14.0,
+            "p50": 14.0,
+            "p95": 14.0,
+            "p99": 14.0,
+            "max": 14.0
+          },
+          "mppi/positive_throttle_score_not_selected_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_unverified_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/positive_throttle_wm_rejected_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/predicted_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/predicted_cost": null,
+          "mppi/predicted_first_collision": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/predicted_first_offroad": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/predicted_offroad": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/predicted_progress_m": {
+            "mean": 0.002695889910683036,
+            "p50": 0.002695889910683036,
+            "p95": 0.002695889910683036,
+            "p99": 0.002695889910683036,
+            "max": 0.002695889910683036
+          },
+          "mppi/predicted_reward": null,
+          "mppi/predicted_route_progress": {
+            "mean": 0.002681564772501588,
+            "p50": 0.002681564772501588,
+            "p95": 0.002681564772501588,
+            "p99": 0.002681564772501588,
+            "max": 0.002681564772501588
+          },
+          "mppi/predicted_step_cost": null,
+          "mppi/predicted_terminal_speed": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/preview_candidate_count": {
+            "mean": 62.0,
+            "p50": 62.0,
+            "p95": 62.0,
+            "p99": 62.0,
+            "max": 62.0
+          },
+          "mppi/primary_calibrated": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/progress_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/progress_distance_m": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/progress_guard_active": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/progress_rejected_candidates": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/progress_reward": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_forced_near": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/recovery_forced_unrecoverable": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_latched": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/recovery_lattice_baseline_selected": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_lattice_valid_ratio": null,
+          "mppi/recovery_reason": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/recovery_safety_valid_ratio": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_scoring_active": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/recovery_search": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/recovery_search_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_search_ms": {
+            "mean": 142.2065887451172,
+            "p50": 142.2065887451172,
+            "p95": 142.2065887451172,
+            "p99": 142.2065887451172,
+            "max": 142.2065887451172
+          },
+          "mppi/recovery_search_steer_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_search_throttle_delta": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_stall_count": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_streak": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_success": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/recovery_wm_evaluated_candidates": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/risk_p50": {
+            "mean": 2.000458240509033,
+            "p50": 2.000458240509033,
+            "p95": 2.000458240509033,
+            "p99": 2.000458240509033,
+            "max": 2.000458240509033
+          },
+          "mppi/risk_p95": {
+            "mean": 2.0653069019317627,
+            "p50": 2.0653069019317627,
+            "p95": 2.0653069019317627,
+            "p99": 2.0653069019317627,
+            "max": 2.0653069019317627
+          },
+          "mppi/road_boundary_reject_count": {
+            "mean": 99.0,
+            "p50": 99.0,
+            "p95": 99.0,
+            "p99": 99.0,
+            "max": 99.0
+          },
+          "mppi/sac_target_speed": {
+            "mean": 6.3281402587890625,
+            "p50": 6.3281402587890625,
+            "p95": 6.3281402587890625,
+            "p99": 6.3281402587890625,
+            "max": 6.3281402587890625
+          },
+          "mppi/sac_to_selected_delta": {
+            "mean": 2.0416228771209717,
+            "p50": 2.0416228771209717,
+            "p95": 2.0416228771209717,
+            "p99": 2.0416228771209717,
+            "max": 2.0416228771209717
+          },
+          "mppi/sac_to_selected_steer_delta": {
+            "mean": -0.4101516306400299,
+            "p50": -0.4101516306400299,
+            "p95": -0.4101516306400299,
+            "p99": -0.4101516306400299,
+            "max": -0.4101516306400299
+          },
+          "mppi/sac_to_selected_throttle_delta": {
+            "mean": -2.0,
+            "p50": -2.0,
+            "p95": -2.0,
+            "p99": -2.0,
+            "max": -2.0
+          },
+          "mppi/safety_check_ms": {
+            "mean": 150.43231797218323,
+            "p50": 150.43231797218323,
+            "p95": 150.43231797218323,
+            "p99": 150.43231797218323,
+            "max": 150.43231797218323
+          },
+          "mppi/safety_evaluated_candidates": {
+            "mean": 81.0,
+            "p50": 81.0,
+            "p95": 81.0,
+            "p99": 81.0,
+            "max": 81.0
+          },
+          "mppi/safety_failure": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/safety_failure_streak": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/safety_fallback_unverified": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/safety_reject_count": {
+            "mean": 99.0,
+            "p50": 99.0,
+            "p95": 99.0,
+            "p99": 99.0,
+            "max": 99.0
+          },
+          "mppi/safety_valid_ratio": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/score_gain": null,
+          "mppi/scoring_unavailable_fallback": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/selected_candidate_cost": null,
+          "mppi/selected_exact_verified": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/selected_full_braking": {
+            "mean": 1.0,
+            "p50": 1.0,
+            "p95": 1.0,
+            "p99": 1.0,
+            "max": 1.0
+          },
+          "mppi/selected_full_valid": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/selected_near_valid": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/selected_recovery_steer": null,
+          "mppi/selected_recovery_throttle": null,
+          "mppi/selected_safety_valid": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/smoothness_penalty": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/stall_active": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/stopping_distance_m": {
+            "mean": 0.011770684015135402,
+            "p50": 0.011770684015135402,
+            "p95": 0.011770684015135402,
+            "p99": 0.011770684015135402,
+            "max": 0.011770684015135402
+          },
+          "mppi/stopping_horizon_insufficient": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/stopping_time_s": {
+            "mean": 0.01799814124967591,
+            "p50": 0.01799814124967591,
+            "p95": 0.01799814124967591,
+            "p99": 0.01799814124967591,
+            "max": 0.01799814124967591
+          },
+          "mppi/target_speed_mps": {
+            "mean": 4.055576485698806,
+            "p50": 4.055576485698806,
+            "p95": 4.055576485698806,
+            "p99": 4.055576485698806,
+            "max": 4.055576485698806
+          },
+          "mppi/terminal_q": null,
+          "mppi/total_planning_ms": {
+            "mean": 611.654718988575,
+            "p50": 611.654718988575,
+            "p95": 611.654718988575,
+            "p99": 611.654718988575,
+            "max": 611.654718988575
+          },
+          "mppi/unique_candidate_count": {
+            "mean": 81.0,
+            "p50": 81.0,
+            "p95": 81.0,
+            "p99": 81.0,
+            "max": 81.0
+          },
+          "mppi/value_p50": null,
+          "mppi/wm_cache_hits": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/wm_evaluated_candidates": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          },
+          "mppi/world_model_rollout_ms": {
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0
+          }
+        }
+      }
+    }
+  ]
+}

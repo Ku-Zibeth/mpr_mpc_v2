@@ -1,0 +1,411 @@
+{
+  "reference_commit": "6b8271dc9e4e87f39e87f0caca383eab4eac78b6",
+  "source_snapshot_sha256": "87a4a998b5a79eed3c57e5d0712fb300bdf6900f3a855aa7dd4e0a1cea62eead",
+  "checkpoint": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt",
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "tests": {
+    "tests": 349,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "checks": {
+    "fixed559_120_actual_controls": true,
+    "fixed559_mean_speed_ge_0_5": true,
+    "fixed559_route_gain_ge_0_01": true,
+    "fixed559_stall_steps_le_20": true,
+    "fixed559_emergency_steps_le_10": true,
+    "fixed559_no_unverified_executions": true,
+    "fixed559_no_safety_failure": true,
+    "fixed559_no_crash_offroad": true,
+    "fixed1714_60_actual_controls": true,
+    "fixed1714_main_retention_ge_98pct": true,
+    "fixed1714_no_recovery": true,
+    "fixed1714_no_emergency": true,
+    "fixed1714_no_unverified_executions": true,
+    "fixed1714_no_safety_failure": true,
+    "fixed1714_no_crash_offroad": true,
+    "generalization_694": true,
+    "generalization_420": true,
+    "generalization_1084": true,
+    "generalization_808": true,
+    "generalization_822": true,
+    "generalization_822_curve": true,
+    "unit_tests_passed": true,
+    "calibration_evidence_unchanged": true,
+    "selected_score_and_archive_consistent": true,
+    "unvalidated_cost_not_scored": true,
+    "all_executed_actions_certified": true,
+    "fixed1714_historical_retention_ge_98pct": false
+  },
+  "formal_evaluation_ready": false,
+  "formal_evaluation_executed": false,
+  "blocking_reasons": [
+    "fixed1714_historical_retention_ge_98pct"
+  ],
+  "cases": {
+    "559": {
+      "file": "accepted_559.json",
+      "scenario": 559,
+      "snapshot_before_step": 600,
+      "summary": {
+        "steps": 120,
+        "requested_steps": 120,
+        "planning_attempts": 120,
+        "safety_failure": false,
+        "unverified_action_executions": 0,
+        "emergency_steps": 0,
+        "emergency_unverified_attempts": 0,
+        "route_gain": 0.39125108130084024,
+        "mean_speed": 8.006739645633589,
+        "max_speed": 15.467050095913063,
+        "stall_steps": 1,
+        "crash": false,
+        "offroad": false,
+        "planning": {
+          "mean": 371.63328612514306,
+          "p50": 351.09347249090206,
+          "p95": 542.3072031015181,
+          "p99": 582.843187773542,
+          "max": 747.078019019682
+        },
+        "modes": {
+          "baseline": 1,
+          "normal": 109,
+          "recovery_controlled": 7,
+          "recovery_lattice": 3
+        }
+      },
+      "initial_speed": 0.0030693246088205573,
+      "min_measured_body_margin": 2.720515623688698,
+      "road_seams_repaired_at_start": 107,
+      "forward_obstacle_count": 0,
+      "seed": 1,
+      "episode_seed": 560
+    },
+    "1714": {
+      "file": "proven_1714_from250.json",
+      "scenario": 1714,
+      "snapshot_before_step": 250,
+      "summary": {
+        "steps": 60,
+        "requested_steps": 60,
+        "planning_attempts": 60,
+        "safety_failure": false,
+        "unverified_action_executions": 0,
+        "emergency_steps": 0,
+        "emergency_unverified_attempts": 0,
+        "route_gain": 0.06440807430836964,
+        "mean_speed": 4.341090074381253,
+        "max_speed": 8.497409836177559,
+        "stall_steps": 1,
+        "crash": false,
+        "offroad": false,
+        "planning": {
+          "mean": 339.38258709725534,
+          "p50": 325.31960899359547,
+          "p95": 431.151913604117,
+          "p99": 639.8331220113316,
+          "max": 761.9395810179412
+        },
+        "modes": {
+          "baseline": 1,
+          "normal": 59
+        }
+      },
+      "initial_speed": 0.0028468132342887435,
+      "min_measured_body_margin": 3.206043843531156,
+      "road_seams_repaired_at_start": 329,
+      "forward_obstacle_count": 2,
+      "seed": 1,
+      "episode_seed": 1715
+    },
+    "694": {
+      "file": "proven_694_from30.json",
+      "scenario": 694,
+      "snapshot_before_step": 30,
+      "summary": {
+        "steps": 60,
+        "requested_steps": 60,
+        "planning_attempts": 60,
+        "safety_failure": false,
+        "unverified_action_executions": 0,
+        "emergency_steps": 0,
+        "emergency_unverified_attempts": 0,
+        "route_gain": 0.21000241843122713,
+        "mean_speed": 13.050929114397993,
+        "max_speed": 17.098453291283388,
+        "stall_steps": 0,
+        "crash": false,
+        "offroad": false,
+        "planning": {
+          "mean": 352.7681794662688,
+          "p50": 337.29396549460944,
+          "p95": 437.6639941110625,
+          "p99": 558.934462379547,
+          "max": 693.3818209799938
+        },
+        "modes": {
+          "normal": 60
+        }
+      },
+      "initial_speed": 8.802711889034866,
+      "min_measured_body_margin": 3.695077247917652,
+      "road_seams_repaired_at_start": 45,
+      "forward_obstacle_count": 0,
+      "seed": 1,
+      "episode_seed": 695
+    },
+    "420": {
+      "file": "accepted_420.json",
+      "scenario": 420,
+      "snapshot_before_step": 200,
+      "summary": {
+        "steps": 60,
+        "requested_steps": 60,
+        "planning_attempts": 60,
+        "safety_failure": false,
+        "unverified_action_executions": 0,
+        "emergency_steps": 0,
+        "emergency_unverified_attempts": 0,
+        "route_gain": 0.19609564505092947,
+        "mean_speed": 12.866326185438858,
+        "max_speed": 15.188062804248494,
+        "stall_steps": 0,
+        "crash": false,
+        "offroad": false,
+        "planning": {
+          "mean": 431.5673416975187,
+          "p50": 387.6177374913823,
+          "p95": 689.9787590067717,
+          "p99": 770.6446550440158,
+          "max": 790.5425490171183
+        },
+        "modes": {
+          "baseline": 1,
+          "normal": 48,
+          "recovery_controlled": 9,
+          "recovery_lattice": 2
+        }
+      },
+      "initial_speed": 13.04169860404929,
+      "min_measured_body_margin": 1.0080278588722544,
+      "road_seams_repaired_at_start": 229,
+      "forward_obstacle_count": 4,
+      "seed": 1,
+      "episode_seed": 421
+    },
+    "1084": {
+      "file": "proven_1084_from1.json",
+      "scenario": 1084,
+      "snapshot_before_step": 1,
+      "summary": {
+        "steps": 60,
+        "requested_steps": 60,
+        "planning_attempts": 60,
+        "safety_failure": false,
+        "unverified_action_executions": 0,
+        "emergency_steps": 0,
+        "emergency_unverified_attempts": 0,
+        "route_gain": 0.2009918479278965,
+        "mean_speed": 6.8600886477869985,
+        "max_speed": 12.018852280193322,
+        "stall_steps": 1,
+        "crash": false,
+        "offroad": false,
+        "planning": {
+          "mean": 321.3981444190722,
+          "p50": 318.89422849053517,
+          "p95": 394.6375782048562,
+          "p99": 515.2786915126482,
+          "max": 647.8439690254163
+        },
+        "modes": {
+          "baseline": 14,
+          "normal": 46
+        }
+      },
+      "initial_speed": 0.0,
+      "min_measured_body_margin": 2.742500066757202,
+      "road_seams_repaired_at_start": 69,
+      "forward_obstacle_count": 3,
+      "seed": 1,
+      "episode_seed": 1085
+    },
+    "808": {
+      "file": "proven_808_from200.json",
+      "scenario": 808,
+      "snapshot_before_step": 200,
+      "summary": {
+        "steps": 60,
+        "requested_steps": 60,
+        "planning_attempts": 60,
+        "safety_failure": false,
+        "unverified_action_executions": 0,
+        "emergency_steps": 0,
+        "emergency_unverified_attempts": 0,
+        "route_gain": 0.11497078238343827,
+        "mean_speed": 7.587050873872672,
+        "max_speed": 10.556314313944227,
+        "stall_steps": 0,
+        "crash": false,
+        "offroad": false,
+        "planning": {
+          "mean": 369.8817512340611,
+          "p50": 331.4051740017021,
+          "p95": 472.4286457130797,
+          "p99": 1004.76124435663,
+          "max": 1400.812842999585
+        },
+        "modes": {
+          "normal": 60
+        }
+      },
+      "initial_speed": 5.995874164889761,
+      "min_measured_body_margin": 0.1687825322151184,
+      "road_seams_repaired_at_start": 72,
+      "forward_obstacle_count": 4,
+      "seed": 1,
+      "episode_seed": 809
+    },
+    "822": {
+      "file": "proven_822_from100.json",
+      "scenario": 822,
+      "snapshot_before_step": 100,
+      "summary": {
+        "steps": 60,
+        "requested_steps": 60,
+        "planning_attempts": 60,
+        "safety_failure": false,
+        "unverified_action_executions": 0,
+        "emergency_steps": 0,
+        "emergency_unverified_attempts": 0,
+        "route_gain": 0.10998463487750626,
+        "mean_speed": 7.087092612502539,
+        "max_speed": 11.82903451858313,
+        "stall_steps": 0,
+        "crash": false,
+        "offroad": false,
+        "planning": {
+          "mean": 353.94862031583517,
+          "p50": 338.7695565033937,
+          "p95": 426.6678026673617,
+          "p99": 582.856872866977,
+          "max": 746.4990640000906
+        },
+        "modes": {
+          "baseline": 4,
+          "normal": 56
+        }
+      },
+      "initial_speed": 0.10798884749805546,
+      "min_measured_body_margin": 3.163706646054133,
+      "road_seams_repaired_at_start": 175,
+      "forward_obstacle_count": 2,
+      "seed": 1,
+      "episode_seed": 823
+    },
+    "822_curve": {
+      "file": "proven_822_from30.json",
+      "scenario": 822,
+      "snapshot_before_step": 30,
+      "summary": {
+        "steps": 60,
+        "requested_steps": 60,
+        "planning_attempts": 60,
+        "safety_failure": false,
+        "unverified_action_executions": 0,
+        "emergency_steps": 0,
+        "emergency_unverified_attempts": 0,
+        "route_gain": 0.15209886287195007,
+        "mean_speed": 9.352630768654246,
+        "max_speed": 13.708679186466934,
+        "stall_steps": 0,
+        "crash": false,
+        "offroad": false,
+        "planning": {
+          "mean": 352.20807973431266,
+          "p50": 332.7033280074829,
+          "p95": 437.13164959335677,
+          "p99": 600.865770177624,
+          "max": 715.397808002308
+        },
+        "modes": {
+          "normal": 60
+        }
+      },
+      "initial_speed": 8.037303685414457,
+      "min_measured_body_margin": 2.313508666902015,
+      "road_seams_repaired_at_start": 126,
+      "forward_obstacle_count": 1,
+      "seed": 1,
+      "episode_seed": 823
+    }
+  },
+  "retention_reference": {
+    "policy": "current main@6b8271 before this round, as explicitly pinned by the task",
+    "current_main_1714_route_gain": 0.0645371457454244,
+    "new_1714_route_gain": 0.06440807430836964,
+    "retention": 0.9980000442293513,
+    "historical_1714_route_gain": 0.06698124259613825,
+    "historical_retention": 0.961583748105668,
+    "historical_98pct_goal_met": false
+  },
+  "baseline_559": {
+    "steps": 10,
+    "requested_steps": 120,
+    "planning_attempts": 11,
+    "safety_failure": true,
+    "unverified_action_executions": 0,
+    "emergency_steps": 3,
+    "emergency_unverified_attempts": 1,
+    "route_gain": 0.0013224629596451654,
+    "mean_speed": 0.41339297586756774,
+    "max_speed": 1.063948938538257,
+    "stall_steps": 6,
+    "crash": false,
+    "offroad": false,
+    "planning": {
+      "mean": 638.9366518176922,
+      "p50": 346.9898059993284,
+      "p95": 1757.390413498797,
+      "p99": 1817.647445901821,
+      "max": 1832.7117040025769
+    },
+    "modes": {
+      "baseline": 1,
+      "emergency_model_check_failed": 1,
+      "emergency_model_checked": 3,
+      "normal": 3,
+      "recovery_controlled": 3
+    }
+  },
+  "policy": {
+    "normal_budget": [
+      64,
+      8,
+      4
+    ],
+    "recovery_budget": [
+      32,
+      2
+    ],
+    "controlled_max_candidates": 16,
+    "episode_horizon": 1000,
+    "primary_only_calibration_required_for_paired_evaluation": false,
+    "motion_calibration_validated": false,
+    "double_model_guard": "AND retained; unqualified primary model never disables legacy veto",
+    "allow_unvalidated_cost": false,
+    "latency_is_independent_engineering_metric": true,
+    "latency_233ms_not_a_gate": true,
+    "success_rate_claim": "unknown; short fixed-state smoke acceptance is not episode success or a 100-scenario success-rate estimate"
+  },
+  "protocol_notes": [
+    "1084:300 failed strict archived speed replay with max error 0.0110856 m/s; that attempt was excluded, tolerance was not relaxed. Independent 1084 generalization uses clean reset (snapshot 1).",
+    "Before/after comparisons use same checkpoint/scenario seed/configuration and archived prefix; traffic histories are not claimed bitwise-equivalent across multi-scene batch orders. Final cases run in separate processes.",
+    "The historical 0.066981 reference predates the pinned current main; both retention values are exposed. If historical 98% is required, that stricter target is still not met.",
+    "Formal 100-scene B/D evaluation has not been launched; this file reports readiness against the pinned current-main reference only."
+  ],
+  "regression_ready_against_pinned_main": true,
+  "reference_policy_note": "Current main regression passes (99.80% retained), but the prompt also quotes the earlier 0.066981 baseline. The conservative formal gate retains that historical 98% target; its 96.16% retention is still below target. No Normal weights or speed policy were tuned to this scene."
+}

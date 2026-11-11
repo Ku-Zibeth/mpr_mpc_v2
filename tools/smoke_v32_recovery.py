@@ -124,7 +124,23 @@ def main():
                         max_steering_rad=context.max_steering, control_dt=agent.planner.control_dt,
                         footprint_hausdorff_m=Polygon(footprint).hausdorff_distance(Polygon(vehicle.bounding_box)))
                     geometry_audit.update(longitudinal_parameter_source=context.longitudinal_parameter_source,
-                        dynamics_parameters=context.dynamics_parameters)
+                        dynamics_parameters=context.dynamics_parameters,
+                        initial_speed=context.speed, body_margin=context.geometric_body_margin,
+                        lateral_error=context.geometric_lateral_error, heading_error=context.geometric_heading_error,
+                        geometric_steer=context.geometric_steer, lane_width=context.lane_width,
+                        future_tangent_steer=context.road_tangent_steer,
+                        reference_ahead=[dict(distance=d, xy=context.road_reference.calc_position(min(context.road_reference.length,
+                            context.road_reference.project(context.position)[0]+d)).tolist(),
+                            yaw=context.road_reference.calc_yaw(min(context.road_reference.length,
+                                context.road_reference.project(context.position)[0]+d))) for d in (0., context.length/2+context.wheelbase, 10.)],
+                        obstacle_count=len(context.obstacles),
+                        forward_obstacle_count=sum(float((np.asarray(o.position)-context.position)@np.array([np.cos(context.heading),np.sin(context.heading)])) > 0
+                            for o in context.obstacles),
+                        road_seams_repaired=context.road_seams_repaired,
+                        source_circular_lanes=[dict(center=list(map(float,l.center)),radius=float(l.radius),width=float(l.width),
+                            start_phase=float(l.start_phase),angle=float(l.angle),direction=int(l.direction),forbidden=bool(l.forbidden))
+                            for l in context.source_lanes if type(l).__name__ == "CircularLane"],
+                        nearest_obstacle_center_m=min((float(np.linalg.norm(np.asarray(o.position)-context.position)) for o in context.obstacles), default=None))
                 prediction, predicted_heading, predicted_speed = agent.planner.local_mppi.candidate_safety._rollout(
                     result.debug["selected_mppi_actions"][None, :2], context)
                 obs, _, done, info = env.step(action)
@@ -135,6 +151,10 @@ def main():
                     ("crash", "crash_vehicle", "crash_object", "crash_building", "crash_human", "crash_sidewalk"))
                 offroad = bool(info.get("out_of_road", False))
                 smoke.append(dict(step=i+1, mode=result.planning_mode, action=action.tolist(),
+                    sac_action=result.refined_actions[0].detach().cpu().tolist(),
+                    lattice_action=result.coarse_actions[0].detach().cpu().tolist(),
+                    geometric_steer=context.geometric_steer, body_margin_before=context.geometric_body_margin,
+                    minimum_obstacle_clearance=result.metrics.get("mppi/min_clearance", result.metrics.get("mpr/mppi_min_clearance")),
                     action_executed=executed, safety_failure=bool(info.get("safety_failure", False)),
                     safety_failure_reason=info.get("safety_failure_reason", ""),
                     safety_certificate=result.debug.get("safety_certificate"),

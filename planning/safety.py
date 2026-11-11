@@ -35,6 +35,7 @@ class SafetyContext:
     road: Any
     obstacles: tuple
     cache: dict = field(default_factory=dict, repr=False)
+    source_lanes: tuple = field(default=(), repr=False)  # geometry provenance, never a SAC feature
 
 
 @dataclass
@@ -167,6 +168,7 @@ class TrajectorySafetyEvaluator:
             length=float(getattr(vehicle, "LENGTH", 4.5)), width=width, wheelbase=wheelbase,
             max_steering=max_steering, previous_action=previous,
             road=self._road_cache[key], obstacles=tuple(planner._collect_obstacles(vehicle)),
+            source_lanes=tuple(lanes),
         )
 
     def rollout(self, actions, context):

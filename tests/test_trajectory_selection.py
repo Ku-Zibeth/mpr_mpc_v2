@@ -414,3 +414,213 @@ def test_motion_evidence_gates_legacy_shadow_and_conservative_tube(tmp_path, sta
         assert not f.check(a, c).valid[0]  # calibration cannot override real geometry
         c.obstacles = (); c.road = box(0, 5, 11., 15); c.cache.clear()
         assert not f.check(a, c).valid[0]
+
+
+def test_recovery_reference_and_geometry_front_override_unbounded_sac_preference():
+    p = make_planner(); baseline = stuck_baseline(p)
+    p.deviation_coef = 1.
+    p.candidate_safety.geometry.model_margin = .05
+    c = road_context(speed=2); c.position[1] = 11.5
+    c.geometric_lateral_error = 1.5
+    p.evaluator.value = lambda a: 1000*a[:, 0, 0]  # deliberately favors outward steering
+    r = p.plan(torch.zeros(1, 2), baseline, eval_mode=True, safety_context=c, lattice_actions=torch.zeros(11, 2))
+    assert r.metrics["recovery_scoring_active"] and r.action[0] < 0
+    assert r.safety_certificate["valid"] and not r.safety_failure
+    selected = next(row for row in r.candidate_diagnostics if row["selected"])
+    assert selected["deviation_to_sac"] <= 1 and selected["deviation_to_recovery_reference"] <= 1
+    assert selected["final_score"] == pytest.approx(float(r.selected_score), abs=1e-3)
+    references = {row["recovery_reference"] for row in r.candidate_diagnostics}
+    assert references == {"lattice_full_checked"}
+
+
+def test_recovery_secondary_sac_penalty_is_bounded_without_zeroing_coefficient():
+    p = make_planner(); c = road_context()
+    p.deviation_coef = 1.
+    a = torch.full((2, 11, 2), -1.); a[1] = .9
+    reference = torch.full((11, 2), -.9); sac = torch.ones(11, 2)
+    primary, secondary, smoothness, first = p._recovery_penalties(a, sac, reference, c)
+    assert p.deviation_coef > 0 and (secondary <= 1).all() and primary[0] < primary[1]
+    assert (first <= 1).all() and not smoothness.any()
+
+
+def test_recovery_margin_order_retains_finite_wm_only_within_geometry_front():
+    p = make_planner(); c = road_context()
+    states = {"near": dict(terminal_lateral_error=1., committed_lateral_error=1., near_boundary_margin=.02,
+        terminal_boundary_margin=.02, boundary_margin_change=-.2, valid=True),
+        "inside": dict(terminal_lateral_error=.7, committed_lateral_error=.9, near_boundary_margin=.3,
+        terminal_boundary_margin=.4, boundary_margin_change=.18, valid=True)}
+    order, _ = p._recovery_order(["near", "inside"], torch.tensor([1e6, 1.]), states, c)
+    assert order[0] == 1
+    states["near"] = states["inside"].copy()
+    order, _ = p._recovery_order(["near", "inside"], torch.tensor([2., 1.]), states, c)
+    assert order[0] == 0  # no tiny/noise-only geometric improvement suppresses WM
+
+
+@pytest.mark.parametrize("worsening", ["margin", "lateral", "action"])
+def test_recovery_continuation_requires_measured_improvement(worsening):
+    p = make_planner(); c = road_context(speed=1)
+    c.measurement_step=2; c.lane_width=3.5; c.geometric_body_margin=.4; c.geometric_lateral_error=.8
+    p._last_recovery_observation=dict(verified=True, step=1, action=torch.zeros(2), margin=.3, lateral=1.)
+    p._observe_boundary(c, .1, True)
+    assert p._continuation_effective
+    if worsening == "margin": c.geometric_body_margin=.2
+    if worsening == "lateral": c.geometric_lateral_error=1.1
+    if worsening == "action": c.previous_action=np.array([0., .2])
+    p._observe_boundary(c, .1, True)
+    assert not p._continuation_effective
+
+
+def test_continuation_candidate_is_removed_after_outward_actual_motion():
+    p = make_planner(); p._recovery_latched=True; p._last_selected_sequence=torch.zeros(11, 2)
+    c = road_context(); p._continuation_effective=False
+    _, types = p._controlled_candidates(c, None, torch.zeros(11, 2))
+    assert len(types) <= 16 and "recovery_continuation" not in types
+    p._continuation_effective=True
+    _, types = p._controlled_candidates(c, None, torch.zeros(11, 2))
+    assert "recovery_continuation" in types
+
+
+def test_measured_boundary_decline_triggers_but_healthy_corner_or_width_change_does_not():
+    for kind in ("boundary", "corner", "width_change"):
+        p=make_planner(); c=road_context(speed=.1); c.lane_width=3.5
+        c.geometric_lateral_error=1.3 if kind != "corner" else .1
+        for i, margin in enumerate([.5, .4, .3]):
+            c.geometric_body_margin=margin
+            if i==2 and kind=="width_change": c.lane_width=4.
+            p._observe_boundary(c, .001, True)
+        assert p._boundary_active == (kind=="boundary")
+
+
+@pytest.mark.parametrize("side", [-1., 1.])
+@pytest.mark.parametrize("heading", [0., np.pi])
+def test_geometric_recovery_left_right_mirrors_in_world_and_frenet(side, heading):
+    from mpr_mpc.planning.mppi_safety import geometric_recovery_reference
+    c=road_context(speed=2)
+    direction=np.array([np.cos(heading),np.sin(heading)])
+    normal=np.array([-direction[1],direction[0]])
+    c.position=10*direction+side*.7*normal; c.heading=heading
+    c.lattice_actions=torch.zeros(11,2)
+    reference=PolylineReference([np.zeros(2),100*direction]); c.road_reference=reference
+    geometric_recovery_reference(c,reference,[0.],.1)
+    assert c.geometric_steer*side < 0
+    a=torch.zeros(1,11,2); a[:,:,0]=c.geometric_steer
+    f=MPPISafetyFilter(safety_cfg(center_bicycle=True),control_dt=.1)
+    c.rear_axle_to_center=c.wheelbase*.57
+    xy, _, _=f._rollout(a,c)
+    assert abs(reference.project(xy[0,-1].numpy())[1]) < .7
+
+
+def test_recovery_pulse_steers_back_toward_tangent_without_more_candidates():
+    p=make_planner(); c=road_context(); c.geometric_steer=-.8; c.road_tangent_steer=.1
+    a,types=p._controlled_candidates(c,None,torch.zeros(11,2))
+    pulse=a[types.index("recovery_center_half"),:,0]
+    assert len(a)==16 and pulse.min()<pulse[-1]
+
+
+@pytest.mark.parametrize("side", [-1., 1.])
+def test_front_footprint_lookahead_anticipates_mirrored_bend(side):
+    from mpr_mpc.planning.mppi_safety import geometric_recovery_reference
+    c=road_context(); c.position=np.array([10., side*.7]); c.lattice_actions=torch.zeros(11,2)
+    reference=PolylineReference([[0.,0.],[12.,0.],[12.,side*30.]])
+    geometric_recovery_reference(c,reference,[0.],.1)
+    assert c.geometric_steer*side > 0 and c.road_tangent_steer*side > 0
+
+
+def test_stationary_recovery_is_explicit_fallback_not_progress_eligible():
+    p=make_planner()
+    eligible=p._progress_eligible(torch.tensor([0.,-.1,.01]),torch.ones(3,dtype=torch.bool),recovery=True,recovery_target=.5)
+    assert not eligible.any()
+
+
+def test_controlled_recovery_couples_turning_with_coasting_and_deceleration():
+    p=make_planner(); c=road_context(); c.geometric_steer=-.8; c.road_tangent_steer=.1
+    actions,types=p._controlled_candidates(c,None,torch.zeros(11,2))
+    assert len(actions)==16
+    turn=actions[types.index("recovery_center_quarter_decelerate")]
+    assert turn[:,0].min()<0 and (turn[:,1]<0).any()
+    coast=actions[types.index("recovery_center_half_coast")]
+    assert coast[:,0].min()<0 and not coast[:,1].any()
+
+
+def test_verified_zero_progress_fallback_is_not_reported_as_successful_recovery():
+    p=make_planner(); p._stall_active=True
+    c=road_context(); c.target_speed=0.; c.lattice_speed_limit=0.
+    base=torch.zeros(11,2)
+    r=p.plan(torch.zeros(1,2),base,eval_mode=True,safety_context=c,lattice_actions=base)
+    assert r.safety_certificate["valid"] and r.metrics["recovery_progress_unavailable"] == 1
+    assert r.metrics["forward_candidate_selected"] == 0
+    assert next(row for row in r.candidate_diagnostics if row["selected"])["rejection_reason"] == "selected_verified_no_progress_fallback"
+
+
+def circular_road_fixture(lane_class=None):
+    from metadrive.component.lane.circular_lane import CircularLane
+    from shapely.ops import unary_union
+    cls=lane_class or CircularLane
+    lanes=[cls([0.,0.],radius,0.,np.pi/2,clockwise=False,width=3.5) for radius in (10.,13.5,17.)]
+    return lanes,unary_union([lane.shapely_polygon for lane in lanes])
+
+
+def test_only_proven_internal_circular_lane_seams_are_filled():
+    from mpr_mpc.planning.mppi_safety import repair_proven_lane_seams
+    from shapely.geometry import Point
+    lanes,road=circular_road_fixture()
+    old=road.wkb;new,count=repair_proven_lane_seams(road,lanes)
+    assert count > 0 and len(new.interiors) < len(road.interiors)
+    assert road.wkb==old and new.exterior.equals(road.exterior)
+    assert new.covers(road) and not new.covers(Point(0.,0.))  # inner median stays outside
+    assert not new.covers(Point(20.,20.))  # real exterior never expanded
+
+
+def test_real_hole_inside_lane_but_away_from_shared_boundary_is_preserved():
+    from mpr_mpc.planning.mppi_safety import repair_proven_lane_seams
+    from shapely.geometry import Point
+    lanes,road=circular_road_fixture()
+    island=Point(10/np.sqrt(2),10/np.sqrt(2)).buffer(.05)
+    modified=road.difference(island)
+    repaired,_=repair_proven_lane_seams(modified,lanes)
+    assert not repaired.covers(island.centroid)
+
+
+def test_unknown_lane_geometry_and_radial_median_are_not_closed():
+    from metadrive.component.lane.circular_lane import CircularLane
+    from shapely.ops import unary_union
+    from shapely.geometry import Point
+    from mpr_mpc.planning.mppi_safety import repair_proven_lane_seams
+    class CustomLane(CircularLane): pass
+    lanes,road=circular_road_fixture(CustomLane)
+    new,count=repair_proven_lane_seams(road,lanes)
+    assert not count and new.equals(road)
+    lanes=[CircularLane([0.,0.],radius,0.,np.pi/2,clockwise=False,width=3.5) for radius in (10.,14.)]
+    road=unary_union([l.shapely_polygon for l in lanes]);new,count=repair_proven_lane_seams(road,lanes)
+    median=Point(12/np.sqrt(2),12/np.sqrt(2))
+    assert not count and not new.covers(median)
+
+
+def test_seam_repair_still_rejects_real_continuous_vehicle_collision():
+    from mpr_mpc.planning.mppi_safety import repair_proven_lane_seams
+    from tests.test_v2_safety import obstacle
+    lanes,road=circular_road_fixture();new,_=repair_proven_lane_seams(road,lanes)
+    c=road_context(speed=1,road=new,obstacles=(obstacle(11.,10.),)); c.rear_axle_to_center=c.wheelbase*.57
+    f=MPPISafetyFilter(safety_cfg(two_layer=True,center_bicycle=True,center_model_guard=True),control_dt=.1)
+    result=f.check(torch.zeros(1,11,2),c)
+    assert not result.valid[0] and result.near_collision[0]
+
+
+def test_mppi_seam_repair_leaves_frozen_sac_source_geometry_unchanged():
+    from types import SimpleNamespace
+    lanes,road=circular_road_fixture();c=road_context(road=road);c.source_lanes=tuple(lanes)
+    f=MPPISafetyFilter(safety_cfg(two_layer=True),control_dt=.1)
+    vehicle=SimpleNamespace(config={"enable_reverse":False},enable_reverse=False)
+    before=c.road.wkb
+    result=f.context(None,vehicle,width=c.width,wheelbase=c.wheelbase,max_steering=c.max_steering,snapshot=c)
+    assert result.road_seams_repaired > 0 and c.road.wkb==before and c.road is road
+    assert result.source_lanes==c.source_lanes and result.road is not road
+
+
+def test_recovery_considers_minimum_body_margin_between_matching_endpoints():
+    p=make_planner();c=road_context()
+    common=dict(terminal_lateral_error=.5,committed_lateral_error=.5,near_boundary_margin=.4,
+        terminal_boundary_margin=.4,boundary_margin_change=0.,valid=True)
+    states={"dip":dict(common,boundary_margin=.01),"clear":dict(common,boundary_margin=.3)}
+    order,_=p._recovery_order(["dip","clear"],torch.tensor([1e6,1.]),states,c)
+    assert order[0]==1
