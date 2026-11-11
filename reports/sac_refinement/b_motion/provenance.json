@@ -1,0 +1,7 @@
+{
+  "source_stack": "world_model_residual_rl",
+  "source_log": "logs/benchmark/mpr_mpc_v311_sac_vs_sac_mppi_fixed100_20261109_202823/steps/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237_world_model_residual_rl_seed1.jsonl",
+  "source_log_sha256": "ee847b6ca749f419bf58693b2e1d3c10e8fa68a605887e5675f68b74228e9785",
+  "command": "tools/calibrate_mppi_motion.py --source-stack world_model_residual_rl --output reports/sac_refinement/b_motion",
+  "note": "Source is the actual B action log; calibration result remains unvalidated and is not installed into the planner."
+}

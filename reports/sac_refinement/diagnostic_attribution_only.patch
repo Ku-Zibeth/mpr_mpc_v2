@@ -1,0 +1,14 @@
+--- a/planning/local_mppi.py
++++ b/planning/local_mppi.py
+@@ -976,7 +976,10 @@
+                         # Same J for all families; safety is a feasibility constraint.
+                         i = max(finite, key=lambda i: float(scores[i]))
+                         recovery_best = (float(scores[i]), choices[i].clone(), rows[i], candidate_keys[i])
+-                        recovery_reference, mode = baseline, "recovery_controlled"
++                        # This deterministic control is its own reference, not
++                        # a Gaussian refinement of SAC. Keep its switch separate
++                        # from an MPPI optimisation delta (SAC delta is retained).
++                        recovery_reference, mode = choices[i].clone(), "recovery_controlled"
+             recovery_checked, recovery_rejects = checked-start_checked, safety_rejected-start_rejects
+             recovery_evaluated = evaluated-start_evaluated
+         choose_recovery = prefer(recovery_best, best)

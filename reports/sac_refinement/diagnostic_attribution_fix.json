@@ -1,0 +1,16 @@
+{
+  "kind": "diagnostic_only",
+  "action_selection_unchanged": true,
+  "other_runtime_source_unchanged": true,
+  "frozen_source_sha256": "03cfc923de3e6a6d813c00b7b0c74ca1bf42b1feebda9dfe0a96b80aa8a342f2",
+  "released_source_sha256": "84e81212666339bd3fadd8fb3d37ae2e06c216f246409203c282a29acbfe7061",
+  "correction": "Deterministic Recovery Controlled proposals have zero Gaussian optimisation delta. SAC-to-selected delta is unchanged.",
+  "normalized_fields": [
+    "mppi_recovery_search_delta",
+    "mppi_recovery_search_steer_delta",
+    "mppi_recovery_search_throttle_delta",
+    "mean_mppi_recovery_search_delta",
+    "mean_mppi_recovery_search_steer_delta",
+    "mean_mppi_recovery_search_throttle_delta"
+  ]
+}

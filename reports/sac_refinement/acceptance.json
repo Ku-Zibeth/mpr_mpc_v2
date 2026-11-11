@@ -1,0 +1,85 @@
+{
+  "source_snapshot_sha256": "84e81212666339bd3fadd8fb3d37ae2e06c216f246409203c282a29acbfe7061",
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "formal_evaluation_ready": true,
+  "blocking_reasons": [],
+  "checks": {
+    "559": true,
+    "1714": true,
+    "targeted_tests_passed": true
+  },
+  "cases": {
+    "559": {
+      "steps": 60,
+      "requested_steps": 60,
+      "planning_attempts": 60,
+      "safety_failure": false,
+      "unverified_action_executions": 0,
+      "emergency_steps": 0,
+      "emergency_unverified_attempts": 0,
+      "route_gain": 0.1288860181632508,
+      "mean_speed": 6.286011288707898,
+      "max_speed": 10.93784253782364,
+      "stall_steps": 1,
+      "crash": false,
+      "offroad": false,
+      "planning": {
+        "mean": 240.5998167678869,
+        "p50": 229.49559151311405,
+        "p95": 256.7416054313071,
+        "p99": 474.87426069390335,
+        "max": 749.6585650078487
+      },
+      "modes": {
+        "baseline": 60
+      }
+    },
+    "1714": {
+      "steps": 60,
+      "requested_steps": 60,
+      "planning_attempts": 60,
+      "safety_failure": false,
+      "unverified_action_executions": 0,
+      "emergency_steps": 0,
+      "emergency_unverified_attempts": 0,
+      "route_gain": 0.06448023092978833,
+      "mean_speed": 4.331772863408941,
+      "max_speed": 8.588592035793114,
+      "stall_steps": 1,
+      "crash": false,
+      "offroad": false,
+      "planning": {
+        "mean": 164.1062944191314,
+        "p50": 153.0864564992953,
+        "p95": 177.55636878719088,
+        "p99": 467.0107723839457,
+        "max": 595.6575690070167
+      },
+      "modes": {
+        "baseline": 60
+      }
+    }
+  },
+  "value_ranking_validated": false,
+  "cost_ranking_validated": false,
+  "policy": "SAC-first, unchanged dual safety guard; uncertified actions cannot execute",
+  "source_matches_formal_run": false,
+  "evaluated_source_snapshot_sha256": "03cfc923de3e6a6d813c00b7b0c74ca1bf42b1feebda9dfe0a96b80aa8a342f2",
+  "action_selection_source_equivalent": true,
+  "diagnostic_attribution_fix": {
+    "kind": "diagnostic_only",
+    "action_selection_unchanged": true,
+    "other_runtime_source_unchanged": true,
+    "frozen_source_sha256": "03cfc923de3e6a6d813c00b7b0c74ca1bf42b1feebda9dfe0a96b80aa8a342f2",
+    "released_source_sha256": "84e81212666339bd3fadd8fb3d37ae2e06c216f246409203c282a29acbfe7061",
+    "correction": "Deterministic Recovery Controlled proposals have zero Gaussian optimisation delta. SAC-to-selected delta is unchanged.",
+    "normalized_fields": [
+      "mppi_recovery_search_delta",
+      "mppi_recovery_search_steer_delta",
+      "mppi_recovery_search_throttle_delta",
+      "mean_mppi_recovery_search_delta",
+      "mean_mppi_recovery_search_steer_delta",
+      "mean_mppi_recovery_search_throttle_delta"
+    ]
+  }
+}

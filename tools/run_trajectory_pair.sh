@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Foreground B/D evaluation. Smoke acceptance is required by the task protocol.
+# Foreground B/D evaluation; current SAC-refinement smoke acceptance is required.
 set -euo pipefail
 root="$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")"
 cd "$root"
 python="${PYTHON:-/home/kzb/anaconda3/envs/tdmpc2/bin/python}"
 checkpoint="$root/logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt"
-name="${EXP_NAME:-trajectory_filter_BD_fixed100_$(TZ=Asia/Shanghai date +%Y%m%d_%H%M%S)}"
+name="${EXP_NAME:-sac_refinement_BD_fixed100_$(TZ=Asia/Shanghai date +%Y%m%d_%H%M%S)}"
 out="$root/logs/benchmark/$name"
 dry_run=false
 if [[ $# -gt 0 ]]; then
@@ -20,6 +20,7 @@ command=("$python" -u evaluate_ablation.py +experiment=E5 "checkpoint=$checkpoin
     metadrive.simulator.start_seed=300 metadrive.simulator.num_scenarios=2000
     metadrive.simulator.horizon=1000 metadrive.simulator.use_render=false
     mpr_mpc.mppi.allow_unvalidated_cost=false
+    mpr_mpc.mppi.trajectory_selection.record_candidates=false
     '+benchmark.variants=[B_lattice_sac,D_lattice_sac_mppi]'
     +benchmark.cost_ablation=false +benchmark.episodes=100 '+benchmark.repeat_seeds=[1]'
     "+benchmark.scenarios_file=$root/scenarios/fixed100.json"
@@ -35,7 +36,7 @@ fi
 import hashlib, json, sys
 from pathlib import Path
 from tools.benchmark_mppi import source_fingerprint
-report = Path('reports/round3/acceptance_final.json')
+report = Path('reports/sac_refinement/acceptance.json')
 if not report.is_file():
     raise SystemExit('No smoke acceptance report. Run and validate the prescribed unit/closed-loop tests first.')
 data = json.loads(report.read_text())

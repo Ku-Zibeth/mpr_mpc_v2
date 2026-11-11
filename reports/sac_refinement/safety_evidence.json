@@ -1,0 +1,40 @@
+{
+  "dataset": "reports/round2/motion_calibration_final/measured_windows.jsonl.gz",
+  "fit_scenes": [
+    1525,
+    539
+  ],
+  "heldout_scenes": [
+    1714,
+    559
+  ],
+  "validated": false,
+  "limits": "Existing whole-window executed labels only; not candidate counterfactuals. No actual positive events: recall unknown. Near/full and speed/curvature strata require replay, not inferred labels.",
+  "confusion": {
+    "fit/center/crash": {
+      "TN": 60
+    },
+    "fit/center/offroad": {
+      "TN": 60
+    },
+    "fit/legacy/crash": {
+      "TN": 60
+    },
+    "fit/legacy/offroad": {
+      "TN": 60
+    },
+    "heldout/center/crash": {
+      "TN": 97
+    },
+    "heldout/center/offroad": {
+      "TN": 96,
+      "FP": 1
+    },
+    "heldout/legacy/crash": {
+      "TN": 97
+    },
+    "heldout/legacy/offroad": {
+      "TN": 97
+    }
+  }
+}

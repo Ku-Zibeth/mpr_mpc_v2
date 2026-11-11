@@ -34,6 +34,8 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--run", type=Path, default=ROOT/"logs/benchmark/mpr_mpc_v311_sac_vs_sac_mppi_fixed100_20261109_202823")
     p.add_argument("--output", type=Path, required=True)
+    p.add_argument("--source-stack", choices=("world_model_residual_rl", "full_mpr_mpc"),
+                   default="full_mpr_mpc", help="Executed source policy; never mix B and D labels")
     args = p.parse_args()
     if args.output.exists():
         p.error("Use a fresh output directory; existing calibration evidence is never overwritten.")
@@ -41,7 +43,8 @@ def main():
     fit_scenes, heldout_scenes = [1525, 539], [1714, 559]
     limits = {1525: 300, 539: 300, 1714: 310, 559: 660}
     records = {s: [] for s in limits}
-    for line in next((args.run/"steps").glob("*_full_mpr_mpc_seed1.jsonl")).open():
+    source_log = next((args.run/"steps").glob(f"*_{args.source_stack}_seed1.jsonl"))
+    for line in source_log.open():
         row = json.loads(line)
         s = row["scenario"]
         if s in limits and row["episode_step"] <= limits[s]:
@@ -183,6 +186,8 @@ def main():
     events_supported = all(confusion[f"center_{e}"]["actual_positive"] > 0 and
         confusion[f"center_{e}"]["false_negative"] == 0 for e in ("crash", "offroad"))
     evidence = dict(schema=1, predictor_schema="center_bicycle_v1", protocol="disjoint_scene_physics_tick_v1",
+        source_stack=args.source_stack, source_log=str(source_log),
+        source_log_sha256=hashlib.sha256(source_log.read_bytes()).hexdigest(),
         checkpoint_sha256=checksum, dataset=str(path), dataset_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
         fit_scenes=fit_scenes, heldout_scenes=heldout_scenes, fit_windows=windows_count["fit"], heldout_windows=windows_count["heldout"],
         control_dt=f.geometry.dt, nominal_config=nominal, predictor_sha256=f.motion_predictor_sha(),

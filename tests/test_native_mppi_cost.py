@@ -33,7 +33,9 @@ class CostEvaluator:
 def fixed_planner(coef=1., *, cost_enabled=True, **kwargs):
     evaluator = CostEvaluator(**kwargs)
     planner = LocalMPPI(evaluator, mppi_cfg(cost_enabled=cost_enabled, cost_coef=coef, allow_unvalidated_cost=True,
-        num_samples=4, num_elites=2, iterations=3), horizon=3, action_dim=2, device="cpu")
+        # This arithmetic fixture compares throttle .5 with 0. Keep both inside
+        # its declared trust region; production defaults and assertions are unchanged.
+        max_delta=[.05, .5], num_samples=4, num_elites=2, iterations=3), horizon=3, action_dim=2, device="cpu")
     baseline = torch.zeros(4, 2)
     baseline[:, 1] = .5
     candidates = torch.stack((baseline, baseline.clone(), torch.zeros_like(baseline), torch.zeros_like(baseline)))

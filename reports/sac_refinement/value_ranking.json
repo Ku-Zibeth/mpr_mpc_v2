@@ -1,0 +1,62 @@
+{
+  "origins": 2,
+  "scenes": [
+    559,
+    1714
+  ],
+  "stats": {
+    "mae": 114.33584467041746,
+    "rmse": 114.43776528142308,
+    "correlation": -0.7559060589776964,
+    "ranking_accuracy": 0.0,
+    "ranking_pairs": 2,
+    "samples": 4,
+    "prediction_mean": -203.90225982666016,
+    "actual_mean": -89.5664151562427
+  },
+  "ranking_validated": false,
+  "cases": [
+    {
+      "scenario": 559,
+      "observation_identical": true,
+      "initial_state_identical": true,
+      "episode_complete": true,
+      "predicted_gain": 1.4737396240234375,
+      "actual_discounted_return_gain": -0.18700293991886952,
+      "baseline_return": 93.33006337241494,
+      "candidate_return": 93.14306043249607,
+      "baseline_success": true,
+      "candidate_success": true,
+      "baseline_events": {
+        "crash": false,
+        "offroad": false
+      },
+      "candidate_events": {
+        "crash": false,
+        "offroad": false
+      }
+    },
+    {
+      "scenario": 1714,
+      "observation_identical": true,
+      "initial_state_identical": true,
+      "episode_complete": true,
+      "predicted_gain": 2.0581512451171875,
+      "actual_discounted_return_gain": -4.42555282321095,
+      "baseline_return": 88.1090448216354,
+      "candidate_return": 83.68349199842444,
+      "baseline_success": true,
+      "candidate_success": true,
+      "baseline_events": {
+        "crash": true,
+        "offroad": false
+      },
+      "candidate_events": {
+        "crash": true,
+        "offroad": false
+      }
+    }
+  ],
+  "reason": "Insufficient matched origins/pairs and observed ordering disagreement. Real executed discounted returns through termination, fixed H then SAC continuation; no independent broad heldout validation.",
+  "scope": "Deployment continuation-policy return, not a claim that the TD-MPC2 Q was trained for SAC continuation."
+}

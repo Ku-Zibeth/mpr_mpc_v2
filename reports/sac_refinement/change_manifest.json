@@ -1,0 +1,36 @@
+{
+  "base_commit": "3e404e439d1b07aff3979bd5e3f1781c40233629",
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "frozen_runtime_source_sha256": "03cfc923de3e6a6d813c00b7b0c74ca1bf42b1feebda9dfe0a96b80aa8a342f2",
+  "code_patch_sha256": "9d4490cd353790cc3709c2d8c31ac5cd796284df3cb96fcec1d1916f8b4f22af",
+  "protected_files_unchanged": [
+    "agent.py",
+    "residual_rl.py",
+    "planning/coordinator.py",
+    "planning/mppi_safety.py",
+    "planning/cost_validation.py",
+    "planning/types.py",
+    "config.yaml"
+  ],
+  "git_commit_push_reset_checkout_executed": false,
+  "training_executed": false,
+  "diagnostic_only_fix": {
+    "kind": "diagnostic_only",
+    "action_selection_unchanged": true,
+    "other_runtime_source_unchanged": true,
+    "frozen_source_sha256": "03cfc923de3e6a6d813c00b7b0c74ca1bf42b1feebda9dfe0a96b80aa8a342f2",
+    "released_source_sha256": "84e81212666339bd3fadd8fb3d37ae2e06c216f246409203c282a29acbfe7061",
+    "correction": "Deterministic Recovery Controlled proposals have zero Gaussian optimisation delta. SAC-to-selected delta is unchanged.",
+    "normalized_fields": [
+      "mppi_recovery_search_delta",
+      "mppi_recovery_search_steer_delta",
+      "mppi_recovery_search_throttle_delta",
+      "mean_mppi_recovery_search_delta",
+      "mean_mppi_recovery_search_steer_delta",
+      "mean_mppi_recovery_search_throttle_delta"
+    ]
+  },
+  "released_runtime_source_sha256": "84e81212666339bd3fadd8fb3d37ae2e06c216f246409203c282a29acbfe7061",
+  "performance_goal_achieved": false,
+  "paired_episodes_per_group": 100
+}

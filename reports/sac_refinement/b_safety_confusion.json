@@ -1,0 +1,4269 @@
+{
+  "source": "B_lattice_sac actual actions; disjoint scene holdout",
+  "fit_scenes": [
+    1525,
+    539
+  ],
+  "heldout_scenes": [
+    1714,
+    559
+  ],
+  "near_controls": 1,
+  "full_controls": 10,
+  "counts": {
+    "fit/center/near/crash": {
+      "TN": 53
+    },
+    "fit/center/near/crash/speed=stopped": {
+      "TN": 2
+    },
+    "fit/center/near/crash/curvature=curve": {
+      "TN": 28
+    },
+    "fit/center/near/crash/boundary=boundary_adjacent": {
+      "TN": 18
+    },
+    "fit/center/near/offroad": {
+      "TN": 52,
+      "FP": 1
+    },
+    "fit/center/near/offroad/speed=stopped": {
+      "TN": 2
+    },
+    "fit/center/near/offroad/curvature=curve": {
+      "TN": 27,
+      "FP": 1
+    },
+    "fit/center/near/offroad/boundary=boundary_adjacent": {
+      "TN": 17,
+      "FP": 1
+    },
+    "fit/center/full/crash": {
+      "TN": 53
+    },
+    "fit/center/full/crash/speed=stopped": {
+      "TN": 2
+    },
+    "fit/center/full/crash/curvature=curve": {
+      "TN": 28
+    },
+    "fit/center/full/crash/boundary=boundary_adjacent": {
+      "TN": 18
+    },
+    "fit/center/full/offroad": {
+      "TN": 51,
+      "FP": 2
+    },
+    "fit/center/full/offroad/speed=stopped": {
+      "TN": 2
+    },
+    "fit/center/full/offroad/curvature=curve": {
+      "TN": 27,
+      "FP": 1
+    },
+    "fit/center/full/offroad/boundary=boundary_adjacent": {
+      "TN": 16,
+      "FP": 2
+    },
+    "fit/legacy/near/crash": {
+      "TN": 53
+    },
+    "fit/legacy/near/crash/speed=stopped": {
+      "TN": 2
+    },
+    "fit/legacy/near/crash/curvature=curve": {
+      "TN": 28
+    },
+    "fit/legacy/near/crash/boundary=boundary_adjacent": {
+      "TN": 18
+    },
+    "fit/legacy/near/offroad": {
+      "TN": 51,
+      "FP": 2
+    },
+    "fit/legacy/near/offroad/speed=stopped": {
+      "TN": 2
+    },
+    "fit/legacy/near/offroad/curvature=curve": {
+      "TN": 26,
+      "FP": 2
+    },
+    "fit/legacy/near/offroad/boundary=boundary_adjacent": {
+      "TN": 16,
+      "FP": 2
+    },
+    "fit/legacy/full/crash": {
+      "TN": 53
+    },
+    "fit/legacy/full/crash/speed=stopped": {
+      "TN": 2
+    },
+    "fit/legacy/full/crash/curvature=curve": {
+      "TN": 28
+    },
+    "fit/legacy/full/crash/boundary=boundary_adjacent": {
+      "TN": 18
+    },
+    "fit/legacy/full/offroad": {
+      "TN": 50,
+      "FP": 3
+    },
+    "fit/legacy/full/offroad/speed=stopped": {
+      "TN": 2
+    },
+    "fit/legacy/full/offroad/curvature=curve": {
+      "TN": 26,
+      "FP": 2
+    },
+    "fit/legacy/full/offroad/boundary=boundary_adjacent": {
+      "TN": 15,
+      "FP": 3
+    },
+    "fit/center/near/crash/speed=low": {
+      "TN": 9
+    },
+    "fit/center/near/offroad/speed=low": {
+      "TN": 8,
+      "FP": 1
+    },
+    "fit/center/full/crash/speed=low": {
+      "TN": 9
+    },
+    "fit/center/full/offroad/speed=low": {
+      "TN": 7,
+      "FP": 2
+    },
+    "fit/legacy/near/crash/speed=low": {
+      "TN": 9
+    },
+    "fit/legacy/near/offroad/speed=low": {
+      "TN": 7,
+      "FP": 2
+    },
+    "fit/legacy/full/crash/speed=low": {
+      "TN": 9
+    },
+    "fit/legacy/full/offroad/speed=low": {
+      "TN": 6,
+      "FP": 3
+    },
+    "fit/center/near/crash/speed=medium": {
+      "TN": 25
+    },
+    "fit/center/near/crash/boundary=interior": {
+      "TN": 35
+    },
+    "fit/center/near/offroad/speed=medium": {
+      "TN": 25
+    },
+    "fit/center/near/offroad/boundary=interior": {
+      "TN": 35
+    },
+    "fit/center/full/crash/speed=medium": {
+      "TN": 25
+    },
+    "fit/center/full/crash/boundary=interior": {
+      "TN": 35
+    },
+    "fit/center/full/offroad/speed=medium": {
+      "TN": 25
+    },
+    "fit/center/full/offroad/boundary=interior": {
+      "TN": 35
+    },
+    "fit/legacy/near/crash/speed=medium": {
+      "TN": 25
+    },
+    "fit/legacy/near/crash/boundary=interior": {
+      "TN": 35
+    },
+    "fit/legacy/near/offroad/speed=medium": {
+      "TN": 25
+    },
+    "fit/legacy/near/offroad/boundary=interior": {
+      "TN": 35
+    },
+    "fit/legacy/full/crash/speed=medium": {
+      "TN": 25
+    },
+    "fit/legacy/full/crash/boundary=interior": {
+      "TN": 35
+    },
+    "fit/legacy/full/offroad/speed=medium": {
+      "TN": 25
+    },
+    "fit/legacy/full/offroad/boundary=interior": {
+      "TN": 35
+    },
+    "fit/center/near/crash/curvature=straight": {
+      "TN": 25
+    },
+    "fit/center/near/offroad/curvature=straight": {
+      "TN": 25
+    },
+    "fit/center/full/crash/curvature=straight": {
+      "TN": 25
+    },
+    "fit/center/full/offroad/curvature=straight": {
+      "TN": 24,
+      "FP": 1
+    },
+    "fit/legacy/near/crash/curvature=straight": {
+      "TN": 25
+    },
+    "fit/legacy/near/offroad/curvature=straight": {
+      "TN": 25
+    },
+    "fit/legacy/full/crash/curvature=straight": {
+      "TN": 25
+    },
+    "fit/legacy/full/offroad/curvature=straight": {
+      "TN": 24,
+      "FP": 1
+    },
+    "fit/center/near/crash/speed=high": {
+      "TN": 17
+    },
+    "fit/center/near/offroad/speed=high": {
+      "TN": 17
+    },
+    "fit/center/full/crash/speed=high": {
+      "TN": 17
+    },
+    "fit/center/full/offroad/speed=high": {
+      "TN": 17
+    },
+    "fit/legacy/near/crash/speed=high": {
+      "TN": 17
+    },
+    "fit/legacy/near/offroad/speed=high": {
+      "TN": 17
+    },
+    "fit/legacy/full/crash/speed=high": {
+      "TN": 17
+    },
+    "fit/legacy/full/offroad/speed=high": {
+      "TN": 17
+    },
+    "heldout/center/near/crash": {
+      "TN": 62
+    },
+    "heldout/center/near/crash/speed=stopped": {
+      "TN": 2
+    },
+    "heldout/center/near/crash/curvature=curve": {
+      "TN": 44
+    },
+    "heldout/center/near/crash/boundary=boundary_adjacent": {
+      "TN": 8
+    },
+    "heldout/center/near/offroad": {
+      "TN": 62
+    },
+    "heldout/center/near/offroad/speed=stopped": {
+      "TN": 2
+    },
+    "heldout/center/near/offroad/curvature=curve": {
+      "TN": 44
+    },
+    "heldout/center/near/offroad/boundary=boundary_adjacent": {
+      "TN": 8
+    },
+    "heldout/center/full/crash": {
+      "TN": 62
+    },
+    "heldout/center/full/crash/speed=stopped": {
+      "TN": 2
+    },
+    "heldout/center/full/crash/curvature=curve": {
+      "TN": 44
+    },
+    "heldout/center/full/crash/boundary=boundary_adjacent": {
+      "TN": 8
+    },
+    "heldout/center/full/offroad": {
+      "TN": 62
+    },
+    "heldout/center/full/offroad/speed=stopped": {
+      "TN": 2
+    },
+    "heldout/center/full/offroad/curvature=curve": {
+      "TN": 44
+    },
+    "heldout/center/full/offroad/boundary=boundary_adjacent": {
+      "TN": 8
+    },
+    "heldout/legacy/near/crash": {
+      "TN": 62
+    },
+    "heldout/legacy/near/crash/speed=stopped": {
+      "TN": 2
+    },
+    "heldout/legacy/near/crash/curvature=curve": {
+      "TN": 44
+    },
+    "heldout/legacy/near/crash/boundary=boundary_adjacent": {
+      "TN": 8
+    },
+    "heldout/legacy/near/offroad": {
+      "TN": 62
+    },
+    "heldout/legacy/near/offroad/speed=stopped": {
+      "TN": 2
+    },
+    "heldout/legacy/near/offroad/curvature=curve": {
+      "TN": 44
+    },
+    "heldout/legacy/near/offroad/boundary=boundary_adjacent": {
+      "TN": 8
+    },
+    "heldout/legacy/full/crash": {
+      "TN": 62
+    },
+    "heldout/legacy/full/crash/speed=stopped": {
+      "TN": 2
+    },
+    "heldout/legacy/full/crash/curvature=curve": {
+      "TN": 44
+    },
+    "heldout/legacy/full/crash/boundary=boundary_adjacent": {
+      "TN": 8
+    },
+    "heldout/legacy/full/offroad": {
+      "TN": 62
+    },
+    "heldout/legacy/full/offroad/speed=stopped": {
+      "TN": 2
+    },
+    "heldout/legacy/full/offroad/curvature=curve": {
+      "TN": 44
+    },
+    "heldout/legacy/full/offroad/boundary=boundary_adjacent": {
+      "TN": 8
+    },
+    "heldout/center/near/crash/speed=low": {
+      "TN": 5
+    },
+    "heldout/center/near/offroad/speed=low": {
+      "TN": 5
+    },
+    "heldout/center/full/crash/speed=low": {
+      "TN": 5
+    },
+    "heldout/center/full/offroad/speed=low": {
+      "TN": 5
+    },
+    "heldout/legacy/near/crash/speed=low": {
+      "TN": 5
+    },
+    "heldout/legacy/near/offroad/speed=low": {
+      "TN": 5
+    },
+    "heldout/legacy/full/crash/speed=low": {
+      "TN": 5
+    },
+    "heldout/legacy/full/offroad/speed=low": {
+      "TN": 5
+    },
+    "heldout/center/near/crash/speed=medium": {
+      "TN": 38
+    },
+    "heldout/center/near/crash/curvature=straight": {
+      "TN": 18
+    },
+    "heldout/center/near/crash/boundary=interior": {
+      "TN": 54
+    },
+    "heldout/center/near/offroad/speed=medium": {
+      "TN": 38
+    },
+    "heldout/center/near/offroad/curvature=straight": {
+      "TN": 18
+    },
+    "heldout/center/near/offroad/boundary=interior": {
+      "TN": 54
+    },
+    "heldout/center/full/crash/speed=medium": {
+      "TN": 38
+    },
+    "heldout/center/full/crash/curvature=straight": {
+      "TN": 18
+    },
+    "heldout/center/full/crash/boundary=interior": {
+      "TN": 54
+    },
+    "heldout/center/full/offroad/speed=medium": {
+      "TN": 38
+    },
+    "heldout/center/full/offroad/curvature=straight": {
+      "TN": 18
+    },
+    "heldout/center/full/offroad/boundary=interior": {
+      "TN": 54
+    },
+    "heldout/legacy/near/crash/speed=medium": {
+      "TN": 38
+    },
+    "heldout/legacy/near/crash/curvature=straight": {
+      "TN": 18
+    },
+    "heldout/legacy/near/crash/boundary=interior": {
+      "TN": 54
+    },
+    "heldout/legacy/near/offroad/speed=medium": {
+      "TN": 38
+    },
+    "heldout/legacy/near/offroad/curvature=straight": {
+      "TN": 18
+    },
+    "heldout/legacy/near/offroad/boundary=interior": {
+      "TN": 54
+    },
+    "heldout/legacy/full/crash/speed=medium": {
+      "TN": 38
+    },
+    "heldout/legacy/full/crash/curvature=straight": {
+      "TN": 18
+    },
+    "heldout/legacy/full/crash/boundary=interior": {
+      "TN": 54
+    },
+    "heldout/legacy/full/offroad/speed=medium": {
+      "TN": 38
+    },
+    "heldout/legacy/full/offroad/curvature=straight": {
+      "TN": 18
+    },
+    "heldout/legacy/full/offroad/boundary=interior": {
+      "TN": 54
+    },
+    "heldout/center/near/crash/speed=high": {
+      "TN": 17
+    },
+    "heldout/center/near/offroad/speed=high": {
+      "TN": 17
+    },
+    "heldout/center/full/crash/speed=high": {
+      "TN": 17
+    },
+    "heldout/center/full/offroad/speed=high": {
+      "TN": 17
+    },
+    "heldout/legacy/near/crash/speed=high": {
+      "TN": 17
+    },
+    "heldout/legacy/near/offroad/speed=high": {
+      "TN": 17
+    },
+    "heldout/legacy/full/crash/speed=high": {
+      "TN": 17
+    },
+    "heldout/legacy/full/offroad/speed=high": {
+      "TN": 17
+    }
+  },
+  "rejections": {
+    "windows": 115,
+    "both_reject_no_event": 1,
+    "disagree": 1
+  },
+  "both_reject_no_event_rate": 0.008695652173913044,
+  "limits": "Finite-window event agreement is not recall certification. No guard/threshold/vehicle-model changes were made.",
+  "windows": [
+    {
+      "scenario": 1525,
+      "index": 0,
+      "split": "fit",
+      "speed": 0.0,
+      "curvature_rad_per_m": 0.14197355428357175,
+      "speed_stratum": "stopped",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "boundary_adjacent",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1525,
+      "index": 10,
+      "split": "fit",
+      "speed": 2.6958407236081956,
+      "curvature_rad_per_m": 0.01665534850213293,
+      "speed_stratum": "low",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "boundary_adjacent",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1525,
+      "index": 20,
+      "split": "fit",
+      "speed": 5.522826582916473,
+      "curvature_rad_per_m": 0.018709696175772877,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1525,
+      "index": 30,
+      "split": "fit",
+      "speed": 8.284326525431434,
+      "curvature_rad_per_m": 0.0037579132793892633,
+      "speed_stratum": "medium",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1525,
+      "index": 40,
+      "split": "fit",
+      "speed": 11.102500336653478,
+      "curvature_rad_per_m": 0.0026208976275008916,
+      "speed_stratum": "high",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1525,
+      "index": 50,
+      "split": "fit",
+      "speed": 8.774679509271875,
+      "curvature_rad_per_m": 0.002517549569463315,
+      "speed_stratum": "medium",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1525,
+      "index": 60,
+      "split": "fit",
+      "speed": 10.311315775803477,
+      "curvature_rad_per_m": 0.012981633406953002,
+      "speed_stratum": "high",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1525,
+      "index": 70,
+      "split": "fit",
+      "speed": 8.87716078274398,
+      "curvature_rad_per_m": 0.017946074693985837,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1525,
+      "index": 80,
+      "split": "fit",
+      "speed": 8.287424433231092,
+      "curvature_rad_per_m": 0.018465783207878197,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1525,
+      "index": 90,
+      "split": "fit",
+      "speed": 7.686935696097994,
+      "curvature_rad_per_m": 0.020775955694126495,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1525,
+      "index": 100,
+      "split": "fit",
+      "speed": 7.680538445703404,
+      "curvature_rad_per_m": 0.02121499339571857,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1525,
+      "index": 110,
+      "split": "fit",
+      "speed": 7.77357091735399,
+      "curvature_rad_per_m": 0.018791520849352036,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1525,
+      "index": 120,
+      "split": "fit",
+      "speed": 7.2175017038735,
+      "curvature_rad_per_m": 0.016763879824400123,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1525,
+      "index": 130,
+      "split": "fit",
+      "speed": 8.343672900239852,
+      "curvature_rad_per_m": 0.016176765956432484,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1525,
+      "index": 140,
+      "split": "fit",
+      "speed": 8.17954964974271,
+      "curvature_rad_per_m": 0.018562914421395047,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1525,
+      "index": 150,
+      "split": "fit",
+      "speed": 10.770138827260466,
+      "curvature_rad_per_m": 0.016847227385841056,
+      "speed_stratum": "high",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1525,
+      "index": 160,
+      "split": "fit",
+      "speed": 9.835238446145786,
+      "curvature_rad_per_m": 0.020458881398254792,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1525,
+      "index": 170,
+      "split": "fit",
+      "speed": 12.128930897145136,
+      "curvature_rad_per_m": 0.015454865561046532,
+      "speed_stratum": "high",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "boundary_adjacent",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1525,
+      "index": 180,
+      "split": "fit",
+      "speed": 5.55924294304764,
+      "curvature_rad_per_m": 0.016368961093989363,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1525,
+      "index": 190,
+      "split": "fit",
+      "speed": 7.137123767581465,
+      "curvature_rad_per_m": 0.008169380909128885,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "boundary_adjacent",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1525,
+      "index": 200,
+      "split": "fit",
+      "speed": 9.950144798917714,
+      "curvature_rad_per_m": 0.0002641323699958969,
+      "speed_stratum": "medium",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "boundary_adjacent",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1525,
+      "index": 210,
+      "split": "fit",
+      "speed": 12.73641904677528,
+      "curvature_rad_per_m": 0.0014436400216987597,
+      "speed_stratum": "high",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "boundary_adjacent",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1525,
+      "index": 220,
+      "split": "fit",
+      "speed": 15.555218995947387,
+      "curvature_rad_per_m": 0.001532267794004588,
+      "speed_stratum": "high",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "boundary_adjacent",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 0,
+      "split": "fit",
+      "speed": 0.0,
+      "curvature_rad_per_m": 0.097784076430628,
+      "speed_stratum": "stopped",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "boundary_adjacent",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 10,
+      "split": "fit",
+      "speed": 2.7689719271113313,
+      "curvature_rad_per_m": 0.0018598133987646694,
+      "speed_stratum": "low",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "boundary_adjacent",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 20,
+      "split": "fit",
+      "speed": 5.571417517821558,
+      "curvature_rad_per_m": 0.00539419781301381,
+      "speed_stratum": "medium",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 30,
+      "split": "fit",
+      "speed": 8.09579589180295,
+      "curvature_rad_per_m": 0.004919743321340224,
+      "speed_stratum": "medium",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 40,
+      "split": "fit",
+      "speed": 10.906808565075531,
+      "curvature_rad_per_m": 0.0027907907348297422,
+      "speed_stratum": "high",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 50,
+      "split": "fit",
+      "speed": 11.616747189951067,
+      "curvature_rad_per_m": 0.003916176880837796,
+      "speed_stratum": "high",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 60,
+      "split": "fit",
+      "speed": 13.263181953349642,
+      "curvature_rad_per_m": 0.0006430199221080123,
+      "speed_stratum": "high",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 70,
+      "split": "fit",
+      "speed": 10.373723624018703,
+      "curvature_rad_per_m": 0.0016420679341766849,
+      "speed_stratum": "high",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 80,
+      "split": "fit",
+      "speed": 11.141841033138306,
+      "curvature_rad_per_m": 0.001909049279758245,
+      "speed_stratum": "high",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 90,
+      "split": "fit",
+      "speed": 13.943713102084194,
+      "curvature_rad_per_m": 0.004619247559475528,
+      "speed_stratum": "high",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 100,
+      "split": "fit",
+      "speed": 15.62475686963958,
+      "curvature_rad_per_m": 5.7743535573637996e-05,
+      "speed_stratum": "high",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 110,
+      "split": "fit",
+      "speed": 10.70267110227976,
+      "curvature_rad_per_m": 0.005330708465158091,
+      "speed_stratum": "high",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 120,
+      "split": "fit",
+      "speed": 13.5108670912186,
+      "curvature_rad_per_m": 6.075928571505443e-05,
+      "speed_stratum": "high",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 130,
+      "split": "fit",
+      "speed": 9.159070876167386,
+      "curvature_rad_per_m": 0.00287965928687178,
+      "speed_stratum": "medium",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 140,
+      "split": "fit",
+      "speed": 5.658969694198766,
+      "curvature_rad_per_m": 0.010650812080386521,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 150,
+      "split": "fit",
+      "speed": 7.263500271565168,
+      "curvature_rad_per_m": 0.004035298792999898,
+      "speed_stratum": "medium",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 160,
+      "split": "fit",
+      "speed": 10.072095602055759,
+      "curvature_rad_per_m": 0.012495380432565121,
+      "speed_stratum": "high",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 170,
+      "split": "fit",
+      "speed": 11.075982703851512,
+      "curvature_rad_per_m": 0.005821084419956881,
+      "speed_stratum": "high",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 180,
+      "split": "fit",
+      "speed": 8.480761317131623,
+      "curvature_rad_per_m": 0.0006833641269047086,
+      "speed_stratum": "medium",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 190,
+      "split": "fit",
+      "speed": 6.39450151310347,
+      "curvature_rad_per_m": 0.006868493868415124,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 200,
+      "split": "fit",
+      "speed": 7.908398857526064,
+      "curvature_rad_per_m": 0.006296069992584187,
+      "speed_stratum": "medium",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "boundary_adjacent",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 210,
+      "split": "fit",
+      "speed": 6.561891335418328,
+      "curvature_rad_per_m": 0.005714840807969025,
+      "speed_stratum": "medium",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "boundary_adjacent",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 220,
+      "split": "fit",
+      "speed": 5.763220601581118,
+      "curvature_rad_per_m": 0.002073394182431517,
+      "speed_stratum": "medium",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "boundary_adjacent",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 230,
+      "split": "fit",
+      "speed": 4.6407168453521335,
+      "curvature_rad_per_m": 0.0015207896055103023,
+      "speed_stratum": "low",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "boundary_adjacent",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 240,
+      "split": "fit",
+      "speed": 3.611375265374955,
+      "curvature_rad_per_m": 0.0006174332533912455,
+      "speed_stratum": "low",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "boundary_adjacent",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 250,
+      "split": "fit",
+      "speed": 3.288924652960224,
+      "curvature_rad_per_m": 0.009248594350708175,
+      "speed_stratum": "low",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "boundary_adjacent",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": false,
+          "collision": false,
+          "offroad": true,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": false,
+          "collision": false,
+          "offroad": true,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 260,
+      "split": "fit",
+      "speed": 4.146719525019158,
+      "curvature_rad_per_m": 0.02146557874694536,
+      "speed_stratum": "low",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "boundary_adjacent",
+      "models": {
+        "center": {
+          "valid": false,
+          "near_valid": false,
+          "full_valid": false,
+          "collision": false,
+          "offroad": true,
+          "near_collision": false,
+          "near_offroad": true,
+          "braking_continuation_valid": false
+        },
+        "legacy": {
+          "valid": false,
+          "near_valid": false,
+          "full_valid": false,
+          "collision": false,
+          "offroad": true,
+          "near_collision": false,
+          "near_offroad": true,
+          "braking_continuation_valid": false
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 270,
+      "split": "fit",
+      "speed": 3.050670166510613,
+      "curvature_rad_per_m": 0.08312403396565374,
+      "speed_stratum": "low",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "boundary_adjacent",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": false,
+          "near_valid": false,
+          "full_valid": false,
+          "collision": false,
+          "offroad": true,
+          "near_collision": false,
+          "near_offroad": true,
+          "braking_continuation_valid": false
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 280,
+      "split": "fit",
+      "speed": 3.48070668927999,
+      "curvature_rad_per_m": 0.05378831145156035,
+      "speed_stratum": "low",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "boundary_adjacent",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 539,
+      "index": 290,
+      "split": "fit",
+      "speed": 2.5142841257068147,
+      "curvature_rad_per_m": 0.0745424352738153,
+      "speed_stratum": "low",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 0,
+      "split": "heldout",
+      "speed": 0.0,
+      "curvature_rad_per_m": 0.07252040080200191,
+      "speed_stratum": "stopped",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "boundary_adjacent",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 10,
+      "split": "heldout",
+      "speed": 2.713775506937575,
+      "curvature_rad_per_m": 0.013142744588530405,
+      "speed_stratum": "low",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "boundary_adjacent",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 20,
+      "split": "heldout",
+      "speed": 5.447454461248965,
+      "curvature_rad_per_m": 0.0011550303267708736,
+      "speed_stratum": "medium",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 30,
+      "split": "heldout",
+      "speed": 8.176260782546398,
+      "curvature_rad_per_m": 0.0038901432228911443,
+      "speed_stratum": "medium",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 40,
+      "split": "heldout",
+      "speed": 10.915805999021458,
+      "curvature_rad_per_m": 0.0041869338189836555,
+      "speed_stratum": "high",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 50,
+      "split": "heldout",
+      "speed": 13.298642798168956,
+      "curvature_rad_per_m": 0.0008464422009034642,
+      "speed_stratum": "high",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 60,
+      "split": "heldout",
+      "speed": 10.629000387443133,
+      "curvature_rad_per_m": 0.01377190975982403,
+      "speed_stratum": "high",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 70,
+      "split": "heldout",
+      "speed": 11.338106105029082,
+      "curvature_rad_per_m": 0.01973034272654996,
+      "speed_stratum": "high",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 80,
+      "split": "heldout",
+      "speed": 10.202008878990947,
+      "curvature_rad_per_m": 0.01876264958049444,
+      "speed_stratum": "high",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 90,
+      "split": "heldout",
+      "speed": 11.088300616352651,
+      "curvature_rad_per_m": 0.019783461013204117,
+      "speed_stratum": "high",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 100,
+      "split": "heldout",
+      "speed": 10.539175900080323,
+      "curvature_rad_per_m": 0.01646361211946134,
+      "speed_stratum": "high",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 110,
+      "split": "heldout",
+      "speed": 9.329675000231608,
+      "curvature_rad_per_m": 0.01517376183373088,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 120,
+      "split": "heldout",
+      "speed": 9.489975370361112,
+      "curvature_rad_per_m": 0.016208048240823447,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 130,
+      "split": "heldout",
+      "speed": 9.046558263701927,
+      "curvature_rad_per_m": 0.016291843822116417,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 140,
+      "split": "heldout",
+      "speed": 8.69140032361188,
+      "curvature_rad_per_m": 0.01583786109408441,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 150,
+      "split": "heldout",
+      "speed": 8.604343503844671,
+      "curvature_rad_per_m": 0.01519308601725776,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 160,
+      "split": "heldout",
+      "speed": 8.36350581548721,
+      "curvature_rad_per_m": 0.016527389860397805,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 170,
+      "split": "heldout",
+      "speed": 8.991825747587106,
+      "curvature_rad_per_m": 0.01653483973823871,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 180,
+      "split": "heldout",
+      "speed": 9.107100800277522,
+      "curvature_rad_per_m": 0.01688432279344729,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 190,
+      "split": "heldout",
+      "speed": 8.450678236807718,
+      "curvature_rad_per_m": 0.01213769774765244,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 200,
+      "split": "heldout",
+      "speed": 6.87434118771491,
+      "curvature_rad_per_m": 0.006086400525031644,
+      "speed_stratum": "medium",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "boundary_adjacent",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 210,
+      "split": "heldout",
+      "speed": 5.440445741355778,
+      "curvature_rad_per_m": 0.014471218926466693,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "boundary_adjacent",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 220,
+      "split": "heldout",
+      "speed": 7.536699273277425,
+      "curvature_rad_per_m": 0.0014631942806337984,
+      "speed_stratum": "medium",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "boundary_adjacent",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 230,
+      "split": "heldout",
+      "speed": 10.270603434908601,
+      "curvature_rad_per_m": 0.001457404424483468,
+      "speed_stratum": "high",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 240,
+      "split": "heldout",
+      "speed": 7.613012705127257,
+      "curvature_rad_per_m": 0.005084372473024638,
+      "speed_stratum": "medium",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 250,
+      "split": "heldout",
+      "speed": 9.231225558628815,
+      "curvature_rad_per_m": 0.0009967985418014988,
+      "speed_stratum": "medium",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 260,
+      "split": "heldout",
+      "speed": 11.966762648620941,
+      "curvature_rad_per_m": 0.0057882557172054825,
+      "speed_stratum": "high",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 270,
+      "split": "heldout",
+      "speed": 14.564679417789801,
+      "curvature_rad_per_m": 0.011732630132675257,
+      "speed_stratum": "high",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": false,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": false,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 280,
+      "split": "heldout",
+      "speed": 7.643787403104522,
+      "curvature_rad_per_m": 0.006085926175096091,
+      "speed_stratum": "medium",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 290,
+      "split": "heldout",
+      "speed": 4.366195753000374,
+      "curvature_rad_per_m": 0.011970240617405177,
+      "speed_stratum": "low",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 1714,
+      "index": 300,
+      "split": "heldout",
+      "speed": 5.700336094723934,
+      "curvature_rad_per_m": 0.05343908970763236,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 0,
+      "split": "heldout",
+      "speed": 0.0,
+      "curvature_rad_per_m": 0.15253398909773522,
+      "speed_stratum": "stopped",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "boundary_adjacent",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 10,
+      "split": "heldout",
+      "speed": 2.700415206613396,
+      "curvature_rad_per_m": 0.02638325634420624,
+      "speed_stratum": "low",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "boundary_adjacent",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 20,
+      "split": "heldout",
+      "speed": 5.555074814332325,
+      "curvature_rad_per_m": 0.03474736178012623,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 30,
+      "split": "heldout",
+      "speed": 8.34386220253779,
+      "curvature_rad_per_m": 0.016069811084957804,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 40,
+      "split": "heldout",
+      "speed": 6.903727126992145,
+      "curvature_rad_per_m": 0.0018917041007921473,
+      "speed_stratum": "medium",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 50,
+      "split": "heldout",
+      "speed": 9.74938737274941,
+      "curvature_rad_per_m": 0.006400952621340773,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 60,
+      "split": "heldout",
+      "speed": 12.480588000350714,
+      "curvature_rad_per_m": 0.005512005114904106,
+      "speed_stratum": "high",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 70,
+      "split": "heldout",
+      "speed": 7.523789615802907,
+      "curvature_rad_per_m": 0.007216130617495434,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 80,
+      "split": "heldout",
+      "speed": 6.219759748080072,
+      "curvature_rad_per_m": 0.006432569184532976,
+      "speed_stratum": "medium",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 90,
+      "split": "heldout",
+      "speed": 5.98371784659178,
+      "curvature_rad_per_m": 0.0015055112387416425,
+      "speed_stratum": "medium",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 100,
+      "split": "heldout",
+      "speed": 4.160318751497191,
+      "curvature_rad_per_m": 0.012118859478159431,
+      "speed_stratum": "low",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 110,
+      "split": "heldout",
+      "speed": 7.005859024052555,
+      "curvature_rad_per_m": 0.010041323943027418,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 120,
+      "split": "heldout",
+      "speed": 9.843499186626644,
+      "curvature_rad_per_m": 0.0034073015485720937,
+      "speed_stratum": "medium",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 130,
+      "split": "heldout",
+      "speed": 8.80056686672998,
+      "curvature_rad_per_m": 0.003820631611171712,
+      "speed_stratum": "medium",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 140,
+      "split": "heldout",
+      "speed": 11.03796723892524,
+      "curvature_rad_per_m": 0.007211519188730653,
+      "speed_stratum": "high",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 150,
+      "split": "heldout",
+      "speed": 11.798357909277534,
+      "curvature_rad_per_m": 0.01112147017100693,
+      "speed_stratum": "high",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 160,
+      "split": "heldout",
+      "speed": 6.618297915292074,
+      "curvature_rad_per_m": 0.007865787565798137,
+      "speed_stratum": "medium",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 170,
+      "split": "heldout",
+      "speed": 5.6177294274496825,
+      "curvature_rad_per_m": 0.03560653696524615,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 180,
+      "split": "heldout",
+      "speed": 7.0211807108313495,
+      "curvature_rad_per_m": 0.05894638880740022,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 190,
+      "split": "heldout",
+      "speed": 7.500878409527783,
+      "curvature_rad_per_m": 0.05976497403256725,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 200,
+      "split": "heldout",
+      "speed": 8.206691258720621,
+      "curvature_rad_per_m": 0.03536504355850493,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 210,
+      "split": "heldout",
+      "speed": 11.00495436658308,
+      "curvature_rad_per_m": 0.009000169564905494,
+      "speed_stratum": "high",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 220,
+      "split": "heldout",
+      "speed": 10.813727647718101,
+      "curvature_rad_per_m": 0.007813008548805555,
+      "speed_stratum": "high",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 230,
+      "split": "heldout",
+      "speed": 13.572465280435424,
+      "curvature_rad_per_m": 0.0052538582670491165,
+      "speed_stratum": "high",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 240,
+      "split": "heldout",
+      "speed": 6.334235763788445,
+      "curvature_rad_per_m": 0.02439188591842106,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 250,
+      "split": "heldout",
+      "speed": 4.90485251128628,
+      "curvature_rad_per_m": 0.03965864289649859,
+      "speed_stratum": "low",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 260,
+      "split": "heldout",
+      "speed": 5.268984866511915,
+      "curvature_rad_per_m": 0.09314576837521037,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 270,
+      "split": "heldout",
+      "speed": 6.316690064619707,
+      "curvature_rad_per_m": 0.07262619775510051,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 280,
+      "split": "heldout",
+      "speed": 6.538628648501619,
+      "curvature_rad_per_m": 0.02575936333468464,
+      "speed_stratum": "medium",
+      "curvature_stratum": "curve",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 290,
+      "split": "heldout",
+      "speed": 9.235881490650527,
+      "curvature_rad_per_m": 0.002141490626522204,
+      "speed_stratum": "medium",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "interior",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    },
+    {
+      "scenario": 559,
+      "index": 300,
+      "split": "heldout",
+      "speed": 12.079989009703503,
+      "curvature_rad_per_m": 4.560767319442618e-05,
+      "speed_stratum": "high",
+      "curvature_stratum": "straight",
+      "boundary_stratum": "boundary_adjacent",
+      "models": {
+        "center": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        },
+        "legacy": {
+          "valid": true,
+          "near_valid": true,
+          "full_valid": true,
+          "collision": false,
+          "offroad": false,
+          "near_collision": false,
+          "near_offroad": false,
+          "braking_continuation_valid": true
+        }
+      },
+      "no_actual_event": true
+    }
+  ]
+}
