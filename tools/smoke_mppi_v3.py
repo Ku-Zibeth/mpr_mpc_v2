@@ -1,125 +1,85 @@
-"""Read-only CUDA/MetaDrive inference smoke, not an episode success benchmark."""
-
-import argparse
-import contextlib
-import hashlib
-import io
-import json
+"""Fixed-state closed-loop smoke for the single simplified TD-MPC2 MPPI."""
+import argparse,contextlib,io,json,hashlib,sys
 from pathlib import Path
-import sys
-
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-
+ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 import numpy as np
 import torch
-from hydra import compose, initialize_config_dir
+from omegaconf import OmegaConf
 from mpr_mpc._bootstrap import bootstrap
 bootstrap()
 from common.seed import set_seed
 from env import make_env
-from mpr_mpc.evaluate_model_suite import _make_cfg, _make_agent, _apply_evaluation_stack
-from mpr_mpc.evaluation_diagnostics import prediction_outcomes
+import evaluate_model_suite as suite
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--checkpoint", required=True, type=Path)
-    parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--steps", type=int, default=5)
-    parser.add_argument("--scenarios", nargs="+", type=int, default=[1714, 539])
-    parser.add_argument("--recovery-probe", action="store_true",
-                        help="One artificial unsafe-baseline probe in a real live state, not a success benchmark")
-    args = parser.parse_args()
-    if args.steps <= 0 or args.output.exists():
-        parser.error("Require positive steps and a fresh output file.")
-    checksum = hashlib.sha256(args.checkpoint.read_bytes()).hexdigest()
-    with initialize_config_dir(version_base="1.3", config_dir=str(ROOT)):
-        raw = compose(config_name="config", overrides=["+experiment=E5"])
-    raw.residual_rl.buffer_size = 8
-    raw.enable_wandb = raw.save_agent = raw.save_video = False
-    effective, cfg = _make_cfg(raw, args.checkpoint.parent.parent.name, args.checkpoint, args.scenarios)
-    cfg.residual_rl["buffer_size"] = 8
-    env = make_env(cfg)
-    records, recovery_probe = [], None
+    p=argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--output',type=Path,required=True)
+    p.add_argument('--checkpoint',type=Path,default=ROOT/'logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt')
+    p.add_argument('--run',type=Path,default=ROOT/'logs/benchmark/mpr_mpc_v311_sac_vs_sac_mppi_fixed100_20261109_202823')
+    p.add_argument('--steps',type=int,default=60)
+    p.add_argument('--scenarios',type=int,nargs='+',default=[1714,559])
+    p.add_argument('--snapshots',nargs='+',help='Optional exact archived-action prefixes: scenario:before_step')
+    p.add_argument('--stack',choices=['world_model_residual_rl','full_mpr_mpc'],default='full_mpr_mpc')
+    a=p.parse_args()
+    if a.output.exists() or not 0<a.steps<=200:p.error('Require fresh output and 1..200 steps.')
+    snapshots=dict(tuple(map(int,x.split(':'))) for x in a.snapshots) if a.snapshots else {s:1 for s in a.scenarios}
+    records={s:[] for s in snapshots}
+    if a.snapshots:
+        for line in next((a.run/'steps').glob('*_full_mpr_mpc_seed1.jsonl')).open():
+            row=json.loads(line);s=row['scenario']
+            if s in snapshots and row['episode_step']<snapshots[s]:records[s].append(row)
+            if all(len(records[s])==n-1 for s,n in snapshots.items()):break
+    raw=OmegaConf.load(a.run/'config_D_lattice_sac_mppi_seed1.yaml')
+    raw.mpr_mpc.mppi=OmegaConf.load(ROOT/'config.yaml').mpr_mpc.mppi
+    raw.restore_mppi_runtime=False;raw.enable_wandb=raw.save_agent=raw.save_video=False;raw.residual_rl.buffer_size=8
+    _,cfg=suite._make_cfg(raw,a.checkpoint.parent.parent.name,a.checkpoint,list(snapshots));cfg.residual_rl['buffer_size']=8
+    torch.set_float32_matmul_precision('high');set_seed(cfg.seed);env=make_env(cfg);cases=[]
+    checksum=hashlib.sha256(a.checkpoint.read_bytes()).hexdigest()
     try:
-        with contextlib.redirect_stdout(io.StringIO()):
-            agent = _make_agent(cfg, env)
-            loaded = agent.load(args.checkpoint)
-        agent.eval()
-        agent.set_global_step(max(agent.global_env_step, agent.planner.mppi_start_step))
-        for scenario in args.scenarios:
-            for stack in ("world_model_residual_rl", "lattice_mppi", "full_mpr_mpc"):
-                _apply_evaluation_stack(agent.planner, stack, loaded)
-                seed = (int(cfg.seed)+scenario) % 2**32
-                set_seed(seed)
-                observation = env.reset(seed=scenario)
-                agent.planner.reset(seed=seed)
-                for step in range(args.steps):
-                    action = agent.act(observation, t0=step == 0, eval_mode=True)
-                    result = agent.last_plan
-                    baseline = result.refined_actions[0].cpu()
-                    delta = action-baseline
-                    assert torch.isfinite(action).all() and (action.abs() <= 1).all()
-                    assert result.stage.use_mppi == (stack != "world_model_residual_rl")
-                    assert result.stage.use_residual == (stack != "lattice_mppi")
-                    if result.stage.use_mppi:
-                        assert np.isclose(result.metrics["mppi/first_action_delta_norm"], float(delta.norm()), rtol=1e-5, atol=1e-7)
-                    row = dict(scenario=scenario, stack=stack, step=step+1,
-                               executed_action=action.tolist(), baseline_action=baseline.tolist(),
-                               actual_first_delta=delta.tolist(), **result.metrics)
-                    records.append(row)
-                    observation, _, done, info = env.step(action)
-                    row.update(prediction_outcomes(info, result))
-                    if done:
-                        break
-        if args.recovery_probe:
-            scene = args.scenarios[-1]
-            _apply_evaluation_stack(agent.planner, "world_model", loaded)
-            observation = env.reset(seed=scene)
-            for step in range(20):
-                action = agent.act(observation, t0=step == 0, eval_mode=True)
-                observation, _, done, _ = env.step(action)
-                if done:
-                    raise RuntimeError("Recovery probe prefix ended before the shared live state.")
-            planner, vehicle = agent.planner, env.unwrapped_metadrive.agent
-            context = planner.prepare(observation, vehicle, need_world_model_features=True,
-                                      need_mppi_safety=True, need_residual_state=False)
-            unsafe = torch.ones_like(context.coarse_actions)
-            result = planner.local_mppi.plan(context.latent, unsafe, eval_mode=True,
-                safety_context=context.mppi_safety_context, lattice_actions=context.coarse_actions,
-                lattice_corridor_context=planner._corridor_context(context.selection.coarse_path, vehicle))
-            assert result.metrics["baseline_safety_valid"] == 0 and result.metrics["recovery_search"] == 1
-            assert result.metrics["lattice_baseline_safety_valid"] == 1
-            assert result.metrics["selected_safety_valid"] == 1 and result.metrics["emergency_fallback"] == 0
-            assert result.planning_mode == "recovery_lattice"
-            _, _, _, info = env.step(result.action.cpu())
-            recovery_probe = dict(scenario=scene, injected_baseline="all steering=1/throttle=1; not a SAC output",
-                planning_mode_name=result.planning_mode, executed_action=result.action.cpu().tolist(),
-                actual_collision=any(bool(info.get(k, False)) for k in ("crash", "crash_vehicle", "crash_object")),
-                actual_offroad=bool(info.get("out_of_road", False)),
-                vehicle_parameters={k: vehicle.config.get(k) for k in
-                    ("max_engine_force", "max_brake_force", "max_steering", "mass", "wheel_friction")},
-                **result.metrics)
-        assert agent.planner.residual_state_dim == 535
-    finally:
-        env.close()
-    assert hashlib.sha256(args.checkpoint.read_bytes()).hexdigest() == checksum
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(dict(
-        checkpoint=str(args.checkpoint.resolve()), checkpoint_sha256=checksum,
-        note="Partial inference/physics smoke only; no training and no episode success claim.",
-        records=records, recovery_probe=recovery_probe), indent=2))
-    active = [row for row in records if row["stack"] != "world_model_residual_rl"]
-    print(json.dumps(dict(steps=len(records), mppi_steps=len(active),
-        nonzero_first_corrections=sum(row["mppi/first_action_delta_norm"] > 1e-6 for row in active),
-        safety_fallbacks=sum(row["mppi/emergency_fallback"] for row in active),
-        unverified_fallbacks=sum(row["mppi/safety_fallback_unverified"] for row in active),
-        mean_full_planning_ms=float(np.mean([row["mpr/total_planning_ms"] for row in active])),
-        mean_safety_ms=float(np.mean([row["mppi/safety_check_ms"] for row in active])),
-        residual_state_dim=535, checkpoint_unchanged=True,
-        recovery_probe_mode=recovery_probe["planning_mode_name"] if recovery_probe else None), indent=2), flush=True)
+        with contextlib.redirect_stdout(io.StringIO()):agent=suite._make_agent(cfg,env);loaded=agent.load(a.checkpoint)
+        agent.eval();suite._apply_evaluation_stack(agent.planner,a.stack,loaded)
+        agent.set_global_step(max(agent.global_env_step,agent.planner.mppi_start_step))
+        for s,before in snapshots.items():
+            set_seed(int(cfg.seed)+s);agent.planner.reset(seed=int(cfg.seed)+s);obs=env.reset(seed=s)
+            info={};replay_error=0.
+            for old in records[s]:
+                replay_error=max(replay_error,abs(np.linalg.norm(env.unwrapped_metadrive.agent.velocity)-old['mpr/actual_speed_mps']))
+                obs,_,done,info=env.step(np.array(old['executed_action'],np.float32))
+                if done:raise RuntimeError('Archived prefix terminated early.')
+            if replay_error>1e-4:raise RuntimeError(f'Archived prefix mismatch: {replay_error}')
+            route0=float(info.get('route_completion',0.));rows=[]
+            for i in range(a.steps):
+                action=agent.act(obs,t0=(i==0 and before==1),eval_mode=True);result=agent.last_plan
+                if result.stage.use_mppi:
+                    seq=result.debug['selected_mppi_actions'];base=result.refined_actions.cpu()
+                    assert seq.shape==base.shape==(cfg.horizon+1,cfg.action_dim)
+                    assert (seq.abs()<=1).all() and ((seq-base).abs()<=agent.planner.local_mppi.max_delta.cpu()+1e-7).all()
+                    assert 'safety_certificate' not in result.debug
+                    assert not result.safety_failure
+                    if not result.metrics['mppi/invalid_prediction']:
+                        assert result.metrics['mpr/selected_wm_value']>=result.metrics['mpr/baseline_wm_value']
+                        assert result.metrics['mppi/iterations_completed']==cfg.mpr_mpc['mppi']['iterations']
+                obs,reward,done,info=env.step(action)
+                rows.append(dict(step=i+1,action=action.tolist(),reward=float(reward),route=float(info.get('route_completion',0.)),
+                    speed=float(np.linalg.norm(env.unwrapped_metadrive.agent.velocity)),
+                    crash=any(bool(info.get(k,False)) for k in ('crash','crash_vehicle','crash_object','crash_building','crash_human','crash_sidewalk')),
+                    offroad=bool(info.get('out_of_road',False)),safety_failure=bool(info.get('safety_failure',False)),
+                    mode=result.planning_mode,metrics={k:float(v) for k,v in result.metrics.items() if isinstance(v,(float,int,np.number))}))
+                if done:break
+            case=dict(scenario=s,snapshot_before_step=before,replay_max_speed_error=replay_error,records=rows,
+                summary=dict(steps=len(rows),route_gain=float(info.get('route_completion',0.))-route0,
+                    mean_speed=float(np.mean([r['speed'] for r in rows])),crash=any(r['crash'] for r in rows),
+                    offroad=any(r['offroad'] for r in rows),safety_failure=any(r['safety_failure'] for r in rows),
+                    baseline_selected=float(np.mean([r['mode']=='baseline' for r in rows])),
+                    planning_mean_ms=float(np.mean([r['metrics']['mpr/total_planning_ms'] for r in rows])),
+                    mean_score_gain=float(np.mean([r['metrics'].get('mppi/score_gain',0) for r in rows]))))
+            cases.append(case);print(s,case['summary'],flush=True)
+    finally:env.close()
+    assert hashlib.sha256(a.checkpoint.read_bytes()).hexdigest()==checksum
+    a.output.parent.mkdir(parents=True,exist_ok=True)
+    a.output.write_text(json.dumps(dict(checkpoint=str(a.checkpoint),checkpoint_sha256=checksum,stack=a.stack,results=cases,
+        note='Bounded smoke only; task success is evaluated separately over complete episodes.'),indent=2))
 
 
-if __name__ == "__main__":
-    main()
+if __name__=='__main__':main()

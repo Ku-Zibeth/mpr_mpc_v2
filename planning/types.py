@@ -72,7 +72,6 @@ class MPRPlanContext:
     residual_bounds: torch.Tensor
     residual_state: torch.Tensor | None
     safety_context: Any = None
-    mppi_safety_context: Any = None
 
 
 @dataclass
@@ -95,7 +94,6 @@ class MPRPlanResult:
     metrics: dict[str, float] = field(default_factory=dict)
     debug: dict[str, Any] = field(default_factory=dict)
     planning_mode: str = "baseline"
-    recovery_reason: str = "none"
     safety_failure: bool = False
 
     @property

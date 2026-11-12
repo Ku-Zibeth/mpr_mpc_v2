@@ -8,51 +8,13 @@ import torch
 from mpr_mpc._bootstrap import bootstrap
 from .timing import PhaseTimings
 from .types import TrajectoryConsequence
-from .cost_validation import candidate_ranking_ready, cost_definition, _weight_version, CostModelValidator
+from .cost_validation import candidate_ranking_ready, cost_definition
 
 bootstrap()
 from common import math as td_math  # noqa: E402
 
 
 class TrajectoryWorldModelEvaluator:
-    def validate_value_ranking(self, candidates):
-        """Reuse matched-origin ranking statistics; never approve truncated proxies.
-
-        Labels must be independent, executed discounted returns through termination,
-        from identical restored simulator states. An H-step reward/correlation alone
-        is insufficient to validate the terminal-Q ranking.
-        """
-        import numpy as np
-        self._value_ranking_evidence = None
-        rows = list(candidates)
-        if not rows:
-            return {"validated": False, "reason": "no_matched_executed_returns"}
-        validator = CostModelValidator(dict(getattr(self.agent.cfg, "cost", {}) or {}),
-                                       label_definition="executed_discounted_task_return")
-        validator.set_candidates(rows)  # validates same observations/state IDs/actions
-        qualified = all(r.get("episode_complete", False) and r.get("heldout", False)
-                        and r.get("horizon") == self.horizon for r in rows)
-        # Recompute predictions with these weights; caller-supplied old scores
-        # must not certify a different checkpoint. No network or weight changes.
-        prediction = []
-        for row in rows:
-            obs = torch.as_tensor(row["observation"], device=self.agent.device, dtype=torch.float32)
-            sequence = torch.as_tensor(row["planned_actions"], device=self.agent.device, dtype=torch.float32)
-            prediction.append(-float(self.evaluate_mppi_candidates(
-                self.encode(obs), sequence[None], compute_cost=False).total_value[0]))
-        prediction = np.asarray(prediction, dtype=float)
-        actual = -np.asarray([r["actual_return"] for r in rows], dtype=float)
-        stats = {}
-        passed = bool(qualified and np.isfinite([prediction, actual]).all()
-                      and validator._ranking_passed(prediction, actual, rows, stats))
-        self._value_ranking_evidence = (self.horizon, _weight_version(self.agent.model)) if passed else None
-        return dict(stats, validated=passed,
-                    reason="matched_holdout_passed" if passed else "insufficient_matched_holdout_evidence")
-
-    def value_ranking_ready(self):
-        evidence = getattr(self, "_value_ranking_evidence", None)
-        return evidence is not None and evidence == (self.horizon, _weight_version(self.agent.model))
-
     def __init__(self, agent, horizon):
         self.agent = agent
         self.horizon = int(horizon)

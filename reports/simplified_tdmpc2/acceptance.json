@@ -1,0 +1,9 @@
+{
+  "formal_evaluation_ready": true,
+  "blocking_reasons": [],
+  "source_snapshot_sha256": "ec4bb6524bc19e9696d76a5052a798736259ee23fb70bff4a87296ef96dac0a5",
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "tests": "27 passed",
+  "smoke": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/simplified_tdmpc2/smoke.json",
+  "protocol": "B immutable prior 100, D current full100. Original fixed scenarios/test seed=1/horizon1000; no training."
+}

@@ -1,0 +1,23 @@
+{
+  "files": [
+    {
+      "name": "planner",
+      "url": "https://github.com/nicklashansen/tdmpc2/blob/main/tdmpc2/tdmpc2.py",
+      "blob_sha": "6d19f52de096e50a53b89c653b29e8676a3cc1c2"
+    },
+    {
+      "name": "model",
+      "url": "https://github.com/nicklashansen/tdmpc2/blob/main/tdmpc2/common/world_model.py",
+      "blob_sha": "3132ce4ca670c114b1630de362aaa11a813e47e4"
+    },
+    {
+      "name": "config",
+      "url": "https://github.com/nicklashansen/tdmpc2/blob/main/tdmpc2/config.yaml",
+      "blob_sha": "ff15dbb69952f49df72353db4bf56240be04cfb1"
+    }
+  ],
+  "paper": "https://arxiv.org/html/2310.16828v2#S3.SS2",
+  "section": "3.2",
+  "equation": 6,
+  "notes": "Official Gaussian/Top-K/weighted moment updates read directly. Project adaptations: SAC anchor, H+1 candidate terminal action, existing all-Q aggregation, deterministic final mean, nonfinite-value baseline fallback."
+}

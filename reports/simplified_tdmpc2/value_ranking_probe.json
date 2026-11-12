@@ -1,0 +1,35 @@
+{
+  "origins": [
+    {
+      "scenario": 1714,
+      "before_step": 250,
+      "recorded_state_and_candidates_identical": true,
+      "predicted_gain": 3.0093536376953125,
+      "actual_discounted_gain": -5.813270968482044,
+      "ordering_agrees": false,
+      "SAC_return": 87.64109863480701,
+      "mean_return": 81.82782766632496,
+      "SAC_crash": true,
+      "mean_crash": true,
+      "SAC_success": true,
+      "mean_success": true,
+      "scope": "H+1 actual candidate commands then the same SAC continuation to termination. Recorded observation/ego/collected-obstacle state match is checked across fresh processes; not a claim of full hidden simulator-state equivalence or a broad ranking validation. No runtime gate is installed."
+    },
+    {
+      "scenario": 559,
+      "before_step": 600,
+      "recorded_state_and_candidates_identical": true,
+      "predicted_gain": 2.76702880859375,
+      "actual_discounted_gain": -0.5050801573173942,
+      "ordering_agrees": false,
+      "SAC_return": 93.31988816215815,
+      "mean_return": 92.81480800484076,
+      "SAC_crash": false,
+      "mean_crash": false,
+      "SAC_success": true,
+      "mean_success": true,
+      "scope": "H+1 actual candidate commands then the same SAC continuation to termination. Recorded observation/ego/collected-obstacle state match is checked across fresh processes; not a claim of full hidden simulator-state equivalence or a broad ranking validation. No runtime gate is installed."
+    }
+  ],
+  "scope": "Two prespecified observations, not a global ranking validation or latent-dynamics causal attribution. H+1 real candidate commands then a common SAC continuation; not receding-MPPI return. Matching recorded observations/ego/obstacles does not prove all hidden simulator states identical. No runtime gate or controller was added."
+}

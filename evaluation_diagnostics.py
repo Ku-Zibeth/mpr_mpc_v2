@@ -11,7 +11,6 @@ import torch
 from omegaconf import OmegaConf
 from mpr_mpc.evaluation_statistics import cluster_intervals
 from mpr_mpc.planning.local_mppi import MPPI_DIAGNOSTIC_KEYS, MPPI_EPISODE_METRICS
-from mpr_mpc.planning.mppi_safety import motion_response_errors
 
 
 PLAN_ALIASES = {
@@ -99,7 +98,6 @@ class StepDiagnosticsLogger:
             row.update(prediction_outcomes(info, result) if info is not None else {})
             row.update(residual_enabled=bool(result.stage.use_residual), mppi_enabled=bool(result.stage.use_mppi))
             row["planning_mode"] = getattr(result, "planning_mode", "unknown")
-            row["recovery_reason"] = getattr(result, "recovery_reason", "unknown")
             candidates = getattr(result, "debug", {}).get("mppi_candidates", [])
             if candidates and self.stream is not None:
                 candidate_path = Path(self.stream.name).with_suffix(".candidates.jsonl.gz")
@@ -159,7 +157,6 @@ class EpisodeDiagnostics:
     def __init__(self):
         self.crash = self.offroad = False
         self.safety_failure = False
-        self.unverified_executions = 0
         self.ttcs, self.clearances = [], []
         self.plans = defaultdict(list, {f"mpr/{key}": [] for key in MPPI_DIAGNOSTIC_KEYS})
         self.plans.update({key: [] for key in MPPI_EPISODE_METRICS.values()})
@@ -190,10 +187,6 @@ class EpisodeDiagnostics:
         for key in ("dynamic_collision", "static_collision", "road_event", "other_event", "unallocated_event"):
             self.sums[f"safety_{key}_cost"] += float(info.get(f"safety_{key}_cost", 0))
         if result is not None:
-            if vehicle is not None:
-                result.metrics.update({f"mppi/{key}": value for key, value in motion_response_errors(
-                    getattr(result, "debug", {}).get("motion_prediction"), vehicle, info).items()})
-            self.unverified_executions += int(executed and result.stage.use_mppi and bool(getattr(result, "safety_failure", False)))
             result.metrics.update(prediction_outcomes(info, result))
             code = result.metrics.get("mppi/planning_mode", float("nan"))
             if result.stage.use_mppi and executed and np.isfinite(code):
@@ -228,14 +221,9 @@ class EpisodeDiagnostics:
         legacy = {"mppi_baseline_selected": "mpr/baseline_selected", "mppi_score_gain": "mpr/planner_score_gain"}
         return {
             "safety_failure": float(self.safety_failure), "physical_steps": len(self.actions),
-            "unverified_action_executions": self.unverified_executions,
+            "unverified_action_executions": None,  # no candidate safety-certificate protocol
             **{f"planning_p{q}_ms": float(np.percentile(planning, q)) if planning else float("nan")
                for q in (50, 95, 99)},
-            "forward_progress_candidate_pass_count": sum(self.plans["mppi/forward_verified_candidates"]),
-            "forward_progress_candidate_selected_count": sum(self.plans["mppi/forward_candidate_selected"]),
-            "emergency_steps": sum(v in (5., 6.) for v in self.plans["mppi/planning_mode"]),
-            "emergency_entries": sum(v in (5., 6.) and (i == 0 or self.plans["mppi/planning_mode"][i-1] not in (5., 6.))
-                for i, v in enumerate(self.plans["mppi/planning_mode"])),
             "low_speed_steps": sum(v < .3 for v in self.speeds),
             **{f"{name}_p{q}": float(np.percentile(self.plans[f"mppi/{name}"], q))
                 if self.plans[f"mppi/{name}"] else float("nan")
@@ -254,12 +242,10 @@ class EpisodeDiagnostics:
                 ("actual_collision", "actual_offroad", "predicted_safe_actual_collision", "predicted_safe_actual_offroad",
                  "prediction_collision_known", "prediction_offroad_known")},
             **{f"mppi_mode_{name}_rate": mean([float(v == code) for v in self.plans["mppi/planning_mode"]])
-                for code, name in enumerate(("baseline", "normal", "recovery_lattice", "recovery_controlled",
-                                             "lattice_fallback", "emergency_model_checked", "emergency_model_check_failed"))},
+                for code, name in enumerate(("baseline", "normal"))},
             **{f"mppi_mode_{name}_{event}_steps": (self.sums[f"mode{code}_{event}_steps"]
                 if self.plans["mppi/planning_mode"] else float("nan"))
-               for code, name in enumerate(("baseline", "normal", "recovery_lattice", "recovery_controlled",
-                    "lattice_fallback", "emergency_model_checked", "emergency_model_check_failed"))
+               for code, name in enumerate(("baseline", "normal"))
                for event in ("collision", "offroad")},
             "collision": float(self.crash), "offroad": float(self.offroad),
             "collision_and_success_rate": float(self.crash and bool(info.get("success", False))),

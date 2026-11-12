@@ -52,9 +52,11 @@ def main():
         if all(len(records[s]) >= n for s, n in limits.items()):
             break
     raw = OmegaConf.load(args.run/"config_D_lattice_sac_mppi_seed1.yaml")
+    # Offline historical physics diagnostics, independent of LocalMPPI.
+    legacy_safety = OmegaConf.to_container(raw.mpr_mpc.mppi.safety, resolve=True)
+    legacy_safety['motion_validation_path'] = None
     raw.mpr_mpc.mppi = OmegaConf.load(ROOT/"config.yaml").mpr_mpc.mppi
     # Measure the CURRENT nominal model; never consume the report being built.
-    raw.mpr_mpc.mppi.safety.motion_validation_path = None
     raw.enable_wandb = raw.save_agent = raw.save_video = False
     raw.restore_mppi_runtime = False
     raw.residual_rl.buffer_size = 8
@@ -73,7 +75,8 @@ def main():
             agent.load(checkpoint)
         agent.eval()
         planner = agent.planner
-        f = planner.local_mppi.candidate_safety
+        from mpr_mpc.planning.mppi_safety import MPPISafetyFilter
+        f = MPPISafetyFilter(legacy_safety, control_dt=planner.control_dt)
         nominal = f.motion_nominal_config()
         for seed in limits:
             set_seed((int(cfg.seed)+seed) % 2**32)

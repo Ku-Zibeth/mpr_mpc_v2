@@ -78,11 +78,6 @@ mpr_mpc:
     max_horizon: 3.5
   mppi:
     enabled: true
-    cost_enabled: true
-    cost_coef: 1.0
-    # Predictions stay visible; only same-state ranking evidence opens scoring.
-    allow_unvalidated_cost: false
-    # V3 first-round search settings; not claimed to be optimal.
     num_samples: 64
     num_elites: 8
     iterations: 4
@@ -91,85 +86,11 @@ mpr_mpc:
     max_std: [0.08, 0.25]
     max_delta: [0.10, 0.25]
     temperature: 0.5
-    lateral_corridor_ratio: 0.5
-    lateral_safety_margin: 0.15
-    # Fallbacks only; live MetaDrive vehicle attributes take priority.
+    eval_seed: 0
+    # Read only by the existing SAC geometry features; never MPPI scoring.
     kinematic_vehicle_width: 1.852
     kinematic_wheelbase: 2.46894
     kinematic_max_steering_angle: 0.6981317
-    kinematic_max_acceleration: 4.0
-    kinematic_max_deceleration: 6.0
-    deviation_coef: 1.0
-    smoothness_coef: 0.3
-    throttle_deviation_weight: 0.25
-    min_improvement_abs: 0.05
-    min_improvement_ratio: 0.001
-    eval_seed: 0
-    proposal_init: structured_baseline
-    blend_alpha: 0.8
-    trajectory_selection:
-      enabled: true
-      record_candidates: true
-      # Behavioral progress constraints, never collision/road thresholds.
-      min_progress_m: 0.05
-      normal_progress_ratio: 0.9
-      recovery_progress_ratio: 0.8
-      max_throttle_step: 0.25
-      brake_release_enabled: true
-      # MetaDrive negative command is brake; zero releases it. Acceleration
-      # retains the existing .25 command increment and still needs a certificate.
-      brake_release_step: 1.0
-      throttle_increase_step: 0.25
-      throttle_decrease_step: 0.25
-    recovery:
-      enabled: true
-      num_samples: 32
-      iterations: 2
-      initial_std: [0.06, 0.20]
-      max_delta: [0.20, 0.50]
-      # In guided mode these blend held steering toward the live Lattice trend.
-      straighten_fractions: [0.0, 0.5, 1.0]
-      throttle_levels: [0.0, -0.5, -1.0]
-      lattice_guided: true
-      anti_stall: true
-      stall_speed_mps: 0.3
-      stall_duration_s: 2.0
-      stall_progress_m: 0.2
-      stall_exit_s: 1.0
-      positive_throttle: 0.1
-      progressive: true
-      positive_throttles: [0.1, 0.25, 0.4]
-      transition_fractions: [0.2, 0.9]
-      controlled_deceleration: -0.3
-    safety:
-      enabled: true
-      two_layer: true
-      staged: true
-      # MetaDrive pose is at chassis center; measured rear axle offset supplies beta.
-      center_bicycle: true
-      center_model_guard: true
-      motion_validation_path: reports/round2/motion_calibration_final/validation.json
-      # Synchronous MetaDrive commits exactly decision_repeat physics ticks.
-      action_delay_s: 0.0
-      long_risk_coef: 1.0
-      substeps: 2
-      model_margin: 0.05
-      road_margin: 0.05
-      max_acceleration: 4.0
-      max_deceleration: 6.0
-      max_steering_rate: 7.0
-      max_lateral_acceleration: 6.0
-      swept_max_depth: 6
-      swept_angle_tolerance: 0.005
-      swept_position_tolerance: 0.002
-      hard_clearance: 0.0
-      hard_ttc: 0.0
-      # Optional measured/calibrated CV error bounds, not invented guarantees.
-      obstacle_acceleration_bound: 0.0
-      obstacle_velocity_error: 0.0
-      # Enable only with a calibrated conservative lower deceleration bound.
-      braking_distance_deceleration: 0.0
-      emergency_throttle: -1.0
   debug:
     enabled: false
     every: 100

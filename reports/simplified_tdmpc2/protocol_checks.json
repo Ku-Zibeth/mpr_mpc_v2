@@ -1,0 +1,14 @@
+{
+  "effective_environment_equal_to_B": {
+    "part1": true,
+    "part2": true,
+    "part3": true,
+    "part4": true
+  },
+  "WM_horizon": 10,
+  "episode_horizon": 1000,
+  "test_seed": 1,
+  "baseline_reused": true,
+  "SAC_input_output_bitwise_equal": true,
+  "notes": "Existing suite normalises start_seed to each shard minimum; compared actual parsed configs, not pre-parse input YAML."
+}

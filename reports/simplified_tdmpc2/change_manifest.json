@@ -1,0 +1,18 @@
+{
+  "base_commit": "618eebfe6c15123134ee18a04e0a83762b06acc0",
+  "source_snapshot_sha256": "ec4bb6524bc19e9696d76a5052a798736259ee23fb70bff4a87296ef96dac0a5",
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "patch_sha256": "9a1be2965c6e7518f91bf5b439e6474f22de6879ec4f9219ea8ca2d11560264e",
+  "local_mppi_lines": 203,
+  "delivered_new_files": [
+    "tests/test_simplified_tdmpc2_mppi.py",
+    "SIMPLIFIED_TDMPC2_MPPI_REPORT.md",
+    "reports/simplified_tdmpc2/analyse_paired.py",
+    "reports/simplified_tdmpc2/analyse_value_probe.py",
+    "reports/simplified_tdmpc2/check_sac_interface.py",
+    "reports/simplified_tdmpc2/probe_value_ranking.py",
+    "reports/simplified_tdmpc2/run_paired.py"
+  ],
+  "paired_evaluation_output": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/benchmark/simplified_tdmpc2_BD_fixed100_20261111_213522",
+  "empirical_success_improvement_achieved": false
+}

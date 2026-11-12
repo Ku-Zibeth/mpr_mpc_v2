@@ -20,7 +20,6 @@ VARIANTS = (
     ("C_lattice_mppi", "lattice_mppi"),
     ("D_lattice_sac_mppi", "full_mpr_mpc"),
 )
-COST_VARIANTS = (("native_mppi", "full_mpr_mpc"), ("native_mppi_wm_cost", "full_mpr_mpc"))
 DEFAULT_CHECKPOINT = (
     suite.DEFAULT_MODELS_ROOT
     / "mpr_mpc_frozen_wm200k_rl500k_seed1_v2"
@@ -29,7 +28,9 @@ DEFAULT_CHECKPOINT = (
 
 
 def _select_variants(benchmark):
-    available = COST_VARIANTS if bool(benchmark.get("cost_ablation", False)) else VARIANTS
+    if bool(benchmark.get("cost_ablation", False)):
+        raise ValueError("Cost scoring ablation is retired: simplified MPPI optimises WM return only.")
+    available = VARIANTS
     requested = benchmark.get("variants")
     if requested is None:
         return available
@@ -155,9 +156,6 @@ def main(raw_cfg: DictConfig) -> None:
                 variant_cfg.evaluation_stack = stack
                 variant_cfg.seed = test_seed
                 variant_cfg.benchmark.mppi_eval_seed = test_seed
-                if cost_ablation:
-                    variant_cfg.benchmark.mppi_cost_coef = (0.0 if label == "native_mppi" else
-                        float(benchmark.get("cost_coef", 1.0)))
                 OmegaConf.save(variant_cfg, output_dir / f"config_{label}_seed{test_seed}.yaml")
                 with (output_dir / f"episodes_{label}_seed{test_seed}.csv").open("w", newline="") as file:
                     writer = _EpisodeCSVWriter(file)

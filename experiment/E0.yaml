@@ -9,7 +9,3 @@ residual_rl:
   nonnegative_cost: false
   risk_features: []
   risk_auxiliary_weight: 0.0
-mpr_mpc:
-  mppi:
-    cost_enabled: false
-    cost_coef: 0.0

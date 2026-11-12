@@ -1,0 +1,20 @@
+{
+  "runtime_source_unchanged_since_evaluation": true,
+  "checkpoint_unchanged": true,
+  "baseline_csv_unchanged": true,
+  "D_worker_exit_codes": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "episodes_per_group": 100,
+  "unique_scenarios_per_group": 100,
+  "reused_B": true,
+  "related_tests_passed": 27,
+  "SAC_535_interface_max_error": 0.0,
+  "effective_environment_equal": true,
+  "git_diff_check": "passed",
+  "patch_sha256": "9a1be2965c6e7518f91bf5b439e6474f22de6879ec4f9219ea8ca2d11560264e",
+  "empirical_success_improvement_achieved": false
+}

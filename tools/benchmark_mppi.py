@@ -56,7 +56,6 @@ def main():
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--profile-calls", type=int, default=10)
     parser.add_argument("--kernel-profile", action="store_true", help="Separate one-call Kineto CPU/CUDA kernel trace")
-    parser.add_argument("--cost-coef", type=float, default=1.)
     parser.add_argument("--allow-dirty-source", action="store_true", help="Fingerprint the exact runtime source instead of requiring a clean commit")
     parser.add_argument("--compare", type=Path)
     args = parser.parse_args()
@@ -92,15 +91,11 @@ def main():
     raw.mpr_mpc.mppi.num_samples = args.samples
     raw.mpr_mpc.mppi.iterations = args.iterations
     raw.mpr_mpc.mppi.eval_seed = args.seed
-    raw.mpr_mpc.mppi.cost_enabled = True
-    raw.mpr_mpc.mppi.cost_coef = args.cost_coef
     raw.metadrive.simulator.start_seed = min(args.scenarios)
     raw.metadrive.simulator.num_scenarios = max(args.scenarios) - min(args.scenarios) + 1
     _apply_checkpoint_runtime_config(raw, args.checkpoint)
     # CLI workload is authoritative; checkpoint metadata only restores architecture.
     raw.horizon = args.horizon
-    raw.mpr_mpc.mppi.cost_enabled = True
-    raw.mpr_mpc.mppi.cost_coef = args.cost_coef
     raw.residual_rl.buffer_size = 8
     raw.mpr_mpc.mppi.num_samples = args.samples
     raw.mpr_mpc.mppi.iterations = args.iterations
@@ -143,15 +138,10 @@ def main():
                     raise RuntimeError("Benchmark received an invalid or MPPI-disabled plan.")
                 durations.append(elapsed)
                 records.append({"scenario": scene, "call": call, "total_planning_ms": elapsed,
-                    "predicted_cost": result.metrics.get("mppi/predicted_cost"),
-                    "cost_penalty": result.metrics.get("mppi/cost_penalty"),
-                    "cost_validated": result.metrics.get("mppi/cost_validated")})
-                for name in ("safety_check_ms", "first_action_delta_norm", "baseline_safety_valid", "safety_valid_ratio",
-                             "safety_reject_count", "wm_evaluated_candidates", "unique_candidate_count",
-                             "emergency_fallback", "lattice_fallback", "safety_fallback_unverified",
-                             "world_model_rollout_ms", "cost_prediction_ms", "elite_update_ms", "recovery_search_ms",
-                             "final_safety_verification_ms", "exact_candidate_count", "preview_candidate_count", "selected_exact_verified"):
-                    records[-1][name] = result.metrics.get(f"mppi/{name}")
+                    **{name: result.metrics.get(f"mppi/{name}") for name in
+                       ("baseline_score", "selected_score", "score_gain", "first_action_delta_norm",
+                        "baseline_selected", "iterations_completed", "wm_evaluated_candidates",
+                        "world_model_rollout_ms", "elite_update_ms")}})
             if args.profile_calls:
                 from planning_profiler import PlanningProfiler
                 with PlanningProfiler(planner) as profiler:
@@ -197,7 +187,7 @@ def main():
     result["profile_notes"] = ("Separate instrumented pass; nested phase times are not additive. CPU wall includes waits. "
         "CUDA events measure stream elapsed including idle CPU gaps, NOT pure GPU kernel time. "
         "Context includes coarse planning/WM; WM includes cost. Geometry is legacy SAC input only. "
-        "Candidate scoring contains deviation/smoothness/WM cost, without geometric or uncertainty penalties.")
+        "MPPI scoring is discounted WM reward plus terminal Q only; Cost diagnostics above describe the retained SAC feature service.")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     if pending_trace is not None:
         from planning_profiler import kernel_trace_summary

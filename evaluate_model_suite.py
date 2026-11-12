@@ -320,14 +320,6 @@ def _apply_checkpoint_runtime_config(cfg_raw: DictConfig, checkpoint: Path) -> N
     mppi_config = planner_state.get("mppi_config") or metadata.get("mppi_config")
     if isinstance(mppi_config, dict) and bool(cfg_raw.get("restore_mppi_runtime", False)):
         _merge_section(cfg_raw.mpr_mpc.mppi, native_mppi_config(mppi_config))
-        if "safety" not in mppi_config:
-            cfg_raw.mpr_mpc.mppi.safety.enabled = False
-        if "recovery" not in mppi_config:
-            cfg_raw.mpr_mpc.mppi.recovery.enabled = False
-        if "two_layer" not in mppi_config.get("safety", {}):
-            cfg_raw.mpr_mpc.mppi.safety.two_layer = False
-        if "lattice_guided" not in mppi_config.get("recovery", {}):
-            cfg_raw.mpr_mpc.mppi.recovery.lattice_guided = False
 
     residual_config = planner_state.get("residual_config")
     if isinstance(residual_config, dict):
@@ -347,9 +339,6 @@ def _make_cfg(raw_cfg: DictConfig, version: str, checkpoint: Path, scenarios: li
         _configure_checkpoint_architecture(cfg_raw, version)
         _apply_checkpoint_runtime_config(cfg_raw, checkpoint)
         benchmark = cfg_raw.get("benchmark", {})
-        if benchmark.get("mppi_cost_coef") is not None:
-            cfg_raw.mpr_mpc.mppi.cost_enabled = True
-            cfg_raw.mpr_mpc.mppi.cost_coef = float(benchmark["mppi_cost_coef"])
         cfg_raw.checkpoint = str(checkpoint)
         cfg_raw.eval_episodes = len(scenarios)
         cfg_raw.compile = False

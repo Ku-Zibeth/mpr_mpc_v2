@@ -10,14 +10,11 @@ import torch
 
 from .config import mapping, section
 from .evaluator import TrajectoryWorldModelEvaluator
-from .kinematic_filter import CorridorContext
 from .local_mppi import LocalMPPI
-from .mppi_safety import geometric_recovery_reference
 from .timing import PhaseTimings
 from mpr_mpc.residual_rl import ResidualActionAdapter, ResidualStateBuilder
 from mpr_mpc.residual_rl.types import ResidualPolicyOutput
 from .structured_proposal import StructuredProposalGenerator
-from .time_alignment import align_frenet_path
 from .trajectory_adapter import LatticeActionAdapter
 from .types import MPRPlanContext, MPRPlanResult, PlanningStage
 
@@ -91,7 +88,6 @@ class MPRMPCPlanner:
             horizon=self.horizon,
             action_dim=self.action_dim,
             device=self.device,
-            control_dt=self.control_dt,
         )
         # Existing E5 policies consume these three geometric state features.
         # Preserve their input semantics once for the coarse SAC state only;
@@ -140,8 +136,7 @@ class MPRMPCPlanner:
             f"samples={int(mppi_cfg.get('num_samples', 64))} "
             f"elites={int(mppi_cfg.get('num_elites', 8))} "
             f"iterations={int(mppi_cfg.get('iterations', 4))}\n"
-            f"single_gaussian=True cost_enabled={self.local_mppi.cost_enabled} "
-            f"cost_coef={self.local_mppi.cost_coef}\n"
+            "single_gaussian=True objective=discounted_reward+terminal_q output=mean\n"
             f"legacy_SAC_geometry_features={self.safety is not None} (never candidate scoring)"
         )
 
@@ -202,7 +197,7 @@ class MPRMPCPlanner:
     @torch.no_grad()
     def prepare(
         self, observation, vehicle, *, need_world_model_features: bool = True,
-        need_mppi_safety: bool = False, need_residual_state: bool = True
+        need_residual_state: bool = True
     ) -> MPRPlanContext:
         if bool(getattr(vehicle, "enable_reverse", False)):
             raise ValueError("MPR safety requires enable_reverse=false for verified braking semantics.")
@@ -252,25 +247,6 @@ class MPRMPCPlanner:
                 feasible_ratio=len(selection.feasible) / max(len(selection.candidates), 1),
                 used_fallback=selection.used_fallback,
             )
-        mppi_safety_context = None
-        if need_mppi_safety and self.local_mppi.safety_enabled:
-            width, wheelbase, steering = self._vehicle_geometry(vehicle)
-            mppi_safety_context = self.local_mppi.candidate_safety.context(
-                self.structured.planner, vehicle, width=width, wheelbase=wheelbase,
-                max_steering=steering, snapshot=safety_context,
-            )
-            # World-frame guidance is independent of the frozen SAC state.
-            mppi_safety_context.target_speed = float(coarse_path.target_speed)
-            mppi_safety_context.lattice_actions = coarse_actions.detach().cpu()
-            mppi_safety_context.lattice_positions = align_frenet_path(
-                coarse_path, required_steps=self.horizon+1, control_dt=self.control_dt).positions
-            mppi_safety_context.lane_width = float(self.structured.planner.last_lane_width)
-            mppi_safety_context.route_progress = float(getattr(getattr(vehicle, "navigation", None), "route_completion", float("nan")))
-            mppi_safety_context.lane_centers = tuple(getattr(self.structured.planner, "last_lane_centers", ()))
-            reference = getattr(self.structured.planner, "last_reference", None)
-            if reference is not None:
-                mppi_safety_context.road_reference = reference
-                geometric_recovery_reference(mppi_safety_context, reference, self.structured.planner.last_lane_centers, self.control_dt)
         context = MPRPlanContext(
             observation=observation,
             latent=latent,
@@ -282,7 +258,6 @@ class MPRMPCPlanner:
             residual_bounds=residual_bounds,
             residual_state=residual_state,
             safety_context=safety_context,
-            mppi_safety_context=mppi_safety_context,
         )
         self.last_context = context
         return context
@@ -314,95 +289,6 @@ class MPRMPCPlanner:
             max_steering_angle = fallback_steering
         max_steering_angle = positive(max_steering_angle, fallback_steering)
         return vehicle_width, wheelbase, max_steering_angle
-
-    def _update_mppi_speed_context(self, context, refined, vehicle):
-        """Update AFTER SAC regeneration; never alter the frozen SAC features."""
-        settings = getattr(self.structured.planner, "config", {})
-        limit = min(self.max_speed, float(settings.get("frenet_rl_max_speed", self.max_speed)))
-        vehicle_limit = float(getattr(vehicle, "max_speed_km_h", float("inf")))/3.6
-        if np.isfinite(vehicle_limit) and vehicle_limit > 0:
-            limit = min(limit, vehicle_limit)
-        points = np.column_stack((refined.x, refined.y))
-        curvature_function = getattr(self.structured.controller, "_local_path_curvature", None)
-        if len(points) >= 4 and callable(curvature_function) and bool(settings.get("frenet_curve_speed_limit", True)):
-            arc = np.r_[0., np.cumsum(np.linalg.norm(np.diff(points, axis=0), axis=1))]
-            closest = int(np.linalg.norm(points-np.asarray(vehicle.position), axis=1).argmin())
-            curvature = float(curvature_function(points, arc, closest))
-            if curvature > 1e-6:
-                # Existing Lattice lateral-acceleration setting, without a
-                # minimum desired-speed floor overriding a physical ceiling.
-                limit = min(limit, np.sqrt(float(settings.get("frenet_max_lateral_accel", 2.8))/curvature))
-        context.lattice_speed_limit = max(0., float(limit))
-        context.sac_target_speed = float(refined.target_speed)
-        context.mppi_target_speed = float(np.clip(refined.target_speed, 0., context.lattice_speed_limit))
-        context.target_speed = context.mppi_target_speed  # compatibility alias
-
-    def _corridor_context(self, refined, vehicle) -> CorridorContext:
-        # H controls a_t...a_{t+H-1} produce H post-transition states. The
-        # H+1-th control belongs only to terminal Q and is not integrated here.
-        query = (np.arange(self.horizon, dtype=np.float64) + 1.0) * self.control_dt
-        source_t = np.asarray(refined.t, dtype=np.float64)
-        source_d = np.asarray(refined.d, dtype=np.float64)
-        refined_d = np.interp(np.minimum(query, source_t[-1]), source_t, source_d)
-        try:
-            speed = float(np.linalg.norm(np.asarray(vehicle.velocity, dtype=float)[:2]))
-        except Exception:
-            speed = max(0.0, float(getattr(vehicle, "speed", 0.0)))
-        planner = self.structured.planner
-        vehicle_width, wheelbase, max_steering_angle = self._vehicle_geometry(vehicle)
-        safe_min, safe_max = planner.last_lateral_bounds
-        lattice_width = float(planner.last_vehicle_width or vehicle_width)
-        lattice_margin = float(planner.config.get("frenet_lane_margin", 0.0))
-        # last_lateral_bounds is a target/vehicle-center range, already inset by
-        # half the Lattice vehicle width and frenet_lane_margin. Undo that inset
-        # to recover raw road edges; the kinematic filter then applies the current
-        # vehicle width and its own safety margin exactly once.
-        road_min = float(safe_min) - 0.5 * lattice_width - lattice_margin
-        road_max = float(safe_max) + 0.5 * lattice_width + lattice_margin
-        return CorridorContext(
-            refined_lateral=torch.as_tensor(refined_d, dtype=torch.float32, device=self.device),
-            lane_width=float(self.structured.planner.last_lane_width),
-            road_min=float(road_min),
-            road_max=float(road_max),
-            initial_speed=speed,
-            vehicle_width=vehicle_width,
-            wheelbase=wheelbase,
-            max_steering_angle=max_steering_angle,
-        )
-
-    def _selected_sequence_xy(
-        self,
-        refined,
-        baseline_actions: torch.Tensor,
-        selected_actions: torch.Tensor,
-        corridor_context: CorridorContext,
-    ) -> np.ndarray:
-        """Map the selected MPPI sequence to world XY using its corridor rollout."""
-        explicit_steps = self.horizon
-        aligned = align_frenet_path(
-            refined,
-            required_steps=explicit_steps + 1,
-            control_dt=self.control_dt,
-        )
-        rollout_kwargs = {
-            "wheelbase": corridor_context.wheelbase,
-            "max_steering_angle": corridor_context.max_steering_angle,
-        }
-        selected_lateral = self.local_mppi.corridor.rollout(
-            selected_actions[:explicit_steps].unsqueeze(0),
-            corridor_context.initial_speed,
-            **rollout_kwargs,
-        )[0]
-        baseline_lateral = self.local_mppi.corridor.rollout(
-            baseline_actions[:explicit_steps].unsqueeze(0),
-            corridor_context.initial_speed,
-            **rollout_kwargs,
-        )[0]
-        lateral_delta = (selected_lateral - baseline_lateral).detach().cpu().numpy()
-        headings = aligned.headings[1:]
-        normals = np.column_stack((-np.sin(headings), np.cos(headings)))
-        predicted = aligned.positions[1:] + lateral_delta[:, None] * normals
-        return np.vstack((aligned.positions[0], predicted))
 
     @torch.no_grad()
     def refine_and_plan(
@@ -499,21 +385,10 @@ class MPRMPCPlanner:
             device=self.device,
         )
 
-        corridor_context = self._corridor_context(refined, vehicle)
         if stage.use_mppi:
             if context.latent is None:
                 raise RuntimeError("Stage B/C MPPI requires an encoded current observation.")
-            if context.mppi_safety_context is not None:
-                self._update_mppi_speed_context(context.mppi_safety_context, refined, vehicle)
-            mppi = self.local_mppi.plan(
-                context.latent,
-                refined_actions,
-                eval_mode=eval_mode,
-                corridor_context=corridor_context,
-                safety_context=context.mppi_safety_context,
-                lattice_actions=context.coarse_actions,
-                lattice_corridor_context=(corridor_context if refined is coarse else self._corridor_context(coarse, vehicle)),
-            )
+            mppi = self.local_mppi.plan(context.latent, refined_actions, eval_mode=eval_mode)
             self.mppi_call_count += 1
             self.baseline_selected_count += int(mppi.baseline_selected)
             action = mppi.action
@@ -526,9 +401,6 @@ class MPRMPCPlanner:
             selected_score = float(mppi.selected_score.cpu())
             planner_score_gain = float(mppi.planner_score_gain.cpu())
             baseline_selected = float(mppi.baseline_selected)
-            reject_count = float(mppi.corridor_reject_count)
-            reject_rate = float(mppi.corridor_reject_rate)
-            max_lateral_deviation = float(mppi.max_lateral_deviation)
             max_delta = mppi.max_action_delta
             selected_actions = mppi.selected_sequence
         else:
@@ -545,7 +417,6 @@ class MPRMPCPlanner:
             baseline_score = selected_score = baseline_wm_value
             wm_value_gain = planner_score_gain = 0.0
             baseline_selected = 1.0
-            reject_count = reject_rate = max_lateral_deviation = 0.0
             max_delta = torch.zeros(self.action_dim, device=self.device)
             selected_actions = refined_actions
 
@@ -566,20 +437,12 @@ class MPRMPCPlanner:
                     "validated": consequence.cost_validated}
 
         coarse_row = consequence_row(context.coarse_consequence)
-        motion_prediction = None
         if stage.use_mppi:
             sac_row, selected_row = mppi.baseline_consequence, mppi.selected_consequence
             if not stage.use_residual:
                 coarse_row = sac_row
             diagnostics.update({f"mppi/{key}": value for key, value in mppi.metrics.items()})
             diagnostics.update({f"mpr/{key}": value for key, value in mppi.metrics.items()})
-            response = self.local_mppi.candidate_safety.response_errors(vehicle)
-            diagnostics.update({f"mppi/{key}": value for key, value in response.items()})
-            if context.mppi_safety_context is not None:
-                motion_prediction = self.local_mppi.candidate_safety.predict_response(selected_actions, context.mppi_safety_context, vehicle)
-                for name in ("center", "legacy"):
-                    motion_prediction[name].update(collision=mppi.metrics.get(f"{name}_near_collision", float("nan")),
-                        offroad=mppi.metrics.get(f"{name}_near_offroad", float("nan")))
         else:
             sac_row = selected_row = consequence_row(refined_consequence if context.latent is not None else None)
         for name, row in (("lattice", coarse_row), ("sac", sac_row), ("mppi", selected_row)):
@@ -592,14 +455,6 @@ class MPRMPCPlanner:
         if not residual_valid:
             diagnostics["mpr/sac_predicted_cost"] = float("nan")
         diagnostics["mpr/mppi_correction_magnitude"] = float((selected_actions-refined_actions).square().mean().sqrt())
-        diagnostics["mpr/safe_candidate_ratio"] = mppi.metrics["safety_valid_ratio"] if stage.use_mppi else float("nan")
-        if stage.use_mppi:
-            diagnostics["mpr/selected_safe"] = mppi.metrics["selected_safety_valid"]
-            diagnostics["mpr/baseline_safe"] = mppi.metrics["baseline_safety_valid"]
-            diagnostics["mpr/no_safe_candidate"] = float(bool(mppi.metrics["emergency_fallback"]))
-            diagnostics["mpr/collision_reject_count"] = mppi.metrics["collision_reject_count"]
-            diagnostics["mpr/offroad_reject_count"] = mppi.metrics["road_boundary_reject_count"]
-            diagnostics["mpr/kinematic_reject_count"] = mppi.metrics["kinematic_reject_count"]
         diagnostics["mpr/coarse_target_speed_mps"] = float(coarse.target_speed)
         diagnostics["mpr/refined_target_speed_mps"] = float(refined.target_speed)
         diagnostics["mpr/actual_speed_mps"] = float(np.linalg.norm(np.asarray(vehicle.velocity)[:2]))
@@ -611,9 +466,11 @@ class MPRMPCPlanner:
                             if not stage.use_mppi and context.latent is not None and refined is not coarse else 0.)
             diagnostics[f"mpr/{phase_name}"] = diagnostics.get(f"mpr/{phase_name}", 0.)+coarse_time+refined_time
         final_mppi_xy = None
-        if stage.use_mppi:
-            final_mppi_xy = (mppi.selected_positions.numpy() if mppi.selected_positions is not None else
-                self._selected_sequence_xy(refined, refined_actions, selected_actions, corridor_context))
+        if stage.use_mppi and self.safety is not None and context.safety_context is not None:
+            # Display only: reuse the frozen SAC geometry service, never filter
+            # or rank candidates, and never feed this back into the 535-D state.
+            positions, _, _ = self.safety.rollout(selected_actions[None], context.safety_context)
+            final_mppi_xy = positions[0, ::self.safety.substeps].detach().cpu().numpy()
 
         paths = list(context.selection.candidates)
         if not any(path is refined for path in paths):
@@ -683,17 +540,11 @@ class MPRMPCPlanner:
                 "mpr/final_std_throttle": float(final_std[:, 1].mean().cpu()),
                 "mpr/max_delta_steer": float(max_delta[0].cpu()),
                 "mpr/max_delta_throttle": float(max_delta[1].cpu()),
-                "mpr/max_lateral_deviation": max_lateral_deviation,
-                "mpr/corridor_reject_count": reject_count,
-                "mpr/corridor_reject_rate": reject_rate,
                 "mpr/baseline_selected": baseline_selected,
                 "mpr/baseline_selected_rate": float(baseline_rate),
                 "mpr/planning_ms": elapsed_ms,
             },
             debug={
-                "motion_prediction": motion_prediction,
-                "safety_certificate": mppi.safety_certificate if stage.use_mppi else None,
-                "mppi_candidates": mppi.candidate_diagnostics if stage.use_mppi else [],
                 "selected_mppi_actions": selected_actions.detach().cpu(),
                 "final_mppi_xy": final_mppi_xy,
                 "initial_mppi_mean": initial_mean.detach().cpu(),
@@ -702,8 +553,6 @@ class MPRMPCPlanner:
                 "final_mppi_std": final_std.detach().cpu(),
             },
             planning_mode=mppi.planning_mode if stage.use_mppi else "baseline",
-            recovery_reason=mppi.recovery_reason if stage.use_mppi else "none",
-            safety_failure=mppi.safety_failure if stage.use_mppi else False,
         )
         self.last_result = result
         return result
@@ -726,7 +575,6 @@ class MPRMPCPlanner:
             observation,
             vehicle,
             need_world_model_features=stage.use_residual or (eval_mode and stage.use_mppi),
-            need_mppi_safety=eval_mode and stage.use_mppi,
             need_residual_state=stage.use_residual,
         )
         result = self.refine_and_plan(
