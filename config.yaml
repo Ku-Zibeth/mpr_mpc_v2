@@ -87,6 +87,26 @@ mpr_mpc:
     max_delta: [0.10, 0.25]
     temperature: 0.5
     eval_seed: 0
+    noise_rho: 0.8
+    allow_unvalidated_cost: false
+    safety:
+      substeps: 2
+      model_margin: 0.05
+      road_margin: 0.05
+      max_acceleration: 4.0
+      max_deceleration: 6.0  # nominal model only, never a certified lower bound
+      max_steering_rate: 7.0
+      max_lateral_acceleration: 6.0
+      swept_max_depth: 6
+      swept_angle_tolerance: 0.005
+      swept_position_tolerance: 0.002
+      center_bicycle: true
+      center_model_guard: true
+      two_layer: true
+      staged: true
+      braking_validation_path: reports/sac_centred_repair_20261112/braking_validation.json
+      motion_validation_path: reports/sac_refinement/b_motion/validation.json
+      max_safety_steps: 100
     # Read only by the existing SAC geometry features; never MPPI scoring.
     kinematic_vehicle_width: 1.852
     kinematic_wheelbase: 2.46894

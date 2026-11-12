@@ -98,6 +98,8 @@ class StepDiagnosticsLogger:
             row.update(prediction_outcomes(info, result) if info is not None else {})
             row.update(residual_enabled=bool(result.stage.use_residual), mppi_enabled=bool(result.stage.use_mppi))
             row["planning_mode"] = getattr(result, "planning_mode", "unknown")
+            for key in ("baseline_certification_reason", "decision_state_name", "diagnostic_state", "candidate_source", "selection_reason", "road_rejection_kind"):
+                row[key] = result.debug.get(key)
             candidates = getattr(result, "debug", {}).get("mppi_candidates", [])
             if candidates and self.stream is not None:
                 candidate_path = Path(self.stream.name).with_suffix(".candidates.jsonl.gz")
@@ -188,6 +190,8 @@ class EpisodeDiagnostics:
             self.sums[f"safety_{key}_cost"] += float(info.get(f"safety_{key}_cost", 0))
         if result is not None:
             result.metrics.update(prediction_outcomes(info, result))
+            if result.stage.use_mppi and executed and not result.debug.get("safety_certificate", {}).get("valid", False):
+                self.sums["unverified_action_executions"] += 1
             code = result.metrics.get("mppi/planning_mode", float("nan"))
             if result.stage.use_mppi and executed and np.isfinite(code):
                 self.sums[f"mode{int(code)}_steps"] += 1
@@ -221,7 +225,7 @@ class EpisodeDiagnostics:
         legacy = {"mppi_baseline_selected": "mpr/baseline_selected", "mppi_score_gain": "mpr/planner_score_gain"}
         return {
             "safety_failure": float(self.safety_failure), "physical_steps": len(self.actions),
-            "unverified_action_executions": None,  # no candidate safety-certificate protocol
+            "unverified_action_executions": self.sums["unverified_action_executions"],
             **{f"planning_p{q}_ms": float(np.percentile(planning, q)) if planning else float("nan")
                for q in (50, 95, 99)},
             "low_speed_steps": sum(v < .3 for v in self.speeds),
@@ -242,7 +246,7 @@ class EpisodeDiagnostics:
                 ("actual_collision", "actual_offroad", "predicted_safe_actual_collision", "predicted_safe_actual_offroad",
                  "prediction_collision_known", "prediction_offroad_known")},
             **{f"mppi_mode_{name}_rate": mean([float(v == code) for v in self.plans["mppi/planning_mode"]])
-                for code, name in enumerate(("baseline", "normal"))},
+                for code, name in enumerate(("baseline", "normal", "tail_repair", "safety_intervention", "true_stuck_recovery", "safety_failure"))},
             **{f"mppi_mode_{name}_{event}_steps": (self.sums[f"mode{code}_{event}_steps"]
                 if self.plans["mppi/planning_mode"] else float("nan"))
                for code, name in enumerate(("baseline", "normal"))

@@ -1,0 +1,149 @@
+{
+  "schema": "brake_envelope_v1",
+  "validated": false,
+  "fit_scenes": [
+    1525,
+    539
+  ],
+  "heldout_scenes": [
+    1714,
+    559
+  ],
+  "dataset": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/sac_centred_repair_20261112/braking_with_motion_errors/measurements.json",
+  "dataset_sha256": "c0a3e9170e31fabc0faf09cc9b584a4b949a7585c8b958f90b6f077df43188ec",
+  "predictor_sha256": "528314a4196d50e0d714db22ec09ba71fbd23b1e7d1e261d3aea0df663cbeb4a",
+  "control_dt": 0.1,
+  "deceleration_lower_mps2": 3.7981513190677707,
+  "acceleration_upper_mps2": 2.853567637963721,
+  "domain": {
+    "max_speed_mps": 7.252428936229529,
+    "max_curvature_inv_m": 0.08921997430261301
+  },
+  "vehicle_signatures": [
+    {
+      "length": 4.515,
+      "width": 1.852,
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine": 775.2088623046875,
+      "brake": 105.20887756347656,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "decision_repeat": 5
+    },
+    {
+      "length": 4.515,
+      "width": 1.852,
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine": 773.2562866210938,
+      "brake": 103.25625610351562,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "decision_repeat": 5
+    },
+    {
+      "length": 4.515,
+      "width": 1.852,
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine": 753.374755859375,
+      "brake": 83.37474060058594,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "decision_repeat": 5
+    },
+    {
+      "length": 4.515,
+      "width": 1.852,
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine": 782.8720703125,
+      "brake": 112.87206268310547,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "decision_repeat": 5
+    }
+  ],
+  "validated_prediction_time_s": 0.0,
+  "traffic_validated": false,
+  "good_fit": 8,
+  "good_heldout": 7,
+  "heldout_bound_violations": 3,
+  "motion_error_statistics": {
+    "fit_center_position_m": {
+      "p50": 0.20028848869338525,
+      "p95": 0.9514133959445387,
+      "p99": 1.2636612137102055
+    },
+    "fit_center_heading_rad": {
+      "p50": 0.004520380405339086,
+      "p95": 0.03119834061617474,
+      "p99": 0.03493172145531531
+    },
+    "fit_center_speed_mps": {
+      "p50": 1.3605927103854834,
+      "p95": 3.5102542304536173,
+      "p99": 3.6301111129991974
+    },
+    "fit_legacy_position_m": {
+      "p50": 0.19978917266412116,
+      "p95": 0.9506176248010718,
+      "p99": 1.262295066960094
+    },
+    "fit_legacy_heading_rad": {
+      "p50": 0.004647084978970373,
+      "p95": 0.03119856487865071,
+      "p99": 0.03493498197839614
+    },
+    "fit_legacy_speed_mps": {
+      "p50": 1.3605927103854834,
+      "p95": 3.5102542304536173,
+      "p99": 3.6301111129991974
+    },
+    "heldout_center_position_m": {
+      "p50": 2.2197045333869125,
+      "p95": 2.595804742685199,
+      "p99": 2.628927544866219
+    },
+    "heldout_center_heading_rad": {
+      "p50": 0.10326326833002675,
+      "p95": 0.10696802501194935,
+      "p99": 0.10731047423862057
+    },
+    "heldout_center_speed_mps": {
+      "p50": 0.233943748462197,
+      "p95": 2.7492302204386356,
+      "p99": 3.4091019402676426
+    },
+    "heldout_legacy_position_m": {
+      "p50": 2.183908665583937,
+      "p95": 2.568877520300165,
+      "p99": 2.6026758937908254
+    },
+    "heldout_legacy_heading_rad": {
+      "p50": 0.10452103064291585,
+      "p95": 0.10822578732483847,
+      "p99": 0.10856823655150967
+    },
+    "heldout_legacy_speed_mps": {
+      "p50": 0.233943748462197,
+      "p95": 2.7492302204386356,
+      "p99": 3.4091019402676426
+    }
+  },
+  "stop_speed_threshold_mps": 0.1,
+  "reasons": [
+    "Sparse actuator identification does not validate Center/Legacy long-horizon position envelopes or traffic acceleration bounds.",
+    "Measured fit minimum is empirical, not a proven global deceleration lower bound."
+  ],
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a"
+}

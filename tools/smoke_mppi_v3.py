@@ -1,4 +1,4 @@
-"""Fixed-state closed-loop smoke for the single simplified TD-MPC2 MPPI."""
+"""Fixed-state closed-loop smoke for the certified SAC-centred MPPI."""
 import argparse,contextlib,io,json,hashlib,sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
@@ -55,12 +55,11 @@ def main():
                     seq=result.debug['selected_mppi_actions'];base=result.refined_actions.cpu()
                     assert seq.shape==base.shape==(cfg.horizon+1,cfg.action_dim)
                     assert (seq.abs()<=1).all() and ((seq-base).abs()<=agent.planner.local_mppi.max_delta.cpu()+1e-7).all()
-                    assert 'safety_certificate' not in result.debug
-                    assert not result.safety_failure
-                    if not result.metrics['mppi/invalid_prediction']:
-                        assert result.metrics['mpr/selected_wm_value']>=result.metrics['mpr/baseline_wm_value']
-                        assert result.metrics['mppi/iterations_completed']==cfg.mpr_mpc['mppi']['iterations']
+                    if not result.safety_failure:
+                        assert result.debug.get('safety_certificate',{}).get('valid',False)
                 obs,reward,done,info=env.step(action)
+                if result.safety_failure:
+                    assert not info.get('action_executed',True)
                 rows.append(dict(step=i+1,action=action.tolist(),reward=float(reward),route=float(info.get('route_completion',0.)),
                     speed=float(np.linalg.norm(env.unwrapped_metadrive.agent.velocity)),
                     crash=any(bool(info.get(k,False)) for k in ('crash','crash_vehicle','crash_object','crash_building','crash_human','crash_sidewalk')),

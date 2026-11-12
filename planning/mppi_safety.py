@@ -267,6 +267,8 @@ class MPPISafetyFilter:
         self.emergency_throttle = float(cfg.get("emergency_throttle", -1.))
         if not math.isfinite(self.emergency_throttle) or not -1 <= self.emergency_throttle < 0:
             raise ValueError("Emergency throttle must be in [-1,0) for verified non-reversing MetaDrive vehicles.")
+        self._brake_filters = {}
+        self.braking_evidence_path = Path(str(cfg.get("braking_validation_path", "")))
 
     def reset(self):
         self.geometry.reset()
@@ -639,9 +641,150 @@ class MPPISafetyFilter:
         limit = float(self.cfg.get("max_steering_rate", 7.))*self.geometry.dt/context.max_steering
         previous = actions[:, committed-1, 0]
         for step in range(committed, actions.shape[1]):
-            previous = previous+(float(guidance[step, 0])-previous).clamp(-limit, limit)
+            previous = previous+(float(guidance[min(step, len(guidance)-1), 0])-previous).clamp(-limit, limit)
             guided[:, step, 0] = previous
         return torch.cat((hold, guided), 0)
+
+    def braking_domain(self, context, actions):
+        """Read evidence on every observation; stale/out-of-domain is UNKNOWN.
+
+        A brake-force/mass quotient or the nominal 6m/s² is not evidence.
+        Data and predictor identities, disjoint scenes, and heldout coverage
+        are required. This does not qualify the Center-only motion policy.
+        """
+        try:
+            payload = self.braking_evidence_path.read_bytes()
+            evidence = json.loads(payload)
+            data = Path(evidence["dataset"])
+            if (not evidence.get("validated") or evidence.get("schema") != "brake_envelope_v1"
+                    or evidence.get("good_fit", 0) < 8 or evidence.get("good_heldout", 0) < 8
+                    or evidence.get("heldout_bound_violations", 1) != 0
+                    or not evidence["fit_scenes"] or not evidence["heldout_scenes"]
+                    or not set(evidence["fit_scenes"]).isdisjoint(evidence["heldout_scenes"])
+                    or hashlib.sha256(data.read_bytes()).hexdigest() != evidence["dataset_sha256"]
+                    or evidence["predictor_sha256"] != self.motion_predictor_sha()
+                    or abs(evidence["control_dt"]-self.geometry.dt) > 1e-9):
+                return None, "unvalidated_or_stale_braking_model"
+            bound = float(evidence["deceleration_lower_mps2"])
+            if not math.isfinite(bound) or bound <= 0:
+                return None, "invalid_braking_bound"
+            domain = evidence["domain"]
+            scalars = [evidence["acceleration_upper_mps2"], evidence["validated_prediction_time_s"],
+                       domain["max_speed_mps"], domain["max_curvature_inv_m"]]
+            if not all(math.isfinite(float(value)) and float(value) >= 0 for value in scalars):
+                return None, "invalid_braking_domain"
+            curvature = (actions.detach().cpu()[..., 0]*context.max_steering).tan().abs().max()/context.wheelbase
+            if not (0 <= context.speed <= domain["max_speed_mps"] and curvature <= domain["max_curvature_inv_m"]):
+                return None, "outside_braking_domain"
+            if context.motion_signature not in evidence["vehicle_signatures"]:
+                return None, "unknown_vehicle_signature"
+            # CV envelopes need their own disjoint measured evidence. Even a
+            # currently stationary vehicle may accelerate; zero speed alone
+            # must not turn an unidentified actor into a known static cone.
+            if context.obstacles and not evidence.get("traffic_validated", False):
+                return None, "unknown_traffic_prediction_envelope"
+            return (evidence, hashlib.sha256(payload).hexdigest()), "validated_domain"
+        except (OSError, KeyError, ValueError, TypeError, AttributeError):
+            return None, "missing_braking_evidence"
+
+    @torch.no_grad()
+    def certify(self, actions, context):
+        """Exact candidate + SAME-prefix stopping witness, independent of WM H.
+
+        An observation-local certificate is a model/evidence check, not a
+        physical-world guarantee. No unknown range is silently extrapolated.
+        Center AND Legacy must approve the very SAME witness.
+        """
+        controls = actions.detach().cpu()
+        cache = context.cache.setdefault("adaptive_certificates", {})
+        key = (controls.numpy().tobytes(), tuple(controls.shape))
+        # Evidence may have been revoked since a preceding call.
+        domain, reason = self.braking_domain(context, controls)
+        stamp = domain[1] if domain else reason
+        key += (stamp,)
+        if key in cache:
+            return cache[key]
+        result = self.check(controls, context)
+        if result.near_valid is None:
+            count = self.committed_controls(controls.shape[1]-1)
+            near = self._strict_check(controls[:, :count+1], context)
+            guard = self._strict_check(controls[:, :count+1], replace(context, rear_axle_to_center=None))
+            result.near_valid = near.valid & guard.valid
+            result.near_collision = near.collision | guard.collision
+            result.near_offroad = near.offroad | guard.offroad
+        result.nominal_valid = result.valid.clone()
+        result.safety_unknown = torch.zeros(len(controls), dtype=torch.bool)
+        result.certification_reason = reason
+        result.hold_braking_valid = torch.zeros(len(controls), dtype=torch.bool)
+        result.guided_braking_valid = torch.zeros(len(controls), dtype=torch.bool)
+        result.safety_horizon_steps = 0
+        result.stopping_witnesses = [None]*len(controls)
+        result.evidence_sha256 = None
+        result.stopping_time_s = float("nan")
+        # Rejection classification only; this NEVER edits the road geometry.
+        # A hole is not assumed to be an internal seam or a drivable median.
+        has_holes = any(len(poly.interiors) for poly in ([context.road] if context.road.geom_type == "Polygon" else context.road.geoms))
+        result.road_rejection_kind = ("swept_outer_boundary_or_road_end" if result.offroad.any() and not has_holes
+                                      else "unproven_hole_or_outer_boundary" if result.offroad.any() else "none")
+        if domain is None:
+            result.valid[:] = False
+            result.safety_unknown = result.near_valid.clone()
+            cache[key] = result
+            return result
+        evidence, digest = domain
+        committed = self.committed_controls(controls.shape[1]-1)
+        deceleration = float(evidence["deceleration_lower_mps2"])
+        # Include worst observed positive-prefix acceleration before braking.
+        prefix_speed = context.speed+float(evidence["acceleration_upper_mps2"])*committed*self.geometry.dt
+        if prefix_speed > evidence["domain"]["max_speed_mps"]:
+            result.valid[:] = False
+            result.safety_unknown = result.near_valid.clone()
+            result.certification_reason = "prefix_exits_braking_speed_domain"
+            cache[key] = result
+            return result
+        steps = committed+math.ceil(prefix_speed/deceleration/self.geometry.dt)+1
+        result.stopping_time_s = prefix_speed/deceleration
+        maximum = int(self.cfg.get("max_safety_steps", 100))
+        if (steps > maximum or steps*self.geometry.dt > evidence["validated_prediction_time_s"]):
+            result.valid[:] = False
+            result.safety_unknown[:] = True
+            result.certification_reason = "outside_validated_safety_horizon"
+            cache[key] = result
+            return result
+        extended = controls[:, -1:].expand(-1, steps+1, -1).clone()
+        extended[:, :committed] = controls[:, :committed]
+        witnesses = self._braking_continuations(extended, context, committed)
+        # Lattice guidance may bend beyond the evidence support even when the
+        # submitted prefix was in-domain. Never certify that extrapolation.
+        witness_curvature = (witnesses[..., 0]*context.max_steering).tan().abs().amax(1)/context.wheelbase
+        in_domain = witness_curvature <= evidence["domain"]["max_curvature_inv_m"]
+        # Isolated candidate checker: NEVER mutate the frozen SAC geometry
+        # service or change the nominal predictor's training/input semantics.
+        if digest not in self._brake_filters:
+            cfg = dict(self.cfg, two_layer=False, staged=False, max_deceleration=deceleration,
+                       max_acceleration=evidence["acceleration_upper_mps2"], motion_validation_path=None,
+                       obstacle_velocity_error=evidence.get("obstacle_velocity_error_mps", 0.),
+                       obstacle_acceleration_bound=evidence.get("obstacle_acceleration_error_mps2", 0.))
+            self._brake_filters[digest] = MPPISafetyFilter(cfg, control_dt=self.geometry.dt)
+            self._brake_filters[digest].safe_roads = self.safe_roads
+        checker = self._brake_filters[digest]
+        center = checker._strict_check(witnesses, context)
+        legacy = checker._strict_check(witnesses, replace(context, rear_axle_to_center=None))
+        passing = (in_domain & center.valid & legacy.valid & (center.speeds[:, -1] <= 1e-6)
+                   & (legacy.speeds[:, -1] <= 1e-6)).reshape(-1, len(controls))
+        result.hold_braking_valid = passing[0]
+        if passing.shape[0] > 1:
+            result.guided_braking_valid = passing[1]
+        result.valid = result.near_valid & passing.any(0)
+        result.safety_unknown = result.near_valid & ~in_domain.reshape(-1, len(controls)).any(0)
+        for i in result.valid.nonzero().flatten().tolist():
+            branch = int(passing[:, i].nonzero()[0])
+            result.stopping_witnesses[i] = witnesses[branch*len(controls)+i].clone()
+        result.certification_reason = "stopping_witness_checked"
+        result.safety_horizon_steps = steps
+        result.evidence_sha256 = digest
+        cache[key] = result
+        return result
 
     @torch.no_grad()
     def preview(self, actions, context):

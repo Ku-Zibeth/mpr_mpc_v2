@@ -88,6 +88,7 @@ class MPRMPCPlanner:
             horizon=self.horizon,
             action_dim=self.action_dim,
             device=self.device,
+            control_dt=self.control_dt,
         )
         # Existing E5 policies consume these three geometric state features.
         # Preserve their input semantics once for the coarse SAC state only;
@@ -136,7 +137,7 @@ class MPRMPCPlanner:
             f"samples={int(mppi_cfg.get('num_samples', 64))} "
             f"elites={int(mppi_cfg.get('num_elites', 8))} "
             f"iterations={int(mppi_cfg.get('iterations', 4))}\n"
-            "single_gaussian=True objective=discounted_reward+terminal_q output=mean\n"
+            "single_gaussian=True certified_elites=True normal_value_validation_required=True\n"
             f"legacy_SAC_geometry_features={self.safety is not None} (never candidate scoring)"
         )
 
@@ -388,7 +389,27 @@ class MPRMPCPlanner:
         if stage.use_mppi:
             if context.latent is None:
                 raise RuntimeError("Stage B/C MPPI requires an encoded current observation.")
-            mppi = self.local_mppi.plan(context.latent, refined_actions, eval_mode=eval_mode)
+            # Construct independent candidate geometry AFTER the frozen SAC
+            # input/output path. Never feed repaired geometry into its 535-D state.
+            from .mppi_safety import geometric_recovery_reference
+            from mpr_mpc.lattice.frenet_metadrive import PolylineReference
+            width, wheelbase, steering = self._vehicle_geometry(vehicle)
+            independent = self.local_mppi.candidate_safety.context(self.structured.planner, vehicle,
+                width=width, wheelbase=wheelbase, max_steering=steering, snapshot=context.safety_context)
+            independent.lattice_actions = context.coarse_actions.detach().cpu()
+            independent.lattice_positions = coarse.xy
+            independent.target_speed = float(refined.target_speed)
+            independent.lane_width = float(getattr(vehicle.lane, "width", width))
+            points = self.structured.planner.last_reference_points
+            if len(points) >= 2:
+                independent.road_reference = PolylineReference(points)
+                independent.lane_centers = tuple(self.structured.planner.last_lane_centers)
+                geometric_recovery_reference(independent, independent.road_reference, independent.lane_centers, self.control_dt)
+            navigation = getattr(vehicle, "navigation", None)
+            route_progress = getattr(navigation, "route_completion", None)
+            independent.route_progress = float(route_progress) if route_progress is not None else None
+            context.mppi_safety_context = independent
+            mppi = self.local_mppi.plan(context.latent, refined_actions, eval_mode=eval_mode, safety_context=independent)
             self.mppi_call_count += 1
             self.baseline_selected_count += int(mppi.baseline_selected)
             action = mppi.action
@@ -551,8 +572,10 @@ class MPRMPCPlanner:
                 "final_mppi_mean": final_mean.detach().cpu(),
                 "initial_mppi_std": initial_std.detach().cpu(),
                 "final_mppi_std": final_std.detach().cpu(),
+                **({"safety_certificate": mppi.safety_certificate, **mppi.decision_metadata} if stage.use_mppi else {}),
             },
             planning_mode=mppi.planning_mode if stage.use_mppi else "baseline",
+            safety_failure=mppi.safety_failure if stage.use_mppi else False,
         )
         self.last_result = result
         return result

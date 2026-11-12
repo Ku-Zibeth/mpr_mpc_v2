@@ -1,0 +1,189 @@
+{
+  "requested_scenarios": 13,
+  "recorded_scenarios": 13,
+  "planning_attempts": 13,
+  "physical_steps": 0,
+  "unverified_action_executions": 0,
+  "safety_failure_attempts": 13,
+  "new_physical_collision_count": 0,
+  "new_physical_offroad_count": 0,
+  "decision_states": {
+    "TAIL_VIABILITY_REPAIR": 13
+  },
+  "certification_reasons": {
+    "unvalidated_or_stale_braking_model": 13
+  },
+  "timings": {
+    "mpr/total_planning_ms": {
+      "p50": 736.9169049779885,
+      "p95": 810.827936429996,
+      "mean": 722.1039488526562,
+      "max": 816.8735399958678
+    },
+    "mppi/preview_ms": {
+      "p50": 56.74508762359619,
+      "p95": 66.89415073394775,
+      "mean": 56.970562347998985,
+      "max": 68.7387523651123
+    },
+    "mppi/safety_check_ms": {
+      "p50": 131.47388677299023,
+      "p95": 175.29672833681104,
+      "mean": 135.6371102069433,
+      "max": 179.69654451310635
+    },
+    "mppi/world_model_rollout_ms": {
+      "p50": 40.126912117004395,
+      "p95": 41.51564140319824,
+      "mean": 40.22402462592492,
+      "max": 42.645023345947266
+    },
+    "mppi/candidate_evaluation_ms": {
+      "p50": 54.6942720413208,
+      "p95": 57.017593383789055,
+      "mean": 54.9910249710083,
+      "max": 59.49471855163574
+    },
+    "mppi/mppi_sampling_ms": {
+      "p50": 4.787712037563324,
+      "p95": 5.241183948516846,
+      "mean": 4.85264987211961,
+      "max": 5.266528069972992
+    }
+  },
+  "fixed_state_acceptance_passed": false,
+  "formal_100_run": false,
+  "scope": "Zero newly executed steps is NOT successful recovery, a safe driving rate, or proof of accident prevention. Cold fixed states include resets/model loading effects and do not isolate a latency improvement against the old full100 experiment.",
+  "cases": [
+    {
+      "scenario": 559,
+      "before_step": 600,
+      "provenance": "prespecified_V311_exact_prefix",
+      "prior_replay_unavailable": false,
+      "physical_steps": 0,
+      "replay_max_speed_error": 8.923668098837628e-06,
+      "recorded_route_gain": 0.0,
+      "route_gain": 0.0
+    },
+    {
+      "scenario": 1714,
+      "before_step": 250,
+      "provenance": "prespecified_V311_exact_prefix",
+      "prior_replay_unavailable": false,
+      "physical_steps": 0,
+      "replay_max_speed_error": 0.0,
+      "recorded_route_gain": 0.0,
+      "route_gain": 0.0
+    },
+    {
+      "scenario": 694,
+      "before_step": 251,
+      "provenance": "V311_scenario_regression_only; original_D_prefix_is_compact_28_rows; not_the_same_failure_state; requested_step=251",
+      "prior_replay_unavailable": false,
+      "physical_steps": 0,
+      "replay_max_speed_error": 1.5503512877101944e-05,
+      "recorded_route_gain": 0.0,
+      "route_gain": 0.0
+    },
+    {
+      "scenario": 420,
+      "before_step": 471,
+      "provenance": "V311_scenario_regression_only; original_D_prefix_is_compact_56_rows; not_the_same_failure_state; requested_step=471",
+      "prior_replay_unavailable": false,
+      "physical_steps": 0,
+      "replay_max_speed_error": 1.2501658617658507e-05,
+      "recorded_route_gain": 0.0,
+      "route_gain": 0.0
+    },
+    {
+      "scenario": 1084,
+      "before_step": 149,
+      "provenance": "V311_scenario_regression_only; original_D_prefix_is_compact_16_rows; not_the_same_failure_state; requested_step=149",
+      "prior_replay_unavailable": false,
+      "physical_steps": 0,
+      "replay_max_speed_error": 9.406448013393742e-06,
+      "recorded_route_gain": 0.0,
+      "route_gain": 0.0
+    },
+    {
+      "scenario": 808,
+      "before_step": 1,
+      "provenance": "fresh_initial_state_NOT_original_failure_state",
+      "prior_replay_unavailable": true,
+      "physical_steps": 0,
+      "replay_max_speed_error": 0.0,
+      "recorded_route_gain": 0.012801252740911902,
+      "route_gain": 0.0
+    },
+    {
+      "scenario": 822,
+      "before_step": 229,
+      "provenance": "V311_scenario_regression_only; original_D_prefix_is_compact_30_rows; not_the_same_failure_state; requested_step=229",
+      "prior_replay_unavailable": false,
+      "physical_steps": 0,
+      "replay_max_speed_error": 2.8980123119026757e-06,
+      "recorded_route_gain": 0.0,
+      "route_gain": 0.0
+    },
+    {
+      "scenario": 1196,
+      "before_step": 395,
+      "provenance": "V311_scenario_regression_only; original_D_prefix_is_compact_83_rows; not_the_same_failure_state; requested_step=395",
+      "prior_replay_unavailable": false,
+      "physical_steps": 0,
+      "replay_max_speed_error": 1.0360597340192124e-05,
+      "recorded_route_gain": 0.0,
+      "route_gain": 0.0
+    },
+    {
+      "scenario": 1534,
+      "before_step": 176,
+      "provenance": "V311_scenario_regression_only; original_D_prefix_is_compact_18_rows; not_the_same_failure_state; requested_step=176",
+      "prior_replay_unavailable": false,
+      "physical_steps": 0,
+      "replay_max_speed_error": 1.101866486273367e-05,
+      "recorded_route_gain": 0.0,
+      "route_gain": 0.0
+    },
+    {
+      "scenario": 1109,
+      "before_step": 270,
+      "provenance": "V311_scenario_regression_only; original_D_prefix_is_compact_27_rows; not_the_same_failure_state; requested_step=270",
+      "prior_replay_unavailable": false,
+      "physical_steps": 0,
+      "replay_max_speed_error": 1.667600753307852e-05,
+      "recorded_route_gain": 0.0,
+      "route_gain": 0.0
+    },
+    {
+      "scenario": 1960,
+      "before_step": 273,
+      "provenance": "V311_scenario_regression_only; original_D_prefix_is_compact_36_rows; not_the_same_failure_state; requested_step=273",
+      "prior_replay_unavailable": false,
+      "physical_steps": 0,
+      "replay_max_speed_error": 2.823385717221072e-06,
+      "recorded_route_gain": 0.0,
+      "route_gain": 0.0
+    },
+    {
+      "scenario": 408,
+      "before_step": 1,
+      "provenance": "fresh_initial_state_NOT_original_failure_state",
+      "prior_replay_unavailable": true,
+      "physical_steps": 0,
+      "replay_max_speed_error": 0.0,
+      "recorded_route_gain": 0.012721791634504293,
+      "route_gain": 0.0
+    },
+    {
+      "scenario": 1939,
+      "before_step": 314,
+      "provenance": "V311_scenario_regression_only; original_D_prefix_is_compact_39_rows; not_the_same_failure_state; requested_step=314",
+      "prior_replay_unavailable": false,
+      "physical_steps": 0,
+      "replay_max_speed_error": 1.4953652382465599e-05,
+      "recorded_route_gain": 0.0,
+      "route_gain": 0.0
+    }
+  ]
+}

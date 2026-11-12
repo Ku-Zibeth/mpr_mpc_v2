@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Foreground B/D evaluation; current SAC-refinement smoke acceptance is required.
+# Foreground B/D evaluation; current certified SAC-refinement acceptance is required.
 set -euo pipefail
 root="$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")"
 cd "$root"
 python="${PYTHON:-/home/kzb/anaconda3/envs/tdmpc2/bin/python}"
 checkpoint="$root/logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt"
-name="${EXP_NAME:-simplified_tdmpc2_BD_fixed100_$(TZ=Asia/Shanghai date +%Y%m%d_%H%M%S)}"
+name="${EXP_NAME:-sac_centred_certified_BD_fixed100_$(TZ=Asia/Shanghai date +%Y%m%d_%H%M%S)}"
 out="$root/logs/benchmark/$name"
 dry_run=false
 if [[ $# -gt 0 ]]; then
@@ -34,7 +34,7 @@ fi
 import hashlib, json, sys
 from pathlib import Path
 from tools.benchmark_mppi import source_fingerprint
-report = Path('reports/simplified_tdmpc2/acceptance.json')
+report = Path('reports/sac_centred_repair_20261112/acceptance.json')
 if not report.is_file():
     raise SystemExit('No smoke acceptance report. Run and validate the prescribed unit/closed-loop tests first.')
 data = json.loads(report.read_text())

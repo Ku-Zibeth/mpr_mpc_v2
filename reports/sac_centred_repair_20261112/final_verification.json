@@ -1,0 +1,19 @@
+{
+  "base_commit": "1e4ce398d6e7eb0787d30ed487d3f9d7a94fa628",
+  "source_snapshot_sha256": "f14c340260acf671626bd3aaf0ba7dde84cf46d86ff492958f6999ae65092db7",
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "patch_sha256": "545281e05f2181622b8769516e107f15aa532e8e38e61052d51cf97b2bd7903b",
+  "tests_passed": 34,
+  "git_diff_check": "passed",
+  "all_final_replay_source_fingerprints_match": true,
+  "fixed_state_acceptance_passed": false,
+  "formal_100_experiment_started": false,
+  "protected_interfaces": {
+    "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+    "checkpoint_unchanged": true,
+    "lane_seam_repair_AST_unchanged": true,
+    "strict_geometry_AST_unchanged": true,
+    "network_lattice_environment_files_unchanged": true,
+    "source_snapshot_sha256": "f14c340260acf671626bd3aaf0ba7dde84cf46d86ff492958f6999ae65092db7"
+  }
+}

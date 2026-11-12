@@ -208,6 +208,21 @@ class MPRMPCAgent:
             eval_mode=eval_mode,
         )
         self.last_plan = result
+        if eval_mode and result.stage.use_mppi:
+            import hashlib
+            sequence = result.debug.get("selected_mppi_actions")
+            certificate = result.debug.get("safety_certificate") or {}
+            context = self.planner.last_context
+            matches = (sequence is not None and torch.equal(result.action.cpu(), sequence[0].cpu())
+                and hashlib.sha256(sequence.contiguous().cpu().numpy().tobytes()).hexdigest() == certificate.get("sequence_sha256")
+                and certificate.get("observation_context_id") == id(context.mppi_safety_context))
+            if result.safety_failure or not certificate.get("valid", False) or not matches:
+                result.safety_failure = True
+                result.metrics.update({"mppi/safety_failure": 1., "mppi/execution_authorized": 0.})
+                stop = getattr(self.env, "request_safety_failure", None)
+                if stop is None:
+                    raise RuntimeError("No certified action; refusing to advance the environment.")
+                stop("no_certified_action" if not certificate.get("valid", False) else "action_certificate_mismatch")
         context = self.planner.last_context
         if not eval_mode:
             if t0:

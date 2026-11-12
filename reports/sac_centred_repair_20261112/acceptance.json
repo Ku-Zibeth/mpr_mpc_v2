@@ -1,0 +1,12 @@
+{
+  "formal_evaluation_ready": false,
+  "blocking_reasons": [
+    "\u5236\u52a8\u7559\u51fa\u9a8c\u8bc1\u5931\u8d25\uff1a8\u7ec4\u62df\u5408\u30017\u7ec4\u5b8c\u6210\u505c\u8f66\u7684\u7559\u51fa\u6570\u636e\uff0c3\u7ec4\u8d8a\u8fc7\u62df\u5408\u8fb9\u754c\u3002",
+    "Center/Legacy\u505c\u8f66\u4f4d\u7f6e\u9884\u6d4b\u548c\u4ea4\u901a\u8bef\u5dee\u5305\u7edc\u5c1a\u672a\u83b7\u5f97\u72ec\u7acb\u9a8c\u8bc1\u3002",
+    "\u6307\u5b9a\u56fa\u5b9a\u72b6\u6001\u5c1a\u672a\u53d6\u5f97\u53ef\u6267\u884c\u8ba4\u8bc1\uff0c\u4e0d\u6ee1\u8db3Safety Failure=0\u7684\u524d\u7f6e\u8981\u6c42\u3002"
+  ],
+  "source_snapshot_sha256": "f14c340260acf671626bd3aaf0ba7dde84cf46d86ff492958f6999ae65092db7",
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "scope": "Gate applies to formal evaluation only; not a certificate or a claim of improved driving.",
+  "fixed_state_summary": "reports/sac_centred_repair_20261112/fixed_state_summary.json"
+}

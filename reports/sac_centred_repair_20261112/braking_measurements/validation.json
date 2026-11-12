@@ -1,0 +1,87 @@
+{
+  "schema": "brake_envelope_v1",
+  "validated": false,
+  "fit_scenes": [
+    1525,
+    539
+  ],
+  "heldout_scenes": [
+    1714,
+    559
+  ],
+  "dataset": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/sac_centred_repair_20261112/braking_measurements/measurements.json",
+  "dataset_sha256": "7ba25992129333935f2545cdb92b8780917f25585d9f4b5640e5b5815f14d4fa",
+  "predictor_sha256": "528314a4196d50e0d714db22ec09ba71fbd23b1e7d1e261d3aea0df663cbeb4a",
+  "control_dt": 0.1,
+  "deceleration_lower_mps2": 3.7981513190677707,
+  "acceleration_upper_mps2": 2.853567637963721,
+  "domain": {
+    "max_speed_mps": 7.252428936229529,
+    "max_curvature_inv_m": 0.08921997430261301
+  },
+  "vehicle_signatures": [
+    {
+      "length": 4.515,
+      "width": 1.852,
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine": 775.2088623046875,
+      "brake": 105.20887756347656,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "decision_repeat": 5
+    },
+    {
+      "length": 4.515,
+      "width": 1.852,
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine": 773.2562866210938,
+      "brake": 103.25625610351562,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "decision_repeat": 5
+    },
+    {
+      "length": 4.515,
+      "width": 1.852,
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine": 753.374755859375,
+      "brake": 83.37474060058594,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "decision_repeat": 5
+    },
+    {
+      "length": 4.515,
+      "width": 1.852,
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine": 782.8720703125,
+      "brake": 112.87206268310547,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "decision_repeat": 5
+    }
+  ],
+  "validated_prediction_time_s": 0.0,
+  "traffic_validated": false,
+  "good_fit": 8,
+  "good_heldout": 7,
+  "heldout_bound_violations": 3,
+  "stop_speed_threshold_mps": 0.1,
+  "reasons": [
+    "Sparse actuator identification does not validate Center/Legacy long-horizon position envelopes or traffic acceleration bounds.",
+    "Measured fit minimum is empirical, not a proven global deceleration lower bound."
+  ],
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a"
+}

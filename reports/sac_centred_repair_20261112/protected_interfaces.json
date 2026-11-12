@@ -1,0 +1,8 @@
+{
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "checkpoint_unchanged": true,
+  "lane_seam_repair_AST_unchanged": true,
+  "strict_geometry_AST_unchanged": true,
+  "network_lattice_environment_files_unchanged": true,
+  "source_snapshot_sha256": "f14c340260acf671626bd3aaf0ba7dde84cf46d86ff492958f6999ae65092db7"
+}
