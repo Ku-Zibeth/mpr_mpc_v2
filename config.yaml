@@ -84,7 +84,10 @@ mpr_mpc:
     initial_std: [0.04, 0.12]
     min_std: [0.01, 0.03]
     max_std: [0.08, 0.25]
-    temperature: 0.5
+    temperature: 0.5  # inverse temperature beta, not the former divisor tau
+    temperature_definition: inverse  # D1 only; D0 explicitly restores divisor
+    terminal_action: candidate
+    q_aggregation: random_pair
     eval_seed: 0
     noise_rho: [0.8, 0.8]
     # Read only by the existing SAC geometry features; never MPPI scoring.

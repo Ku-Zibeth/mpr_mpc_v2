@@ -17,7 +17,10 @@ MPPI_DIAGNOSTIC_KEYS = (
     'initial_std_steer','initial_std_throttle','final_std_steer','final_std_throttle',
     'max_delta_steer','max_delta_throttle','planning_mode','mppi_sampling_ms','elite_update_ms',
     'world_model_rollout_ms','final_value_evaluation_ms','planning_time_ms',
-) + tuple(f'iteration_{i}_{name}' for i in range(4) for name in ('elite_value_mean','elite_value_max','sampling_diversity'))
+    'weight_entropy','effective_sample_size','prefix_reward_gain','terminal_q_gain','discounted_terminal_gain',
+    'selected_prefix_reward_gain','selected_discounted_terminal_gain','q_ensemble_std','fixed_q_pair',
+    'q_pair_0','q_pair_1','active_action_steps',
+) + tuple(f'iteration_{i}_{name}' for i in range(4) for name in ('elite_value_mean','elite_value_max','sampling_diversity','weight_entropy','effective_sample_size'))
 MPPI_EPISODE_METRICS = {f'mppi_{k}':f'mppi/{k}' for k in (*MPPI_DIAGNOSTIC_KEYS,'total_planning_ms')}
 
 
@@ -50,6 +53,7 @@ class LocalMPPIResult:
     numerical_error: str | None = None
     baseline_consequence: dict = field(default_factory=dict)
     selected_consequence: dict = field(default_factory=dict)
+    evaluation: dict = field(default_factory=dict)
     planning_mode: str = 'baseline'  # output provenance, never a search mode
     baseline_score = property(lambda self:self.baseline_wm_value)
     baseline_value = property(lambda self:self.baseline_wm_value)
@@ -66,7 +70,13 @@ class LocalMPPI:
         self.num_samples = int(cfg.get('num_samples',64))  # Gaussian proposals; baseline is additional
         self.num_elites = int(cfg.get('num_elites',8))
         self.iterations = int(cfg.get('iterations',4))
-        self.temperature = float(cfg.get('temperature',.5))  # divisor tau, official beta=1/tau
+        self.temperature = float(cfg.get('temperature',.5))
+        self.temperature_definition = str(cfg.get('temperature_definition','inverse'))
+        self.terminal_action = str(cfg.get('terminal_action','candidate'))
+        self.q_aggregation = str(cfg.get('q_aggregation','random_pair'))
+        if (self.temperature_definition not in {'inverse','divisor'} or self.terminal_action not in {'candidate','policy_prior'}
+                or self.q_aggregation not in {'random_pair','fixed_pair','ensemble_mean'}):
+            raise ValueError('Unknown MPPI temperature, terminal action or Q definition.')
         self.eval_seed = int(cfg.get('eval_seed',0))
         self.initial_std_vector = _action_vector(cfg.get('initial_std',[.04,.12]),action_dim,'initial_std',device)
         self.min_std_vector = _action_vector(cfg.get('min_std',[.01,.03]),action_dim,'min_std',device)
@@ -76,7 +86,7 @@ class LocalMPPI:
                 or not 0<self.num_elites<=self.num_samples+1 or not math.isfinite(self.temperature) or self.temperature<=0
                 or (self.noise_rho>=1).any() or (self.min_std_vector<=0).any()
                 or (self.min_std_vector>self.initial_std_vector).any() or (self.initial_std_vector>self.max_std_vector).any()):
-            raise ValueError('Invalid Gaussian, horizon, elite budget or divisor temperature.')
+            raise ValueError('Invalid Gaussian, horizon, elite budget or temperature.')
         self.generator = torch.Generator(device=self.device).manual_seed(self.eval_seed)
 
     def reset(self,seed=None):
@@ -93,12 +103,18 @@ class LocalMPPI:
         for t in range(1,self.horizon+1):
             noise[:,t] = self.noise_rho*noise[:,t-1]+scale*innovations[:,t]
         sampled = (mean[None]+std[None]*noise).clamp(-1.,1.)
+        if self.terminal_action == 'policy_prior':
+            sampled[:,-1] = baseline[-1]  # Coordinator padding, never optimised
         return torch.cat((baseline[None],sampled),dim=0)
+
+    def _weights(self,elite):
+        beta = self.temperature if self.temperature_definition == 'inverse' else 1/self.temperature
+        return torch.softmax(beta*(elite-elite.max()),dim=0)
 
     def _elite_weights(self,values):
         indices = torch.topk(values,self.num_elites,dim=0).indices
         elite = values[indices]
-        return indices,elite,torch.softmax((elite-elite.max())/self.temperature,dim=0)
+        return indices,elite,self._weights(elite)
 
     def _update_distribution(self,actions,values):
         indices,elite,weights = self._elite_weights(values)
@@ -116,18 +132,28 @@ class LocalMPPI:
             raise ValueError('SAC baseline must be finite, in [-1,1], and [H+1,action_dim].')
         mean = self.initial_mean(baseline)
         std = self.initial_std_vector.expand_as(mean).clone()
+        active = self.horizon if self.terminal_action == 'policy_prior' else self.horizon+1
+        if self.terminal_action == 'policy_prior':
+            std[-1] = 0.
         initial_mean,initial_std = mean.clone(),std.clone()
+        q_pair = self.evaluator.new_mppi_q_pair() if self.q_aggregation == 'fixed_pair' else None
+        options = {}
+        if self.terminal_action != 'candidate' or self.q_aggregation != 'random_pair':
+            options = dict(terminal_action=self.terminal_action,q_aggregation=self.q_aggregation,q_indices=q_pair)
+        definition = dict(temperature_definition=self.temperature_definition,temperature=self.temperature,
+                          terminal_action=self.terminal_action,q_aggregation=self.q_aggregation,q_indices=q_pair)
         phase,timing,history = PhaseTimings(self.device),{},[]
         evaluated = 0
         error = None
         nan = baseline.new_tensor(float('nan'))
         baseline_value = optimized_value = selected_value = nan
-        base = selected = dict(value=nan,reward=nan,terminal_q=nan,first_reward=nan,cost=nan,validated=False)
+        base = selected = dict(value=nan,reward=nan,terminal_q=nan,first_reward=nan,cost=nan,validated=False,q_std=nan)
+        optimized = base
         elite = baseline.new_empty(0)
 
         def evaluate(actions):
             nonlocal evaluated
-            result = self.evaluator.evaluate_mppi_candidates(z_t,actions,task=task,compute_cost=False)
+            result = self.evaluator.evaluate_mppi_candidates(z_t,actions,task=task,compute_cost=False,**options)
             evaluated += len(actions)
             for key,value in getattr(result,'timings',{}).items():
                 timing[key] = timing.get(key,0.)+value
@@ -142,7 +168,8 @@ class LocalMPPI:
                 return nan if value is None else value[index]
             rewards = getattr(result,'reward_sequence',None)
             return dict(value=values[index],reward=item('discounted_reward'),terminal_q=item('terminal_q'),
-                        first_reward=nan if rewards is None else rewards[index,0],cost=nan,validated=False)
+                        first_reward=nan if rewards is None else rewards[index,0],cost=nan,validated=False,
+                        q_std=item('terminal_q_std'))
 
         for iteration in range(self.iterations):
             with phase.measure('mppi_sampling'):
@@ -154,19 +181,25 @@ class LocalMPPI:
                 break
             with phase.measure('elite_update'):
                 mean,std,elite = self._update_distribution(candidates,values)
+            if self.terminal_action == 'policy_prior':
+                mean[-1],std[-1] = baseline[-1],0.
             if not bool(torch.isfinite(mean).all() and torch.isfinite(std).all()):
                 error = 'non_finite_distribution'
                 break
-            diversity = candidates[1:].var(0,unbiased=False).mean(0).sqrt()
+            diversity = candidates[1:,:active].var(0,unbiased=False).mean(0).sqrt()
+            weights = self._weights(elite)
+            entropy = -(weights*weights.clamp_min(torch.finfo(weights.dtype).tiny).log()).sum()
+            ess = weights.square().sum().reciprocal()
             history.append(dict(iteration=iteration,mean=mean.clone(),std=std.clone(),elite=elite.clone(),
-                                diversity=diversity,candidate_count=len(candidates),elite_count=len(elite)))
+                                diversity=diversity,candidate_count=len(candidates),elite_count=len(elite),
+                                entropy=entropy,ess=ess,best_actions=candidates[values.argmax()].clone()))
         mean = mean.clamp(-1.,1.)
         sequence = baseline
         if error is None:
             with phase.measure('final_value_evaluation'):
                 result,values = evaluate(torch.stack((baseline,mean)))
             baseline_value,optimized_value = values[0],values[1]
-            base = row(result,values,0)
+            base,optimized = row(result,values,0),row(result,values,1)
             if not bool(torch.isfinite(values).all()):
                 error = 'non_finite_final_return'
             elif bool(values[1]>values[0]):
@@ -183,30 +216,43 @@ class LocalMPPI:
             selected_predicted_return=float(selected_value),predicted_return_gain=float(optimized_value-baseline_value),
             baseline_score=float(baseline_value),selected_score=float(selected_value),final_score=float(selected_value),
             score_gain=float(selected_value-baseline_value),predicted_reward=float(selected['reward']),
+            prefix_reward_gain=float(optimized['reward']-base['reward']),
+            terminal_q_gain=float(optimized['terminal_q']-base['terminal_q']),
+            discounted_terminal_gain=float((optimized_value-optimized['reward'])-(baseline_value-base['reward'])),
+            selected_prefix_reward_gain=float(selected['reward']-base['reward']),
+            selected_discounted_terminal_gain=float((selected_value-selected['reward'])-(baseline_value-base['reward'])),
+            q_ensemble_std=float(selected['q_std']),fixed_q_pair=float(q_pair is not None),
+            q_pair_0=float(q_pair[0]) if q_pair else float('nan'),q_pair_1=float(q_pair[1]) if q_pair else float('nan'),
+            active_action_steps=float(active),
             predicted_first_reward=float(selected['first_reward']),terminal_q=float(selected['terminal_q']),
             baseline_selected=float(baseline_selected),invalid_prediction=float(error is not None),iterations_completed=float(len(history)),
             wm_evaluated_candidates=float(evaluated),action_correction_norm=float(delta.norm()),
             action_correction_steering=float(delta[0]),action_correction_throttle=float(delta[-1]),
             first_action_delta_norm=float(delta.norm()),first_steer_delta=float(delta[0]),first_throttle_delta=float(delta[-1]),
             sac_to_selected_delta=float(delta.norm()),max_delta_steer=float(maximum[0]),max_delta_throttle=float(maximum[-1]),
-            initial_std_steer=float(initial_std[:,0].mean()),initial_std_throttle=float(initial_std[:,-1].mean()),
-            final_std_steer=float(std[:,0].mean()),final_std_throttle=float(std[:,-1].mean()),planning_mode=float(not baseline_selected))
+            initial_std_steer=float(initial_std[:active,0].mean()),initial_std_throttle=float(initial_std[:active,-1].mean()),
+            final_std_steer=float(std[:active,0].mean()),final_std_throttle=float(std[:active,-1].mean()),planning_mode=float(not baseline_selected))
         records = []
         for h in history:
             diversity = h['diversity'].cpu()
             i = h['iteration']
             metrics.update({f'iteration_{i}_elite_value_mean':float(h['elite'].mean()),
                             f'iteration_{i}_elite_value_max':float(h['elite'].max()),
-                            f'iteration_{i}_sampling_diversity':float(diversity.square().mean().sqrt())})
+                            f'iteration_{i}_sampling_diversity':float(diversity.square().mean().sqrt()),
+                            f'iteration_{i}_weight_entropy':float(h['entropy']),
+                            f'iteration_{i}_effective_sample_size':float(h['ess'])})
             records.append(dict(iteration=i,mean=h['mean'].cpu().tolist(),std=h['std'].cpu().tolist(),
                 elite_value_mean=float(h['elite'].mean()),elite_value_max=float(h['elite'].max()),
-                sampling_diversity=diversity.tolist(),candidate_count=h['candidate_count'],elite_count=h['elite_count']))
+                sampling_diversity=diversity.tolist(),candidate_count=h['candidate_count'],elite_count=h['elite_count'],
+                weight_entropy=float(h['entropy']),effective_sample_size=float(h['ess']),best_elite_actions=h['best_actions'].cpu().tolist()))
         avg = torch.stack([h['diversity'] for h in history]).mean(0) if history else baseline.new_zeros(self.action_dim)
-        metrics.update(sampling_diversity=float(avg.square().mean().sqrt()),sampling_diversity_steering=float(avg[0]),sampling_diversity_throttle=float(avg[-1]))
+        metrics.update(weight_entropy=float(torch.stack([h['entropy'] for h in history]).mean()) if history else float('nan'),
+                       effective_sample_size=float(torch.stack([h['ess'] for h in history]).mean()) if history else float('nan'),
+                       sampling_diversity=float(avg.square().mean().sqrt()),sampling_diversity_steering=float(avg[0]),sampling_diversity_throttle=float(avg[-1]))
         return LocalMPPIResult(action=sequence[0],selected_sequence=sequence,initial_mean=initial_mean,final_mean=mean,
             initial_std=initial_std,final_std=std,baseline_wm_value=baseline_value,optimized_wm_value=optimized_value,
             selected_wm_value=selected_value,wm_value_gain=selected_value-baseline_value,elite_values=elite,
-            baseline_selected=baseline_selected,max_action_delta=maximum,metrics=metrics,iterations=records,numerical_error=error,
+            baseline_selected=baseline_selected,max_action_delta=maximum,metrics=metrics,iterations=records,numerical_error=error,evaluation=definition,
             baseline_consequence=base,selected_consequence=selected,planning_mode='baseline' if baseline_selected else 'normal')
 
 

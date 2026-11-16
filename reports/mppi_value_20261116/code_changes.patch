@@ -1,0 +1,1050 @@
+diff --git a/config.yaml b/config.yaml
+index c980d33..efa4dcb 100644
+--- a/config.yaml
++++ b/config.yaml
+@@ -84,7 +84,10 @@ mpr_mpc:
+     initial_std: [0.04, 0.12]
+     min_std: [0.01, 0.03]
+     max_std: [0.08, 0.25]
+-    temperature: 0.5
++    temperature: 0.5  # inverse temperature beta, not the former divisor tau
++    temperature_definition: inverse  # D1 only; D0 explicitly restores divisor
++    terminal_action: candidate
++    q_aggregation: random_pair
+     eval_seed: 0
+     noise_rho: [0.8, 0.8]
+     # Read only by the existing SAC geometry features; never MPPI scoring.
+diff --git a/evaluation_diagnostics.py b/evaluation_diagnostics.py
+index a647779..a6816e4 100644
+--- a/evaluation_diagnostics.py
++++ b/evaluation_diagnostics.py
+@@ -105,7 +105,8 @@ class StepDiagnosticsLogger:
+                 path = Path(self.stream.name).with_suffix(".search.jsonl.gz")
+                 if self.search_stream is None:
+                     self.search_stream = gzip.open(path, "at", encoding="utf-8")
+-                self.search_stream.write(json.dumps(dict(scenario=int(scenario), episode_step=int(step), iterations=iterations), allow_nan=False)+"\n")
++                self.search_stream.write(json.dumps(dict(scenario=int(scenario), episode_step=int(step),
++                    value_definition=result.debug.get("mppi_value_definition"), iterations=iterations), allow_nan=False)+"\n")
+                 self.search_stream.flush()
+                 row["search_iterations_file"] = path.name
+             candidates = getattr(result, "debug", {}).get("mppi_candidates", [])
+diff --git a/planning/coordinator.py b/planning/coordinator.py
+index 99aadc2..b603b44 100644
+--- a/planning/coordinator.py
++++ b/planning/coordinator.py
+@@ -551,7 +551,7 @@ class MPRMPCPlanner:
+                 "final_mppi_mean": final_mean.detach().cpu(),
+                 "initial_mppi_std": initial_std.detach().cpu(),
+                 "final_mppi_std": final_std.detach().cpu(),
+-                **({"mppi_iterations": mppi.iterations, "mppi_numerical_error": mppi.numerical_error} if stage.use_mppi else {}),
++                **({"mppi_iterations": mppi.iterations, "mppi_numerical_error": mppi.numerical_error, "mppi_value_definition": mppi.evaluation} if stage.use_mppi else {}),
+                 "wm_discount": float(self.agent.discount),
+             },
+             planning_mode=mppi.planning_mode if stage.use_mppi else "baseline",
+diff --git a/planning/evaluator.py b/planning/evaluator.py
+index 0cf8760..cc56b56 100644
+--- a/planning/evaluator.py
++++ b/planning/evaluator.py
+@@ -35,9 +35,10 @@ class TrajectoryWorldModelEvaluator:
+         return actions.new_tensor(float(self.agent.discount))
+ 
+     @torch.no_grad()
+-    def evaluate(self, z_t, actions, *, terminal_action_mode, task=None, compute_cost=None, q_aggregation="ensemble_mean"):
+-        if terminal_action_mode not in {"policy", "trajectory"}:
+-            raise ValueError("terminal_action_mode must be 'policy' or 'trajectory'.")
++    def evaluate(self, z_t, actions, *, terminal_action_mode, task=None, compute_cost=None,
++                 q_aggregation="ensemble_mean", q_indices=None, capture_ensemble=False):
++        if terminal_action_mode not in {"policy", "policy_mean", "trajectory"}:
++            raise ValueError("Unknown terminal action definition.")
+         if actions.ndim != 3 or actions.shape[-1] != int(self.agent.cfg.action_dim):
+             raise ValueError("Actions must have shape [B,S,action_dim].")
+         batch, steps, _ = actions.shape
+@@ -81,18 +82,41 @@ class TrajectoryWorldModelEvaluator:
+                 discount *= discount_step
+                 if bool(self.agent.cfg.episodic) and getattr(model, "_termination", None) is not None:
+                     terminated = (terminated + (model.termination(z, task) > .5)).clamp_max(1)
+-            terminal_action = actions[:, self.horizon] if terminal_action_mode == "trajectory" else model.pi(z, task)[0]
++            if terminal_action_mode == "trajectory":
++                terminal_action = actions[:, self.horizon]
++            elif terminal_action_mode == "policy_mean":
++                # pi() exposes its squashed mean. Restore its unused sample's
++                # RNG draw, so D2 does not inadvertently change random Q pairs.
++                device = torch.device(self.agent.device)
++                devices = [device.index if device.index is not None else torch.cuda.current_device()] if device.type == "cuda" else []
++                with torch.random.fork_rng(devices=devices):
++                    _, info = model.pi(z, task)
++                terminal_action = info["mean"]
++            else:
++                terminal_action = model.pi(z, task)[0]
++            qs = None
+             if q_aggregation == "tdmpc2_avg":
+                 # Official Q(avg) already inverse-transforms its random pair.
+                 # ONE call shares the pair across every candidate in this batch.
+                 terminal_q = model.Q(z, terminal_action, task, return_type="avg")
+                 q_std = torch.full_like(terminal_q, float("nan"))
+-            elif q_aggregation == "ensemble_mean":
++            elif q_aggregation in {"ensemble_mean", "fixed_pair"}:
+                 # Frozen SAC feature semantics MUST retain the full-Q reducer.
+                 qs = td_math.two_hot_inv(model.Q(z, terminal_action, task, return_type="all"), self.agent.cfg)
+-                terminal_q, q_std = qs.mean(0), qs.std(0, unbiased=False)
++                if q_aggregation == "fixed_pair":
++                    if (q_indices is None or len(q_indices) != 2 or len(set(q_indices)) != 2
++                            or min(q_indices) < 0 or max(q_indices) >= len(qs)):
++                        raise ValueError("Fixed Q pair requires two distinct valid member indices.")
++                    terminal_q = qs[list(q_indices)].mean(0)
++                else:
++                    terminal_q = qs.mean(0)
++                q_std = qs.std(0, unbiased=False)
+             else:
+                 raise ValueError("Unknown terminal Q aggregation.")
++            if capture_ensemble and qs is None:
++                # Offline diagnostics only; never an extra online score or gate.
++                qs = td_math.two_hot_inv(model.Q(z, terminal_action, task, return_type="all"), self.agent.cfg)
++                q_std = qs.std(0, unbiased=False)
+             discounted_reward = total.clone()
+             total += discount * (1-terminated) * terminal_q
+             prediction = None
+@@ -132,6 +156,9 @@ class TrajectoryWorldModelEvaluator:
+             cost_validated_mask=torch.full((batch,), validated, device=actions.device, dtype=torch.bool),
+             cost_unavailable_reason="disabled" if not compute_cost else "available" if validated else "unvalidated",
+             discounted_reward=discounted_reward.squeeze(-1), timings=timing_values,
++            terminal_actions=terminal_action,
++            terminal_discount=(discount*(1-terminated)).squeeze(-1),
++            q_member_values=qs.squeeze(-1) if qs is not None else None,
+         )
+ 
+     def evaluate_trajectory_consequence(self, z_t, actions, task=None, *, compute_cost=None):
+@@ -140,9 +167,28 @@ class TrajectoryWorldModelEvaluator:
+     def evaluate_policy_terminal(self, z_t, actions, task=None):
+         return self.evaluate(z_t, actions, terminal_action_mode="policy", task=task)
+ 
+-    def evaluate_mppi_candidates(self, z_t, actions, task=None, *, compute_cost=None):
+-        return self.evaluate(z_t, actions, terminal_action_mode="trajectory", task=task,
+-                             compute_cost=compute_cost, q_aggregation="tdmpc2_avg")
++    def new_mppi_q_pair(self):
++        """Exactly one random-two draw for a whole plan, not for each batch."""
++        count = int(self.agent.cfg.num_q)
++        if count < 2:
++            raise ValueError("Need at least two Q members.")
++        return tuple(torch.randperm(count, device=self.agent.device)[:2].cpu().tolist())
++
++    def evaluate_mppi_candidates(self, z_t, actions, task=None, *, compute_cost=None,
++                                 terminal_action="candidate", q_aggregation="random_pair",
++                                 q_indices=None, capture_ensemble=False):
++        if actions.ndim != 3 or actions.shape[1] != self.horizon+1:
++            raise ValueError("MPPI keeps the Coordinator H+1 interface.")
++        if terminal_action not in {"candidate", "policy_prior"}:
++            raise ValueError("Unknown MPPI terminal action.")
++        reducers = {"random_pair": "tdmpc2_avg", "fixed_pair": "fixed_pair", "ensemble_mean": "ensemble_mean"}
++        if q_aggregation not in reducers:
++            raise ValueError("Unknown MPPI Q reducer.")
++        mode = "trajectory" if terminal_action == "candidate" else "policy_mean"
++        controls = actions if mode == "trajectory" else actions[:, :self.horizon]
++        return self.evaluate(z_t, controls, terminal_action_mode=mode, task=task,
++            compute_cost=compute_cost, q_aggregation=reducers[q_aggregation],
++            q_indices=q_indices, capture_ensemble=capture_ensemble)
+ 
+ 
+ __all__ = ["TrajectoryWorldModelEvaluator"]
+diff --git a/planning/local_mppi.py b/planning/local_mppi.py
+index ec3ba80..dfb9dbd 100644
+--- a/planning/local_mppi.py
++++ b/planning/local_mppi.py
+@@ -17,7 +17,10 @@ MPPI_DIAGNOSTIC_KEYS = (
+     'initial_std_steer','initial_std_throttle','final_std_steer','final_std_throttle',
+     'max_delta_steer','max_delta_throttle','planning_mode','mppi_sampling_ms','elite_update_ms',
+     'world_model_rollout_ms','final_value_evaluation_ms','planning_time_ms',
+-) + tuple(f'iteration_{i}_{name}' for i in range(4) for name in ('elite_value_mean','elite_value_max','sampling_diversity'))
++    'weight_entropy','effective_sample_size','prefix_reward_gain','terminal_q_gain','discounted_terminal_gain',
++    'selected_prefix_reward_gain','selected_discounted_terminal_gain','q_ensemble_std','fixed_q_pair',
++    'q_pair_0','q_pair_1','active_action_steps',
++) + tuple(f'iteration_{i}_{name}' for i in range(4) for name in ('elite_value_mean','elite_value_max','sampling_diversity','weight_entropy','effective_sample_size'))
+ MPPI_EPISODE_METRICS = {f'mppi_{k}':f'mppi/{k}' for k in (*MPPI_DIAGNOSTIC_KEYS,'total_planning_ms')}
+ 
+ 
+@@ -50,6 +53,7 @@ class LocalMPPIResult:
+     numerical_error: str | None = None
+     baseline_consequence: dict = field(default_factory=dict)
+     selected_consequence: dict = field(default_factory=dict)
++    evaluation: dict = field(default_factory=dict)
+     planning_mode: str = 'baseline'  # output provenance, never a search mode
+     baseline_score = property(lambda self:self.baseline_wm_value)
+     baseline_value = property(lambda self:self.baseline_wm_value)
+@@ -66,7 +70,13 @@ class LocalMPPI:
+         self.num_samples = int(cfg.get('num_samples',64))  # Gaussian proposals; baseline is additional
+         self.num_elites = int(cfg.get('num_elites',8))
+         self.iterations = int(cfg.get('iterations',4))
+-        self.temperature = float(cfg.get('temperature',.5))  # divisor tau, official beta=1/tau
++        self.temperature = float(cfg.get('temperature',.5))
++        self.temperature_definition = str(cfg.get('temperature_definition','inverse'))
++        self.terminal_action = str(cfg.get('terminal_action','candidate'))
++        self.q_aggregation = str(cfg.get('q_aggregation','random_pair'))
++        if (self.temperature_definition not in {'inverse','divisor'} or self.terminal_action not in {'candidate','policy_prior'}
++                or self.q_aggregation not in {'random_pair','fixed_pair','ensemble_mean'}):
++            raise ValueError('Unknown MPPI temperature, terminal action or Q definition.')
+         self.eval_seed = int(cfg.get('eval_seed',0))
+         self.initial_std_vector = _action_vector(cfg.get('initial_std',[.04,.12]),action_dim,'initial_std',device)
+         self.min_std_vector = _action_vector(cfg.get('min_std',[.01,.03]),action_dim,'min_std',device)
+@@ -76,7 +86,7 @@ class LocalMPPI:
+                 or not 0<self.num_elites<=self.num_samples+1 or not math.isfinite(self.temperature) or self.temperature<=0
+                 or (self.noise_rho>=1).any() or (self.min_std_vector<=0).any()
+                 or (self.min_std_vector>self.initial_std_vector).any() or (self.initial_std_vector>self.max_std_vector).any()):
+-            raise ValueError('Invalid Gaussian, horizon, elite budget or divisor temperature.')
++            raise ValueError('Invalid Gaussian, horizon, elite budget or temperature.')
+         self.generator = torch.Generator(device=self.device).manual_seed(self.eval_seed)
+ 
+     def reset(self,seed=None):
+@@ -93,12 +103,18 @@ class LocalMPPI:
+         for t in range(1,self.horizon+1):
+             noise[:,t] = self.noise_rho*noise[:,t-1]+scale*innovations[:,t]
+         sampled = (mean[None]+std[None]*noise).clamp(-1.,1.)
++        if self.terminal_action == 'policy_prior':
++            sampled[:,-1] = baseline[-1]  # Coordinator padding, never optimised
+         return torch.cat((baseline[None],sampled),dim=0)
+ 
++    def _weights(self,elite):
++        beta = self.temperature if self.temperature_definition == 'inverse' else 1/self.temperature
++        return torch.softmax(beta*(elite-elite.max()),dim=0)
++
+     def _elite_weights(self,values):
+         indices = torch.topk(values,self.num_elites,dim=0).indices
+         elite = values[indices]
+-        return indices,elite,torch.softmax((elite-elite.max())/self.temperature,dim=0)
++        return indices,elite,self._weights(elite)
+ 
+     def _update_distribution(self,actions,values):
+         indices,elite,weights = self._elite_weights(values)
+@@ -116,18 +132,28 @@ class LocalMPPI:
+             raise ValueError('SAC baseline must be finite, in [-1,1], and [H+1,action_dim].')
+         mean = self.initial_mean(baseline)
+         std = self.initial_std_vector.expand_as(mean).clone()
++        active = self.horizon if self.terminal_action == 'policy_prior' else self.horizon+1
++        if self.terminal_action == 'policy_prior':
++            std[-1] = 0.
+         initial_mean,initial_std = mean.clone(),std.clone()
++        q_pair = self.evaluator.new_mppi_q_pair() if self.q_aggregation == 'fixed_pair' else None
++        options = {}
++        if self.terminal_action != 'candidate' or self.q_aggregation != 'random_pair':
++            options = dict(terminal_action=self.terminal_action,q_aggregation=self.q_aggregation,q_indices=q_pair)
++        definition = dict(temperature_definition=self.temperature_definition,temperature=self.temperature,
++                          terminal_action=self.terminal_action,q_aggregation=self.q_aggregation,q_indices=q_pair)
+         phase,timing,history = PhaseTimings(self.device),{},[]
+         evaluated = 0
+         error = None
+         nan = baseline.new_tensor(float('nan'))
+         baseline_value = optimized_value = selected_value = nan
+-        base = selected = dict(value=nan,reward=nan,terminal_q=nan,first_reward=nan,cost=nan,validated=False)
++        base = selected = dict(value=nan,reward=nan,terminal_q=nan,first_reward=nan,cost=nan,validated=False,q_std=nan)
++        optimized = base
+         elite = baseline.new_empty(0)
+ 
+         def evaluate(actions):
+             nonlocal evaluated
+-            result = self.evaluator.evaluate_mppi_candidates(z_t,actions,task=task,compute_cost=False)
++            result = self.evaluator.evaluate_mppi_candidates(z_t,actions,task=task,compute_cost=False,**options)
+             evaluated += len(actions)
+             for key,value in getattr(result,'timings',{}).items():
+                 timing[key] = timing.get(key,0.)+value
+@@ -142,7 +168,8 @@ class LocalMPPI:
+                 return nan if value is None else value[index]
+             rewards = getattr(result,'reward_sequence',None)
+             return dict(value=values[index],reward=item('discounted_reward'),terminal_q=item('terminal_q'),
+-                        first_reward=nan if rewards is None else rewards[index,0],cost=nan,validated=False)
++                        first_reward=nan if rewards is None else rewards[index,0],cost=nan,validated=False,
++                        q_std=item('terminal_q_std'))
+ 
+         for iteration in range(self.iterations):
+             with phase.measure('mppi_sampling'):
+@@ -154,19 +181,25 @@ class LocalMPPI:
+                 break
+             with phase.measure('elite_update'):
+                 mean,std,elite = self._update_distribution(candidates,values)
++            if self.terminal_action == 'policy_prior':
++                mean[-1],std[-1] = baseline[-1],0.
+             if not bool(torch.isfinite(mean).all() and torch.isfinite(std).all()):
+                 error = 'non_finite_distribution'
+                 break
+-            diversity = candidates[1:].var(0,unbiased=False).mean(0).sqrt()
++            diversity = candidates[1:,:active].var(0,unbiased=False).mean(0).sqrt()
++            weights = self._weights(elite)
++            entropy = -(weights*weights.clamp_min(torch.finfo(weights.dtype).tiny).log()).sum()
++            ess = weights.square().sum().reciprocal()
+             history.append(dict(iteration=iteration,mean=mean.clone(),std=std.clone(),elite=elite.clone(),
+-                                diversity=diversity,candidate_count=len(candidates),elite_count=len(elite)))
++                                diversity=diversity,candidate_count=len(candidates),elite_count=len(elite),
++                                entropy=entropy,ess=ess,best_actions=candidates[values.argmax()].clone()))
+         mean = mean.clamp(-1.,1.)
+         sequence = baseline
+         if error is None:
+             with phase.measure('final_value_evaluation'):
+                 result,values = evaluate(torch.stack((baseline,mean)))
+             baseline_value,optimized_value = values[0],values[1]
+-            base = row(result,values,0)
++            base,optimized = row(result,values,0),row(result,values,1)
+             if not bool(torch.isfinite(values).all()):
+                 error = 'non_finite_final_return'
+             elif bool(values[1]>values[0]):
+@@ -183,30 +216,43 @@ class LocalMPPI:
+             selected_predicted_return=float(selected_value),predicted_return_gain=float(optimized_value-baseline_value),
+             baseline_score=float(baseline_value),selected_score=float(selected_value),final_score=float(selected_value),
+             score_gain=float(selected_value-baseline_value),predicted_reward=float(selected['reward']),
++            prefix_reward_gain=float(optimized['reward']-base['reward']),
++            terminal_q_gain=float(optimized['terminal_q']-base['terminal_q']),
++            discounted_terminal_gain=float((optimized_value-optimized['reward'])-(baseline_value-base['reward'])),
++            selected_prefix_reward_gain=float(selected['reward']-base['reward']),
++            selected_discounted_terminal_gain=float((selected_value-selected['reward'])-(baseline_value-base['reward'])),
++            q_ensemble_std=float(selected['q_std']),fixed_q_pair=float(q_pair is not None),
++            q_pair_0=float(q_pair[0]) if q_pair else float('nan'),q_pair_1=float(q_pair[1]) if q_pair else float('nan'),
++            active_action_steps=float(active),
+             predicted_first_reward=float(selected['first_reward']),terminal_q=float(selected['terminal_q']),
+             baseline_selected=float(baseline_selected),invalid_prediction=float(error is not None),iterations_completed=float(len(history)),
+             wm_evaluated_candidates=float(evaluated),action_correction_norm=float(delta.norm()),
+             action_correction_steering=float(delta[0]),action_correction_throttle=float(delta[-1]),
+             first_action_delta_norm=float(delta.norm()),first_steer_delta=float(delta[0]),first_throttle_delta=float(delta[-1]),
+             sac_to_selected_delta=float(delta.norm()),max_delta_steer=float(maximum[0]),max_delta_throttle=float(maximum[-1]),
+-            initial_std_steer=float(initial_std[:,0].mean()),initial_std_throttle=float(initial_std[:,-1].mean()),
+-            final_std_steer=float(std[:,0].mean()),final_std_throttle=float(std[:,-1].mean()),planning_mode=float(not baseline_selected))
++            initial_std_steer=float(initial_std[:active,0].mean()),initial_std_throttle=float(initial_std[:active,-1].mean()),
++            final_std_steer=float(std[:active,0].mean()),final_std_throttle=float(std[:active,-1].mean()),planning_mode=float(not baseline_selected))
+         records = []
+         for h in history:
+             diversity = h['diversity'].cpu()
+             i = h['iteration']
+             metrics.update({f'iteration_{i}_elite_value_mean':float(h['elite'].mean()),
+                             f'iteration_{i}_elite_value_max':float(h['elite'].max()),
+-                            f'iteration_{i}_sampling_diversity':float(diversity.square().mean().sqrt())})
++                            f'iteration_{i}_sampling_diversity':float(diversity.square().mean().sqrt()),
++                            f'iteration_{i}_weight_entropy':float(h['entropy']),
++                            f'iteration_{i}_effective_sample_size':float(h['ess'])})
+             records.append(dict(iteration=i,mean=h['mean'].cpu().tolist(),std=h['std'].cpu().tolist(),
+                 elite_value_mean=float(h['elite'].mean()),elite_value_max=float(h['elite'].max()),
+-                sampling_diversity=diversity.tolist(),candidate_count=h['candidate_count'],elite_count=h['elite_count']))
++                sampling_diversity=diversity.tolist(),candidate_count=h['candidate_count'],elite_count=h['elite_count'],
++                weight_entropy=float(h['entropy']),effective_sample_size=float(h['ess']),best_elite_actions=h['best_actions'].cpu().tolist()))
+         avg = torch.stack([h['diversity'] for h in history]).mean(0) if history else baseline.new_zeros(self.action_dim)
+-        metrics.update(sampling_diversity=float(avg.square().mean().sqrt()),sampling_diversity_steering=float(avg[0]),sampling_diversity_throttle=float(avg[-1]))
++        metrics.update(weight_entropy=float(torch.stack([h['entropy'] for h in history]).mean()) if history else float('nan'),
++                       effective_sample_size=float(torch.stack([h['ess'] for h in history]).mean()) if history else float('nan'),
++                       sampling_diversity=float(avg.square().mean().sqrt()),sampling_diversity_steering=float(avg[0]),sampling_diversity_throttle=float(avg[-1]))
+         return LocalMPPIResult(action=sequence[0],selected_sequence=sequence,initial_mean=initial_mean,final_mean=mean,
+             initial_std=initial_std,final_std=std,baseline_wm_value=baseline_value,optimized_wm_value=optimized_value,
+             selected_wm_value=selected_value,wm_value_gain=selected_value-baseline_value,elite_values=elite,
+-            baseline_selected=baseline_selected,max_action_delta=maximum,metrics=metrics,iterations=records,numerical_error=error,
++            baseline_selected=baseline_selected,max_action_delta=maximum,metrics=metrics,iterations=records,numerical_error=error,evaluation=definition,
+             baseline_consequence=base,selected_consequence=selected,planning_mode='baseline' if baseline_selected else 'normal')
+ 
+ 
+diff --git a/planning/native_config.py b/planning/native_config.py
+index aeb2bff..fe51ae1 100644
+--- a/planning/native_config.py
++++ b/planning/native_config.py
+@@ -5,6 +5,7 @@ NATIVE_MPPI_KEYS = frozenset({
+     "temperature", "eval_seed", "kinematic_vehicle_width", "kinematic_wheelbase",
+     "kinematic_max_steering_angle",
+     "noise_rho",
++    "temperature_definition", "terminal_action", "q_aggregation",
+ })
+ 
+ 
+diff --git a/planning/types.py b/planning/types.py
+index 8d60fe7..9c8116c 100644
+--- a/planning/types.py
++++ b/planning/types.py
+@@ -41,6 +41,9 @@ class TrajectoryConsequence:
+     risk_summary: dict[str, Any] = field(default_factory=dict)
+     discounted_reward: torch.Tensor | None = None
+     timings: dict[str, float] = field(default_factory=dict)
++    terminal_actions: torch.Tensor | None = None
++    terminal_discount: torch.Tensor | None = None
++    q_member_values: torch.Tensor | None = None
+ 
+     @property
+     def reward_sum(self) -> torch.Tensor:
+diff --git a/tests/test_simplified_tdmpc2_mppi.py b/tests/test_simplified_tdmpc2_mppi.py
+index de0573c..b2b2ac3 100644
+--- a/tests/test_simplified_tdmpc2_mppi.py
++++ b/tests/test_simplified_tdmpc2_mppi.py
+@@ -64,12 +64,13 @@ def test_every_round_has_64_gaussians_plus_one_baseline_and_eight_elites():
+     assert r.metrics['wm_evaluated_candidates']==262 and r.metrics['iterations_completed']==4
+ 
+ 
+-def test_top_k_softmax_and_weighted_distribution_follow_divisor_temperature():
+-    p=planner(num_samples=4,num_elites=2)
++@pytest.mark.parametrize("definition, exponent", [("divisor", -2.), ("inverse", -.5)])
++def test_top_k_softmax_and_weighted_distribution_follow_temperature(definition, exponent):
++    p=planner(num_samples=4,num_elites=2,temperature_definition=definition)
+     actions=torch.tensor([[.02,.1],[-.02,.1],[.06,.2],[-.08,-.1]])[:,None].expand(-1,4,-1).clone()
+     values=torch.tensor([3.,1.,2.,-1.]);indices,elite,w=p._elite_weights(values)
+     assert indices.tolist()==[0,2] and elite.tolist()==[3.,2.] and w.sum()==pytest.approx(1.)
+-    weights=np.array([1.,math.exp(-2.)]);weights/=weights.sum()
++    weights=np.array([1.,math.exp(exponent)]);weights/=weights.sum()
+     chosen=np.array([[.02,.1],[.06,.2]]);expected=(weights[:,None]*chosen).sum(0)
+     variance=(weights[:,None]*(chosen-expected)**2).sum(0)
+     mean,std,_=p._update_distribution(actions,values)
+diff --git a/planning/mppi_ablation.py b/planning/mppi_ablation.py
+new file mode 100644
+index 0000000..0e4eec4
+--- /dev/null
++++ b/planning/mppi_ablation.py
+@@ -0,0 +1,18 @@
++"""One-factor value-definition ablations; no new planning modes or scores."""
++from copy import deepcopy
++
++VALUE_ABLATIONS = {
++    "D0": dict(temperature_definition="divisor", terminal_action="candidate", q_aggregation="random_pair"),
++    "D1": dict(temperature_definition="inverse", terminal_action="candidate", q_aggregation="random_pair"),
++    "D2": dict(temperature_definition="divisor", terminal_action="policy_prior", q_aggregation="random_pair"),
++    "D3": dict(temperature_definition="divisor", terminal_action="candidate", q_aggregation="fixed_pair"),
++    "D4": dict(temperature_definition="divisor", terminal_action="candidate", q_aggregation="ensemble_mean"),
++}
++
++
++def value_ablation_config(config, name):
++    if name not in VALUE_ABLATIONS:
++        raise ValueError(f"Unknown ablation {name}; choose {list(VALUE_ABLATIONS)}")
++    result = deepcopy(dict(config))
++    result.update(VALUE_ABLATIONS[name])
++    return result
+diff --git a/tests/test_mppi_value_evaluation.py b/tests/test_mppi_value_evaluation.py
+new file mode 100644
+index 0000000..c792341
+--- /dev/null
++++ b/tests/test_mppi_value_evaluation.py
+@@ -0,0 +1,112 @@
++"""Value-definition regression tests, not another planner or safety test suite."""
++from types import SimpleNamespace
++from unittest.mock import patch
++import math
++import torch
++import pytest
++from mpr_mpc.planning.evaluator import TrajectoryWorldModelEvaluator
++from mpr_mpc.planning.local_mppi import LocalMPPI
++from mpr_mpc.planning.mppi_ablation import VALUE_ABLATIONS, value_ablation_config
++from tests.test_native_mppi_cost import RolloutModel
++
++
++class Model(RolloutModel):
++    def __init__(self):
++        super().__init__(); self.next_calls=0;self.reward_calls=0;self.q_modes=[];self.pi_calls=0
++    def next(self,z,a,task):self.next_calls+=1;return z+torch.cat((a, a[:,:1]),-1)
++    def reward(self,z,a,task):self.reward_calls+=1;return torch.log1p(torch.ones_like(a[:,:1])*2)
++    def pi(self,z,task):
++        self.pi_calls+=1
++        mean=(z[:,:2]*.1).tanh()
++        return (mean+torch.randn_like(mean)*.1).clamp(-1,1),{'mean':mean}
++    def Q(self,z,a,task,return_type='all'):
++        self.q_modes.append(return_type)
++        q=torch.stack([4+a[:,:1]+i for i in range(5)])
++        if return_type=='all':return torch.log1p(q)
++        return q[torch.randperm(5)[:2]].mean(0)
++
++
++def evaluator():
++    cfg=SimpleNamespace(action_dim=2,latent_dim=3,num_q=5,multitask=False,episodic=True,num_bins=1,cost={'enabled':False})
++    model=Model()
++    return TrajectoryWorldModelEvaluator(SimpleNamespace(model=model,cfg=cfg,discount=.9,device='cpu'),3)
++
++
++def test_terminal_prior_ignores_padding_and_restores_rng_for_comparable_q_pairs():
++    e=evaluator();a=torch.zeros(2,4,2);a[1,:3]=.1;a[:,-1]=.9
++    torch.manual_seed(7);state=torch.random.get_rng_state()
++    prior=e.evaluate_mppi_candidates(torch.zeros(1,3),a,terminal_action='policy_prior',q_aggregation='fixed_pair',q_indices=(0,1),compute_cost=False)
++    assert torch.equal(state,torch.random.get_rng_state())
++    assert e.agent.model.next_calls==e.agent.model.reward_calls==3 and e.agent.model.pi_calls==1
++    changed=a.clone();changed[:,-1]=-1
++    again=e.evaluate_mppi_candidates(torch.zeros(1,3),changed,terminal_action='policy_prior',q_aggregation='fixed_pair',q_indices=(0,1),compute_cost=False)
++    assert torch.equal(prior.total_value,again.total_value)
++    assert torch.equal(prior.terminal_latent,again.terminal_latent)
++    assert not torch.equal(prior.terminal_actions,a[:,-1])
++    candidate=e.evaluate_mppi_candidates(torch.zeros(1,3),a,compute_cost=False,q_aggregation='fixed_pair',q_indices=(0,1))
++    assert torch.equal(prior.discounted_reward,candidate.discounted_reward)
++    assert torch.equal(prior.terminal_latent,candidate.terminal_latent)
++    assert torch.equal(prior.terminal_discount,candidate.terminal_discount)
++    assert torch.equal(candidate.terminal_actions,a[:,-1])
++
++
++def test_random_q_pairs_are_not_shifted_by_unused_policy_noise():
++    e=evaluator();a=torch.zeros(2,4,2)
++    torch.manual_seed(19);e.evaluate_mppi_candidates(torch.zeros(1,3),a,compute_cost=False);candidate_state=torch.random.get_rng_state()
++    torch.manual_seed(19);e.evaluate_mppi_candidates(torch.zeros(1,3),a,terminal_action='policy_prior',compute_cost=False);prior_state=torch.random.get_rng_state()
++    assert torch.equal(candidate_state,prior_state)
++
++
++@pytest.mark.parametrize('aggregation,expected',[('fixed_pair',6.),('ensemble_mean',6.),('random_pair',None)])
++def test_q_decoding_and_prefix_horizon_are_correct(aggregation,expected):
++    e=evaluator();a=torch.zeros(2,4,2)
++    r=e.evaluate_mppi_candidates(torch.zeros(1,3),a,q_aggregation=aggregation,q_indices=(0,4) if aggregation=='fixed_pair' else None,
++        compute_cost=False,capture_ensemble=True)
++    assert e.agent.model.next_calls==e.agent.model.reward_calls==3
++    torch.testing.assert_close(r.discounted_reward,torch.full((2,),2*(1+.9+.81)))
++    torch.testing.assert_close(r.q_member_values[:,0],torch.arange(4.,9.))
++    if expected is not None:torch.testing.assert_close(r.terminal_q,torch.full((2,),expected))
++    torch.testing.assert_close(r.total_value,r.discounted_reward+r.terminal_discount*r.terminal_q)
++    # This API is the frozen SAC feature path: preserve full ensemble mean.
++    old=e.evaluate_trajectory_consequence(torch.zeros(1,3),a,compute_cost=False)
++    torch.testing.assert_close(old.terminal_q,torch.full((2,),6.))
++
++
++def test_fixed_pair_is_drawn_once_and_reused_for_all_five_evaluations():
++    e=evaluator();seen=[];original=e.evaluate_mppi_candidates
++    def score(*a,**kw):seen.append(kw.get('q_indices'));return original(*a,**kw)
++    e.evaluate_mppi_candidates=score
++    cfg=dict(num_samples=8,num_elites=4,iterations=4,q_aggregation='fixed_pair')
++    p=LocalMPPI(e,cfg,horizon=3,action_dim=2,device='cpu')
++    with patch.object(e,'new_mppi_q_pair',side_effect=[(0,1),(3,4)]) as draw:
++        first=p.plan(torch.zeros(1,3),torch.zeros(4,2),eval_mode=True)
++        assert seen==[(0,1)]*5 and draw.call_count==1
++        seen.clear();p.plan(torch.zeros(1,3),torch.zeros(4,2),eval_mode=True)
++        assert seen==[(3,4)]*5 and draw.call_count==2
++    assert first.evaluation['q_indices']==(0,1)
++
++
++def test_policy_terminal_has_no_unused_action_optimization_and_keeps_budget():
++    e=evaluator();seen=[];original=e.evaluate_mppi_candidates
++    def score(z,a,**kw):seen.append(a.clone());return original(z,a,**kw)
++    e.evaluate_mppi_candidates=score
++    cfg=dict(num_samples=64,num_elites=8,iterations=4,terminal_action='policy_prior')
++    p=LocalMPPI(e,cfg,horizon=3,action_dim=2,device='cpu');base=torch.full((4,2),.2)
++    r=p.plan(torch.zeros(1,3),base,eval_mode=True)
++    assert len(seen)==5 and r.metrics['wm_evaluated_candidates']==262
++    assert all(torch.equal(a[:,-1],base[-1:].expand(len(a),-1)) for a in seen)
++    assert torch.equal(r.final_mean[-1],base[-1]) and (r.final_std[-1]==0).all()
++    assert (r.final_std[:-1]>=p.min_std_vector).all()
++    assert r.metrics['active_action_steps']==3
++    assert len(r.iterations)==4 and all(1<=h['effective_sample_size']<=8.00001 and 0<=h['weight_entropy']<=math.log(8)+1e-6 for h in r.iterations)
++    assert r.metrics['predicted_return_gain']==pytest.approx(r.metrics['prefix_reward_gain']+r.metrics['discounted_terminal_gain'],abs=1e-5)
++    torch.testing.assert_close(seen[-1],torch.stack((base,r.final_mean)))
++
++
++def test_one_factor_presets_preserve_all_sampling_parameters():
++    base=dict(num_samples=64,num_elites=8,iterations=4,initial_std=[.04,.12],min_std=[.01,.03],max_std=[.08,.25],noise_rho=[.8,.8])
++    configs={name:value_ablation_config(base,name) for name in VALUE_ABLATIONS}
++    for name in ('D1','D2','D3','D4'):
++        changed=[k for k in configs['D0'] if configs[name][k]!=configs['D0'][k]]
++        assert len(changed)==1
++    assert all(all(c[k]==v for k,v in base.items()) for c in configs.values())
+diff --git a/reports/mppi_value_20261116/analyze.py b/reports/mppi_value_20261116/analyze.py
+new file mode 100644
+index 0000000..210323f
+--- /dev/null
++++ b/reports/mppi_value_20261116/analyze.py
+@@ -0,0 +1,62 @@
++"""Paired bootstrap summaries and predeclared, provisional selection only."""
++import argparse,csv,json,sys
++from pathlib import Path
++import numpy as np
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));REPORT=Path(__file__).parent
++from evaluation_statistics import summarize_runs,paired_comparisons
++p=argparse.ArgumentParser();p.add_argument('--phase',choices=['validation','test'],default='validation');a=p.parse_args()
++meta=json.loads((REPORT/f'{a.phase}_run.json').read_text());out=Path(meta['output']);rows=[]
++for group in meta['groups']:
++ part=[]
++ for row in csv.DictReader((out/group/'episodes.csv').open()):
++  for key,value in list(row.items()):
++   try:row[key]=float(value) if value else None
++   except (ValueError,TypeError):pass
++  row['configuration']=group;part.append(row)
++ assert len(part)==len(meta['scenarios']) and {int(r['scenario']) for r in part}==set(meta['scenarios'])
++ assert all(int(r['length'])<=1000 for r in part)
++ rows.extend(part)
++summary=[summarize_runs(g,[r for r in rows if r['configuration']==g],samples=2000,seed=1) for g in meta['groups']]
++pairs=[('B',g) for g in meta['groups'] if g!='B']
++if a.phase=='validation':pairs += [('D0',g) for g in meta['groups'] if g not in ('B','D0')]
++comp=paired_comparisons(rows,samples=2000,seed=1,pairs=pairs)
++lookup={(r['configuration'],int(r['scenario'])):r for r in rows};paired=[]
++metrics=['final_success','episode_crash','episode_out_of_road','final_route_completion','return','actual_discounted_return','mean_speed_mps','timeout','mppi_predicted_return_gain','mppi_prefix_reward_gain','mppi_discounted_terminal_gain','mppi_first_throttle_delta','mppi_first_action_delta_norm','mppi_weight_entropy','mppi_effective_sample_size','mppi_sampling_diversity','mean_mpr_total_planning_ms']
++for b,d in pairs:
++ for scenario in meta['scenarios']:
++  rb,rd=lookup[b,scenario],lookup[d,scenario];r=dict(comparison=f'{d} - {b}',scenario=scenario,test_seed=1)
++  for key in metrics:
++   r[key+'_baseline']=rb.get(key);r[key+'_candidate']=rd.get(key)
++   try:r[key+'_delta']=rd[key]-rb[key]
++   except (TypeError,KeyError):r[key+'_delta']=None
++  paired.append(r)
++with (out/'paired_scenarios.csv').open('w',newline='') as f:
++ writer=csv.DictWriter(f,fieldnames=list(paired[0]));writer.writeheader();writer.writerows(paired)
++with (out/'episodes.csv').open('w',newline='') as f:
++ keys=sorted(set().union(*(r.keys() for r in rows)));writer=csv.DictWriter(f,fieldnames=keys);writer.writeheader();writer.writerows(rows)
++behavior=[]
++for group in meta['groups']:
++ if group=='B':continue
++ rr=[r for r in rows if r['configuration']==group]
++ def corr(x,y):
++  xy=np.asarray(list(zip(x,y)),float);xy=xy[np.isfinite(xy).all(1)]
++  return float(np.corrcoef(xy.T)[0,1]) if len(xy)>1 and np.std(xy[:,0])>0 and np.std(xy[:,1])>0 else None
++ delta=[r['actual_discounted_return']-lookup['B',int(r['scenario'])]['actual_discounted_return'] for r in rr]
++ behavior.append(dict(configuration=group,episodes=len(rr),
++  throttle_vs_actual_return_delta_correlation=corr([r['mppi_first_throttle_delta'] for r in rr],delta),
++  correction_vs_actual_return_delta_correlation=corr([r['mppi_first_action_delta_norm'] for r in rr],delta),
++  predicted_vs_actual_return_delta_correlation=corr([r['mppi_predicted_return_gain'] for r in rr],delta),
++  throttle_vs_crash_correlation=corr([r['mppi_first_throttle_delta'] for r in rr],[r['episode_crash'] for r in rr]),
++  throttle_vs_offroad_correlation=corr([r['mppi_first_throttle_delta'] for r in rr],[r['episode_out_of_road'] for r in rr]),
++  note='Exploratory episode-level correlation on a small sample, not causality or a new score/gate.'))
++result=dict(phase=a.phase,summary=summary,paired_bootstrap95=comp,behavior_association=behavior,bootstrap_samples=2000,bootstrap_seed=1,
++ note='Scenario-clustered paired percentile bootstrap, small sample; 95% intervals do not correct multiple comparisons. Shared-load timing; not a real-time benchmark. Positive predicted gains do not establish causality or actual benefit.')
++(out/'analysis.json').write_text(json.dumps(result,indent=2));(REPORT/f'{a.phase}_summary.json').write_text(json.dumps(result,indent=2))
++if a.phase=='validation':
++ by={r['configuration']:r for r in summary};b=by['B'];eligible=[g for g in ('D1','D2','D3','D4') if by[g]['success']>=b['success'] and by[g]['crash']<=b['crash'] and by[g]['out_of_road']<=b['out_of_road'] and by[g]['reward']>b['reward']]
++ eligible.sort(key=lambda g:(by[g]['success'],by[g]['reward']),reverse=True)
++ selection=dict(provisional_candidate=eligible[0] if eligible else None,eligible=eligible,criterion=meta['protocol']['selection'],
++  reason='Predeclared point-estimate screening, subject to sealed test and uncertainty.' if eligible else 'No updated variant satisfies every predeclared criterion. No combination, sealed test or final100 is justified.',
++  configuration_default='D1 (requested inverse-beta correction); not a claim of empirical optimum',old100_not_used_for_selection=True)
++ (REPORT/'selection.json').write_text(json.dumps(selection,indent=2));print(json.dumps(selection,indent=2))
++for r in summary:print(r['configuration'],{k:r[k] for k in ['success','crash','out_of_road','route_completion','reward','actual_discounted_return','planning_time_ms']})
+diff --git a/reports/mppi_value_20261116/analyze_probes.py b/reports/mppi_value_20261116/analyze_probes.py
+new file mode 100644
+index 0000000..df12297
+--- /dev/null
++++ b/reports/mppi_value_20261116/analyze_probes.py
+@@ -0,0 +1,39 @@
++"""Decompose error without conflating Q training policy with realized SAC RTG."""
++from pathlib import Path
++import json,numpy as np
++REPORT=Path(__file__).parent;protocol=json.loads((REPORT/'probe_protocol.json').read_text());rows=[];unavailable=[]
++for scenario,before in protocol['origins']:
++ try:b=json.loads((REPORT/f'probe_{scenario}_sac.json').read_text());d=json.loads((REPORT/f'probe_{scenario}_mean.json').read_text())
++ except FileNotFoundError:unavailable.append(dict(scenario=scenario,reason='Missing raw branch, see worker log'));continue
++ assert b['observed_state_id']==d['observed_state_id'],scenario
++ for key in ('observation','baseline','mean','candidate_actions','common_pool_scores','prefix_controls'):assert b[key]==d[key],(scenario,key)
++ assert b['episode_complete'] and d['episode_complete']
++ i=b['variant_indices']['D0']['mean'];gamma=b['gamma'];H=len(b['baseline'])-1;gain=d['actual_discounted_return']-b['actual_discounted_return']
++ r=dict(scenario=scenario,before=before,prefix_source=b['prefix_source'],matched_observed_state_and_candidates=True,
++  actual_discounted_gain=gain,actual_prefix_gain=d['actual_first_H_discounted_reward']-b['actual_first_H_discounted_reward'],
++  actual_discounted_continuation_gain=gamma**H*(d['actual_terminal_continuation']-b['actual_terminal_continuation']),
++  baseline_success=b['success'],mean_success=d['success'],baseline_crash=b['crash'],mean_crash=d['crash'],baseline_offroad=b['offroad'],mean_offroad=d['offroad'],
++  baseline_terminal_latent_rmse=b['latent_rollout_rmse'][-1] if len(b['latent_rollout_rmse'])==H else None,
++  mean_terminal_latent_rmse=d['latent_rollout_rmse'][-1] if len(d['latent_rollout_rmse'])==H else None,
++  actual_baseline_SAC_rtg=b['actual_terminal_continuation'],actual_mean_SAC_rtg=d['actual_terminal_continuation'],definitions={})
++ for mode in ('D0','D2'):
++  s=b['common_pool_scores'][mode];values=s['values'];rew=s['prefix_reward'];pq=np.asarray(s['q_members'])[:,i]-np.asarray(s['q_members'])[:,0]
++  decomp=dict(predicted_gain=values[i]-values[0],predicted_prefix_gain=rew[i]-rew[0],
++   predicted_discounted_terminal_gain=(values[i]-rew[i])-(values[0]-rew[0]),predicted_Q_member_deltas=pq.tolist(),
++   ranking=s['ranking'],raw_Q_ensemble_std_mean=float(np.asarray(s['q_members']).std(0).mean()),
++   discounted_value_ensemble_std_note='ranking.ensemble_std is the discounted total-return spread, not raw Q spread',
++   same_batch_mean_elite_audit=s['same_batch_audit'])
++  if mode in b['terminal'] and mode in d['terminal']:
++   aq=np.asarray(d['terminal'][mode]['actual_state_Q_members'])-np.asarray(b['terminal'][mode]['actual_state_Q_members'])
++   decomp.update(actual_state_same_action_Q_member_deltas=aq.tolist(),
++    predicted_vs_actual_state_member_sign_agreement=float(np.mean(np.sign(pq)==np.sign(aq))),
++    predicted_members_agree_with_actual_gain=float(np.mean(np.sign(pq)==np.sign(gain))),
++    actual_state_members_agree_with_actual_gain=float(np.mean(np.sign(aq)==np.sign(gain))),
++    actual_state_prior_Q_minus_SAC_RTG_baseline=float(np.mean(b['terminal']['actual_state_actual_prior_Q_members'])-b['actual_terminal_continuation']),
++    actual_state_prior_Q_minus_SAC_RTG_mean=float(np.mean(d['terminal']['actual_state_actual_prior_Q_members'])-d['actual_terminal_continuation']))
++  r['definitions'][mode]=decomp
++ r['all_variant_search']={name:dict(metrics=b['search'][name]['metrics'],same_batch_audit=s['same_batch_audit']) for name,s in b['common_pool_scores'].items()}
++ rows.append(r)
++result=dict(origins=rows,unavailable=unavailable,scope='Nine diagnostic origins only, not held-out selection. Exactly H commands then SAC. Latent RMSE is dimensionless. Actual-state Q uses the same fixed terminal actions as predicted-state Q; direct Q-vs-SAC RTG difference is not purely Q error. Ranking agreement uses all ten two-Q combinations on one shared candidate pool. Search elites are rescored together with mean/baseline, not compared using changing-Q raw scores.')
++(REPORT/'value_ranking_probe.json').write_text(json.dumps(result,indent=2))
++for r in rows:print(r['scenario'],r['before'],'pred',round(r['definitions']['D0']['predicted_gain'],3),'actual',round(r['actual_discounted_gain'],3),'latent',r['mean_terminal_latent_rmse'])
+diff --git a/reports/mppi_value_20261116/finalize.py b/reports/mppi_value_20261116/finalize.py
+new file mode 100644
+index 0000000..92f2f7f
+--- /dev/null
++++ b/reports/mppi_value_20261116/finalize.py
+@@ -0,0 +1,52 @@
++"""Verify immutable inputs, protocol completeness and archive this task's diff."""
++import csv,hashlib,json,math,subprocess,sys
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));REPORT=Path(__file__).parent
++from tools.benchmark_mppi import source_fingerprint
++protocol=json.loads((REPORT/'protocol.json').read_text());source=source_fingerprint(ROOT)
++assert '40 passed' in (REPORT/'tests.txt').read_text()
++assert subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()==protocol['base_commit']
++sha=hashlib.sha256(Path(protocol['checkpoint']).read_bytes()).hexdigest();assert sha==protocol['checkpoint_sha256']
++counts={};outputs=[]
++for phase in ('validation','test'):
++ meta=json.loads((REPORT/f'{phase}_run.json').read_text());out=Path(meta['output']);outputs.append(out)
++ assert source==meta['source_snapshot_sha256']
++ statuses=json.loads((out/'worker_statuses.json').read_text());assert set(statuses)==set(meta['groups']) and not any(statuses.values())
++ for group in meta['groups']:
++  rows=list(csv.DictReader((out/group/'episodes.csv').open()));assert len(rows)==len(meta['scenarios'])
++  assert {int(float(r['scenario'])) for r in rows}==set(meta['scenarios'])
++  assert all(0<int(float(r['length']))<=1000 for r in rows)
++  if group!='B':
++   for r in rows:
++    assert float(r['mppi_wm_evaluated_candidates'])==262 and float(r['mppi_iterations_completed'])==4
++    assert float(r['mppi_invalid_prediction'])==0
++    assert abs(float(r['mppi_initial_std_steer'])-.04)<1e-6 and abs(float(r['mppi_initial_std_throttle'])-.12)<1e-6
++  counts[phase+'_'+group]=len(rows)
++probes=json.loads((REPORT/'value_ranking_probe.json').read_text());assert len(probes['origins'])==9 and not probes['unavailable']
++assert all(r['matched_observed_state_and_candidates'] for r in probes['origins'])
++assert not any(json.loads((REPORT/'probe_worker_statuses.json').read_text()).values())
++assert all(all(v==0 for v in r['max_errors'].values()) for r in json.loads((REPORT/'sac_interface_verification.json').read_text()))
++allowed={'config.yaml','evaluation_diagnostics.py','planning/coordinator.py','planning/evaluator.py','planning/local_mppi.py','planning/native_config.py','planning/types.py','tests/test_simplified_tdmpc2_mppi.py'}
++changed=set(subprocess.check_output(['git','diff','--name-only'],cwd=ROOT,text=True).splitlines());assert changed<=allowed,changed-allowed
++subprocess.run(['git','diff','--check'],cwd=ROOT,check=True)
++# Unknown diagnostic values use JSON null, not non-standard NaN/Infinity.
++def clean(value):
++ if isinstance(value,float) and not math.isfinite(value):return None
++ if isinstance(value,dict):return {k:clean(v) for k,v in value.items()}
++ if isinstance(value,list):return [clean(v) for v in value]
++ return value
++for parent in [REPORT,*outputs]:
++ for path in parent.rglob('*.json'):
++  value=json.loads(path.read_text());path.write_text(json.dumps(clean(value),indent=2,allow_nan=False))
++verification=dict(checkpoint_sha256=sha,source_snapshot_sha256=source,source_unchanged_through_all_experiments=True,
++ base_commit=protocol['base_commit'],episode_counts=counts,paired_probe_origins=9,probe_branches=18,
++ sampling_budget=262,iterations=4,model_training_or_weight_writes=False,protected_tracked_files_unchanged=True,
++ old_experiments_untouched=True,unit_tests='40 passed',note='Null means an unavailable metric, not zero. No model parameters were updated; no full100 scene experiment was run.')
++(REPORT/'verification.json').write_text(json.dumps(verification,indent=2,allow_nan=False))
++patch=subprocess.check_output(['git','diff','--binary'],cwd=ROOT,text=True)
++new=['planning/mppi_ablation.py','tests/test_mppi_value_evaluation.py']+[str(p.relative_to(ROOT)) for p in sorted(REPORT.glob('*.py'))]
++for name in new:
++ result=subprocess.run(['git','diff','--no-index','--','/dev/null',name],cwd=ROOT,capture_output=True,text=True);assert result.returncode==1
++ patch+=result.stdout
++(REPORT/'code_changes.patch').write_text(patch)
++print(json.dumps(verification,indent=2))
+diff --git a/reports/mppi_value_20261116/probe_value_ranking.py b/reports/mppi_value_20261116/probe_value_ranking.py
+new file mode 100644
+index 0000000..937b1fa
+--- /dev/null
++++ b/reports/mppi_value_20261116/probe_value_ranking.py
+@@ -0,0 +1,151 @@
++"""Offline common-origin/value audit; no online planner gate, new controller or training."""
++import argparse, contextlib, hashlib, io, itertools, json, sys
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT))
++import numpy as np, torch
++from omegaconf import OmegaConf
++from mpr_mpc._bootstrap import bootstrap
++bootstrap()
++from common.seed import set_seed
++from common import math as wm_math
++from env import make_env
++import evaluate_model_suite as suite
++from planning.local_mppi import LocalMPPI
++from planning.mppi_ablation import VALUE_ABLATIONS, value_ablation_config
++REPORT=Path(__file__).parent
++
++def ranking_audit(values):
++ pairs=list(itertools.combinations(range(5),2));values=np.asarray(values)
++ scores=np.array([values[list(pair)].mean(0) for pair in pairs]);n=values.shape[1]
++ left,right=np.triu_indices(n,1);comparisons=[]
++ def ranks(x):
++  order=np.argsort(x);r=np.empty(len(x),float);start=0
++  while start<len(x):
++   stop=start+1
++   while stop<len(x) and x[order[stop]]==x[order[start]]:stop+=1
++   r[order[start:stop]]=(start+stop-1)/2;start=stop
++  return r
++ for i,j in itertools.combinations(range(len(pairs)),2):
++  a,b=scores[i],scores[j];da,db=a[left]-a[right],b[left]-b[right]
++  valid=(np.abs(da)>1e-6)&(np.abs(db)>1e-6)
++  ra,rb=ranks(a),ranks(b);rho=float(np.corrcoef(ra,rb)[0,1]) if np.std(ra)>0 and np.std(rb)>0 else None
++  comparisons.append(dict(pair_a=pairs[i],pair_b=pairs[j],joint_non_tied=int(valid.sum()),
++   ranking_agreement=float(np.mean(np.sign(da[valid])==np.sign(db[valid]))) if valid.any() else None,
++   spearman=rho,top8_overlap=len(set(np.argsort(a)[-8:])&set(np.argsort(b)[-8:]))/min(8,n)))
++ return dict(q_pairs=pairs,candidate_count=n,comparisons=comparisons,
++  mean_ranking_agreement=float(np.mean([r['ranking_agreement'] for r in comparisons if r['ranking_agreement'] is not None])),
++  mean_spearman=float(np.mean([r['spearman'] for r in comparisons if r['spearman'] is not None])),
++  mean_top8_overlap=float(np.mean([r['top8_overlap'] for r in comparisons])),
++  ensemble_std_mean=float(values.std(0).mean()),ensemble_std_p95=float(np.percentile(values.std(0),95)))
++
++@torch.no_grad()
++def main():
++ p=argparse.ArgumentParser();p.add_argument('--scenario',type=int,required=True);p.add_argument('--before',type=int,required=True)
++ p.add_argument('--variant',choices=['sac','mean'],required=True);p.add_argument('--output',type=Path,required=True);a=p.parse_args()
++ if a.output.exists():raise FileExistsError(a.output)
++ meta=json.loads((REPORT/'protocol.json').read_text());ck=Path(meta['checkpoint'])
++ raw=OmegaConf.load(meta['source_environment_config']);base=OmegaConf.to_container(OmegaConf.load(ROOT/'config.yaml').mpr_mpc.mppi,resolve=True)
++ raw.mpr_mpc.mppi=OmegaConf.create(value_ablation_config(base,'D0'))
++ raw.restore_checkpoint_runtime=True;raw.restore_mppi_runtime=False;raw.enable_wandb=raw.save_video=raw.save_agent=False;raw.residual_rl.buffer_size=8
++ _,cfg=suite._make_cfg(raw,ck.parent.parent.name,ck,[a.scenario]);torch.set_float32_matmul_precision('high');set_seed(cfg.seed);env=make_env(cfg)
++ try:
++  with contextlib.redirect_stdout(io.StringIO()):agent=suite._make_agent(cfg,env);loaded=agent.load(ck)
++  agent.eval();suite._apply_evaluation_stack(agent.planner,'world_model_residual_rl',loaded)
++  agent.set_global_step(max(agent.global_env_step,agent.planner.mppi_start_step));seed=(int(cfg.seed)+a.scenario)%2**32
++  set_seed(seed);agent.planner.reset(seed=seed);obs=env.reset(seed=a.scenario)
++  assert int(env.unwrapped_metadrive.current_seed)==a.scenario
++  archived_origin=(a.scenario,a.before) in {(1714,250),(559,600)};prefix=[];replay_error=0.
++  if archived_origin:
++   archived=ROOT/'logs/benchmark/mpr_mpc_v311_sac_vs_sac_mppi_fixed100_20261109_202823/steps'
++   for line in next(archived.glob('*_full_mpr_mpc_seed1.jsonl')).open():
++    r=json.loads(line)
++    if r['scenario']==a.scenario and r['episode_step']<a.before:prefix.append(r)
++    if len(prefix)==a.before-1:break
++   assert len(prefix)==a.before-1
++  for i in range(a.before-1):
++   if archived_origin:
++    r=prefix[i];replay_error=max(replay_error,abs(np.linalg.norm(env.unwrapped_metadrive.agent.velocity)-r['mpr/actual_speed_mps']))
++    action=np.asarray(r['executed_action'],np.float32)
++   else:
++    action=agent.act(obs,t0=(i==0),eval_mode=True);prefix.append(dict(executed_action=action.cpu().tolist()))
++   obs,_,done,info=env.step(action)
++   if done:raise RuntimeError('Prefix terminated before origin')
++  if replay_error>1e-4:raise RuntimeError(f'Prefix mismatch: {replay_error}')
++  initial_obs=obs.cpu().tolist();agent.act(obs,t0=False,eval_mode=True);baseline=agent.last_plan.refined_actions.clone();z=agent.planner.last_context.latent.clone()
++  evaluator=agent.planner.evaluator;device=agent.device;cuda=[torch.device(device).index or 0] if torch.device(device).type=='cuda' else []
++  results={};pool=[baseline];labels=['sac'];indices={}
++  def add(tensor,label):
++   for i,t in enumerate(pool):
++    if torch.equal(tensor,t):return i
++   pool.append(tensor.clone());labels.append(label);return len(pool)-1
++  # Same initial global RNG and Gaussian innovations for each one-factor search.
++  for name in VALUE_ABLATIONS:
++   search=LocalMPPI(evaluator,value_ablation_config(base,name),horizon=cfg.horizon,action_dim=cfg.action_dim,device=device);search.reset(seed)
++   with torch.random.fork_rng(devices=cuda):r=search.plan(z,baseline,eval_mode=True)
++   results[name]=dict(metrics=r.metrics,iterations=r.iterations,evaluation=r.evaluation)
++   indices[name]=dict(mean=add(r.final_mean,name+'_mean'),elites=[add(torch.tensor(it['best_elite_actions'],device=device),name+f'_elite_{j}') for j,it in enumerate(r.iterations)])
++  # A shared 64-proposal batch, not just the five already-selected means.
++  search=LocalMPPI(evaluator,value_ablation_config(base,'D0'),horizon=cfg.horizon,action_dim=cfg.action_dim,device=device);search.reset(seed)
++  std=search.initial_std_vector.expand_as(baseline)
++  for j,t in enumerate(search._candidate_batch(baseline,std,baseline)[1:]):add(t,f'shared_gaussian_{j}')
++  actions_batch=torch.stack(pool);scores={};predictions={}
++  for name,spec in VALUE_ABLATIONS.items():
++   with torch.random.fork_rng(devices=cuda):
++    pair=evaluator.new_mppi_q_pair() if spec['q_aggregation']=='fixed_pair' else None
++    pred=evaluator.evaluate_mppi_candidates(z,actions_batch,compute_cost=False,terminal_action=spec['terminal_action'],q_aggregation=spec['q_aggregation'],q_indices=pair,capture_ensemble=True)
++   predictions[name]=pred
++   member_j=pred.discounted_reward[None]+pred.terminal_discount[None]*pred.q_member_values
++   values=pred.total_value.cpu().numpy();ii=indices[name];best=max(ii['elites'],key=lambda i:values[i]);m=ii['mean']
++   scores[name]=dict(values=values.tolist(),prefix_reward=pred.discounted_reward.cpu().tolist(),terminal_q=pred.terminal_q.cpu().tolist(),
++    terminal_discount=pred.terminal_discount.cpu().tolist(),terminal_actions=pred.terminal_actions.cpu().tolist(),q_members=pred.q_member_values.cpu().tolist(),
++    fixed_pair=pair,ranking=ranking_audit(member_j.cpu().numpy()),
++    same_batch_audit=dict(baseline=float(values[0]),mean=float(values[m]),best_recorded_elite=float(values[best]),best_recorded_elite_index=best,
++     mean_beats_best_recorded_elite=bool(values[m]>values[best]),mean_beats_baseline=bool(values[m]>values[0])))
++  for name,pred in predictions.items():
++   assert torch.equal(pred.discounted_reward,predictions['D0'].discounted_reward)
++   assert torch.equal(pred.terminal_latent,predictions['D0'].terminal_latent)
++   assert torch.equal(pred.terminal_discount,predictions['D0'].terminal_discount)
++  assert scores['D0']['values']==scores['D1']['values'] # temperature affects proposals, never the scoring function
++  vehicle=env.unwrapped_metadrive.agent;obstacles=agent.planner.structured.planner._collect_obstacles(vehicle)
++  state=dict(ego=[*map(float,vehicle.position),*map(float,vehicle.velocity),float(vehicle.heading_theta)],
++   obstacles=sorted([list(map(float,(*o.position,*o.velocity,o.heading,o.length,o.width))) for o in obstacles]))
++  chosen=0 if a.variant=='sac' else indices['D0']['mean'];actions=actions_batch[chosen];gamma=float(agent.tdmpc_agent.discount)
++  trace=[];done=False;crash=offroad=False;H=int(cfg.horizon);wm_z=z.clone();latent_errors=[];terminal={};actual_z=None
++  while not done and len(trace)<1000:
++   i=len(trace);action=actions[i] if i<H else agent.act(obs,t0=False,eval_mode=True)
++   if i==H:terminal['actual_sac_continuation_action']=action.cpu().tolist()
++   if i<H:wm_z=agent.tdmpc_agent.model.next(wm_z,action[None],None)
++   obs,reward,done,info=env.step(action)
++   if i<H:
++    actual_z=evaluator.encode(obs);latent_errors.append(float((wm_z-actual_z).square().mean().sqrt()))
++   if i+1==H:
++    model=agent.tdmpc_agent.model
++    terminal['actual_encoded_latent']=actual_z.cpu().tolist();terminal['predicted_latent']=wm_z.cpu().tolist()
++    for mode in ('D0','D2'):
++     pred=predictions[mode];ta=pred.terminal_actions[chosen:chosen+1]
++     qtrue=wm_math.two_hot_inv(model.Q(actual_z,ta,None,return_type='all'),cfg).reshape(-1)
++     terminal[mode]=dict(same_terminal_action=ta.cpu().tolist(),predicted_Q_members=pred.q_member_values[:,chosen].cpu().tolist(),actual_state_Q_members=qtrue.cpu().tolist())
++    with torch.random.fork_rng(devices=cuda):_,pinfo=model.pi(actual_z,None)
++    actual_prior=pinfo['mean'];terminal['actual_prior_action']=actual_prior.cpu().tolist()
++    terminal['actual_state_actual_prior_Q_members']=wm_math.two_hot_inv(model.Q(actual_z,actual_prior,None,return_type='all'),cfg).reshape(-1).cpu().tolist()
++   crash|=any(bool(info.get(k,False)) for k in ('crash','crash_vehicle','crash_object','crash_building','crash_human','crash_sidewalk'))
++   offroad|=bool(info.get('out_of_road',False))
++   trace.append(dict(action=action.cpu().tolist(),reward=float(reward),cost=float(info.get('cost',0.))))
++  assert done,'Probe must continue to native termination'
++  if 'actual_sac_continuation_action' in terminal:
++   ta=torch.tensor([terminal['actual_sac_continuation_action']],device=device)
++   terminal['actual_state_actual_sac_Q_members']=wm_math.two_hot_inv(agent.tdmpc_agent.model.Q(actual_z,ta,None,return_type='all'),cfg).reshape(-1).cpu().tolist()
++  actual_prefix=sum(gamma**j*r['reward'] for j,r in enumerate(trace[:H]));rtg=sum(gamma**j*r['reward'] for j,r in enumerate(trace[H:]));ret=sum(gamma**j*r['reward'] for j,r in enumerate(trace))
++  assert abs(ret-actual_prefix-gamma**H*rtg)<1e-7
++  result=dict(scenario=a.scenario,before=a.before,variant=a.variant,observation=initial_obs,observed_state=state,
++   observed_state_id=hashlib.sha256(json.dumps(state,sort_keys=True).encode()).hexdigest(),replay_max_speed_error=replay_error,
++   prefix_source='archived_controls' if archived_origin else 'common_SAC_prefix',prefix_controls=[r['executed_action'] for r in prefix],
++   candidate_labels=labels,candidate_actions=actions_batch.cpu().tolist(),variant_indices=indices,search=results,common_pool_scores=scores,
++   baseline=baseline.cpu().tolist(),mean=actions_batch[indices['D0']['mean']].cpu().tolist(),chosen_index=chosen,
++   actual_first_H_discounted_reward=actual_prefix,actual_terminal_continuation=rtg,actual_discounted_return=ret,
++   latent_rollout_rmse=latent_errors,terminal=terminal,gamma=gamma,episode_complete=bool(done),controls=len(trace),success=bool(info.get('success',False)),
++   route_completion=float(info.get('route_completion',0.)),crash=crash,offroad=offroad,trace=trace,checkpoint_sha256=meta['checkpoint_sha256'],
++   scope='Exactly H candidate commands then SAC continuation to native termination. Common observed state/candidates checked across fresh processes, not a hidden simulator snapshot claim. Latent RMSE is dimensionless. True Q vs SAC RTG contains continuation-policy mismatch. Offline audit only; no runtime gate. Seven additional origins are prespecified SAC-prefix step100, not reconstructed historical failure states.')
++  a.output.write_text(json.dumps(result,indent=2));print(a.output,flush=True)
++ finally:env.close()
++if __name__=='__main__':main()
+diff --git a/reports/mppi_value_20261116/run_experiments.py b/reports/mppi_value_20261116/run_experiments.py
+new file mode 100644
+index 0000000..97941f9
+--- /dev/null
++++ b/reports/mppi_value_20261116/run_experiments.py
+@@ -0,0 +1,70 @@
++"""Predeclared one-factor validation; optional sealed B/one-candidate test."""
++import argparse, hashlib, json, os, subprocess, sys, time
++from datetime import datetime
++from pathlib import Path
++from zoneinfo import ZoneInfo
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT))
++from tools.benchmark_mppi import source_fingerprint
++from planning.mppi_ablation import VALUE_ABLATIONS, value_ablation_config
++REPORT=Path(__file__).parent
++p=argparse.ArgumentParser();p.add_argument('--phase',choices=['validation','test'],default='validation')
++p.add_argument('--worker',choices=['B',*VALUE_ABLATIONS]);p.add_argument('--output',type=Path);p.add_argument('--jobs',type=int,default=4);a=p.parse_args()
++protocol=json.loads((REPORT/'protocol.json').read_text());checkpoint=Path(protocol['checkpoint'])
++if a.phase=='validation':groups=protocol['validation_groups'];scenarios=protocol['validation_scenarios']
++else:
++ selection=json.loads((REPORT/'selection.json').read_text())
++ if not selection.get('provisional_candidate'):raise SystemExit('No eligible validation candidate. No sealed test or combination is justified.')
++ groups=['B',selection['provisional_candidate']];scenarios=protocol['sealed_test_scenarios']
++if a.worker:
++ import torch
++ from omegaconf import OmegaConf
++ from mpr_mpc._bootstrap import bootstrap
++ bootstrap()
++ import evaluate_model_suite as suite
++ from evaluate_ablation import _EpisodeCSVWriter
++ out=a.output/a.worker;out.mkdir()
++ raw=OmegaConf.load(protocol['source_environment_config']);base=OmegaConf.to_container(OmegaConf.load(ROOT/'config.yaml').mpr_mpc.mppi,resolve=True)
++ raw.mpr_mpc.mppi=OmegaConf.create(value_ablation_config(base,a.worker if a.worker!='B' else 'D0'))
++ raw.restore_checkpoint_runtime=True;raw.restore_mppi_runtime=False;raw.seed=1
++ raw.evaluation_stack='world_model_residual_rl' if a.worker=='B' else 'full_mpr_mpc'
++ raw.enable_wandb=raw.save_video=raw.save_agent=False;raw.residual_rl.buffer_size=8
++ raw.metadrive.simulator.start_seed=min(scenarios);raw.metadrive.simulator.num_scenarios=max(scenarios)-min(scenarios)+1
++ raw.metadrive.simulator.horizon=1000;raw.metadrive.simulator.use_render=False
++ raw.benchmark.output_dir=str(out);raw.benchmark.save_step_diagnostics=True;raw.benchmark.paired_episode_seeds=True
++ raw.benchmark.compact_step_logs=True;raw.benchmark.step_log_stride=10;raw.benchmark.cost_ablation=False
++ parsed,cfg=suite._make_cfg(raw,checkpoint.parent.parent.name,checkpoint,scenarios)
++ assert cfg.horizon==10 and cfg.metadrive['simulator']['horizon']==1000
++ OmegaConf.save(parsed,out/'config.yaml');torch.set_float32_matmul_precision('high')
++ with (out/'episodes.csv').open('w',newline='') as f:
++  writer=_EpisodeCSVWriter(f)
++  def save(row):
++   assert 0<row['length']<=1000
++   row.update(configuration=a.worker,test_seed=1);writer.writerow(row)
++  rows,summary=suite._evaluate_checkpoint(raw,checkpoint.parent.parent.name,checkpoint,scenarios,on_episode=save)
++ (out/'summary.json').write_text(json.dumps(summary,indent=2));raise SystemExit()
++assert a.output is None and 1<=a.jobs<=4
++assert '40 passed' in (REPORT/'tests.txt').read_text()
++assert all(all(v==0 for v in row['max_errors'].values()) for row in json.loads((REPORT/'sac_interface_verification.json').read_text()))
++assert hashlib.sha256(checkpoint.read_bytes()).hexdigest()==protocol['checkpoint_sha256']
++fingerprint=source_fingerprint(ROOT)
++name='mppi_value_'+a.phase+'_'+datetime.now(ZoneInfo('Asia/Shanghai')).strftime('%Y%m%d_%H%M%S');out=ROOT/'logs/benchmark'/name;out.mkdir()
++manifest=dict(protocol=protocol,phase=a.phase,groups=groups,scenarios=scenarios,source_snapshot_sha256=fingerprint,
++ output=str(out),variant_definitions=VALUE_ABLATIONS,checkpoint_sha256=protocol['checkpoint_sha256'],
++ note='One group per fresh process, common scenario/episode seeds, four workers maximum, no model updates. No combinations or re-use of the old100 for selection. Shared-load latency, not an isolated benchmark.')
++(REPORT/f'{a.phase}_run.json').write_text(json.dumps(manifest,indent=2));(out/'manifest.json').write_text(json.dumps(manifest,indent=2));print(out,flush=True)
++waiting=list(groups);running=[];statuses={}
++while waiting or running:
++ while waiting and len(running)<a.jobs:
++  group=waiting.pop(0);log=(out/f'{group}.log').open('w')
++  proc=subprocess.Popen([sys.executable,'-u',str(Path(__file__).resolve()),'--phase',a.phase,'--worker',group,'--output',str(out)],cwd=ROOT,
++   env=dict(os.environ,OMP_NUM_THREADS='1',MKL_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',MUJOCO_GL='egl',PYTHONUNBUFFERED='1'),stdout=log,stderr=subprocess.STDOUT)
++  running.append((group,proc,log))
++ for group,proc,log in running[:]:
++  status=proc.poll()
++  if status is not None:
++   log.close();running.remove((group,proc,log));statuses[group]=status
++   (out/'worker_statuses.json').write_text(json.dumps(statuses,indent=2));print(group,'exit',status,flush=True)
++ if running:time.sleep(2)
++assert not any(statuses.values()),statuses
++assert source_fingerprint(ROOT)==fingerprint
++assert hashlib.sha256(checkpoint.read_bytes()).hexdigest()==protocol['checkpoint_sha256']
+diff --git a/reports/mppi_value_20261116/run_probes.py b/reports/mppi_value_20261116/run_probes.py
+new file mode 100644
+index 0000000..e289e89
+--- /dev/null
++++ b/reports/mppi_value_20261116/run_probes.py
+@@ -0,0 +1,21 @@
++"""Nine prespecified origins, two fresh-process branches each, at most two workers."""
++import json,os,subprocess,sys,time
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];REPORT=Path(__file__).parent
++origins=[(1714,250),(559,600),(985,100),(2256,100),(1760,100),(539,100),(792,100),(872,100),(1719,100)]
++(REPORT/'probe_protocol.json').write_text(json.dumps(dict(origins=origins,branches=['sac','mean'],actual_prefix='H commands then SAC, not H+1',additional_origins='Prespecified step100 of unchanged SAC policy; not archived D failure states',scope='Old scenes for diagnosis only. No re-tuning or selection from this analysis.'),indent=2))
++queue=[(s,b,v) for s,b in origins for v in ('sac','mean')];running=[];status={}
++while queue or running:
++ while queue and len(running)<2:
++  s,b,v=queue.pop(0);name=f'probe_{s}_{v}';log=(REPORT/(name+'.log')).open('w');output=REPORT/(name+'.json')
++  if output.exists():raise FileExistsError(output)
++  cmd=[sys.executable,'-u',str(REPORT/'probe_value_ranking.py'),'--scenario',str(s),'--before',str(b),'--variant',v,'--output',str(output)]
++  proc=subprocess.Popen(cmd,cwd=ROOT,env=dict(os.environ,OMP_NUM_THREADS='1',MKL_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',MUJOCO_GL='egl'),stdout=log,stderr=subprocess.STDOUT)
++  running.append((name,proc,log))
++ for name,proc,log in running[:]:
++  result=proc.poll()
++  if result is not None:
++   log.close();running.remove((name,proc,log));status[name]=result
++   (REPORT/'probe_worker_statuses.json').write_text(json.dumps(status,indent=2));print(name,result,flush=True)
++ if running:time.sleep(2)
++assert not any(status.values()),status
+diff --git a/reports/mppi_value_20261116/write_report.py b/reports/mppi_value_20261116/write_report.py
+new file mode 100644
+index 0000000..6dceb2c
+--- /dev/null
++++ b/reports/mppi_value_20261116/write_report.py
+@@ -0,0 +1,88 @@
++"""Assemble the final factual report from completed artifacts, no experimental selection."""
++import json
++from pathlib import Path
++R=Path(__file__).parent;ROOT=R.parents[1]
++def read(name):return json.loads((R/name).read_text())
++v=read('validation_summary.json');p=read('value_ranking_probe.json');selection=read('selection.json');protocol=read('protocol.json')
++assert len(v['summary'])==6 and len(p['origins'])+len(p['unavailable'])==9
++lines=['# SAC-Centered MPPI 价值评估与搜索分布优化（2026-11-16）','',
++'基线 `f1f2bcf79089f396281b21a9d967ec737f6c069b`，初始工作区干净。没有训练、修改 checkpoint、提交或推送。历史日志未覆盖。',
++'', '## 修改及边界','',
++'- `planning/local_mppi.py`：默认 beta=0.5 乘法权重；旧除法仅保留为消融选项。新增终端动作/Q聚合选择、逐轮熵/ESS、收益分解和最佳Elite动作记录。Gaussian、AR(1)、Top-K、加权均值/方差、64/8/4及std边界保留。最终仍以同一批次、同一定义比较 baseline/mean，不增加动作审批或偏差惩罚。',
++'- `planning/evaluator.py`：Candidate a_H、Policy Prior 两种定义；H次reward/next，原折扣和termination mask不变。Q(avg)不重复解码；Q(all)显式解码。固定Q对每plan只抽一次。原SAC全Q均值接口保持不变。',
++'- `planning/mppi_ablation.py`、`planning/native_config.py`、`config.yaml`：明确D0–D4单因素配置，默认仅D1，不组合其他修改。',
++'- `planning/types.py`、`planning/coordinator.py`、`evaluation_diagnostics.py`：追加离线终端动作/latent/Q成员及定义日志，未改变SAC特征构造。',
++'- `tests/test_simplified_tdmpc2_mppi.py`保留旧温度断言并参数化；`tests/test_mppi_value_evaluation.py`补充必要回归。新报告目录下脚本负责独立消融、离线探针和分析。',
++'', '## 与官方算法的关系','',
++'参考 [TD-MPC2 planner](https://github.com/nicklashansen/tdmpc2/blob/main/tdmpc2/tdmpc2.py)、[World Model](https://github.com/nicklashansen/tdmpc2/blob/main/tdmpc2/common/world_model.py)、[配置](https://github.com/nicklashansen/tdmpc2/blob/main/tdmpc2/config.yaml)及[论文](https://arxiv.org/html/2310.16828v2)。读取的blob SHA存于 `references.json`。',
++'',
++'温度改为官方逆温度beta定义；legacy tau=0.5等价beta=2，与新beta=0.5不等价。当前SAC中心AR(1)采样与官方包含prior轨迹的完整planner仍有差异，本轮不引入额外轨迹类别。',
++'',
++'Policy Prior使用pi输出的已tanh均值，而非官方随机样本：这是为baseline/候选公平复评所作的确定性适配，并非完全复现随机prior。fork_rng恢复未使用pi样本的RNG，避免D2同时改变随机Q对。a_H保留为H+1接口填充，固定为baseline尾动作，std=0；不参与评分/更新。仍绘制相同数量随机数以保持首H步共同噪声。',
++'',
++'随机两Q、单plan固定两Q、五Q均值只作用于MPPI；五Q本身已在同一次网络前向生成，诊断在离线额外取成员值。没有加入ensemble不确定性惩罚、Cost、Recovery、Emergency或几何筛选。',
++'', '## 可复现协议与测试','',
++'Checkpoint SHA256：`'+protocol['checkpoint_sha256']+'`。`sac_interface_verification.json`中1714/559的535维状态、残差、refined_actions和首动作与修改前最大误差全部0。`legacy_reproduction.json`中两个优先起点D0动作序列与历史结果完全相同。',
++'',
++'相关测试：**40 passed**，详见 `tests.txt`。涵盖新旧权重、AR噪声、Top-K、均值/方差、H/H+1、prefix/terminal折扣、固定Q对、五Q解码、batch公平比较、无增益回退、NaN/Inf、原SAC接口及Cost门控相关断言。没有删除有效测试或降低断言。',
++'',
++'训练场景范围10000–11999已从训练归档核实。验证集10个新ID位于20000–20999，封存测试集20个新ID位于30000–30999，彼此及旧100/训练集不重叠，详见 `protocol.json`。各组checkpoint、环境、seed规则(1+scenario)、1000步horizon、AR rho=0.8和搜索预算相同。旧100只用于选定诊断起点。',
++'',
++'每个候选版本只改变一个变量：D0=旧除法/candidate/随机两Q；D1=仅beta乘法；D2=仅prior terminal；D3=仅固定Q对；D4=仅五Q均值。未进行组合或反复调参。',
++'', '## 独立验证（每组10回合）','',
++'|组|Success|Crash|OOR|Route|Return|真实折扣Return|规划ms|','|---|---:|---:|---:|---:|---:|---:|---:|']
++for x in v['summary']:lines.append(f"|{x['configuration']}|{x['success']:.0%}|{x['crash']:.0%}|{x['out_of_road']:.0%}|{x['route_completion']:.2%}|{x['reward']:.2f}|{x['actual_discounted_return']:.2f}|{x['planning_time_ms']:.2f}|")
++lines+=['','逐场景结果、合并CSV与场景配对bootstrap95% CI在 `validation_run.json` 指向的结果目录。2000次重采样、seed=1，场景作为簇；多重比较未校正，小样本区间只表示不确定性。下列差值均为候选−B。','','|比较|Success差值 [95% CI]|Return差值 [95% CI]|','|---|---:|---:|']
++for x in v['paired_bootstrap95']:
++ if not x['comparison'].endswith(' - B'):continue
++ lines.append(f"|{x['comparison']}|{x['success_delta']:.1%} [{x['success_delta_ci95_low']:.1%}, {x['success_delta_ci95_high']:.1%}]|{x['reward_delta']:.2f} [{x['reward_delta_ci95_low']:.2f}, {x['reward_delta_ci95_high']:.2f}]|")
++lines+=['','选择标准预先写入protocol：D1–D4中success>=B、crash<=B、OOR<=B且平均return>B，按success、return排序。验证集上的筛选仅为provisional，不认定推广收益。', '', '选择结果：`'+str(selection['provisional_candidate'])+'`；'+selection['reason'], '', '## 搜索分布与价值分解','',
++'以下为每回合步均值再按场景平均；原始逐轮Mean/Std/Elite/多样性/熵/ESS保存于step日志旁的 `.search.jsonl.gz`。',
++'','|组|预测ΔJ|prefix ΔR|折扣terminal ΔQ|ESS|末std steer/throttle|首动作油门Δ|基线保留率|','|---|---:|---:|---:|---:|---:|---:|---:|']
++for x in v['summary']:
++ if x['configuration']=='B':continue
++ lines.append(f"|{x['configuration']}|{x['mppi_predicted_return_gain']:.3f}|{x['mppi_prefix_reward_gain']:.3f}|{x['mppi_discounted_terminal_gain']:.3f}|{x['mppi_effective_sample_size']:.3f}|{x['mppi_final_std_steer']:.4f}/{x['mppi_final_std_throttle']:.4f}|{x['mppi_first_throttle_delta']:.4f}|{x['mppi_baseline_selected']:.2%}|")
++lines+=['','不同Q定义的预测增益不能直接解释为真实收益。`validation_summary.json`保留动作修正、采样多样性、熵、Q标准差及探索性油门/事故/收益相关性；这些小样本相关性不构成因果证据。未新增偏差惩罚。',
++'', '## 固定状态与价值排序探针','',
++'1714:250、559:600重放历史逐步控制，速度误差严格<=1e-4。其余七个场景预先固定为未修改SAC行驶至step100后的共同起点，**不是**原D失败瞬间的状态重建。每个起点两次新进程执行：相同前H个SAC/D0 mean动作，再由相同SAC策略延续至环境原生终止。观测、ego/收集到的traffic、动作候选完全匹配；未声称恢复完整隐藏模拟器快照。',
++'',
++'同一候选池包含baseline、各版本mean/每轮最佳Elite及64个共同初始Gaussian提案。所有Q对在相同pool上比较；Elite与mean复评同批进行，不把不同Q对产生的旧分数直接比较。D2与D0在相同首H步上的reward、末latent和mask逐项相同。',
++'',
++'下表预测增益为**D0同批复评**，不是搜索最后一轮随机Q对的旧分数。历史探针曾实际执行H+1步，本轮执行H步后SAC，真实回报不要求与旧探针相等；两优先起点动作本身已确认一致。',
++'', '|起点|预测prefix增益|预测terminal贡献|预测ΔJ|真实ΔReturn|terminal latent RMSE B/D|Q对排序一致率|','|---|---:|---:|---:|---:|---:|---:|']
++for x in p['origins']:
++ y=x['definitions']['D0'];rmse=f"{x['baseline_terminal_latent_rmse']:.4f}/{x['mean_terminal_latent_rmse']:.4f}" if x['mean_terminal_latent_rmse'] is not None else '未达到H'
++ lines.append(f"|{x['scenario']}:{x['before']}|{y['predicted_prefix_gain']:.3f}|{y['predicted_discounted_terminal_gain']:.3f}|{y['predicted_gain']:.3f}|{x['actual_discounted_gain']:.3f}|{rmse}|{y['ranking']['mean_ranking_agreement']:.2%}|")
++lines+=['','原始 `probe_*_{sac,mean}.json` 保存动作、预测/真实末latent、奖励、actual Return-to-Go、同一terminal动作在预测/真实latent上的5Q、实际prior与SAC动作。`value_ranking_probe.json`记录全部10个Q pair之间的ranking agreement、Spearman、Top8 overlap、raw Q std，以及mean与最佳记录Elite的同批比较。',
++'',
++'归因：1714优先起点五Q都看好D0均值，真实收益反而下降；换成真实latent后多个成员排序改变。Q对间高一致率没有排除共同模型偏差。559处真实latent上的candidate Q仍普遍看好D0，但SAC延续真实回报未改善。latent误差是无量纲RMSE，不是物理位移。Policy Prior Q与真实SAC RTG的差值同时含价值泛化误差及延续策略不匹配，不能全部叫作Q错误。',
++'',
++'最终mean的预测分数并不保证优于记录Elite；详见每版本same_batch_audit。这次仅测量该现象，保留原输出机制，不趁机增加候选审批规则。仅对D0前缀实际执行；D2在探针中是相同D0前缀的不同terminal定义，D2自己优化动作的真实效果由独立闭环消融评价。',
++'', '## 封存独立测试与结论','']
++if selection['provisional_candidate']:
++ t=read('test_summary.json');lines+=['按预定规则，仅B与验证候选在全部20个封存ID上测试，无再次选择。','','|组|Success|Crash|OOR|Route|Return|真实折扣Return|','|---|---:|---:|---:|---:|---:|---:|']
++ for x in t['summary']:lines.append(f"|{x['configuration']}|{x['success']:.0%}|{x['crash']:.0%}|{x['out_of_road']:.0%}|{x['route_completion']:.2%}|{x['reward']:.2f}|{x['actual_discounted_return']:.2f}|")
++ by_test={r['configuration']:r for r in t['summary']};bt=by_test['B'];dt=by_test[selection['provisional_candidate']]
++ if dt['crash']>bt['crash'] or dt['out_of_road']>bt['out_of_road'] or dt['reward']<=bt['reward'] or dt['success']<bt['success']:
++  lines+=['','**封存测试未满足整体驾驶改善目标，不能把验证集候选D4认定为已优于B的最优版本。** 不使用封存集改选D1/D2，不组合或进一步调参。']
++ else:
++  lines+=['','封存点估计存在改善，但需结合下列配对区间判断不确定性，不能据此认定全面泛化改善。']
++ c=t['paired_bootstrap95'][0];lines+=['',f"候选−B：Success {c['success_delta']:.1%}，95% CI [{c['success_delta_ci95_low']:.1%}, {c['success_delta_ci95_high']:.1%}]；Return {c['reward_delta']:.2f}，95% CI [{c['reward_delta_ci95_low']:.2f}, {c['reward_delta_ci95_high']:.2f}]。区间涵盖0时，不能认定可靠正向边际贡献。逐场景与完整CI见 `test_summary.json` 及 `test_run.json` 指向目录。"]
++else:lines+=['无候选满足全部预定条件，未打开封存测试集、未组合修改、未运行额外100场。默认D1是指定的数学定义修正，不等于已选出驾驶表现最优版本。']
++lines+=['','未重跑正式旧100；本次完成独立单因素小规模验证和固定状态诊断。只有独立真实success/route/return改善且事故指标不恶化，才有依据认定MPPI贡献；预测增益不能替代这些指标。',
++'',
++'规划耗时来自至多4个消融worker及2个离线探针共享一张RTX3070的运行，不能与历史独占GPU耗时作性能优化比较。D4后启动时其他worker陆续结束，其较低的表中耗时不是五Q更快的证据。本轮不宣称达到100ms。',
++'',
++'尚未解决：冻结WM在SAC部署分布下的latent与价值泛化、Q训练策略/真实SAC延续不匹配、少样本结论的不确定性。未通过重训、扩大预算、修改成功条件或规则控制掩盖问题。',
++'',
++'完整代码Diff：`reports/mppi_value_20261116/code_changes.patch`；相关JSON、脚本及测试输出均在同目录。运行源指纹和checkpoint哈希由实验runner起止核验。','']
++pos=lines.index('## 分布与收益分解（验证集，逐回合均值再平均）') if '## 分布与收益分解（验证集，逐回合均值再平均）' in lines else lines.index('## 固定状态与价值排序探针')
++extra=['## 分布与收益分解（验证集，逐回合均值再平均）','','|组|Entropy|ESS|末std steer/throttle|Prefix增益|折扣Q贡献|首油门改变量|','|---|---:|---:|---:|---:|---:|---:|']
++for r in v['summary'][1:]:
++ extra.append(f"|{r['configuration']}|{r['mppi_weight_entropy']:.3f}|{r['mppi_effective_sample_size']:.3f}|{r['mppi_final_std_steer']:.4f}/{r['mppi_final_std_throttle']:.4f}|{r['mppi_prefix_reward_gain']:.3f}|{r['mppi_discounted_terminal_gain']:.3f}|{r['mppi_first_throttle_delta']:+.4f}|")
++extra+=['','D1提高ESS并稍减std收缩，但Terminal Q仍主导预测增益，且各版本平均首动作仍偏向增加油门。各组对D0的边际Return置信区间均涵盖0，验证集不能可靠区分四项修改。探索性episode相关系数保存在analysis.json的behavior_association，不作因果结论。','','配对Bootstrap以场景为单位、2000次、seed1，完整95%区间在validation_summary.json及逐场景CSV。D0−B在这10个观测上的Success差异全为0，因此经验区间退化到[0,0]；这不证明总体等价。', '']
++lines[pos:pos]=extra
++neg=sum(r['definitions']['D0']['predicted_gain']>0 and r['actual_discounted_gain']<0 for r in p['origins'])
++lines.extend([f'诊断样本中，{neg}/{len(p["origins"])}个起点出现D0同批预测增益为正而实际增益为负。该比例来自预选故障/救回场景，不是独立总体失败率。',''])
++(ROOT/'MPPI_VALUE_EVALUATION_REPORT_20261116.md').write_text('\n'.join(lines))
++print(ROOT/'MPPI_VALUE_EVALUATION_REPORT_20261116.md')

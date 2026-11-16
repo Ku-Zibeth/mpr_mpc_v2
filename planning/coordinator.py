@@ -551,7 +551,7 @@ class MPRMPCPlanner:
                 "final_mppi_mean": final_mean.detach().cpu(),
                 "initial_mppi_std": initial_std.detach().cpu(),
                 "final_mppi_std": final_std.detach().cpu(),
-                **({"mppi_iterations": mppi.iterations, "mppi_numerical_error": mppi.numerical_error} if stage.use_mppi else {}),
+                **({"mppi_iterations": mppi.iterations, "mppi_numerical_error": mppi.numerical_error, "mppi_value_definition": mppi.evaluation} if stage.use_mppi else {}),
                 "wm_discount": float(self.agent.discount),
             },
             planning_mode=mppi.planning_mode if stage.use_mppi else "baseline",

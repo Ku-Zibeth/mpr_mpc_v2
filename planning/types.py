@@ -41,6 +41,9 @@ class TrajectoryConsequence:
     risk_summary: dict[str, Any] = field(default_factory=dict)
     discounted_reward: torch.Tensor | None = None
     timings: dict[str, float] = field(default_factory=dict)
+    terminal_actions: torch.Tensor | None = None
+    terminal_discount: torch.Tensor | None = None
+    q_member_values: torch.Tensor | None = None
 
     @property
     def reward_sum(self) -> torch.Tensor:

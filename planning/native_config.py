@@ -5,6 +5,7 @@ NATIVE_MPPI_KEYS = frozenset({
     "temperature", "eval_seed", "kinematic_vehicle_width", "kinematic_wheelbase",
     "kinematic_max_steering_angle",
     "noise_rho",
+    "temperature_definition", "terminal_action", "q_aggregation",
 })
 
 

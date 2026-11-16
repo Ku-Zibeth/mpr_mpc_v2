@@ -1,0 +1,47 @@
+{
+  "origins": [
+    [
+      1714,
+      250
+    ],
+    [
+      559,
+      600
+    ],
+    [
+      985,
+      100
+    ],
+    [
+      2256,
+      100
+    ],
+    [
+      1760,
+      100
+    ],
+    [
+      539,
+      100
+    ],
+    [
+      792,
+      100
+    ],
+    [
+      872,
+      100
+    ],
+    [
+      1719,
+      100
+    ]
+  ],
+  "branches": [
+    "sac",
+    "mean"
+  ],
+  "actual_prefix": "H commands then SAC, not H+1",
+  "additional_origins": "Prespecified step100 of unchanged SAC policy; not archived D failure states",
+  "scope": "Old scenes for diagnosis only. No re-tuning or selection from this analysis."
+}

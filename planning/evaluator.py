@@ -35,9 +35,10 @@ class TrajectoryWorldModelEvaluator:
         return actions.new_tensor(float(self.agent.discount))
 
     @torch.no_grad()
-    def evaluate(self, z_t, actions, *, terminal_action_mode, task=None, compute_cost=None, q_aggregation="ensemble_mean"):
-        if terminal_action_mode not in {"policy", "trajectory"}:
-            raise ValueError("terminal_action_mode must be 'policy' or 'trajectory'.")
+    def evaluate(self, z_t, actions, *, terminal_action_mode, task=None, compute_cost=None,
+                 q_aggregation="ensemble_mean", q_indices=None, capture_ensemble=False):
+        if terminal_action_mode not in {"policy", "policy_mean", "trajectory"}:
+            raise ValueError("Unknown terminal action definition.")
         if actions.ndim != 3 or actions.shape[-1] != int(self.agent.cfg.action_dim):
             raise ValueError("Actions must have shape [B,S,action_dim].")
         batch, steps, _ = actions.shape
@@ -81,18 +82,41 @@ class TrajectoryWorldModelEvaluator:
                 discount *= discount_step
                 if bool(self.agent.cfg.episodic) and getattr(model, "_termination", None) is not None:
                     terminated = (terminated + (model.termination(z, task) > .5)).clamp_max(1)
-            terminal_action = actions[:, self.horizon] if terminal_action_mode == "trajectory" else model.pi(z, task)[0]
+            if terminal_action_mode == "trajectory":
+                terminal_action = actions[:, self.horizon]
+            elif terminal_action_mode == "policy_mean":
+                # pi() exposes its squashed mean. Restore its unused sample's
+                # RNG draw, so D2 does not inadvertently change random Q pairs.
+                device = torch.device(self.agent.device)
+                devices = [device.index if device.index is not None else torch.cuda.current_device()] if device.type == "cuda" else []
+                with torch.random.fork_rng(devices=devices):
+                    _, info = model.pi(z, task)
+                terminal_action = info["mean"]
+            else:
+                terminal_action = model.pi(z, task)[0]
+            qs = None
             if q_aggregation == "tdmpc2_avg":
                 # Official Q(avg) already inverse-transforms its random pair.
                 # ONE call shares the pair across every candidate in this batch.
                 terminal_q = model.Q(z, terminal_action, task, return_type="avg")
                 q_std = torch.full_like(terminal_q, float("nan"))
-            elif q_aggregation == "ensemble_mean":
+            elif q_aggregation in {"ensemble_mean", "fixed_pair"}:
                 # Frozen SAC feature semantics MUST retain the full-Q reducer.
                 qs = td_math.two_hot_inv(model.Q(z, terminal_action, task, return_type="all"), self.agent.cfg)
-                terminal_q, q_std = qs.mean(0), qs.std(0, unbiased=False)
+                if q_aggregation == "fixed_pair":
+                    if (q_indices is None or len(q_indices) != 2 or len(set(q_indices)) != 2
+                            or min(q_indices) < 0 or max(q_indices) >= len(qs)):
+                        raise ValueError("Fixed Q pair requires two distinct valid member indices.")
+                    terminal_q = qs[list(q_indices)].mean(0)
+                else:
+                    terminal_q = qs.mean(0)
+                q_std = qs.std(0, unbiased=False)
             else:
                 raise ValueError("Unknown terminal Q aggregation.")
+            if capture_ensemble and qs is None:
+                # Offline diagnostics only; never an extra online score or gate.
+                qs = td_math.two_hot_inv(model.Q(z, terminal_action, task, return_type="all"), self.agent.cfg)
+                q_std = qs.std(0, unbiased=False)
             discounted_reward = total.clone()
             total += discount * (1-terminated) * terminal_q
             prediction = None
@@ -132,6 +156,9 @@ class TrajectoryWorldModelEvaluator:
             cost_validated_mask=torch.full((batch,), validated, device=actions.device, dtype=torch.bool),
             cost_unavailable_reason="disabled" if not compute_cost else "available" if validated else "unvalidated",
             discounted_reward=discounted_reward.squeeze(-1), timings=timing_values,
+            terminal_actions=terminal_action,
+            terminal_discount=(discount*(1-terminated)).squeeze(-1),
+            q_member_values=qs.squeeze(-1) if qs is not None else None,
         )
 
     def evaluate_trajectory_consequence(self, z_t, actions, task=None, *, compute_cost=None):
@@ -140,9 +167,28 @@ class TrajectoryWorldModelEvaluator:
     def evaluate_policy_terminal(self, z_t, actions, task=None):
         return self.evaluate(z_t, actions, terminal_action_mode="policy", task=task)
 
-    def evaluate_mppi_candidates(self, z_t, actions, task=None, *, compute_cost=None):
-        return self.evaluate(z_t, actions, terminal_action_mode="trajectory", task=task,
-                             compute_cost=compute_cost, q_aggregation="tdmpc2_avg")
+    def new_mppi_q_pair(self):
+        """Exactly one random-two draw for a whole plan, not for each batch."""
+        count = int(self.agent.cfg.num_q)
+        if count < 2:
+            raise ValueError("Need at least two Q members.")
+        return tuple(torch.randperm(count, device=self.agent.device)[:2].cpu().tolist())
+
+    def evaluate_mppi_candidates(self, z_t, actions, task=None, *, compute_cost=None,
+                                 terminal_action="candidate", q_aggregation="random_pair",
+                                 q_indices=None, capture_ensemble=False):
+        if actions.ndim != 3 or actions.shape[1] != self.horizon+1:
+            raise ValueError("MPPI keeps the Coordinator H+1 interface.")
+        if terminal_action not in {"candidate", "policy_prior"}:
+            raise ValueError("Unknown MPPI terminal action.")
+        reducers = {"random_pair": "tdmpc2_avg", "fixed_pair": "fixed_pair", "ensemble_mean": "ensemble_mean"}
+        if q_aggregation not in reducers:
+            raise ValueError("Unknown MPPI Q reducer.")
+        mode = "trajectory" if terminal_action == "candidate" else "policy_mean"
+        controls = actions if mode == "trajectory" else actions[:, :self.horizon]
+        return self.evaluate(z_t, controls, terminal_action_mode=mode, task=task,
+            compute_cost=compute_cost, q_aggregation=reducers[q_aggregation],
+            q_indices=q_indices, capture_ensemble=capture_ensemble)
 
 
 __all__ = ["TrajectoryWorldModelEvaluator"]

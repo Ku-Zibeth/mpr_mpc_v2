@@ -1,0 +1,12 @@
+{
+  "provisional_candidate": "D4",
+  "eligible": [
+    "D4",
+    "D2",
+    "D1"
+  ],
+  "criterion": "Predeclared: among D1..D4, require validation success >= B, crash <= B, OOR <= B and mean episode return > B. Rank eligible variants by success, then mean return. A winner is provisional, not a generalization claim. No eligible variant means no winner, no combination, no final100. Any advanced variant is independently tested on all20 sealed IDs; report CIs, including non-significant outcomes.",
+  "reason": "Predeclared point-estimate screening, subject to sealed test and uncertainty.",
+  "configuration_default": "D1 (requested inverse-beta correction); not a claim of empirical optimum",
+  "old100_not_used_for_selection": true
+}

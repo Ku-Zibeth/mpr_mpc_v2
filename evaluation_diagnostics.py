@@ -105,7 +105,8 @@ class StepDiagnosticsLogger:
                 path = Path(self.stream.name).with_suffix(".search.jsonl.gz")
                 if self.search_stream is None:
                     self.search_stream = gzip.open(path, "at", encoding="utf-8")
-                self.search_stream.write(json.dumps(dict(scenario=int(scenario), episode_step=int(step), iterations=iterations), allow_nan=False)+"\n")
+                self.search_stream.write(json.dumps(dict(scenario=int(scenario), episode_step=int(step),
+                    value_definition=result.debug.get("mppi_value_definition"), iterations=iterations), allow_nan=False)+"\n")
                 self.search_stream.flush()
                 row["search_iterations_file"] = path.name
             candidates = getattr(result, "debug", {}).get("mppi_candidates", [])

@@ -64,12 +64,13 @@ def test_every_round_has_64_gaussians_plus_one_baseline_and_eight_elites():
     assert r.metrics['wm_evaluated_candidates']==262 and r.metrics['iterations_completed']==4
 
 
-def test_top_k_softmax_and_weighted_distribution_follow_divisor_temperature():
-    p=planner(num_samples=4,num_elites=2)
+@pytest.mark.parametrize("definition, exponent", [("divisor", -2.), ("inverse", -.5)])
+def test_top_k_softmax_and_weighted_distribution_follow_temperature(definition, exponent):
+    p=planner(num_samples=4,num_elites=2,temperature_definition=definition)
     actions=torch.tensor([[.02,.1],[-.02,.1],[.06,.2],[-.08,-.1]])[:,None].expand(-1,4,-1).clone()
     values=torch.tensor([3.,1.,2.,-1.]);indices,elite,w=p._elite_weights(values)
     assert indices.tolist()==[0,2] and elite.tolist()==[3.,2.] and w.sum()==pytest.approx(1.)
-    weights=np.array([1.,math.exp(-2.)]);weights/=weights.sum()
+    weights=np.array([1.,math.exp(exponent)]);weights/=weights.sum()
     chosen=np.array([[.02,.1],[.06,.2]]);expected=(weights[:,None]*chosen).sum(0)
     variance=(weights[:,None]*(chosen-expected)**2).sum(0)
     mean,std,_=p._update_distribution(actions,values)
