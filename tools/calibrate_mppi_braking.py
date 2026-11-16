@@ -43,6 +43,7 @@ def main():
         with contextlib.redirect_stdout(io.StringIO()):
             agent = suite._make_agent(cfg, env)
             loaded = agent.load(checkpoint)
+        offline = MPPISafetyFilter(dict(substeps=2, center_bicycle=True, center_model_guard=True, max_acceleration=4., max_deceleration=6.), control_dt=agent.planner.control_dt)
         agent.eval()
         suite._apply_evaluation_stack(agent.planner, 'world_model_residual_rl', loaded)
         agent.set_global_step(max(agent.global_env_step, agent.planner.mppi_start_step))
@@ -64,7 +65,7 @@ def main():
                         if done or speed >= target:
                             break
                     width, wheelbase, steering = agent.planner._vehicle_geometry(vehicle)
-                    context = agent.planner.local_mppi.candidate_safety.context(agent.planner.structured.planner, vehicle,
+                    context = offline.context(agent.planner.structured.planner, vehicle,
                         width=width, wheelbase=wheelbase, max_steering=steering)
                     command = np.array([np.clip(float(action[0])+steer_offset, -1, 1), -1.], np.float32)
                     before_speed = speed; deceleration = []; trace = []; traffic = []
@@ -94,7 +95,7 @@ def main():
                     prediction_errors = {}
                     if trace:
                         controls = torch.tensor(command).view(1,1,2).expand(1,len(trace)+1,2).clone()
-                        checker = agent.planner.local_mppi.candidate_safety
+                        checker = offline
                         center = checker._center_rollout(controls, context)
                         legacy = checker.geometry.rollout(controls, context)
                         actual_xy = np.asarray([r['xy'] for r in trace])

@@ -267,51 +267,6 @@ def test_emergency_authorization_and_repeated_failures(verified):
         assert r.metrics["safety_failure_streak"] == (0 if verified else i+1)
 
 
-def test_environment_aborts_without_advancing_physics_and_diagnostics(tmp_path):
-    from unittest.mock import Mock
-    from env.env import MetaDriveTDMPC2Env
-    from mpr_mpc.evaluation_diagnostics import EpisodeDiagnostics, StepDiagnosticsLogger
-    import json
-    env = object.__new__(MetaDriveTDMPC2Env)
-    env._env = Mock(); env._last_observation = torch.zeros(3)
-    env._last_info = dict(route_completion=.4, success=1., cost=9., safety_road_event_cost=5.)
-    env.request_safety_failure("no_verified_action")
-    obs, reward, done, info = env.step(torch.zeros(2))
-    env._env.step.assert_not_called()
-    assert done and info["safety_failure"] and not info["action_executed"] and not info["success"]
-    assert reward == info["cost"] == info["safety_road_event_cost"] == 0
-    diagnostics = EpisodeDiagnostics(); diagnostics.observe(obs, [0., -1.], info, None)
-    assert diagnostics.summary(info)["physical_steps"] == 0
-    assert diagnostics.summary(info)["safety_failure"] == 1
-    from mpr_mpc.evaluation_statistics import summarize_runs
-    aggregated = summarize_runs("abort", [dict(scenario=1, test_seed=1, collision_and_success=0.,
-        collision_and_offroad=0., **diagnostics.summary(info))], samples=20, seed=1)
-    assert aggregated["safety_failure_rate"] == 1 and aggregated["unverified_action_executions"] == 0
-    logger = StepDiagnosticsLogger(tmp_path, "abort")
-    logger.log(1, 1, [0., -1.], None, info); logger.close()
-    record = json.loads((tmp_path/"abort.jsonl").read_text())
-    assert record["executed_action"] is None and record["proposed_action"] == [0., -1.]
-    assert not record["action_executed"] and record["safety_failure"]
-    with pytest.raises(RuntimeError, match="Reset after"):
-        env.step(torch.zeros(2))
-
-
-def test_agent_rejects_action_changed_after_certificate():
-    from types import SimpleNamespace
-    from unittest.mock import Mock
-    from mpr_mpc.agent import MPRMPCAgent
-    agent = object.__new__(MPRMPCAgent)
-    result = SimpleNamespace(stage=SimpleNamespace(use_mppi=True), action=torch.ones(2), safety_failure=False,
-        metrics={}, debug=dict(selected_mppi_actions=torch.zeros(4, 2), safety_certificate=dict(valid=True)))
-    agent.planner = SimpleNamespace(enabled=True, plan=lambda *a, **k: result, last_context=None)
-    agent.env = SimpleNamespace(unwrapped_metadrive=SimpleNamespace(agent=None), request_safety_failure=Mock())
-    agent.global_env_step = 0; agent.set_global_step = lambda step: None
-    agent._maybe_freeze_tdmpc2 = lambda step: None
-    agent.act(torch.zeros(3), eval_mode=True)
-    assert result.safety_failure and result.metrics["mppi/execution_authorized"] == 0
-    agent.env.request_safety_failure.assert_called_once_with("action_certificate_mismatch")
-
-
 def test_recoverable_tail_does_not_force_latch_but_near_failure_does():
     p = make_planner(); p.recovery_enabled = False
     c = road_context(speed=5, road=box(0, 5, 14.7, 15))

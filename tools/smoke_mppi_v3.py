@@ -1,4 +1,4 @@
-"""Fixed-state closed-loop smoke for the certified SAC-centred MPPI."""
+"""Fixed-state closed-loop smoke for the SAC-centred AR(1) MPPI."""
 import argparse,contextlib,io,json,hashlib,sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
@@ -48,23 +48,27 @@ def main():
                 obs,_,done,info=env.step(np.array(old['executed_action'],np.float32))
                 if done:raise RuntimeError('Archived prefix terminated early.')
             if replay_error>1e-4:raise RuntimeError(f'Archived prefix mismatch: {replay_error}')
-            route0=float(info.get('route_completion',0.));rows=[]
+            route0=float((info or getattr(env,'_last_info',{})).get('route_completion',0.));rows=[]
             for i in range(a.steps):
                 action=agent.act(obs,t0=(i==0 and before==1),eval_mode=True);result=agent.last_plan
                 if result.stage.use_mppi:
                     seq=result.debug['selected_mppi_actions'];base=result.refined_actions.cpu()
                     assert seq.shape==base.shape==(cfg.horizon+1,cfg.action_dim)
-                    assert (seq.abs()<=1).all() and ((seq-base).abs()<=agent.planner.local_mppi.max_delta.cpu()+1e-7).all()
-                    if not result.safety_failure:
-                        assert result.debug.get('safety_certificate',{}).get('valid',False)
+                    assert torch.isfinite(seq).all() and (seq.abs()<=1).all()
+                    assert torch.equal(action.cpu(),seq[0])
+                    assert not hasattr(agent.planner.local_mppi,'candidate_safety')
+                    assert 'safety_certificate' not in result.debug
+                    if not result.metrics['mppi/invalid_prediction']:
+                        assert result.metrics['mppi/iterations_completed']==cfg.mpr_mpc['mppi']['iterations']
+                        assert len(result.debug['mppi_iterations'])==cfg.mpr_mpc['mppi']['iterations']
+                        assert result.metrics['mpr/selected_wm_value']>=result.metrics['mpr/baseline_wm_value']
                 obs,reward,done,info=env.step(action)
-                if result.safety_failure:
-                    assert not info.get('action_executed',True)
+                assert bool(info.get('action_executed',True)) and not info.get('safety_failure',False)
                 rows.append(dict(step=i+1,action=action.tolist(),reward=float(reward),route=float(info.get('route_completion',0.)),
                     speed=float(np.linalg.norm(env.unwrapped_metadrive.agent.velocity)),
                     crash=any(bool(info.get(k,False)) for k in ('crash','crash_vehicle','crash_object','crash_building','crash_human','crash_sidewalk')),
                     offroad=bool(info.get('out_of_road',False)),safety_failure=bool(info.get('safety_failure',False)),
-                    mode=result.planning_mode,metrics={k:float(v) for k,v in result.metrics.items() if isinstance(v,(float,int,np.number))}))
+                    mode=result.planning_mode,iterations=result.debug.get('mppi_iterations',[]),metrics={k:float(v) for k,v in result.metrics.items() if isinstance(v,(float,int,np.number))}))
                 if done:break
             case=dict(scenario=s,snapshot_before_step=before,replay_max_speed_error=replay_error,records=rows,
                 summary=dict(steps=len(rows),route_gain=float(info.get('route_completion',0.))-route0,

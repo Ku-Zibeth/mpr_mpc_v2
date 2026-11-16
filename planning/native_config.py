@@ -2,9 +2,9 @@
 
 NATIVE_MPPI_KEYS = frozenset({
     "enabled", "num_samples", "num_elites", "iterations", "initial_std", "min_std", "max_std",
-    "max_delta", "temperature", "eval_seed", "kinematic_vehicle_width", "kinematic_wheelbase",
+    "temperature", "eval_seed", "kinematic_vehicle_width", "kinematic_wheelbase",
     "kinematic_max_steering_angle",
-    "noise_rho", "allow_unvalidated_cost", "safety",
+    "noise_rho",
 })
 
 

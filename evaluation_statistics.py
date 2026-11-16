@@ -8,6 +8,10 @@ import numpy as np
 
 
 METRICS = {
+    "reward": ("return", None),
+    "actual_discounted_return": ("actual_discounted_return", None),
+    "initial_predicted_return_bias": ("initial_predicted_return_bias", None),
+    "one_step_reward_mae": ("one_step_reward_mae", None),
     "out_of_road": ("episode_out_of_road", None),
     "crash": ("episode_crash", None),
     "route_completion": ("final_route_completion", None),

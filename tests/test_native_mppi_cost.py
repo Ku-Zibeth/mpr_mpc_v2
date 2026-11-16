@@ -134,6 +134,8 @@ class RolloutModel(ExactCostModel):
         return torch.ones_like(action[:, :1])*float(np.log1p(2))
 
     def Q(self, z, action, task, return_type="all"):
+        if return_type == "avg":
+            return torch.full((len(action), 1), 4.)
         return torch.ones(3, len(action), 1)*float(np.log1p(4))
 
 

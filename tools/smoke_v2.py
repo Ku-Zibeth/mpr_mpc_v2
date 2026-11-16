@@ -81,11 +81,10 @@ def main():
             assert not training_plan.stage.use_mppi
             plan = agent.planner.plan(observation, vehicle, global_step=50000, t0=True, eval_mode=True)
             assert plan.action.shape == (2,) and torch.isfinite(plan.action).all()
-            assert plan.metrics["mppi/cost_enabled"] == 1
-            assert np.isfinite(plan.metrics["mppi/predicted_cost"])
-            if not (plan.metrics.get("mppi/lattice_fallback") or plan.metrics.get("mppi/emergency_fallback")):
-                assert torch.all((plan.debug["selected_mppi_actions"]-plan.refined_actions.cpu()).abs()
-                                 <= agent.planner.local_mppi.max_delta.cpu()+1e-6)
+            assert plan.metrics["mppi/invalid_prediction"] == 0
+            assert np.isfinite(plan.metrics["mppi/selected_predicted_return"])
+            sequence = plan.debug["selected_mppi_actions"]
+            assert torch.isfinite(sequence).all() and (sequence.abs() <= 1).all()
             for name, kind in (("wm", "world_model"), ("sac", "world_model_residual_rl"), ("full", "full_mpr_mpc")):
                 path = Path(temporary) / f"{name}.pt"
                 agent.save_milestone(path, milestone_type=kind)

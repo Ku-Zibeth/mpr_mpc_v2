@@ -1,0 +1,22 @@
+[
+  {
+    "scenario": 1714,
+    "state_dim": 535,
+    "max_errors": {
+      "state": 0.0,
+      "residual": 0.0,
+      "refined_actions": 0.0,
+      "action": 0.0
+    }
+  },
+  {
+    "scenario": 559,
+    "state_dim": 535,
+    "max_errors": {
+      "state": 0.0,
+      "residual": 0.0,
+      "refined_actions": 0.0,
+      "action": 0.0
+    }
+  }
+]

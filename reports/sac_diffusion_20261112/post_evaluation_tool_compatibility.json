@@ -1,0 +1,11 @@
+{
+  "path": "tools/smoke_v2.py",
+  "sha256_before": "edaa49b4379ba3ad5c5a724b9fc3d03ca6aa45f62863656ffa44fb9f81c246b9",
+  "task": "After full evaluation and aggregation, replace the obsolete trust-region assertion with finite physical action bounds. This historical smoke CLI is not imported by the active experiment; do not change the frozen source while workers are running.",
+  "sha256_after": "056cf3c1c0f1d393d9e6337259ec6386bc7732f63ff91d04661c736a8e1dc7cb",
+  "evaluation_source_sha256": "2a4e5408eea2bb8cd7aef7ca1bb7b8c3d77d0e323d02cfccf75ebd0937435749",
+  "final_source_sha256": "99b53bbdc0bce64216fb9dd1aa2cfa728a17fe01e08e91bebcd2d1f455eec210",
+  "only_changed_runtime_path_after_evaluation": "tools/smoke_v2.py",
+  "proof": "Replacing ONLY the historical smoke CLI bytes in the fingerprint reproduces the exact frozen evaluation source hash. This CLI is not imported by the evaluator or probe. Core planning/model/environment code is unchanged.",
+  "training_smoke_not_executed": true
+}

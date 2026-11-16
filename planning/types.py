@@ -72,7 +72,6 @@ class MPRPlanContext:
     residual_bounds: torch.Tensor
     residual_state: torch.Tensor | None
     safety_context: Any = None
-    mppi_safety_context: Any = None
 
 
 @dataclass

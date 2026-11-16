@@ -1,0 +1,5 @@
+{
+  "path": "tools/smoke_v2.py",
+  "sha256_before": "edaa49b4379ba3ad5c5a724b9fc3d03ca6aa45f62863656ffa44fb9f81c246b9",
+  "task": "After full evaluation and aggregation, replace the obsolete trust-region assertion with finite physical action bounds. This historical smoke CLI is not imported by the active experiment; do not change the frozen source while workers are running."
+}

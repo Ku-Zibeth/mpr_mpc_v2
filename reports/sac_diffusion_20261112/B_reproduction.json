@@ -1,0 +1,13 @@
+{
+  "episodes": 100,
+  "reference_csv": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/benchmark/sac_refinement_BD_final100_20261111_154509/episodes_B_lattice_sac_seed1.csv",
+  "max_errors": {
+    "length": 0.0,
+    "return": 0.0,
+    "final_success": 0.0,
+    "episode_crash": 0.0,
+    "episode_out_of_road": 0.0,
+    "final_route_completion": 0.0
+  },
+  "all_exact": true
+}

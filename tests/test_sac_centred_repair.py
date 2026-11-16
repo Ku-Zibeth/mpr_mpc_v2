@@ -4,10 +4,8 @@ from unittest.mock import patch
 import numpy as np
 import torch
 from shapely.geometry import box
-from mpr_mpc.planning.local_mppi import LocalMPPI
 from mpr_mpc.planning.mppi_safety import MPPISafetyContext, MPPISafetyFilter
 from tests.test_v2_safety import context, obstacle
-from tests.test_mppi_v3 import RankedEvaluator
 
 
 def state(speed=5., obstacles=()):
@@ -56,59 +54,3 @@ def test_center_and_legacy_must_certify_the_same_stopping_witness():
     with patch.object(f,'braking_domain',return_value=((evidence(),'test'), 'validated_domain')):
         r=f.certify(torch.zeros(1,11,2),c)
     assert not r.valid.any() and not r.hold_braking_valid.any() and not r.guided_braking_valid.any()
-
-
-def fake_result(actions, valid):
-    n=len(actions); zeros=torch.zeros(n,dtype=torch.bool)
-    steer=actions[:,0,0].cpu()
-    return SimpleNamespace(valid=valid,near_valid=torch.ones(n,dtype=torch.bool),full_valid=valid.clone(),
-        near_collision=zeros,near_offroad=zeros,collision=~valid,offroad=zeros,kinematic_violation=zeros,
-        safety_unknown=zeros,center_model_valid=valid,legacy_model_valid=valid,
-        center_first_failure_substep=None,legacy_first_failure_substep=None,
-        certification_reason='test',boundary_margin=1-(steer-.02).abs(),min_clearance=torch.full((n,),10.),
-        route_progress_estimate=torch.ones(n),terminal_speed=torch.ones(n),
-        stopping_witnesses=[a.clone() for a in actions.cpu()],evidence_sha256='test',safety_horizon_steps=30,
-        hold_braking_valid=valid,guided_braking_valid=zeros,stopping_time_s=3.,road_rejection_kind='none')
-
-
-def planner():
-    p=LocalMPPI(RankedEvaluator(lambda a:100*a[:,0,0]),dict(num_samples=4,num_elites=2,iterations=4),
-        horizon=3,action_dim=2,device='cpu')
-    p.candidate_safety.preview=lambda a,c:fake_result(a,torch.ones(len(a),dtype=torch.bool))
-    return p
-
-
-def test_normal_unqualified_value_keeps_exact_sac_even_when_q_prefers_change():
-    p=planner();p.candidate_safety.certify=lambda a,c:fake_result(a,torch.ones(len(a),dtype=torch.bool))
-    base=torch.zeros(4,2);r=p.plan(torch.zeros(1,2),base,eval_mode=True,safety_context=state())
-    assert torch.equal(r.selected_sequence,base) and r.baseline_selected and r.safety_certificate['valid']
-    assert r.metrics['iterations_completed']==0 and r.metrics['value_ranking_validated']==0
-
-
-def test_tail_repair_uses_certified_geometry_not_unvalidated_q():
-    p=planner();base=torch.zeros(4,2);low=base+.02;high=base+.08
-    p._structured=lambda *a:[('sac',base)]
-    p._candidate_batch=lambda *a:torch.stack((base,low,high,low))
-    p.candidate_safety.certify=lambda a,c:fake_result(a,a[:,0,0].cpu()>0)
-    r=p.plan(torch.zeros(1,2),base,eval_mode=True,safety_context=state())
-    assert r.decision_metadata['decision_state_name']=='TAIL_VIABILITY_REPAIR'
-    assert torch.equal(r.selected_sequence,low) and r.safety_certificate['valid']
-    assert r.metrics['tail_viability_repair_success']==1 and r.metrics['iterations_completed']==4
-
-
-def test_uncertified_candidates_cannot_update_distribution_or_execute():
-    p=planner();base=torch.zeros(4,2)
-    p.candidate_safety.certify=lambda a,c:fake_result(a,torch.zeros(len(a),dtype=torch.bool))
-    r=p.plan(torch.zeros(1,2),base,eval_mode=True,safety_context=state())
-    assert r.safety_failure and not r.safety_certificate['valid']
-    assert torch.equal(r.initial_mean,r.final_mean) and torch.equal(r.initial_std,r.final_std)
-    assert r.metrics['elite_update_skipped']==4 and r.metrics['execution_authorized']==0
-
-
-def test_ar_noise_preserves_action_bounds_and_temporal_correlation():
-    p=LocalMPPI(RankedEvaluator(),dict(num_samples=64,num_elites=8,iterations=4,noise_rho=.8),
-        horizon=20,action_dim=2,device='cpu')
-    base=torch.zeros(21,2);a=p._candidate_batch(base,torch.full_like(base,.02),base)
-    assert torch.equal(a[0],base) and (a.abs()<=p.max_delta).all()
-    noise=a[1:].numpy()
-    assert np.corrcoef(noise[:,:-1].ravel(),noise[:,1:].ravel())[0,1]>.6

@@ -59,6 +59,7 @@ class StepDiagnosticsLogger:
         self.compact, self.stride = bool(compact), max(1, int(stride))
         self._last_state = None
         self.candidate_stream = None
+        self.search_stream = None
         if directory is not None:
             directory = Path(directory)
             directory.mkdir(parents=True, exist_ok=True)
@@ -98,8 +99,15 @@ class StepDiagnosticsLogger:
             row.update(prediction_outcomes(info, result) if info is not None else {})
             row.update(residual_enabled=bool(result.stage.use_residual), mppi_enabled=bool(result.stage.use_mppi))
             row["planning_mode"] = getattr(result, "planning_mode", "unknown")
-            for key in ("baseline_certification_reason", "decision_state_name", "diagnostic_state", "candidate_source", "selection_reason", "road_rejection_kind"):
-                row[key] = result.debug.get(key)
+            row["mppi_numerical_error"] = result.debug.get("mppi_numerical_error")
+            iterations = result.debug.get("mppi_iterations", [])
+            if iterations and self.stream is not None:
+                path = Path(self.stream.name).with_suffix(".search.jsonl.gz")
+                if self.search_stream is None:
+                    self.search_stream = gzip.open(path, "at", encoding="utf-8")
+                self.search_stream.write(json.dumps(dict(scenario=int(scenario), episode_step=int(step), iterations=iterations), allow_nan=False)+"\n")
+                self.search_stream.flush()
+                row["search_iterations_file"] = path.name
             candidates = getattr(result, "debug", {}).get("mppi_candidates", [])
             if candidates and self.stream is not None:
                 candidate_path = Path(self.stream.name).with_suffix(".candidates.jsonl.gz")
@@ -125,6 +133,8 @@ class StepDiagnosticsLogger:
                 self.upload_failed = True
 
     def close(self):
+        if self.search_stream is not None:
+            self.search_stream.close()
         if self.candidate_stream is not None:
             self.candidate_stream.close()
         if self.stream is not None:
@@ -166,6 +176,8 @@ class EpisodeDiagnostics:
         self.observations, self.actions, self.costs = [], [], []
         self.speeds = []
         self.distance = 0.0
+        self.rewards, self.predicted_returns, self.predicted_rewards = [], [], []
+        self.gamma = None
 
     def observe(self, observation, action, info, result, vehicle=None):
         executed = bool(info.get("action_executed", True))
@@ -190,8 +202,11 @@ class EpisodeDiagnostics:
             self.sums[f"safety_{key}_cost"] += float(info.get(f"safety_{key}_cost", 0))
         if result is not None:
             result.metrics.update(prediction_outcomes(info, result))
-            if result.stage.use_mppi and executed and not result.debug.get("safety_certificate", {}).get("valid", False):
-                self.sums["unverified_action_executions"] += 1
+            if executed and "tdmpc2_reward" in info:
+                self.rewards.append(float(info["tdmpc2_reward"]))
+                self.predicted_returns.append(result.metrics.get("mppi/selected_predicted_return", float("nan")))
+                self.predicted_rewards.append(result.metrics.get("mppi/predicted_first_reward", float("nan")))
+                self.gamma = result.debug.get("wm_discount")
             code = result.metrics.get("mppi/planning_mode", float("nan"))
             if result.stage.use_mppi and executed and np.isfinite(code):
                 self.sums[f"mode{int(code)}_steps"] += 1
@@ -218,14 +233,36 @@ class EpisodeDiagnostics:
     def trajectory(self):
         return (np.asarray(self.observations), np.asarray(self.actions), np.asarray(self.costs))
 
+    def prediction_summary(self):
+        """Deployment return diagnostic, not same-sequence Q calibration proof."""
+        missing = dict(actual_discounted_return=float("nan"), initial_predicted_return=float("nan"),
+            initial_predicted_return_bias=float("nan"), mean_return_to_go_prediction_bias=float("nan"),
+            one_step_reward_bias=float("nan"), one_step_reward_mae=float("nan"))
+        if self.gamma is None or not self.rewards or len(self.rewards) != len(self.actions):
+            return missing
+        realized, value = [], 0.
+        for reward in reversed(self.rewards):
+            value = reward+float(self.gamma)*value
+            realized.append(value)
+        realized = np.asarray(realized[::-1])
+        predictions = np.asarray(self.predicted_returns, dtype=float)
+        reward_error = np.asarray(self.predicted_rewards, dtype=float)-np.asarray(self.rewards)
+        valid, reward_valid = np.isfinite(predictions), np.isfinite(reward_error)
+        return dict(actual_discounted_return=float(realized[0]), initial_predicted_return=float(predictions[0]),
+            initial_predicted_return_bias=float(predictions[0]-realized[0]),
+            mean_return_to_go_prediction_bias=float((predictions[valid]-realized[valid]).mean()) if valid.any() else float("nan"),
+            one_step_reward_bias=float(reward_error[reward_valid].mean()) if reward_valid.any() else float("nan"),
+            one_step_reward_mae=float(np.abs(reward_error[reward_valid]).mean()) if reward_valid.any() else float("nan"))
+
     def summary(self, info, agent=None):
         mean = lambda values: float(np.mean(values)) if values else float("nan")
         sac = getattr(agent, "residual_sac", None)
         planning = self.plans.get("mpr/total_planning_ms", [])
         legacy = {"mppi_baseline_selected": "mpr/baseline_selected", "mppi_score_gain": "mpr/planner_score_gain"}
         return {
+            **self.prediction_summary(),
             "safety_failure": float(self.safety_failure), "physical_steps": len(self.actions),
-            "unverified_action_executions": self.sums["unverified_action_executions"],
+            "unverified_action_executions": None,  # certificate protocol retired, not an asserted safety guarantee
             **{f"planning_p{q}_ms": float(np.percentile(planning, q)) if planning else float("nan")
                for q in (50, 95, 99)},
             "low_speed_steps": sum(v < .3 for v in self.speeds),
@@ -246,7 +283,7 @@ class EpisodeDiagnostics:
                 ("actual_collision", "actual_offroad", "predicted_safe_actual_collision", "predicted_safe_actual_offroad",
                  "prediction_collision_known", "prediction_offroad_known")},
             **{f"mppi_mode_{name}_rate": mean([float(v == code) for v in self.plans["mppi/planning_mode"]])
-                for code, name in enumerate(("baseline", "normal", "tail_repair", "safety_intervention", "true_stuck_recovery", "safety_failure"))},
+                for code, name in enumerate(("baseline", "normal"))},
             **{f"mppi_mode_{name}_{event}_steps": (self.sums[f"mode{code}_{event}_steps"]
                 if self.plans["mppi/planning_mode"] else float("nan"))
                for code, name in enumerate(("baseline", "normal"))
