@@ -19,7 +19,7 @@ MPPI_DIAGNOSTIC_KEYS = (
     'world_model_rollout_ms','final_value_evaluation_ms','planning_time_ms',
     'weight_entropy','effective_sample_size','prefix_reward_gain','terminal_q_gain','discounted_terminal_gain',
     'selected_prefix_reward_gain','selected_discounted_terminal_gain','q_ensemble_std','fixed_q_pair',
-    'q_pair_0','q_pair_1','active_action_steps',
+    'q_pair_0','q_pair_1','active_action_steps','terminal_q_weight','weighted_terminal_q_gain',
 ) + tuple(f'iteration_{i}_{name}' for i in range(4) for name in ('elite_value_mean','elite_value_max','sampling_diversity','weight_entropy','effective_sample_size'))
 MPPI_EPISODE_METRICS = {f'mppi_{k}':f'mppi/{k}' for k in (*MPPI_DIAGNOSTIC_KEYS,'total_planning_ms')}
 
@@ -74,6 +74,9 @@ class LocalMPPI:
         self.temperature_definition = str(cfg.get('temperature_definition','inverse'))
         self.terminal_action = str(cfg.get('terminal_action','candidate'))
         self.q_aggregation = str(cfg.get('q_aggregation','random_pair'))
+        self.terminal_q_weight = float(cfg.get('terminal_q_weight',1.0))
+        if not math.isfinite(self.terminal_q_weight) or self.terminal_q_weight < 0:
+            raise ValueError('terminal_q_weight must be finite and nonnegative.')
         if (self.temperature_definition not in {'inverse','divisor'} or self.terminal_action not in {'candidate','policy_prior'}
                 or self.q_aggregation not in {'random_pair','fixed_pair','ensemble_mean'}):
             raise ValueError('Unknown MPPI temperature, terminal action or Q definition.')
@@ -140,8 +143,11 @@ class LocalMPPI:
         options = {}
         if self.terminal_action != 'candidate' or self.q_aggregation != 'random_pair':
             options = dict(terminal_action=self.terminal_action,q_aggregation=self.q_aggregation,q_indices=q_pair)
+        if self.terminal_q_weight != 1.0:
+            options['terminal_q_weight'] = self.terminal_q_weight
         definition = dict(temperature_definition=self.temperature_definition,temperature=self.temperature,
-                          terminal_action=self.terminal_action,q_aggregation=self.q_aggregation,q_indices=q_pair)
+                          terminal_action=self.terminal_action,q_aggregation=self.q_aggregation,q_indices=q_pair,
+                          terminal_q_weight=self.terminal_q_weight)
         phase,timing,history = PhaseTimings(self.device),{},[]
         evaluated = 0
         error = None
@@ -219,6 +225,8 @@ class LocalMPPI:
             prefix_reward_gain=float(optimized['reward']-base['reward']),
             terminal_q_gain=float(optimized['terminal_q']-base['terminal_q']),
             discounted_terminal_gain=float((optimized_value-optimized['reward'])-(baseline_value-base['reward'])),
+            weighted_terminal_q_gain=float((optimized_value-optimized['reward'])-(baseline_value-base['reward'])),
+            terminal_q_weight=self.terminal_q_weight,
             selected_prefix_reward_gain=float(selected['reward']-base['reward']),
             selected_discounted_terminal_gain=float((selected_value-selected['reward'])-(baseline_value-base['reward'])),
             q_ensemble_std=float(selected['q_std']),fixed_q_pair=float(q_pair is not None),

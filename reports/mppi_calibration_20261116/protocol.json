@@ -1,0 +1,80 @@
+{
+  "base_commit": "fae10f34e15ffe987a7527272cb1693637a9f488",
+  "checkpoint": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt",
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "source_environment_config": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/benchmark/sac_refinement_BD_fixed100_20261111_152755/part1/config_B_lattice_sac_seed1.yaml",
+  "source_snapshot_sha256": "b3ee26786394faccb5cbb4db224c2b638d7246d732006191dfcff41ea5db7cb5",
+  "dev_scenarios": [
+    40511,
+    40377,
+    40696,
+    40298,
+    40330,
+    40507,
+    40768,
+    40394,
+    40113,
+    40684
+  ],
+  "validation_scenarios": [
+    40614,
+    40250,
+    40765,
+    40936,
+    40058,
+    40974
+  ],
+  "origin_steps": [
+    50,
+    150
+  ],
+  "elite_scenarios": [
+    40511,
+    40330,
+    40113,
+    40765
+  ],
+  "groups": {
+    "Q1": 1.0,
+    "Q05": 0.5,
+    "Q025": 0.25,
+    "Q0": 0.0
+  },
+  "seed": 1,
+  "episode_horizon": 1000,
+  "horizon": 10,
+  "effective_beta": 2.0,
+  "temperature_definition": "inverse",
+  "terminal_action": "candidate",
+  "q_aggregation": "ensemble_mean",
+  "closed_loop_dev_scenarios": [
+    40511,
+    40377,
+    40696,
+    40298
+  ],
+  "closed_loop_validation_scenarios": [
+    40614,
+    40250,
+    40765,
+    40936,
+    40058,
+    40974
+  ],
+  "additional_test_scenarios": [
+    50575,
+    50454,
+    50937,
+    50661,
+    50194,
+    50680,
+    50648,
+    50695,
+    50522,
+    50976
+  ],
+  "selection": "Select only Q05 or Q025 on development origins AND development closed-loop, requiring actual mean return > Q1 and B, no higher crash/OOR, closed-loop success >= both. Rank eligible by actual discounted return, then success. Q0 is diagnostic only. Validate single selected candidate against B and Q1 on held-out scenes. No selection on old9 or old20.",
+  "validation_gate": "New final-test scenes only if held-out validation shows success >= B/Q1, return > both, crash/OOR <= both and paired return CI95 lower bound > 0 against both. Otherwise stop; no extra coefficients or full100.",
+  "scope": "32 planned origins across16 new scenes, split by scene:20 development/12 validation. Unreachable SAC prefixes recorded, not replaced based on outcomes. Four predeclared scenes also execute Q1 best recorded elite. Observed+traffic+RNG matching is not a complete hidden simulator snapshot.",
+  "no_training": true
+}

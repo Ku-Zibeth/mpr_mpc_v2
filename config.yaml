@@ -88,6 +88,7 @@ mpr_mpc:
     temperature_definition: inverse  # D1 only; D0 explicitly restores divisor
     terminal_action: candidate
     q_aggregation: random_pair
+    terminal_q_weight: 1.0  # MPPI only; frozen SAC features retain unweighted Q
     eval_seed: 0
     noise_rho: [0.8, 0.8]
     # Read only by the existing SAC geometry features; never MPPI scoring.

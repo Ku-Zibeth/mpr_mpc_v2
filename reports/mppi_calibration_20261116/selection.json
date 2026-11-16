@@ -1,0 +1,7 @@
+{
+  "candidate": null,
+  "eligible": [],
+  "source": "Only development probes and closed-loop; no validation or old scenes used.",
+  "validation_gate_passed": false,
+  "reason": "No independent, accident-preserving improvement evidence. No new test/full100, no extra coefficients and no retraining."
+}

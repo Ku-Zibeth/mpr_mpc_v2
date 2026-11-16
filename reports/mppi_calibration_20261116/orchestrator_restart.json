@@ -1,0 +1,13 @@
+{
+  "parent": 2441731,
+  "children": [
+    "2459713 /home/kzb/anaconda3/envs/tdmpc2/bin/python -u /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/mppi_calibration_20261116/probe.py --scenario 40330 --before 50 --branch Q0",
+    "2460357 /home/kzb/anaconda3/envs/tdmpc2/bin/python -u /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/mppi_calibration_20261116/probe.py --scenario 40330 --before 50 --branch elite_Q1"
+  ],
+  "reason": "Increase only process concurrency from2 to4; retain completed outputs; no algorithm/protocol change",
+  "drained_exit_codes": [
+    0,
+    0
+  ],
+  "resumed_jobs": 4
+}

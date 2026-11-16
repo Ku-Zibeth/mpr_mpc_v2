@@ -1,0 +1,1168 @@
+{
+  "dev": {
+    "summary": [
+      {
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 0.45,
+        "predicted_latent_accuracy_ci95_low": 0.2,
+        "predicted_latent_accuracy_ci95_high": 0.7,
+        "real_latent_same_action_accuracy": 0.3,
+        "real_latent_same_action_accuracy_ci95_low": 0.1,
+        "real_latent_same_action_accuracy_ci95_high": 0.5,
+        "real_latent_sac_action_accuracy": 0.25,
+        "real_latent_sac_action_accuracy_ci95_low": 0.1,
+        "real_latent_sac_action_accuracy_ci95_high": 0.4
+      },
+      {
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 0.55,
+        "predicted_latent_accuracy_ci95_low": 0.35,
+        "predicted_latent_accuracy_ci95_high": 0.75,
+        "real_latent_same_action_accuracy": 0.4,
+        "real_latent_same_action_accuracy_ci95_low": 0.2,
+        "real_latent_same_action_accuracy_ci95_high": 0.6,
+        "real_latent_sac_action_accuracy": 0.4,
+        "real_latent_sac_action_accuracy_ci95_low": 0.2,
+        "real_latent_sac_action_accuracy_ci95_high": 0.6
+      },
+      {
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 0.4,
+        "predicted_latent_accuracy_ci95_low": 0.25,
+        "predicted_latent_accuracy_ci95_high": 0.5,
+        "real_latent_same_action_accuracy": 0.25,
+        "real_latent_same_action_accuracy_ci95_low": 0.1,
+        "real_latent_same_action_accuracy_ci95_high": 0.4,
+        "real_latent_sac_action_accuracy": 0.25,
+        "real_latent_sac_action_accuracy_ci95_low": 0.1,
+        "real_latent_sac_action_accuracy_ci95_high": 0.4
+      },
+      {
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 0.25,
+        "predicted_latent_accuracy_ci95_low": 0.1,
+        "predicted_latent_accuracy_ci95_high": 0.4,
+        "real_latent_same_action_accuracy": 0.4,
+        "real_latent_same_action_accuracy_ci95_low": 0.25,
+        "real_latent_same_action_accuracy_ci95_high": 0.5,
+        "real_latent_sac_action_accuracy": 0.45,
+        "real_latent_sac_action_accuracy_ci95_low": 0.3,
+        "real_latent_sac_action_accuracy_ci95_high": 0.6
+      }
+    ],
+    "rows": [
+      {
+        "scenario": 40113,
+        "before": 150,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40113,
+        "before": 150,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40113,
+        "before": 150,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40113,
+        "before": 150,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40113,
+        "before": 50,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40113,
+        "before": 50,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40113,
+        "before": 50,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40113,
+        "before": 50,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40298,
+        "before": 150,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40298,
+        "before": 150,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40298,
+        "before": 150,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40298,
+        "before": 150,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40298,
+        "before": 50,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40298,
+        "before": 50,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40298,
+        "before": 50,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40298,
+        "before": 50,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40330,
+        "before": 150,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40330,
+        "before": 150,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40330,
+        "before": 150,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40330,
+        "before": 150,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40330,
+        "before": 50,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40330,
+        "before": 50,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40330,
+        "before": 50,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40330,
+        "before": 50,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40377,
+        "before": 150,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40377,
+        "before": 150,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40377,
+        "before": 150,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40377,
+        "before": 150,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40377,
+        "before": 50,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40377,
+        "before": 50,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40377,
+        "before": 50,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40377,
+        "before": 50,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40394,
+        "before": 150,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40394,
+        "before": 150,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40394,
+        "before": 150,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40394,
+        "before": 150,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40394,
+        "before": 50,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40394,
+        "before": 50,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40394,
+        "before": 50,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40394,
+        "before": 50,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40507,
+        "before": 150,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40507,
+        "before": 150,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40507,
+        "before": 150,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40507,
+        "before": 150,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40507,
+        "before": 50,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40507,
+        "before": 50,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40507,
+        "before": 50,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40507,
+        "before": 50,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40511,
+        "before": 150,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40511,
+        "before": 150,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40511,
+        "before": 150,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40511,
+        "before": 150,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40511,
+        "before": 50,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40511,
+        "before": 50,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40511,
+        "before": 50,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40511,
+        "before": 50,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40684,
+        "before": 150,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40684,
+        "before": 150,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40684,
+        "before": 150,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40684,
+        "before": 150,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40684,
+        "before": 50,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40684,
+        "before": 50,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40684,
+        "before": 50,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40684,
+        "before": 50,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40696,
+        "before": 150,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40696,
+        "before": 150,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40696,
+        "before": 150,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40696,
+        "before": 150,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40696,
+        "before": 50,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40696,
+        "before": 50,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40696,
+        "before": 50,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40696,
+        "before": 50,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40768,
+        "before": 150,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40768,
+        "before": 150,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40768,
+        "before": 150,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40768,
+        "before": 150,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40768,
+        "before": 50,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40768,
+        "before": 50,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40768,
+        "before": 50,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40768,
+        "before": 50,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      }
+    ]
+  },
+  "validation": {
+    "summary": [
+      {
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 0.5,
+        "predicted_latent_accuracy_ci95_low": 0.25,
+        "predicted_latent_accuracy_ci95_high": 0.75,
+        "real_latent_same_action_accuracy": 0.5,
+        "real_latent_same_action_accuracy_ci95_low": 0.25,
+        "real_latent_same_action_accuracy_ci95_high": 0.75,
+        "real_latent_sac_action_accuracy": 0.5,
+        "real_latent_sac_action_accuracy_ci95_low": 0.25,
+        "real_latent_sac_action_accuracy_ci95_high": 0.75
+      },
+      {
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 0.25,
+        "predicted_latent_accuracy_ci95_low": 0.0,
+        "predicted_latent_accuracy_ci95_high": 0.5833333333333334,
+        "real_latent_same_action_accuracy": 0.3333333333333333,
+        "real_latent_same_action_accuracy_ci95_low": 0.16666666666666666,
+        "real_latent_same_action_accuracy_ci95_high": 0.5,
+        "real_latent_sac_action_accuracy": 0.3333333333333333,
+        "real_latent_sac_action_accuracy_ci95_low": 0.16666666666666666,
+        "real_latent_sac_action_accuracy_ci95_high": 0.5
+      },
+      {
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 0.3333333333333333,
+        "predicted_latent_accuracy_ci95_low": 0.08333333333333333,
+        "predicted_latent_accuracy_ci95_high": 0.6666666666666666,
+        "real_latent_same_action_accuracy": 0.25,
+        "real_latent_same_action_accuracy_ci95_low": 0.08333333333333333,
+        "real_latent_same_action_accuracy_ci95_high": 0.4166666666666667,
+        "real_latent_sac_action_accuracy": 0.25,
+        "real_latent_sac_action_accuracy_ci95_low": 0.08333333333333333,
+        "real_latent_sac_action_accuracy_ci95_high": 0.4166666666666667
+      },
+      {
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 0.3333333333333333,
+        "predicted_latent_accuracy_ci95_low": 0.08333333333333333,
+        "predicted_latent_accuracy_ci95_high": 0.6666666666666666,
+        "real_latent_same_action_accuracy": 0.4166666666666667,
+        "real_latent_same_action_accuracy_ci95_low": 0.25,
+        "real_latent_same_action_accuracy_ci95_high": 0.5,
+        "real_latent_sac_action_accuracy": 0.5,
+        "real_latent_sac_action_accuracy_ci95_low": 0.25,
+        "real_latent_sac_action_accuracy_ci95_high": 0.75
+      }
+    ],
+    "rows": [
+      {
+        "scenario": 40058,
+        "before": 150,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40058,
+        "before": 150,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40058,
+        "before": 150,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40058,
+        "before": 150,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40058,
+        "before": 50,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40058,
+        "before": 50,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40058,
+        "before": 50,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40058,
+        "before": 50,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40250,
+        "before": 150,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40250,
+        "before": 150,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40250,
+        "before": 150,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40250,
+        "before": 150,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40250,
+        "before": 50,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40250,
+        "before": 50,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40250,
+        "before": 50,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40250,
+        "before": 50,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40614,
+        "before": 150,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40614,
+        "before": 150,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40614,
+        "before": 150,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40614,
+        "before": 150,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40614,
+        "before": 50,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40614,
+        "before": 50,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40614,
+        "before": 50,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40614,
+        "before": 50,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40765,
+        "before": 150,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40765,
+        "before": 150,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40765,
+        "before": 150,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40765,
+        "before": 150,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40765,
+        "before": 50,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40765,
+        "before": 50,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40765,
+        "before": 50,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40765,
+        "before": 50,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40936,
+        "before": 150,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40936,
+        "before": 150,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40936,
+        "before": 150,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40936,
+        "before": 150,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40936,
+        "before": 50,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40936,
+        "before": 50,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40936,
+        "before": 50,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40936,
+        "before": 50,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40974,
+        "before": 150,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40974,
+        "before": 150,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40974,
+        "before": 150,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40974,
+        "before": 150,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      },
+      {
+        "scenario": 40974,
+        "before": 50,
+        "configuration": "Q1",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40974,
+        "before": 50,
+        "configuration": "Q05",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40974,
+        "before": 50,
+        "configuration": "Q025",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 40974,
+        "before": 50,
+        "configuration": "Q0",
+        "predicted_latent_accuracy": 1.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      }
+    ]
+  },
+  "diagnosis": {
+    "summary": [
+      {
+        "configuration": "legacy_mean",
+        "predicted_latent_accuracy": 0.0,
+        "predicted_latent_accuracy_ci95_low": 0.0,
+        "predicted_latent_accuracy_ci95_high": 0.0,
+        "real_latent_same_action_accuracy": 0.5,
+        "real_latent_same_action_accuracy_ci95_low": 0.0,
+        "real_latent_same_action_accuracy_ci95_high": 1.0,
+        "real_latent_sac_action_accuracy": 0.5,
+        "real_latent_sac_action_accuracy_ci95_low": 0.0,
+        "real_latent_sac_action_accuracy_ci95_high": 1.0
+      }
+    ],
+    "rows": [
+      {
+        "scenario": 1714,
+        "before": 250,
+        "configuration": "legacy_mean",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 1.0,
+        "real_latent_sac_action_accuracy": 1.0
+      },
+      {
+        "scenario": 559,
+        "before": 600,
+        "configuration": "legacy_mean",
+        "predicted_latent_accuracy": 0.0,
+        "real_latent_same_action_accuracy": 0.0,
+        "real_latent_sac_action_accuracy": 0.0
+      }
+    ]
+  }
+}

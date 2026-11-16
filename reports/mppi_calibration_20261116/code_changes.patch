@@ -1,0 +1,1034 @@
+diff --git a/config.yaml b/config.yaml
+index efa4dcb..233d91a 100644
+--- a/config.yaml
++++ b/config.yaml
+@@ -88,6 +88,7 @@ mpr_mpc:
+     temperature_definition: inverse  # D1 only; D0 explicitly restores divisor
+     terminal_action: candidate
+     q_aggregation: random_pair
++    terminal_q_weight: 1.0  # MPPI only; frozen SAC features retain unweighted Q
+     eval_seed: 0
+     noise_rho: [0.8, 0.8]
+     # Read only by the existing SAC geometry features; never MPPI scoring.
+diff --git a/planning/evaluator.py b/planning/evaluator.py
+index cc56b56..c77c1c3 100644
+--- a/planning/evaluator.py
++++ b/planning/evaluator.py
+@@ -36,7 +36,11 @@ class TrajectoryWorldModelEvaluator:
+ 
+     @torch.no_grad()
+     def evaluate(self, z_t, actions, *, terminal_action_mode, task=None, compute_cost=None,
+-                 q_aggregation="ensemble_mean", q_indices=None, capture_ensemble=False):
++                 q_aggregation="ensemble_mean", q_indices=None, capture_ensemble=False,
++                 terminal_q_weight=1.0):
++        terminal_q_weight = float(terminal_q_weight)
++        if not math.isfinite(terminal_q_weight) or terminal_q_weight < 0:
++            raise ValueError("terminal_q_weight must be finite and nonnegative.")
+         if terminal_action_mode not in {"policy", "policy_mean", "trajectory"}:
+             raise ValueError("Unknown terminal action definition.")
+         if actions.ndim != 3 or actions.shape[-1] != int(self.agent.cfg.action_dim):
+@@ -118,7 +122,10 @@ class TrajectoryWorldModelEvaluator:
+                 qs = td_math.two_hot_inv(model.Q(z, terminal_action, task, return_type="all"), self.agent.cfg)
+                 q_std = qs.std(0, unbiased=False)
+             discounted_reward = total.clone()
+-            total += discount * (1-terminated) * terminal_q
++            terminal_value = discount * (1-terminated) * terminal_q
++            if terminal_q_weight != 1.0:
++                terminal_value = terminal_q_weight * terminal_value
++            total += terminal_value
+             prediction = None
+             if compute_cost:
+                 # Cost has no recurrent dependency. One H*B batch preserves
+@@ -176,7 +183,7 @@ class TrajectoryWorldModelEvaluator:
+ 
+     def evaluate_mppi_candidates(self, z_t, actions, task=None, *, compute_cost=None,
+                                  terminal_action="candidate", q_aggregation="random_pair",
+-                                 q_indices=None, capture_ensemble=False):
++                                 q_indices=None, capture_ensemble=False, terminal_q_weight=1.0):
+         if actions.ndim != 3 or actions.shape[1] != self.horizon+1:
+             raise ValueError("MPPI keeps the Coordinator H+1 interface.")
+         if terminal_action not in {"candidate", "policy_prior"}:
+@@ -188,7 +195,7 @@ class TrajectoryWorldModelEvaluator:
+         controls = actions if mode == "trajectory" else actions[:, :self.horizon]
+         return self.evaluate(z_t, controls, terminal_action_mode=mode, task=task,
+             compute_cost=compute_cost, q_aggregation=reducers[q_aggregation],
+-            q_indices=q_indices, capture_ensemble=capture_ensemble)
++            q_indices=q_indices, capture_ensemble=capture_ensemble, terminal_q_weight=terminal_q_weight)
+ 
+ 
+ __all__ = ["TrajectoryWorldModelEvaluator"]
+diff --git a/planning/local_mppi.py b/planning/local_mppi.py
+index dfb9dbd..9e85885 100644
+--- a/planning/local_mppi.py
++++ b/planning/local_mppi.py
+@@ -19,7 +19,7 @@ MPPI_DIAGNOSTIC_KEYS = (
+     'world_model_rollout_ms','final_value_evaluation_ms','planning_time_ms',
+     'weight_entropy','effective_sample_size','prefix_reward_gain','terminal_q_gain','discounted_terminal_gain',
+     'selected_prefix_reward_gain','selected_discounted_terminal_gain','q_ensemble_std','fixed_q_pair',
+-    'q_pair_0','q_pair_1','active_action_steps',
++    'q_pair_0','q_pair_1','active_action_steps','terminal_q_weight','weighted_terminal_q_gain',
+ ) + tuple(f'iteration_{i}_{name}' for i in range(4) for name in ('elite_value_mean','elite_value_max','sampling_diversity','weight_entropy','effective_sample_size'))
+ MPPI_EPISODE_METRICS = {f'mppi_{k}':f'mppi/{k}' for k in (*MPPI_DIAGNOSTIC_KEYS,'total_planning_ms')}
+ 
+@@ -74,6 +74,9 @@ class LocalMPPI:
+         self.temperature_definition = str(cfg.get('temperature_definition','inverse'))
+         self.terminal_action = str(cfg.get('terminal_action','candidate'))
+         self.q_aggregation = str(cfg.get('q_aggregation','random_pair'))
++        self.terminal_q_weight = float(cfg.get('terminal_q_weight',1.0))
++        if not math.isfinite(self.terminal_q_weight) or self.terminal_q_weight < 0:
++            raise ValueError('terminal_q_weight must be finite and nonnegative.')
+         if (self.temperature_definition not in {'inverse','divisor'} or self.terminal_action not in {'candidate','policy_prior'}
+                 or self.q_aggregation not in {'random_pair','fixed_pair','ensemble_mean'}):
+             raise ValueError('Unknown MPPI temperature, terminal action or Q definition.')
+@@ -140,8 +143,11 @@ class LocalMPPI:
+         options = {}
+         if self.terminal_action != 'candidate' or self.q_aggregation != 'random_pair':
+             options = dict(terminal_action=self.terminal_action,q_aggregation=self.q_aggregation,q_indices=q_pair)
++        if self.terminal_q_weight != 1.0:
++            options['terminal_q_weight'] = self.terminal_q_weight
+         definition = dict(temperature_definition=self.temperature_definition,temperature=self.temperature,
+-                          terminal_action=self.terminal_action,q_aggregation=self.q_aggregation,q_indices=q_pair)
++                          terminal_action=self.terminal_action,q_aggregation=self.q_aggregation,q_indices=q_pair,
++                          terminal_q_weight=self.terminal_q_weight)
+         phase,timing,history = PhaseTimings(self.device),{},[]
+         evaluated = 0
+         error = None
+@@ -219,6 +225,8 @@ class LocalMPPI:
+             prefix_reward_gain=float(optimized['reward']-base['reward']),
+             terminal_q_gain=float(optimized['terminal_q']-base['terminal_q']),
+             discounted_terminal_gain=float((optimized_value-optimized['reward'])-(baseline_value-base['reward'])),
++            weighted_terminal_q_gain=float((optimized_value-optimized['reward'])-(baseline_value-base['reward'])),
++            terminal_q_weight=self.terminal_q_weight,
+             selected_prefix_reward_gain=float(selected['reward']-base['reward']),
+             selected_discounted_terminal_gain=float((selected_value-selected['reward'])-(baseline_value-base['reward'])),
+             q_ensemble_std=float(selected['q_std']),fixed_q_pair=float(q_pair is not None),
+diff --git a/planning/mppi_ablation.py b/planning/mppi_ablation.py
+index 0e4eec4..fcc5a43 100644
+--- a/planning/mppi_ablation.py
++++ b/planning/mppi_ablation.py
+@@ -16,3 +16,17 @@ def value_ablation_config(config, name):
+     result = deepcopy(dict(config))
+     result.update(VALUE_ABLATIONS[name])
+     return result
++
++
++TERMINAL_WEIGHT_ABLATIONS = {"Q1": 1.0, "Q05": 0.5, "Q025": 0.25, "Q0": 0.0}
++
++
++def terminal_weight_ablation_config(config, name):
++    """D4 at effective beta=2; change ONLY lambda_Q, never sampling parameters."""
++    if name not in TERMINAL_WEIGHT_ABLATIONS:
++        raise ValueError(f"Unknown terminal-weight ablation {name}")
++    result = value_ablation_config(config, "D4")
++    # D4's old tau=.5 equals beta=2 exactly, NOT the default beta=.5.
++    result.update(temperature_definition="inverse", temperature=2.0,
++                  terminal_q_weight=TERMINAL_WEIGHT_ABLATIONS[name])
++    return result
+diff --git a/planning/native_config.py b/planning/native_config.py
+index fe51ae1..0c394af 100644
+--- a/planning/native_config.py
++++ b/planning/native_config.py
+@@ -6,6 +6,7 @@ NATIVE_MPPI_KEYS = frozenset({
+     "kinematic_max_steering_angle",
+     "noise_rho",
+     "temperature_definition", "terminal_action", "q_aggregation",
++    "terminal_q_weight",
+ })
+ 
+ 
+diff --git a/tools/value_calibration.py b/tools/value_calibration.py
+new file mode 100644
+index 0000000..b990399
+--- /dev/null
++++ b/tools/value_calibration.py
+@@ -0,0 +1,63 @@
++"""Offline value-error probes. Never imported by online action selection."""
++from __future__ import annotations
++import hashlib,json
++import numpy as np
++import torch
++from mpr_mpc._bootstrap import bootstrap
++bootstrap()
++from common import math as wm_math
++
++
++class PrefixValueProbe:
++    """reward(z_t,a_t), then next(), then encode(o_{t+1}); strict step pairing."""
++    def __init__(self,evaluator,z0):
++        self.evaluator=evaluator;self.imagined=z0.detach().clone();self.actual=z0.detach().clone()
++        self.records=[];self.pending=None
++
++    @torch.no_grad()
++    def before(self,observation,action):
++        if self.pending is not None:raise RuntimeError('Complete the preceding transition first.')
++        model=self.evaluator.agent.model;cfg=self.evaluator.agent.cfg
++        action=action.to(self.imagined.device).reshape(1,-1)
++        self.actual=self.evaluator.encode(observation)
++        self.pending=dict(step=len(self.records),action=action.cpu().tolist()[0],
++            reward_open_loop=float(wm_math.two_hot_inv(model.reward(self.imagined,action,None),cfg).item()),
++            reward_teacher=float(wm_math.two_hot_inv(model.reward(self.actual,action,None),cfg).item()),
++            predicted_z_before=self.imagined.cpu().tolist(),actual_z_before=self.actual.cpu().tolist())
++        self.imagined=model.next(self.imagined,action,None)
++
++    @torch.no_grad()
++    def after(self,observation,info):
++        if self.pending is None:raise RuntimeError('Missing pre-action prediction.')
++        # This is the exact WM training/evaluation label, not base MetaDrive reward.
++        reward=float(info['tdmpc2_reward'])
++        self.actual=self.evaluator.encode(observation);error=self.imagined-self.actual
++        row=dict(self.pending,reward=reward,metadrive_reward=info.get('metadrive_reward'),
++            latent_l2=float(error.norm()),latent_rmse=float(error.square().mean().sqrt()),
++            predicted_z_after=self.imagined.cpu().tolist(),actual_z_after=self.actual.cpu().tolist())
++        row.update(reward_teacher_error=row['reward_teacher']-reward,
++                   reward_open_loop_error=row['reward_open_loop']-reward,
++                   reward_rollout_shift=row['reward_open_loop']-row['reward_teacher'])
++        self.records.append(row);self.pending=None
++        return row
++
++
++@torch.no_grad()
++def terminal_q_audit(agent,imagined,actual,terminal_action,next_sac_action):
++    """Keep candidate a_H fixed between predicted/real z_H; SAC action is diagnostic."""
++    def q(z,a):
++        return wm_math.two_hot_inv(agent.model.Q(z,a.to(z.device),None,return_type='all'),agent.cfg).reshape(-1).cpu().tolist()
++    return dict(predicted_z_candidate_q=q(imagined,terminal_action),actual_z_candidate_q=q(actual,terminal_action),
++        actual_z_sac_q=q(actual,next_sac_action),candidate_action=terminal_action.cpu().tolist(),
++        next_sac_action=next_sac_action.cpu().tolist())
++
++
++def digest(value):
++    return hashlib.sha256(json.dumps(value,sort_keys=True,allow_nan=False).encode()).hexdigest()
++
++
++def assert_origin_match(a,b):
++    """Observed state/RNG/control match is not a full hidden simulator snapshot."""
++    for key in ('episode_config','observation','state','rng','candidate_actions'):
++        if a[key]!=b[key]:raise ValueError(f'Counterfactual origin mismatch: {key}')
++    return True
+diff --git a/tests/test_terminal_q_weight.py b/tests/test_terminal_q_weight.py
+new file mode 100644
+index 0000000..31a6cce
+--- /dev/null
++++ b/tests/test_terminal_q_weight.py
+@@ -0,0 +1,63 @@
++"""Minimal new regressions; the previous forty tests remain intact."""
++import math
++import pytest,torch
++from tests.test_mppi_value_evaluation import evaluator
++from mpr_mpc.planning.local_mppi import LocalMPPI
++from mpr_mpc.planning.mppi_ablation import value_ablation_config,terminal_weight_ablation_config
++from tools.value_calibration import PrefixValueProbe,terminal_q_audit,assert_origin_match
++
++
++def test_weight_one_preserves_exact_score_and_weight_only_changes_terminal_contribution():
++    e=evaluator();z=torch.zeros(1,3);a=torch.zeros(2,4,2);a[1]=.1
++    full=e.evaluate_mppi_candidates(z,a,q_aggregation='ensemble_mean',compute_cost=False)
++    for w in (1.,.5,.25,0.):
++        r=e.evaluate_mppi_candidates(z,a,q_aggregation='ensemble_mean',compute_cost=False,terminal_q_weight=w)
++        assert torch.equal(r.discounted_reward,full.discounted_reward)
++        assert torch.equal(r.terminal_latent,full.terminal_latent)
++        assert torch.equal(r.terminal_q,full.terminal_q)
++        assert torch.equal(r.terminal_discount,full.terminal_discount)
++        torch.testing.assert_close(r.total_value,full.discounted_reward+w*full.terminal_discount*full.terminal_q)
++        if w==1:assert torch.equal(r.total_value,full.total_value)
++    sac=e.evaluate_trajectory_consequence(z,a,compute_cost=False)
++    assert torch.equal(sac.features,torch.cat((full.reward_sum[:,None],full.terminal_q[:,None],full.total_value[:,None]),1))
++    for w in (-1.,float('nan'),float('inf')):
++        with pytest.raises(ValueError):e.evaluate_mppi_candidates(z,a,terminal_q_weight=w)
++
++
++def test_weight_is_shared_by_every_round_and_final_comparison_without_changing_sampling():
++    e=evaluator();original=e.evaluate_mppi_candidates;seen=[]
++    def call(z,a,**kw):seen.append((a.clone(),kw.get('terminal_q_weight',1.)));return original(z,a,**kw)
++    e.evaluate_mppi_candidates=call
++    base=dict(num_samples=64,num_elites=8,iterations=4)
++    configs={n:terminal_weight_ablation_config(base,n) for n in ('Q1','Q05','Q025','Q0')}
++    assert all({k:v for k,v in c.items() if k!='terminal_q_weight'}=={k:v for k,v in configs['Q1'].items() if k!='terminal_q_weight'} for c in configs.values())
++    for n,c in configs.items():
++        seen.clear();p=LocalMPPI(e,c,horizon=3,action_dim=2,device='cpu');r=p.plan(torch.zeros(1,3),torch.zeros(4,2),eval_mode=True)
++        assert len(seen)==5 and all(w==c['terminal_q_weight'] for _,w in seen)
++        torch.testing.assert_close(seen[-1][0],torch.stack((r.initial_mean,r.final_mean)))
++        assert r.metrics['wm_evaluated_candidates']==262
++        assert r.metrics['predicted_return_gain']==pytest.approx(r.metrics['prefix_reward_gain']+r.metrics['weighted_terminal_q_gain'],abs=1e-5)
++    old=LocalMPPI(e,value_ablation_config(base,'D4'),horizon=3,action_dim=2,device='cpu')
++    new=LocalMPPI(e,configs['Q1'],horizon=3,action_dim=2,device='cpu')
++    assert torch.equal(old._weights(torch.tensor([1.,2.,3.])),new._weights(torch.tensor([1.,2.,3.])))
++    assert torch.equal(old.plan(torch.zeros(1,3),torch.zeros(4,2),eval_mode=True).final_mean,
++                       new.plan(torch.zeros(1,3),torch.zeros(4,2),eval_mode=True).final_mean)
++
++
++def test_teacher_open_loop_indices_reward_label_terminal_actions_and_origin_matching():
++    e=evaluator();e.encode=lambda o:o.reshape(1,3)
++    e.agent.model.reward=lambda z,a,task:torch.log1p(z[:,:1]+a[:,:1])
++    p=PrefixValueProbe(e,torch.zeros(1,3));action=torch.tensor([.2,.1])
++    p.before(torch.zeros(3),action);r=p.after(torch.ones(3),dict(tdmpc2_reward=7.,metadrive_reward=99.))
++    assert r['step']==0 and r['reward']==7. and r['reward_teacher']==pytest.approx(.2)
++    p.before(torch.ones(3),action);r=p.after(torch.ones(3)*2,dict(tdmpc2_reward=8.))
++    assert r['step']==1 and r['reward_teacher']==pytest.approx(1.2) and r['reward_open_loop']==pytest.approx(.4)
++    assert r['latent_l2']==pytest.approx(r['latent_rmse']*math.sqrt(3))
++    q=terminal_q_audit(e.agent,p.imagined,p.actual,torch.zeros(1,2),torch.ones(1,2))
++    assert q['predicted_z_candidate_q']==pytest.approx(q['actual_z_candidate_q'])
++    assert q['actual_z_sac_q'][0]>q['actual_z_candidate_q'][0]
++    p.before(torch.zeros(3),action)
++    with pytest.raises(KeyError):p.after(torch.zeros(3),dict(metadrive_reward=3.))
++    origin=dict(episode_config={'horizon':1000},observation=[1.],state={'speed':2},rng={'seed':3},candidate_actions=[0])
++    assert assert_origin_match(origin,dict(origin))
++    with pytest.raises(ValueError):assert_origin_match(origin,dict(origin,rng={'seed':4}))
+diff --git a/reports/mppi_calibration_20261116/analysis_queue.py b/reports/mppi_calibration_20261116/analysis_queue.py
+new file mode 100644
+index 0000000..fd3006c
+--- /dev/null
++++ b/reports/mppi_calibration_20261116/analysis_queue.py
+@@ -0,0 +1,27 @@
++"""Lock development-only selection before analyzing held-out validation."""
++import json,os,subprocess,sys,time
++from pathlib import Path
++R=Path(__file__).parent;meta=json.loads((R/'protocol.json').read_text())
++def complete(split):
++ for s in meta[split+'_scenarios']:
++  for before in meta['origin_steps']:
++   p=R/'probes'/f'{split}_{s}_{before}'
++   for b in ['B',*meta['groups']]+(['elite_Q1'] if s in meta['elite_scenarios'] else []):
++    if not any(x.exists() for x in (p/(b+'.json'),p/('unavailable_'+b+'.json'),p/'unavailable.json')):return False
++ return True
++def loop_done(split,count):
++ p=R/(split+'_worker_statuses.json')
++ if not p.exists():return False
++ x=json.loads(p.read_text());return len(x)==count and not any(x.values())
++def run(args,name):
++ with (R/name).open('x') as f:
++  p=subprocess.run([sys.executable,'-u',*args],stdout=f,stderr=subprocess.STDOUT,env=os.environ);assert p.returncode==0,(name,p.returncode)
++while not (complete('dev') and loop_done('dev',20)):time.sleep(5)
++run([str(R/'analyze.py'),'--phase','dev'],'dev_analysis.log')
++while not (complete('validation') and loop_done('validation',30)):time.sleep(5)
++run([str(R/'analyze.py'),'--phase','validation'],'validation_analysis.log')
++selection=json.loads((R/'selection.json').read_text())
++if selection['validation_gate_passed']:
++ run([str(R/'run.py'),'--kind','test','--jobs','3'],'test_run.log')
++ run([str(R/'analyze.py'),'--phase','test'],'test_analysis.log')
++(R/'analysis_complete.json').write_text(json.dumps(dict(selection=selection,formal100=False,training=False),indent=2))
+diff --git a/reports/mppi_calibration_20261116/analyze.py b/reports/mppi_calibration_20261116/analyze.py
+new file mode 100644
+index 0000000..c1ab5e8
+--- /dev/null
++++ b/reports/mppi_calibration_20261116/analyze.py
+@@ -0,0 +1,148 @@
++"""Scene-clustered calibration analysis, never used by the online planner."""
++import argparse,csv,json,math,sys
++from pathlib import Path
++import numpy as np
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
++from tools.value_calibration import assert_origin_match
++from evaluation_statistics import cluster_intervals,summarize_runs,paired_comparisons
++from probe import clean,dump
++
++def rank(x):
++ x=np.asarray(x);order=np.argsort(x);r=np.empty(len(x));i=0
++ while i<len(x):
++  j=i+1
++  while j<len(x) and x[order[j]]==x[order[i]]:j+=1
++  r[order[i:j]]=(i+j-1)/2;i=j
++ return r
++
++def correlation(a,b,spearman=False):
++ x=np.asarray(list(zip(a,b)),float).reshape(-1,2);x=x[np.isfinite(x).all(1)]
++ if len(x)<2:return None
++ aa,bb=x.T
++ if spearman:aa,bb=rank(aa),rank(bb)
++ return float(np.corrcoef(aa,bb)[0,1]) if np.std(aa)>0 and np.std(bb)>0 else None
++
++def pair_accuracy(a,b):
++ i,j=np.triu_indices(len(a),1);x=np.asarray(a)[i]-np.asarray(a)[j];y=np.asarray(b)[i]-np.asarray(b)[j];valid=abs(y)>1e-6
++ return float(np.mean(np.where(abs(x[valid])<=1e-6,.5,np.sign(x[valid])==np.sign(y[valid])))) if valid.any() else None
++
++def probe_analysis(split):
++ meta=json.loads((R/'protocol.json').read_text());rows=[];cases=[];errors=[];coverage=[];unavailable=[];elite_comparisons=[]
++ paths=sorted((R/'probes').glob(split+'_*'))
++ expected=(len(meta[split+'_scenarios'])*2 if split!='diagnosis' else 2);assert len(paths)==expected,(split,len(paths),expected)
++ for path in paths:
++  missing=list(path.glob('unavailable*.json'))
++  if missing:unavailable.append(dict(origin=path.name,branches=[json.loads(x.read_text()) for x in missing]));continue
++  ref=json.loads((path/'B_origin.json').read_text());scenario=ref['episode_config']['scenario'];before=ref['episode_config']['before']
++  names=['B',*meta['groups']]+(['elite_Q1'] if scenario in meta['elite_scenarios'] else []) if split!='diagnosis' else ['B','legacy_mean']
++  branches={name:json.loads((path/(name+'.json')).read_text()) for name in names}
++  for name in names:assert_origin_match(ref,json.loads((path/(name+'_origin.json')).read_text()))
++  coverage.append(dict(scenario=scenario,before=before,**ref['coverage']))
++  if 'elite_Q1' in branches:
++   m,e=branches['Q1'],branches['elite_Q1'];pm=m['predicted_prefix']+m['terminal_discount']*m['predicted_q'];pe=e['predicted_prefix']+e['terminal_discount']*e['predicted_q']
++   elite_comparisons.append(dict(scenario=scenario,before=before,predicted_mean=pm,predicted_elite=pe,predicted_mean_minus_elite=pm-pe,actual_mean=m['actual_discounted_return'],actual_elite=e['actual_discounted_return'],actual_mean_minus_elite=m['actual_discounted_return']-e['actual_discounted_return']))
++  b=branches['B'];real=[r['actual_discounted_return'] for r in branches.values()]
++  for name,r in branches.items():
++   arr=np.asarray(r['actions'])[:meta['horizon']]-np.asarray(b['actions'])[:meta['horizon']]
++   for step in r['prefix']:
++    errors.append(dict(scenario=scenario,before=before,branch=name,step=step['step'],
++      **{k:step.get(k) for k in ('latent_l2','latent_rmse','reward_open_loop_error','reward_teacher_error','reward_rollout_shift','position_error_m','speed_error_mps','heading_error_rad')}))
++   row=dict(scenario=scenario,before=before,branch=name,first_steer_delta=float(arr[0,0]),first_throttle_delta=float(arr[0,1]),sequence_l2=float(np.linalg.norm(arr)),
++     sequence_rms=float(np.sqrt(np.mean(arr**2))),latent_rmse=r['prefix'][-1]['latent_rmse'],
++     prefix_length=len(r['prefix']),batch_single_latent_max_abs=float(np.max(np.abs(np.asarray(r['predicted_terminal_latent']).reshape(-1)-np.asarray(r['prefix'][-1]['predicted_z_after']).reshape(-1)))) if len(r['prefix'])==meta['horizon'] else None,actual_gain=r['actual_discounted_return']-b['actual_discounted_return'],
++     crash=r['crash'],out_of_road=r['out_of_road'],predicted_prefix_gain=r['predicted_prefix']-b['predicted_prefix'],actual_prefix_gain=r['actual_prefix']-b['actual_prefix'])
++   teacher=sum(r['gamma']**i*x['reward_teacher'] for i,x in enumerate(r['prefix']));open_r=sum(r['gamma']**i*x['reward_open_loop'] for i,x in enumerate(r['prefix']))
++   row.update(reward_head_discounted_error=teacher-r['actual_prefix'],rollout_reward_shift=open_r-teacher,termination_mask_contribution=r['predicted_prefix']-open_r)
++   if r['terminal'] is not None:
++    t=r['terminal'];row.update(predicted_Q_mean=float(np.mean(t['predicted_z_candidate_q'])),actual_z_candidate_Q_mean=float(np.mean(t['actual_z_candidate_q'])),actual_z_SAC_Q_mean=float(np.mean(t['actual_z_sac_q'])),actual_SAC_RTG=r['actual_continuation'],
++     cached_recomputed_Q_gap=float(np.mean(t['predicted_z_candidate_q'])-r['predicted_q']),q_state_shift=np.asarray(t['predicted_z_candidate_q'])-t['actual_z_candidate_q'],sac_q_rtg_difference=np.asarray(t['actual_z_sac_q'])-r['actual_continuation'])
++   cases.append(row)
++  for label,w in meta['groups'].items():
++   predicted=[r['predicted_prefix']+w*r['terminal_discount']*r['predicted_q'] for r in branches.values()]
++   index=names.index(label) if split!='diagnosis' else 1;r=branches[names[index]];gain=real[index]-real[0];pg=predicted[index]-predicted[0]
++   qsign_real=None;qsign_pred=None;qsign_sac=None;flip=None
++   if r['terminal'] and b['terminal']:
++    dq=np.asarray(r['terminal']['predicted_z_candidate_q'])-b['terminal']['predicted_z_candidate_q'];aq=np.asarray(r['terminal']['actual_z_candidate_q'])-b['terminal']['actual_z_candidate_q']
++    rtg_gain=r['actual_continuation']-b['actual_continuation'];sq=np.asarray(r['terminal']['actual_z_sac_q'])-b['terminal']['actual_z_sac_q']
++    if abs(rtg_gain)>1e-6:
++     qsign_pred=float(np.mean(np.sign(dq)==np.sign(rtg_gain)));qsign_real=float(np.mean(np.sign(aq)==np.sign(rtg_gain)));qsign_sac=float(np.mean(np.sign(sq)==np.sign(rtg_gain)))
++    flip=float(np.mean(np.sign(dq)!=np.sign(aq)))
++   rows.append(dict(scenario=scenario,before=before,configuration=label,weight=w,spearman=correlation(predicted,real,True),
++    pair_ranking_accuracy=pair_accuracy(predicted,real),top1_regret=max(real)-real[int(np.argmax(predicted))],
++    mean_vs_baseline_accuracy=None if abs(gain)<=1e-6 else .5 if abs(pg)<=1e-6 else float(np.sign(gain)==np.sign(pg)),
++    actual_gain=gain,predicted_gain=pg,prefix_reward_gain=r['predicted_prefix']-b['predicted_prefix'],
++    weighted_terminal_q_gain=w*(r['terminal_discount']*r['predicted_q']-b['terminal_discount']*b['predicted_q']),
++    actual_prefix_reward_gain=r['actual_prefix']-b['actual_prefix'],latent_rmse=r['prefix'][-1]['latent_rmse'],
++    success=float(r['success']),crash=float(r['crash']),out_of_road=float(r['out_of_road']),
++    predicted_state_member_ranking_accuracy=qsign_pred,actual_state_member_ranking_accuracy=qsign_real,actual_state_SAC_action_ranking_accuracy=qsign_sac,state_ranking_flip_fraction=flip))
++ summaries=[]
++ for label in meta['groups']:
++  rr=[x for x in rows if x['configuration']==label];keys=('spearman','pair_ranking_accuracy','top1_regret','mean_vs_baseline_accuracy','actual_gain','predicted_gain','prefix_reward_gain','weighted_terminal_q_gain','actual_prefix_reward_gain','latent_rmse','success','crash','out_of_road','predicted_state_member_ranking_accuracy','actual_state_member_ranking_accuracy','actual_state_SAC_action_ranking_accuracy','state_ranking_flip_fraction')
++  summaries.append(dict(configuration=label,origins=len(rr),unique_scenarios=len({x['scenario'] for x in rr}),**cluster_intervals(rr,{k:(k,None) for k in keys},samples=2000,seed=1)))
++ associations=[]
++ for label in ['Q1','Q05','Q025','Q0'] if split!='diagnosis' else ['legacy_mean']:
++  rr=[x for x in cases if x['branch']==label];rank_rows=[x for x in rows if x['configuration']==(label if split!='diagnosis' else 'Q1')]
++  associations.append(dict(branch=label,predicted_vs_actual_gain_spearman=correlation([x['predicted_gain'] for x in rank_rows],[x['actual_gain'] for x in rank_rows],True),
++   latent_error_vs_ranking_error=correlation([x['latent_rmse'] for x in rank_rows if x['mean_vs_baseline_accuracy'] is not None],[1-x['mean_vs_baseline_accuracy'] for x in rank_rows if x['mean_vs_baseline_accuracy'] is not None],True),sequence_shift_vs_latent_error=correlation([x['sequence_l2'] for x in rr],[x['latent_rmse'] for x in rr],True),
++   throttle_vs_crash=correlation([x['first_throttle_delta'] for x in rr],[x['crash'] for x in rr]),throttle_vs_offroad=correlation([x['first_throttle_delta'] for x in rr],[x['out_of_road'] for x in rr]),
++   throttle_vs_actual_gain=correlation([x['first_throttle_delta'] for x in rr],[x['actual_gain'] for x in rr],True)))
++ per_step=[]
++ for name in sorted({x['branch'] for x in errors}):
++  for i in range(meta['horizon']):
++   rr=[x for x in errors if x['branch']==name and x['step']==i]
++   if not rr:continue
++   per_step.append(dict(branch=name,step=i,count=len(rr),**{k:float(np.mean([abs(x[k]) for x in rr if x.get(k) is not None])) for k in ('latent_l2','latent_rmse','reward_open_loop_error','reward_teacher_error','reward_rollout_shift','position_error_m','speed_error_mps','heading_error_rad') if any(x.get(k) is not None for x in rr)}))
++ dump(R/(split+'_probe_analysis.json'),dict(summary=summaries,rows=rows,cases=cases,per_step_errors=per_step,elite_comparisons=elite_comparisons,associations=associations,coverage=coverage,unavailable=unavailable,
++  scope='Scene-clustered bootstrap95%,2000 resamples,seed1; ties in predicted ranking receive half credit, true-return ties excluded. Regret relative to measured pool, not all possible actions. Observed+traffic+RNG match does not certify all hidden simulator state. No latent error is interpreted as meters. Q-vs-SAC RTG includes continuation-policy mismatch. Associations are not causal.'))
++ print(split,'origins',len(coverage),'unreachable',len(unavailable),flush=True)
++ for x in summaries:print(x['configuration'],{k:x[k] for k in ('actual_gain','mean_vs_baseline_accuracy','pair_ranking_accuracy','spearman','top1_regret')})
++ return summaries
++
++def closed_analysis(phase):
++ rows=[];meta=json.loads((R/'protocol.json').read_text());scenes=meta['additional_test_scenarios'] if phase=='test' else meta['closed_loop_'+phase+'_scenarios']
++ groups=['B',*meta['groups']] if phase!='test' else ['B','Q1',json.loads((R/'selection.json').read_text())['candidate']]
++ for g in groups:
++  for s in scenes:
++   row=next(csv.DictReader((R/'closed_loop'/phase/f'{g}_{s}'/'episodes.csv').open()))
++   for k,v in list(row.items()):
++    try:row[k]=float(v) if v else None
++    except ValueError:pass
++   row.update(configuration=g,test_seed=1);rows.append(row)
++ summaries=[summarize_runs(g,[x for x in rows if x['configuration']==g],samples=2000,seed=1) for g in groups]
++ pairs=[('B',g) for g in groups if g!='B']+[('Q1',g) for g in groups if g not in ('B','Q1')]
++ comparisons=paired_comparisons(rows,samples=2000,seed=1,pairs=pairs)
++ fields=sorted(set().union(*(x.keys() for x in rows)))
++ with (R/(phase+'_episodes.csv')).open('w',newline='') as f:
++  wr=csv.DictWriter(f,fieldnames=fields);wr.writeheader();wr.writerows(rows)
++ # Each row is a single scene; include actual outcomes and action/search diagnostics.
++ with (R/(phase+'_paired.csv')).open('w',newline='') as f:
++  keys=['comparison','scenario','success_delta','crash_delta','out_of_road_delta','route_delta','return_delta','actual_discounted_return_delta'];wr=csv.DictWriter(f,fieldnames=keys);wr.writeheader()
++  by={(x['configuration'],int(x['scenario'])):x for x in rows}
++  for b,d in pairs:
++   for s in scenes:
++    aa,bb=by[b,s],by[d,s];wr.writerow(dict(comparison=d+' - '+b,scenario=s,**{k:bb[src]-aa[src] for k,src in [('success_delta','final_success'),('crash_delta','episode_crash'),('out_of_road_delta','episode_out_of_road'),('route_delta','final_route_completion'),('return_delta','return'),('actual_discounted_return_delta','actual_discounted_return')]}))
++ dump(R/(phase+'_closed_analysis.json'),dict(summary=summaries,comparisons=comparisons,scope='Fresh method/scene processes, equal scene seed and config; scene-clustered bootstrap95%,2000 resamples. Timing under shared GPU load is not an isolated performance comparison.'))
++ for x in summaries:print(phase,x['configuration'],{k:x[k] for k in ('success','crash','out_of_road','reward','actual_discounted_return')})
++ return summaries,comparisons
++
++def select():
++ pp=probe_analysis('dev');cc,_=closed_analysis('dev');p={x['configuration']:x for x in pp};c={x['configuration']:x for x in cc};eligible=[]
++ base_cases=[x for x in json.loads((R/'dev_probe_analysis.json').read_text())['cases'] if x['branch']=='B'];base_crash=float(np.mean([x['crash'] for x in base_cases]));base_offroad=float(np.mean([x['out_of_road'] for x in base_cases]))
++ for g in ('Q05','Q025'):
++  if p[g]['actual_gain']<=max(0,p['Q1']['actual_gain']):continue
++  if p[g]['crash']>min(base_crash,p['Q1']['crash']) or p[g]['out_of_road']>min(base_offroad,p['Q1']['out_of_road']):continue
++  if all(c[g]['success']>=c[b]['success'] and c[g]['reward']>c[b]['reward'] and c[g]['crash']<=c[b]['crash'] and c[g]['out_of_road']<=c[b]['out_of_road'] for b in ('B','Q1')):eligible.append(g)
++ eligible.sort(key=lambda g:(c[g]['actual_discounted_return'],c[g]['success']),reverse=True)
++ path=R/'selection.json';assert not path.exists();dump(path,dict(candidate=eligible[0] if eligible else None,eligible=eligible,source='Only development probes and closed-loop; no validation or old scenes used.',validation_gate_passed=False));print('selection',eligible)
++
++def validate():
++ probe_analysis('validation');cc,comparisons=closed_analysis('validation');path=R/'selection.json';selection=json.loads(path.read_text());g=selection['candidate'];by={x['configuration']:x for x in cc}
++ gate=bool(g) and all(by[g]['success']>=by[b]['success'] and by[g]['reward']>by[b]['reward'] and by[g]['crash']<=by[b]['crash'] and by[g]['out_of_road']<=by[b]['out_of_road'] and next(x for x in comparisons if x['comparison']==g+' - '+b)['reward_delta_ci95_low']>0 for b in ('B','Q1'))
++ selection.update(validation_gate_passed=gate,reason='Eligible for new fixed test; not a final benefit claim.' if gate else 'No independent, accident-preserving improvement evidence. No new test/full100, no extra coefficients and no retraining.');dump(path,selection);print(selection)
++
++if __name__=='__main__':
++ p=argparse.ArgumentParser();p.add_argument('--phase',choices=['dev','validation','diagnosis','test'],required=True);a=p.parse_args()
++ if a.phase=='dev':select()
++ elif a.phase=='validation':validate()
++ elif a.phase=='diagnosis':probe_analysis('diagnosis')
++ else:closed_analysis('test')
+diff --git a/reports/mppi_calibration_20261116/closed_loop.py b/reports/mppi_calibration_20261116/closed_loop.py
+new file mode 100644
+index 0000000..2236c3d
+--- /dev/null
++++ b/reports/mppi_calibration_20261116/closed_loop.py
+@@ -0,0 +1,24 @@
++"""Fresh process per method/scene; fixed D4 effective beta, only lambda varies."""
++import argparse,json,sys
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
++p=argparse.ArgumentParser();p.add_argument('--phase',choices=['dev','validation','test'],required=True);p.add_argument('--group',required=True);p.add_argument('--scenario',type=int,required=True);a=p.parse_args()
++import torch
++from omegaconf import OmegaConf
++from mpr_mpc._bootstrap import bootstrap
++bootstrap()
++import evaluate_model_suite as suite
++from evaluate_ablation import _EpisodeCSVWriter
++from planning.mppi_ablation import terminal_weight_ablation_config
++meta=json.loads((R/'protocol.json').read_text());ck=Path(meta['checkpoint']);out=R/'closed_loop'/a.phase/f'{a.group}_{a.scenario}';out.mkdir(parents=True,exist_ok=False)
++raw=OmegaConf.load(meta['source_environment_config']);base=OmegaConf.to_container(OmegaConf.load(ROOT/'config.yaml').mpr_mpc.mppi,resolve=True)
++raw.mpr_mpc.mppi=OmegaConf.create(terminal_weight_ablation_config(base,'Q1' if a.group=='B' else a.group));raw.restore_checkpoint_runtime=True;raw.restore_mppi_runtime=False
++raw.evaluation_stack='world_model_residual_rl' if a.group=='B' else 'full_mpr_mpc';raw.enable_wandb=raw.save_agent=raw.save_video=False;raw.residual_rl.buffer_size=8
++raw.metadrive.simulator.horizon=1000;raw.seed=1;raw.benchmark.output_dir=str(out);raw.benchmark.save_step_diagnostics=True
++raw.benchmark.paired_episode_seeds=True;raw.benchmark.compact_step_logs=True;raw.benchmark.step_log_stride=10;raw.benchmark.cost_ablation=False
++parsed,cfg=suite._make_cfg(raw,ck.parent.parent.name,ck,[a.scenario]);assert cfg.horizon==10;OmegaConf.save(parsed,out/'config.yaml');torch.set_float32_matmul_precision('high')
++with (out/'episodes.csv').open('w',newline='') as f:
++ writer=_EpisodeCSVWriter(f)
++ def save(row):row.update(configuration=a.group,test_seed=1);writer.writerow(row)
++ rows,summary=suite._evaluate_checkpoint(raw,ck.parent.parent.name,ck,[a.scenario],on_episode=save)
++(out/'summary.json').write_text(json.dumps(summary,indent=2))
+diff --git a/reports/mppi_calibration_20261116/ensemble_analysis.py b/reports/mppi_calibration_20261116/ensemble_analysis.py
+new file mode 100644
+index 0000000..e0d15ac
+--- /dev/null
++++ b/reports/mppi_calibration_20261116/ensemble_analysis.py
+@@ -0,0 +1,22 @@
++"""Distinguish the five-Q mean decision from average per-member correctness."""
++import json,sys
++from pathlib import Path
++import numpy as np
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
++from evaluation_statistics import cluster_intervals
++result={}
++for split in ('dev','validation','diagnosis'):
++ data=json.loads((R/(split+'_probe_analysis.json')).read_text());cases=data['cases'];rows=[]
++ for row in cases:
++  if row['branch']=='B' or row['branch']=='elite_Q1' or 'actual_SAC_RTG' not in row:continue
++  b=next(x for x in cases if x['branch']=='B' and x['scenario']==row['scenario'] and x['before']==row['before'])
++  if 'actual_SAC_RTG' not in b:continue
++  delta=row['actual_SAC_RTG']-b['actual_SAC_RTG'];r=dict(scenario=row['scenario'],before=row['before'],configuration=row['branch'])
++  for field,name in [('predicted_Q_mean','predicted_latent_accuracy'),('actual_z_candidate_Q_mean','real_latent_same_action_accuracy'),('actual_z_SAC_Q_mean','real_latent_sac_action_accuracy')]:
++   pred=row[field]-b[field];r[name]=None if abs(delta)<=1e-6 else .5 if abs(pred)<=1e-6 else float(np.sign(pred)==np.sign(delta))
++  rows.append(r)
++ keys=('predicted_latent_accuracy','real_latent_same_action_accuracy','real_latent_sac_action_accuracy')
++ summary=[dict(configuration=g,**cluster_intervals([r for r in rows if r['configuration']==g],{k:(k,None) for k in keys},samples=2000,seed=1)) for g in sorted({r['configuration'] for r in rows})]
++ result[split]=dict(summary=summary,rows=rows)
++(R/'ensemble_terminal_ranking.json').write_text(json.dumps(result,indent=2,allow_nan=False))
++print(json.dumps(result['validation']['summary'],indent=2))
+diff --git a/reports/mppi_calibration_20261116/finalize.py b/reports/mppi_calibration_20261116/finalize.py
+new file mode 100644
+index 0000000..0c98809
+--- /dev/null
++++ b/reports/mppi_calibration_20261116/finalize.py
+@@ -0,0 +1,57 @@
++"""Final immutable-input/protocol audit and complete code diff; no model writes."""
++import hashlib,json,math,subprocess,sys
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
++from tools.benchmark_mppi import source_fingerprint
++from tools.value_calibration import assert_origin_match
++p=json.loads((R/'protocol.json').read_text());source=source_fingerprint(ROOT)
++assert source==p['source_snapshot_sha256']
++assert subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()==p['base_commit']
++sha=hashlib.sha256(Path(p['checkpoint']).read_bytes()).hexdigest();assert sha==p['checkpoint_sha256']
++assert '43 passed' in (R/'tests_final.txt').read_text()
++for stage,n in [('dev',20),('validation',30),('probes',170)]:
++ x=json.loads((R/(stage+'_worker_statuses.json')).read_text());assert len(x)==n and not any(x.values()),(stage,len(x))
++assert all(all(v==0 for v in row['max_errors'].values()) for row in json.loads((R/'sac_interface_verification.json').read_text()))
++counts={};complete=0;branches=0
++for split in ('dev','validation','diagnosis'):
++ paths=list((R/'probes').glob(split+'_*'));available=0
++ for path in paths:
++  if list(path.glob('unavailable*.json')):continue
++  ref=json.loads((path/'B_origin.json').read_text())
++  names=['B','legacy_mean'] if split=='diagnosis' else ['B',*p['groups']]+(['elite_Q1'] if ref['episode_config']['scenario'] in p['elite_scenarios'] else [])
++  for name in names:
++   o=json.loads((path/(name+'_origin.json')).read_text());assert_origin_match(ref,o)
++   row=json.loads((path/(name+'.json')).read_text());assert row['length']<=1000 and row['matched_observed_origin'];branches+=1
++  available+=1
++ counts[split]=dict(planned=len(paths),available=available)
++ if split!='diagnosis':complete+=available
++assert 24<=complete<=40,counts
++for split in ('dev','validation'):
++ for path in (R/'closed_loop'/split).glob('*/config.yaml'):
++  # Parse actual runtime configs: the only varied MPPI field is lambda_Q.
++  from omegaconf import OmegaConf
++  cfg=OmegaConf.load(path);m=cfg.mpr_mpc.mppi
++  assert cfg.horizon==10 and cfg.metadrive.simulator.horizon==1000
++  assert (m.num_samples,m.num_elites,m.iterations)==(64,8,4)
++  assert m.temperature_definition=='inverse' and m.temperature==2. and m.q_aggregation=='ensemble_mean' and m.terminal_action=='candidate'
++  assert list(m.initial_std)==[.04,.12] and list(m.min_std)==[.01,.03] and list(m.max_std)==[.08,.25] and list(m.noise_rho)==[.8,.8]
++changed=set(subprocess.check_output(['git','diff','--name-only'],cwd=ROOT,text=True).splitlines())
++assert changed<=set(['planning/evaluator.py','planning/local_mppi.py','planning/mppi_ablation.py','planning/native_config.py','config.yaml']),changed
++subprocess.run(['git','diff','--check'],cwd=ROOT,check=True)
++def clean(x):
++ if isinstance(x,float) and not math.isfinite(x):return None
++ if isinstance(x,list):return [clean(v) for v in x]
++ if isinstance(x,dict):return {k:clean(v) for k,v in x.items()}
++ return x
++for path in R.rglob('*.json'):
++ path.write_text(json.dumps(clean(json.loads(path.read_text())),indent=2,allow_nan=False))
++verification=dict(base_commit=p['base_commit'],source_snapshot_sha256=source,checkpoint_sha256=sha,source_and_weights_unchanged=True,
++ matched_origins=counts,completed_native_termination_branches=branches,tests='43 passed',training=False,formal100=False,
++ original_40_tests_retained=True,SAC_535_max_error=0.,cost_gate_unchanged=True,
++ note='Two pilot failures preserved and excluded. Queue concurrency was increased only after active workers completed. Unknown diagnostic values are null, not zero.')
++(R/'verification.json').write_text(json.dumps(verification,indent=2))
++patch=subprocess.check_output(['git','diff','--binary'],cwd=ROOT,text=True)
++for name in ['tools/value_calibration.py','tests/test_terminal_q_weight.py']+[str(f.relative_to(ROOT)) for f in sorted(R.glob('*.py'))]+[str((R/'protocol.json').relative_to(ROOT))]:
++ result=subprocess.run(['git','diff','--no-index','--','/dev/null',name],cwd=ROOT,capture_output=True,text=True);assert result.returncode==1;patch+=result.stdout
++(R/'code_changes.patch').write_text(patch)
++print(json.dumps(verification,indent=2))
+diff --git a/reports/mppi_calibration_20261116/probe.py b/reports/mppi_calibration_20261116/probe.py
+new file mode 100644
+index 0000000..80f283a
+--- /dev/null
++++ b/reports/mppi_calibration_20261116/probe.py
+@@ -0,0 +1,125 @@
++"""Matched-prefix counterfactuals; all diagnostics stay outside online selection."""
++import argparse,contextlib,hashlib,io,json,random,sys
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
++import numpy as np,torch
++from omegaconf import OmegaConf
++from mpr_mpc._bootstrap import bootstrap
++bootstrap()
++from common.seed import set_seed
++from env import make_env
++import evaluate_model_suite as suite
++from planning.local_mppi import LocalMPPI
++from planning.mppi_ablation import terminal_weight_ablation_config
++from tools.value_calibration import PrefixValueProbe,terminal_q_audit,digest,assert_origin_match
++
++def clean(x):
++ if isinstance(x,np.ndarray):return clean(x.tolist())
++ if isinstance(x,np.generic):return clean(x.item())
++ if isinstance(x,float) and not np.isfinite(x):return None
++ if isinstance(x,dict):return {str(k):clean(v) for k,v in x.items()}
++ if isinstance(x,(list,tuple)):return [clean(v) for v in x]
++ return x
++
++def dump(path,x):path.write_text(json.dumps(clean(x),indent=2,allow_nan=False))
++def rng_state(obj):
++ if obj is None:return None
++ rng=getattr(obj,'np_random',None)
++ if rng is None:return None
++ if hasattr(rng,'get_state'):return clean(rng.get_state())
++ if hasattr(rng,'bit_generator'):return clean(rng.bit_generator.state)
++ return type(rng).__name__
++
++def snapshot(env,agent,obs,actions,scenario,before):
++ sim=env.unwrapped_metadrive;v=sim.agent;traffic=[]
++ for obj in sim.engine.get_objects().values():
++  if not hasattr(obj,'velocity') or not hasattr(obj,'position'):continue
++  traffic.append([type(obj).__name__,*map(float,np.asarray(obj.position)[:2]),*map(float,np.asarray(obj.velocity)[:2]),float(getattr(obj,'heading_theta',0.))])
++ state=dict(ego=[*map(float,v.position),*map(float,v.velocity),float(v.heading_theta)],traffic=sorted(traffic))
++ rng=dict(python=digest(clean(random.getstate())),numpy=digest(clean(np.random.get_state())),
++  torch=digest(torch.random.get_rng_state().tolist()),cuda=digest(torch.cuda.get_rng_state().tolist()),
++  engine=rng_state(sim.engine),traffic_manager=rng_state(getattr(sim.engine,'traffic_manager',None)))
++ lane=getattr(v,'lane',None);coverage=dict(speed=float(np.linalg.norm(v.velocity)),lane_type=type(lane).__name__,traffic_count=max(0,len(traffic)-1))
++ if lane is not None:
++  s,d=lane.local_coordinates(v.position);coverage.update(lateral=float(d),lane_heading_change_10m=float(lane.heading_theta_at(min(lane.length,s+10))-lane.heading_theta_at(s)))
++ return dict(episode_config=dict(scenario=scenario,before=before,horizon=1000,seed=1+scenario,simulator=agent.cfg.metadrive['simulator']),
++  observation=obs.cpu().tolist(),state=state,rng=rng,candidate_actions=actions.cpu().tolist(),coverage=coverage)
++
++@torch.no_grad()
++def main():
++ p=argparse.ArgumentParser();p.add_argument('--scenario',type=int,required=True);p.add_argument('--before',type=int,required=True);p.add_argument('--legacy',action='store_true');p.add_argument('--branch',required=True);a=p.parse_args()
++ meta=json.loads((R/'protocol.json').read_text());ck=Path(meta['checkpoint']);split='diagnosis' if a.legacy else 'dev' if a.scenario in meta['dev_scenarios'] else 'validation'
++ out=R/'probes'/f'{split}_{a.scenario}_{a.before}';out.mkdir(parents=True,exist_ok=True);assert not (out/(a.branch+'.json')).exists()
++ raw=OmegaConf.load(meta['source_environment_config']);base=OmegaConf.to_container(OmegaConf.load(ROOT/'config.yaml').mpr_mpc.mppi,resolve=True)
++ raw.mpr_mpc.mppi=OmegaConf.create(terminal_weight_ablation_config(base,'Q1'));raw.restore_checkpoint_runtime=True;raw.restore_mppi_runtime=False
++ raw.enable_wandb=raw.save_agent=raw.save_video=False;raw.residual_rl.buffer_size=8;raw.metadrive.simulator.horizon=1000
++ _,cfg=suite._make_cfg(raw,ck.parent.parent.name,ck,[a.scenario]);set_seed(cfg.seed);torch.set_float32_matmul_precision('high');env=make_env(cfg)
++ try:
++  with contextlib.redirect_stdout(io.StringIO()):agent=suite._make_agent(cfg,env);loaded=agent.load(ck)
++  agent.eval();suite._apply_evaluation_stack(agent.planner,'world_model_residual_rl',loaded);agent.set_global_step(max(agent.global_env_step,agent.planner.mppi_start_step))
++  if a.legacy:
++   old=json.loads((ROOT/f'reports/mppi_value_20261116/probe_{a.scenario}_sac.json').read_text());prefix=old['prefix_controls']
++  reference=None;candidate_actions=None;predictions=None;results={};search={};labels=[];physics=None
++  branches=['B','legacy_mean'] if a.legacy else ['B',*meta['groups']]+(['elite_Q1'] if a.scenario in meta['elite_scenarios'] else [])
++  assert a.branch in branches
++  for branch in [a.branch]:
++   seed=1+a.scenario;set_seed(seed);agent.planner.reset(seed=seed);obs=env.reset(seed=a.scenario);assert int(env.unwrapped_metadrive.current_seed)==a.scenario
++   replay_error=0.;prefix_actions=[]
++   for i in range(a.before-1):
++    action=torch.tensor(prefix[i],device=agent.device) if a.legacy else agent.act(obs,t0=(i==0),eval_mode=True)
++    prefix_actions.append(action.cpu().tolist());obs,_,done,info=env.step(action)
++    if done:
++     dump(out/('unavailable_'+branch+'.json'),dict(scenario=a.scenario,before=a.before,reason='SAC prefix terminated before prescribed origin',prefix_steps=i+1,info=info));print('unreachable',out,flush=True);return
++   agent.act(obs,t0=False,eval_mode=True);context=agent.planner.last_context;baseline=agent.last_plan.refined_actions.clone();z=context.latent.clone()
++   if candidate_actions is None:
++    pool=[baseline];labels=['B']
++    if a.legacy:
++     assert np.array_equal(obs.cpu().numpy(),np.asarray(old['observation'],dtype=np.float32))
++     assert np.array_equal(baseline.cpu().numpy(),np.asarray(old['baseline'],dtype=np.float32))
++     pool.append(torch.tensor(old['mean'],device=agent.device));labels.append('legacy_mean')
++    else:
++     for name in meta['groups']:
++      planner=LocalMPPI(agent.planner.evaluator,terminal_weight_ablation_config(base,name),horizon=cfg.horizon,action_dim=cfg.action_dim,device=agent.device);planner.reset(seed)
++      with torch.random.fork_rng(devices=[torch.cuda.current_device()]):plan=planner.plan(z,baseline,eval_mode=True)
++      pool.append(plan.final_mean);labels.append(name);search[name]=dict(metrics=plan.metrics,iterations=plan.iterations,definition=plan.evaluation)
++     if 'elite_Q1' in branches:
++      elites=torch.tensor([it['best_elite_actions'] for it in search['Q1']['iterations']],device=agent.device)
++      scores=agent.planner.evaluator.evaluate_mppi_candidates(z,elites,q_aggregation='ensemble_mean',compute_cost=False).total_value
++      pool.append(elites[scores.argmax()]);labels.append('elite_Q1')
++    candidate_actions=torch.stack(pool)
++    predictions=agent.planner.evaluator.evaluate_mppi_candidates(z,candidate_actions,q_aggregation='ensemble_mean',compute_cost=False,capture_ensemble=True)
++    if agent.planner.safety is not None and context.safety_context is not None:
++     xy,yaw,speed=agent.planner.safety.rollout(candidate_actions,context.safety_context);stride=agent.planner.safety.substeps
++     physics=dict(xy=xy[:,stride::stride].cpu().numpy(),yaw=yaw[:,stride::stride].cpu().numpy(),speed=speed[:,stride::stride].cpu().numpy(),
++      approximation='Existing SAC kinematic feature model only. Config acceleration/braking bounds are not calibrated truth. Never used in online candidate selection.')
++   else:
++    assert torch.equal(baseline,candidate_actions[0])
++   origin=snapshot(env,agent,obs,candidate_actions,a.scenario,a.before)
++   if reference is None:reference=origin;dump(out/(branch+'_origin.json'),dict(origin,prefix_actions=prefix_actions))
++   else:assert_origin_match(reference,origin)
++   idx=labels.index(branch);actions=candidate_actions[idx];probe=PrefixValueProbe(agent.planner.evaluator,z);trace=[];terminal=None;crash=offroad=False;done=False;H=cfg.horizon
++   while not done and len(trace)<1000:
++    i=len(trace);action=actions[i] if i<H else agent.act(obs,t0=False,eval_mode=True)
++    if i==H:
++     terminal=terminal_q_audit(agent.tdmpc_agent,probe.imagined,probe.actual,actions[H:H+1],action[None])
++    if i<H:probe.before(obs,action)
++    obs,reward,done,info=env.step(action);actual=float(info['tdmpc2_reward'])
++    if i<H:
++     row=probe.after(obs,info)
++     if physics is not None:
++      v=env.unwrapped_metadrive.agent;angle=physics['yaw'][idx,i]-float(v.heading_theta)
++      row.update(position_error_m=float(np.linalg.norm(physics['xy'][idx,i]-v.position)),speed_error_mps=float(physics['speed'][idx,i]-np.linalg.norm(v.velocity)),heading_error_rad=float(np.arctan2(np.sin(angle),np.cos(angle))))
++    crash|=any(bool(info.get(k,False)) for k in ('crash','crash_vehicle','crash_object','crash_building','crash_human','crash_sidewalk'));offroad|=bool(info.get('out_of_road',False))
++    trace.append(dict(action=action.cpu().tolist(),reward=actual,returned_float32_reward=float(reward),metadrive_reward=float(info['metadrive_reward']),cost=float(info.get('cost',0.))))
++   assert done;gamma=float(agent.tdmpc_agent.discount);prefix_return=sum(gamma**i*r['reward'] for i,r in enumerate(trace[:H]));rtg=sum(gamma**i*r['reward'] for i,r in enumerate(trace[H:]));ret=sum(gamma**i*r['reward'] for i,r in enumerate(trace));assert abs(ret-prefix_return-gamma**H*rtg)<1e-7
++   result=dict(branch=branch,matched_observed_origin=True,origin_digest=digest(clean(reference)),actions=actions.cpu().tolist(),
++    prefix=probe.records,terminal=terminal,actual_prefix=prefix_return,actual_continuation=rtg,actual_discounted_return=ret,episode_return=sum(r['reward'] for r in trace),trace=trace,
++    success=bool(info.get('success',False)),crash=crash,out_of_road=offroad,route_completion=float(info.get('route_completion',0.)),length=len(trace),gamma=gamma,
++    predicted_prefix=float(predictions.discounted_reward[idx]),terminal_discount=float(predictions.terminal_discount[idx]),predicted_q=float(predictions.terminal_q[idx]),
++    predicted_q_members=predictions.q_member_values[:,idx].cpu().tolist(),predicted_terminal_latent=predictions.terminal_latent[idx].cpu().tolist())
++   results[branch]=result;dump(out/(branch+'.json'),result);print(a.scenario,a.before,branch,len(trace),ret,flush=True)
++  dump(out/(a.branch+'_summary.json'),dict(scenario=a.scenario,before=a.before,split=split,labels=labels,search=search,origin_digest=digest(clean(reference)),coverage=reference['coverage'],
++    physics_source=physics['approximation'] if physics else None,checkpoint_sha256=meta['checkpoint_sha256'],
++    scope='Observed/traffic/RNG/config/candidates matched exactly across reset branches. Not a full Bullet/hidden-controller snapshot. Exactly H physical commands then unchanged SAC continuation. Initial 535-D SAC state unchanged. No origin is selected by achieved return.'))
++ finally:env.close()
++if __name__=='__main__':main()
+diff --git a/reports/mppi_calibration_20261116/report.py b/reports/mppi_calibration_20261116/report.py
+new file mode 100644
+index 0000000..8cb47f3
+--- /dev/null
++++ b/reports/mppi_calibration_20261116/report.py
+@@ -0,0 +1,105 @@
++"""Build a factual delivery from completed, scene-separated experiments."""
++import json
++from pathlib import Path
++import numpy as np
++R=Path(__file__).parent;ROOT=R.parents[1]
++def read(name):return json.loads((R/name).read_text())
++p=read('protocol.json');sel=read('selection.json');dv=read('dev_probe_analysis.json');vv=read('validation_probe_analysis.json');dc=read('dev_closed_analysis.json');vc=read('validation_closed_analysis.json')
++lines=['# MPPI Terminal Q 校准与真实收益分析','',
++'基线 `'+p['base_commit']+'`，修改前工作区干净。未训练、未改模型权重、未修改535维SAC输入/动作映射、未改环境Reward/终止条件，未commit/push/reset。历史结果保持原样。',
++'','## 代码与测试','',
++'- `planning/evaluator.py`增加MPPI专用 `terminal_q_weight`，默认1。只缩放已经解码且包含原discount/termination mask的终端贡献。原SAC特征wrapper始终按原λ=1计算，不读取MPPI权重。Q计算次数、reward/next次数不变。',
++'- `planning/local_mppi.py`将同一λ用于全部迭代及最终baseline/mean复评，增加weighted_terminal_q_gain诊断；Gaussian、AR(1)、Elite、Mean/Std公式、H/H+1和采样预算不变。',
++'- `config.yaml`、`planning/native_config.py`新增默认1.0及兼容字段；`planning/mppi_ablation.py`新增Q1/Q05/Q025/Q0四个单因素配置。',
++'- `tools/value_calibration.py`为独立离线工具，记录pre-action reward、post-action latent及同一终端动作的Q比较，不进入在线选择。`tests/test_terminal_q_weight.py`增加3个针对性回归，原40项保留。',
++'',
++'**43项相关测试通过**，详见 `tests_final.txt`。λ=1旧分数/分布精确相同；λ仅改终端贡献；baseline/mean与四轮定义一致；SAC特征不受影响；Teacher-Forced/open-loop索引、tdmpc2_reward标签、终端动作、起点配置/RNG匹配均有回归。两个真实场景的535维特征、残差和动作与修改前最大误差全部0，见 `sac_interface_verification.json`。',
++'',
++'原D4的除法tau=0.5等价逆温度beta=2。四个λ实验统一写为inverse beta=2，未改为beta=0.5。默认主配置其余选项未改；实验D4不是已验证的最优方案。64/8/4、rho=0.8、原std、candidate a_H、五Q均值及checkpoint均固定。λ=0只作短时域诊断，不自动部署。λ会同时改变prefix/terminal的相对贡献及CEM权重集中度，温度本身未变；不能把全部变化直接归为Q偏差已修复。共同候选池的静态重评分与各λ自身mean的真实执行分别报告。',
++'','## 实验协议与可复现性','',
++'`protocol.json`在采集前确定：16个新场景×step50/150共32个计划起点，按场景划分开发10个/验证6个。原训练10000–11999、旧100、前次验证20000段/旧20测试30000段均不重叠。开发完整回合为4个场景×B和4个λ，验证为6个独立场景×相同5组。',
++'',
++'每个反事实分支独立启动进程，严格匹配初始观测、ego/交通状态、记录到的Python/NumPy/Torch/CUDA/MetaDrive RNG、候选动作及episode配置。不是完整Bullet/隐藏控制器快照，不能据此声称所有隐藏状态完全相同。每个分支执行相同H=10长度的对应候选前缀，再统一SAC延续到环境原生终止；此干预不同于在线每步只执行首动作再重规划，因此反事实结果不代替完整闭环性能；提前终止保留为真实失败，不补造H时刻状态。',
++'',
++'试运行发现同进程重复reset无法精确复现baseline，因此正式分支采用新进程；首轮诊断中的CPU/GPU动作设备错误已修复。失败试运行单独保留，不参与统计。起点前SAC已结束的情况记录为unreachable，不按分支真实收益挑选或替换。额外在预定4个场景的起点实际执行Q1最佳记录Elite。旧1714:250/559:600仅用于诊断，原9个起点不用于λ选优。',
++'',
++'真实Reward统一为当前任务 `info[tdmpc2_reward]`，另存原始MetaDrive reward作核对，不混用。闭环Episode Return沿用环境float32返回的同一奖励；实际折扣Return与探针使用info中同一标签（仅序列化精度略有差异）。反事实Crash/OOR为起点后的事件，完整回合表统计整个episode。',
++'',
++'所有区间按场景聚类bootstrap 2000次、seed1。起点/候选/Q成员不视为独立场景。未作多重比较校正，小样本区间不构成总体泛化证明。共享GPU负载下的耗时不可当作独占硬件优化对比。',
++'','## 三层误差分解（独立验证）','']
++for branch in ('B','Q1','Q05','Q025','Q0','elite_Q1'):
++ cases=[x for x in vv['cases'] if x['branch']==branch]
++ steps=[x for x in vv['per_step_errors'] if x['branch']==branch]
++ if not cases:continue
++ def mean(k):
++  a=[x[k] for x in cases if x.get(k) is not None];return float(np.mean(a)) if a else float('nan')
++ if branch=='B':lines+=['|分支|末latent RMSE|Teacher Reward MAE|Open-loop MAE|Reward Head折扣误差|rollout Reward偏移|mask影响|','|---|---:|---:|---:|---:|---:|---:|']
++ lines.append(f"|{branch}|{mean('latent_rmse'):.4f}|{np.mean([x['reward_teacher_error'] for x in steps]):.4f}|{np.mean([x['reward_open_loop_error'] for x in steps]):.4f}|{mean('reward_head_discounted_error'):.4f}|{mean('rollout_reward_shift'):.4f}|{mean('termination_mask_contribution'):.4f}|")
++lines+=['',
++'开环与Teacher-Forced都在执行a_t之前预测reward；真实奖励来自该次step。先model.next，再编码o_{t+1}比较latent，保存每一步L2和RMSE。上表末latent误差是无量纲特征距离，绝非车辆位移。按步长的Reward误差趋势、位置/速度/航向误差及原始latent均保留在JSON中。物理误差复用现有SAC几何近似，4/6m/s²配置不视为已校准车辆真值，不用于在线筛选。',
++'',
++'折扣前缀误差严格拆为：Teacher Reward−真实Reward（Reward Head项）、Open-loop−Teacher（latent rollout影响）、模型masked prefix−Open-loop（终止mask项，另含微小batch数值舍入差异）。它们是加性误差分解，不把相关性直接解释为唯一因果来源。',
++'', '以下是**Q成员平均一致率**（各起点五个成员的正确比例再平均），与下方五Q均值的排序统计分开。','', '|λ|预测末latent Q对RTG排序一致率|真实末latent+同一a_H|真实末latent+下一SAC动作|pred/real latent排序翻转率|','|---|---:|---:|---:|---:|']
++for x in vv['summary']:
++ def f(k):return 'NA' if x[k] is None else f"{x[k]:.1%}"
++ lines.append('|'+x['configuration']+'|'+'|'.join(f(k) for k in ('predicted_state_member_ranking_accuracy','actual_state_member_ranking_accuracy','actual_state_SAC_action_ranking_accuracy','state_ranking_flip_fraction'))+'|')
++ensemble=read('ensemble_terminal_ranking.json')['validation']['summary']
++lines+=['','以下为**五Q均值**对真实SAC延续RTG的排序准确率及场景聚类95% CI：','','|λ候选|预测末latent|真实末latent+同一a_H|真实末latent+实际下一SAC动作|','|---|---:|---:|---:|']
++for x in ensemble:
++ vals=[]
++ for k in ('predicted_latent_accuracy','real_latent_same_action_accuracy','real_latent_sac_action_accuracy'):
++  vals.append(f"{x[k]:.1%} [{x[k+'_ci95_low']:.1%}, {x[k+'_ci95_high']:.1%}]" if x[k] is not None else 'NA')
++ lines.append('|'+x['configuration']+'|'+'|'.join(vals)+'|')
++lines+=['','换成真实末端latent及真实下一SAC动作后，五Q均值仍未形成稳定正确排序。说明仅修复Dynamics未必足够，下一阶段应独立验证SAC-continuation value/FPE与Dynamics适配，而不是仅改变Q成员数量或继续缩小λ。样本量有限，不能据此断言所有场景均不可修复。']
++lines+=['',
++'Q比较在预测/真实z_H上保持相同候选a_H；第三项用真实下一SAC动作，仅为诊断。各成员原始值与真实SAC Return-to-Go、尺度差异在cases及原始分支文件中。终端Q对RTG排序与包含prefix的总J排序分别计算。Q训练延续策略不同，因此Q−SAC RTG不能全部归咎于Q拟合错误。绝对Q尺度偏大本身不证明错排：同一discount/mask下共同常数偏移会在候选差值中抵消，须检查相对排序。',
++'','## λ消融：反事实候选排序','']
++for title,data in [('开发集',dv),('按场景隔离的验证集',vv)]:
++ lines+=['### '+title,'', '|λ|有效起点/场景|Mean相对B真实增益 [95% CI]|Mean/B排序准确率 [95% CI]|全候选对排序准确率|Spearman|Top-1 Regret|','|---|---:|---:|---:|---:|---:|---:|']
++ for x in data['summary']:
++  def fmt(k,percent=False):
++   v=x[k];lo=x[k+'_ci95_low'];hi=x[k+'_ci95_high']
++   if v is None:return 'NA'
++   return f'{v:.1%} [{lo:.1%}, {hi:.1%}]' if percent else f'{v:.3f} [{lo:.3f}, {hi:.3f}]'
++  lines.append(f"|{x['configuration']}|{x['origins']}/{x['unique_scenarios']}|{fmt('actual_gain')}|{fmt('mean_vs_baseline_accuracy',True)}|{('NA' if x['pair_ranking_accuracy'] is None else format(x['pair_ranking_accuracy'],'.1%'))}|{('NA' if x['spearman'] is None else format(x['spearman'],'.3f'))}|{x['top1_regret']:.3f}|")
++ lines+=['',f"不可到达起点：{len(data['unavailable'])}个，详见JSON；未按结果进行替换。",'']
++lines+=['预测ties给半分，真实return ties不计方向准确率。Top-1 regret相对已实际执行的共同候选池，不是全动作空间最优值。每个λ自己的mean、B及预定Elite都有真实分支；候选池仅用于离线排序分析，不是新增在线多模态规划器。',
++'','## 两个旧故障起点（不参与选参）','']
++legacy=read('diagnosis_probe_analysis.json');lines+=['|起点|真实ΔReturn|Mean末latent RMSE|Reward Head折扣误差|rollout Reward偏移|预测末Q差|真实末Q差（同a_H）|实际SAC RTG差|','|---|---:|---:|---:|---:|---:|---:|---:|']
++for x in legacy['cases']:
++ if x['branch']!='legacy_mean':continue
++ b=next(y for y in legacy['cases'] if y['branch']=='B' and y['scenario']==x['scenario'] and y['before']==x['before'])
++ lines.append(f"|{x['scenario']}:{x['before']}|{x['actual_gain']:+.3f}|{x['latent_rmse']:.4f}|{x['reward_head_discounted_error']:+.3f}|{x['rollout_reward_shift']:+.3f}|{x['predicted_Q_mean']-b['predicted_Q_mean']:+.3f}|{x['actual_z_candidate_Q_mean']-b['actual_z_candidate_Q_mean']:+.3f}|{x['actual_SAC_RTG']-b['actual_SAC_RTG']:+.3f}|")
++lines+=['','此处沿用旧D0动作序列，补算三层误差，并非重跑λ优化或使用旧9起点选参。','', '## 小规模完整回合配对评测','']
++for title,data in [('开发：每组4回合',dc),('独立验证：每组6回合',vc)]:
++ lines+=['### '+title,'','|组|Success|Crash|OOR|Route|Episode Return|实际折扣Return|预测增益|prefix增益|加权terminal增益|规划ms|','|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|']
++ for x in data['summary']:
++  def f(k):return 'NA' if x.get(k) is None else f'{x[k]:.3f}'
++  lines.append(f"|{x['configuration']}|{x['success']:.1%}|{x['crash']:.1%}|{x['out_of_road']:.1%}|{x['route_completion']:.2%}|{x['reward']:.2f}|{x['actual_discounted_return']:.2f}|{f('mppi_predicted_return_gain')}|{f('mppi_prefix_reward_gain')}|{f('mppi_weighted_terminal_q_gain')}|{x['planning_time_ms']:.1f}|")
++ lines+=['','逐场配对CSV和所有指标的bootstrap95% CI保存在对应的 `*_paired.csv`、`*_closed_analysis.json`。','']
++lines+=['## 动作分布偏移与Mean/Elite','',
++'原始候选中保存SAC、四种mean及预定Q1最佳记录Elite动作。cases给出首steer/throttle、完整H步L2/RMS偏移、预测/真实Reward增益、latent误差、Crash/OOR；associations给出动作偏移−latent误差、油门−事故、预测−真实增益及latent误差−排序错误关联。它们是探索性相关性，未加动作惩罚或硬信任域。',
++'']
++for x in vv['associations']:lines.append('- '+x['branch']+'：'+', '.join(k+'='+('NA' if v is None else f'{v:.3f}') for k,v in x.items() if k!='branch'))
++lines+=['','|起点|集合|Mean−Elite预测值|Mean−Elite真实折扣Return|','|---|---|---:|---:|']
++for split,data in [('开发',dv),('验证',vv)]:
++ for x in data['elite_comparisons']:lines.append(f"|{x['scenario']}:{x['before']}|{split}|{x['predicted_mean_minus_elite']:+.3f}|{x['actual_mean_minus_elite']:+.3f}|")
++lines+=['','正值表示Mean更高。8个起点中预测均偏好记录Elite，实际Mean与Elite各有4个起点更高。不能据此认定总是应选Mean或Elite，也未改变在线输出规则。验证集动作偏移与latent误差关联为负或接近0，油门−事故关联事件样本很少，未证实‘偏移越大误差必越高’或‘加油门必然致事故’，没有据此添加惩罚。']
++coverage=dv['coverage']+vv['coverage'];types={x['lane_type'] for x in coverage};speeds=[x['speed'] for x in coverage]
++lines+=['',f"覆盖{len(coverage)}个可复现起点；道路类型{sorted(types)}，速度范围{min(speeds):.2f}–{max(speeds):.2f}m/s。交通数量及横向偏差、10m参考航向变化保存在coverage。",'',
++'## 选参、独立结论与尚未解决的问题','',
++'开发集选择：`'+str(sel['candidate'])+'`。只允许Q05/Q025作为候选，需开发反事实实际收益和完整回合均超过B/Q1且事故不恶化；Q0只诊断。选择只读取开发文件，验证集不用于改选第二个λ。',
++'',sel['reason'],'']
++if sel['validation_gate_passed']:
++ t=read('test_closed_analysis.json');lines+=['新最终测试使用另10个50000段场景，与所有开发/验证/旧20分开；完整结果见 `test_closed_analysis.json`。','']
++ for x in t['summary']:lines.append(f"- {x['configuration']}: Success {x['success']:.1%}, Crash {x['crash']:.1%}, OOR {x['out_of_road']:.1%}, Return {x['reward']:.2f}.")
++else:lines+=['未取得预定的独立、事故不恶化的改善证据，未启动额外测试或正式100场。代码和参数消融可运行，不等于已实现真实驾驶收益提升。']
++lines+=['',
++'**仅靠不修改权重的MPPI搜索与超参数调整，可能无法解决冻结WM的价值排序问题。** 同一动作在predicted/actual latent上的Q翻转提示Dynamics误差；在actual latent和真实SAC下一动作上仍不匹配RTG，则提示Q泛化、策略分布偏移或状态表示不足。Reward Teacher-Forced与开环分解用于判断Reward Head是否也需适配。有限验证样本不能证明不可修复，但不支持继续堆叠评分系数。λ=0.25在完整验证回合中实际折扣Return略高于B，但未折扣Episode Return下降且出现1次碰撞；这同时说明折扣目标与成功/事故/未折扣收益存在取舍，不能把所有安全指标退化都解释成Q拟合错误。本轮未改Reward、gamma或事件定义。后续适配应先改善真实折扣候选排序，再独立检验整体驾驶指标，不能承诺仅拟合Value就改善安全。',
++'','## 下一阶段最小适配方案（本轮未执行）','',
++'1. **Dynamics适配单因素实验**：另采训练场景中的真实SAC及预先固定Gaussian扰动前缀，保留真实后继观测/Reward。冻结encoder与SAC，使用MPPI评估器专用WM副本做短多步transition适配；以未见场景候选相对排序、真实前缀误差为验收，不能只看平均MSE。若Teacher Reward误差主导，再单独验证Reward Head适配，勿与Dynamics同时改而无法归因。原WM给535维SAC提供特征的路径继续冻结，避免更改其输入分布。',
++'2. **SAC延续价值适配**：先在真实轨迹上做冻结SAC对应的离线FPE/MC诊断，使用本任务相同Reward、gamma和原生done，分别检验SAC分布内和MPPI扰动分布。真实535维状态可用于离线FPE；若在线只预测latent，必须另外验证latent-only SAC value近似能否表达Lattice/SAC策略信息，不能凭空补造未来535维特征。经独立验证后，才考虑用评估器专用的SAC-continuation terminal value替换统一目标中的旧Q。',
++'3. 训练/开发/验证按场景分离，禁止使用旧20场封存集、本轮验证及正式测试场景训练。原checkpoint只读，适配副本另存新checkpoint；两个适配方向先各自消融，不加入Recovery、安全审批或规则候选。本轮没有创建或训练这些新模型。',
++'',
++'证据/代码：`reports/mppi_calibration_20261116/`；完整Diff为 `code_changes.patch`，输入不可变校验为 `verification.json`。未自动训练、提交或推送。','']
++(ROOT/'MPPI_TERMINAL_Q_CALIBRATION_REPORT.md').write_text('\n'.join(lines));print(ROOT/'MPPI_TERMINAL_Q_CALIBRATION_REPORT.md')
+diff --git a/reports/mppi_calibration_20261116/resume_probes.py b/reports/mppi_calibration_20261116/resume_probes.py
+new file mode 100644
+index 0000000..2cf61af
+--- /dev/null
++++ b/reports/mppi_calibration_20261116/resume_probes.py
+@@ -0,0 +1,21 @@
++"""Drain two active workers, then resume only the queue at higher concurrency."""
++import json,os,shlex,signal,subprocess,sys,time
++from pathlib import Path
++R=Path(__file__).parent;ledger=json.loads((R/'orchestrator_restart.json').read_text());parent=ledger['parent'];children=ledger['children']
++while True:
++ states=[]
++ for line in children:
++  pid=int(line.split()[0]);parts=Path(f'/proc/{pid}/stat').read_text().rsplit(')',1)[1].split();states.append((parts[0],int(parts[49])))
++ if all(state=='Z' for state,_ in states):break
++ time.sleep(2)
++assert all(code==0 for _,code in states),states
++statusfile=R/'probes_worker_statuses.json';statuses=json.loads(statusfile.read_text());meta=json.loads((R/'protocol.json').read_text())
++for line in children:
++ words=shlex.split(line);s=int(words[words.index('--scenario')+1]);before=int(words[words.index('--before')+1]);b=words[words.index('--branch')+1];split='dev' if s in meta['dev_scenarios'] else 'validation'
++ assert (R/'probes'/f'{split}_{s}_{before}'/(b+'.json')).exists();statuses[f'{split}_{s}_{before}_{b}']=0
++statusfile.write_text(json.dumps(statuses,indent=2));ledger['drained_exit_codes']=[code for _,code in states]
++os.kill(parent,signal.SIGTERM);os.kill(parent,signal.SIGCONT);ledger['resumed_jobs']=4
++(R/'orchestrator_restart.json').write_text(json.dumps(ledger,indent=2))
++with (R/'probes_resume.log').open('x') as f:
++ result=subprocess.run([sys.executable,'-u',str(R/'run.py'),'--kind','probes','--jobs','4','--resume'],stdout=f,stderr=subprocess.STDOUT,env=os.environ)
++assert result.returncode==0
+diff --git a/reports/mppi_calibration_20261116/run.py b/reports/mppi_calibration_20261116/run.py
+new file mode 100644
+index 0000000..f750d87
+--- /dev/null
++++ b/reports/mppi_calibration_20261116/run.py
+@@ -0,0 +1,42 @@
++"""Bounded experiment queue. Historical results and checkpoints are never written."""
++import argparse,hashlib,json,os,subprocess,sys,time
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
++from tools.benchmark_mppi import source_fingerprint
++p=argparse.ArgumentParser();p.add_argument('--kind',choices=['probes','dev','validation','test'],required=True);p.add_argument('--jobs',type=int,default=2);p.add_argument('--resume',action='store_true');a=p.parse_args();assert 1<=a.jobs<=4
++meta=json.loads((R/'protocol.json').read_text());fingerprint=source_fingerprint(ROOT);assert fingerprint==meta['source_snapshot_sha256']
++assert '43 passed' in (R/'tests_final.txt').read_text();assert hashlib.sha256(Path(meta['checkpoint']).read_bytes()).hexdigest()==meta['checkpoint_sha256']
++queue=[]
++if a.kind=='probes':
++ for split in ('dev','validation'):
++  for s in meta[split+'_scenarios']:
++   for before in meta['origin_steps']:
++    for b in ['B',*meta['groups']]+(['elite_Q1'] if s in meta['elite_scenarios'] else []):
++     path=R/'probes'/f'{split}_{s}_{before}'/(b+'.json')
++     if path.exists() or (path.parent/('unavailable_'+b+'.json')).exists() or (path.parent/'unavailable.json').exists():continue
++     queue.append((f'{split}_{s}_{before}_{b}',[str(R/'probe.py'),'--scenario',str(s),'--before',str(before),'--branch',b]))
++ for s,before in ((1714,250),(559,600)):
++  for b in ('B','legacy_mean'):
++   queue.append((f'diagnosis_{s}_{b}',[str(R/'probe.py'),'--scenario',str(s),'--before',str(before),'--branch',b,'--legacy']))
++else:
++ groups=['B',*meta['groups']]
++ if a.kind=='test':
++  selection=json.loads((R/'selection.json').read_text());assert selection.get('validation_gate_passed');groups=['B','Q1',selection['candidate']]
++ scenes=meta['additional_test_scenarios'] if a.kind=='test' else meta['closed_loop_'+a.kind+'_scenarios']
++ for s in scenes:
++  for g in groups:queue.append((f'{a.kind}_{g}_{s}',[str(R/'closed_loop.py'),'--phase',a.kind,'--group',g,'--scenario',str(s)]))
++statusfile=R/(a.kind+'_worker_statuses.json');assert a.resume or not statusfile.exists();running=[];statuses=json.loads(statusfile.read_text()) if a.resume else {};total=len(queue)+len(statuses)
++logs=R/'worker_logs';logs.mkdir(exist_ok=True);print(a.kind,total,'jobs',flush=True)
++while queue or running:
++ while queue and len(running)<a.jobs:
++  name,args=queue.pop(0);log=(logs/(name+'.log')).open('x');proc=subprocess.Popen([sys.executable,'-u',*args],cwd=ROOT,stdout=log,stderr=subprocess.STDOUT,
++   env=dict(os.environ,OMP_NUM_THREADS='1',MKL_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',MUJOCO_GL='egl',PYTHONUNBUFFERED='1'))
++  running.append((name,proc,log))
++ for name,proc,log in running[:]:
++  ret=proc.poll()
++  if ret is not None:
++   log.close();running.remove((name,proc,log));statuses[name]=ret;statusfile.write_text(json.dumps(statuses,indent=2));print(len(statuses),'/',total,name,ret,flush=True)
++ if running:time.sleep(2)
++assert not any(statuses.values()),statuses
++assert source_fingerprint(ROOT)==fingerprint
++assert hashlib.sha256(Path(meta['checkpoint']).read_bytes()).hexdigest()==meta['checkpoint_sha256']
+diff --git a/reports/mppi_calibration_20261116/setup_protocol.py b/reports/mppi_calibration_20261116/setup_protocol.py
+new file mode 100644
+index 0000000..0bf4d13
+--- /dev/null
++++ b/reports/mppi_calibration_20261116/setup_protocol.py
+@@ -0,0 +1,21 @@
++import hashlib,json,sys
++from pathlib import Path
++import numpy as np
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
++from tools.benchmark_mppi import source_fingerprint
++old=json.loads((ROOT/'reports/mppi_value_20261116/protocol.json').read_text())
++scenes=np.random.default_rng(2026111601).choice(np.arange(40000,41000),16,replace=False).tolist()
++p=dict(base_commit='fae10f34e15ffe987a7527272cb1693637a9f488',checkpoint=old['checkpoint'],checkpoint_sha256=old['checkpoint_sha256'],source_environment_config=old['source_environment_config'],
++ source_snapshot_sha256=source_fingerprint(ROOT),dev_scenarios=scenes[:10],validation_scenarios=scenes[10:],origin_steps=[50,150],
++ elite_scenarios=scenes[::4],groups={'Q1':1.,'Q05':.5,'Q025':.25,'Q0':0.},seed=1,episode_horizon=1000,horizon=10,
++ effective_beta=2.,temperature_definition='inverse',terminal_action='candidate',q_aggregation='ensemble_mean',
++ closed_loop_dev_scenarios=scenes[:4],closed_loop_validation_scenarios=scenes[10:],
++ additional_test_scenarios=np.random.default_rng(2026111602).choice(np.arange(50000,51000),10,replace=False).tolist(),
++ selection='Select only Q05 or Q025 on development origins AND development closed-loop, requiring actual mean return > Q1 and B, no higher crash/OOR, closed-loop success >= both. Rank eligible by actual discounted return, then success. Q0 is diagnostic only. Validate single selected candidate against B and Q1 on held-out scenes. No selection on old9 or old20.',
++ validation_gate='New final-test scenes only if held-out validation shows success >= B/Q1, return > both, crash/OOR <= both and paired return CI95 lower bound > 0 against both. Otherwise stop; no extra coefficients or full100.',
++ scope='32 planned origins across16 new scenes, split by scene:20 development/12 validation. Unreachable SAC prefixes recorded, not replaced based on outcomes. Four predeclared scenes also execute Q1 best recorded elite. Observed+traffic+RNG matching is not a complete hidden simulator snapshot.',no_training=True)
++assert hashlib.sha256(Path(p['checkpoint']).read_bytes()).hexdigest()==p['checkpoint_sha256']
++assert not set(scenes)&set(old['validation_scenarios']+old['sealed_test_scenarios'])
++assert min(scenes)>11999
++path=R/'protocol.json';assert not path.exists();path.write_text(json.dumps(p,indent=2))
++print(scenes)
+diff --git a/reports/mppi_calibration_20261116/validation_queue.py b/reports/mppi_calibration_20261116/validation_queue.py
+new file mode 100644
+index 0000000..d7108f6
+--- /dev/null
++++ b/reports/mppi_calibration_20261116/validation_queue.py
+@@ -0,0 +1,13 @@
++"""Collect the predeclared validation groups without inspecting their outcomes."""
++import json,os,subprocess,sys,time
++from pathlib import Path
++R=Path(__file__).parent
++while True:
++ p=R/'dev_worker_statuses.json'
++ statuses=json.loads(p.read_text()) if p.exists() else {}
++ if len(statuses)==20:
++  assert not any(statuses.values());break
++ time.sleep(5)
++with (R/'validation_run.log').open('x') as f:
++ result=subprocess.run([sys.executable,'-u',str(R/'run.py'),'--kind','validation','--jobs','2'],stdout=f,stderr=subprocess.STDOUT,env=os.environ)
++assert result.returncode==0
+diff --git a/reports/mppi_calibration_20261116/protocol.json b/reports/mppi_calibration_20261116/protocol.json
+new file mode 100644
+index 0000000..3754f12
+--- /dev/null
++++ b/reports/mppi_calibration_20261116/protocol.json
+@@ -0,0 +1,80 @@
++{
++  "base_commit": "fae10f34e15ffe987a7527272cb1693637a9f488",
++  "checkpoint": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt",
++  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
++  "source_environment_config": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/benchmark/sac_refinement_BD_fixed100_20261111_152755/part1/config_B_lattice_sac_seed1.yaml",
++  "source_snapshot_sha256": "b3ee26786394faccb5cbb4db224c2b638d7246d732006191dfcff41ea5db7cb5",
++  "dev_scenarios": [
++    40511,
++    40377,
++    40696,
++    40298,
++    40330,
++    40507,
++    40768,
++    40394,
++    40113,
++    40684
++  ],
++  "validation_scenarios": [
++    40614,
++    40250,
++    40765,
++    40936,
++    40058,
++    40974
++  ],
++  "origin_steps": [
++    50,
++    150
++  ],
++  "elite_scenarios": [
++    40511,
++    40330,
++    40113,
++    40765
++  ],
++  "groups": {
++    "Q1": 1.0,
++    "Q05": 0.5,
++    "Q025": 0.25,
++    "Q0": 0.0
++  },
++  "seed": 1,
++  "episode_horizon": 1000,
++  "horizon": 10,
++  "effective_beta": 2.0,
++  "temperature_definition": "inverse",
++  "terminal_action": "candidate",
++  "q_aggregation": "ensemble_mean",
++  "closed_loop_dev_scenarios": [
++    40511,
++    40377,
++    40696,
++    40298
++  ],
++  "closed_loop_validation_scenarios": [
++    40614,
++    40250,
++    40765,
++    40936,
++    40058,
++    40974
++  ],
++  "additional_test_scenarios": [
++    50575,
++    50454,
++    50937,
++    50661,
++    50194,
++    50680,
++    50648,
++    50695,
++    50522,
++    50976
++  ],
++  "selection": "Select only Q05 or Q025 on development origins AND development closed-loop, requiring actual mean return > Q1 and B, no higher crash/OOR, closed-loop success >= both. Rank eligible by actual discounted return, then success. Q0 is diagnostic only. Validate single selected candidate against B and Q1 on held-out scenes. No selection on old9 or old20.",
++  "validation_gate": "New final-test scenes only if held-out validation shows success >= B/Q1, return > both, crash/OOR <= both and paired return CI95 lower bound > 0 against both. Otherwise stop; no extra coefficients or full100.",
++  "scope": "32 planned origins across16 new scenes, split by scene:20 development/12 validation. Unreachable SAC prefixes recorded, not replaced based on outcomes. Four predeclared scenes also execute Q1 best recorded elite. Observed+traffic+RNG matching is not a complete hidden simulator snapshot.",
++  "no_training": true
++}
+\ No newline at end of file

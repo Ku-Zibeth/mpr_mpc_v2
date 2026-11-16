@@ -36,7 +36,11 @@ class TrajectoryWorldModelEvaluator:
 
     @torch.no_grad()
     def evaluate(self, z_t, actions, *, terminal_action_mode, task=None, compute_cost=None,
-                 q_aggregation="ensemble_mean", q_indices=None, capture_ensemble=False):
+                 q_aggregation="ensemble_mean", q_indices=None, capture_ensemble=False,
+                 terminal_q_weight=1.0):
+        terminal_q_weight = float(terminal_q_weight)
+        if not math.isfinite(terminal_q_weight) or terminal_q_weight < 0:
+            raise ValueError("terminal_q_weight must be finite and nonnegative.")
         if terminal_action_mode not in {"policy", "policy_mean", "trajectory"}:
             raise ValueError("Unknown terminal action definition.")
         if actions.ndim != 3 or actions.shape[-1] != int(self.agent.cfg.action_dim):
@@ -118,7 +122,10 @@ class TrajectoryWorldModelEvaluator:
                 qs = td_math.two_hot_inv(model.Q(z, terminal_action, task, return_type="all"), self.agent.cfg)
                 q_std = qs.std(0, unbiased=False)
             discounted_reward = total.clone()
-            total += discount * (1-terminated) * terminal_q
+            terminal_value = discount * (1-terminated) * terminal_q
+            if terminal_q_weight != 1.0:
+                terminal_value = terminal_q_weight * terminal_value
+            total += terminal_value
             prediction = None
             if compute_cost:
                 # Cost has no recurrent dependency. One H*B batch preserves
@@ -176,7 +183,7 @@ class TrajectoryWorldModelEvaluator:
 
     def evaluate_mppi_candidates(self, z_t, actions, task=None, *, compute_cost=None,
                                  terminal_action="candidate", q_aggregation="random_pair",
-                                 q_indices=None, capture_ensemble=False):
+                                 q_indices=None, capture_ensemble=False, terminal_q_weight=1.0):
         if actions.ndim != 3 or actions.shape[1] != self.horizon+1:
             raise ValueError("MPPI keeps the Coordinator H+1 interface.")
         if terminal_action not in {"candidate", "policy_prior"}:
@@ -188,7 +195,7 @@ class TrajectoryWorldModelEvaluator:
         controls = actions if mode == "trajectory" else actions[:, :self.horizon]
         return self.evaluate(z_t, controls, terminal_action_mode=mode, task=task,
             compute_cost=compute_cost, q_aggregation=reducers[q_aggregation],
-            q_indices=q_indices, capture_ensemble=capture_ensemble)
+            q_indices=q_indices, capture_ensemble=capture_ensemble, terminal_q_weight=terminal_q_weight)
 
 
 __all__ = ["TrajectoryWorldModelEvaluator"]

@@ -16,3 +16,17 @@ def value_ablation_config(config, name):
     result = deepcopy(dict(config))
     result.update(VALUE_ABLATIONS[name])
     return result
+
+
+TERMINAL_WEIGHT_ABLATIONS = {"Q1": 1.0, "Q05": 0.5, "Q025": 0.25, "Q0": 0.0}
+
+
+def terminal_weight_ablation_config(config, name):
+    """D4 at effective beta=2; change ONLY lambda_Q, never sampling parameters."""
+    if name not in TERMINAL_WEIGHT_ABLATIONS:
+        raise ValueError(f"Unknown terminal-weight ablation {name}")
+    result = value_ablation_config(config, "D4")
+    # D4's old tau=.5 equals beta=2 exactly, NOT the default beta=.5.
+    result.update(temperature_definition="inverse", temperature=2.0,
+                  terminal_q_weight=TERMINAL_WEIGHT_ABLATIONS[name])
+    return result
