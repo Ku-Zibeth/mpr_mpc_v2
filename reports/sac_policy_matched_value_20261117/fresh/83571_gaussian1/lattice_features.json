@@ -1,0 +1,14 @@
+{
+  "target_d": 0.0,
+  "target_speed": 13.89,
+  "horizon": 3.0,
+  "min_obstacle_clearance": 20.0,
+  "obstacle_cost": 0.0,
+  "max_abs_d_d": 1.0113329887390137,
+  "max_abs_d_dd": 1.6181296110153198,
+  "max_abs_d_ddd": 5.240962982177734,
+  "max_abs_s_dd": 1.6226929426193237,
+  "max_abs_s_ddd": 2.163590431213379,
+  "curvature_max": 0.10731325298547745,
+  "path_length": 36.75499725341797
+}

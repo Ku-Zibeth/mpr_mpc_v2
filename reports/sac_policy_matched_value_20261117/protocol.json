@@ -1,0 +1,63 @@
+{
+  "base_commit": "4d3e796434149e311030f7dee411ed44873cf932",
+  "checkpoint": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt",
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "source_environment_config": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/benchmark/sac_refinement_BD_fixed100_20261111_152755/part1/config_B_lattice_sac_seed1.yaml",
+  "runtime_fingerprint": "2469ca571bc7186413bcd87f5025a8839c69f100cb4e42ac4d30a75e17c59e0a",
+  "fresh_scenarios": [
+    83964,
+    83060,
+    83571,
+    83797
+  ],
+  "before": 30,
+  "horizon": 10,
+  "candidates": [
+    "baseline",
+    "gaussian1"
+  ],
+  "candidate_selection": "Fixed baseline and first of64 originalGaussian draws; NEVER chosen by Return",
+  "primary_gamma": 0.995,
+  "secondary_gamma": 0.99,
+  "repeat_seeds": [
+    1,
+    2
+  ],
+  "takeover_policies": [
+    "lattice_sac",
+    "td_actor"
+  ],
+  "td_actor": "Original stochastic model.pi(z)[0] direct physical action; noTD-MPC2 planner. Not deterministic mean; NOT TD-MPC2 fullMPC.",
+  "lattice_sac": "Original deterministic eval_mode=True; MPPI OFF. Use alreadyprepared first action then recompute eachstep.",
+  "paired_rng": "Same scene/pre-origin/prefix, same recorded terminalstate/observation/traffic/RNG. Suffix global seeds1/2 applied identically to both policies AFTER terminalstate is recorded. Traffic internalRNG remains scenario/prefix fixed.",
+  "variance": "Two suffix seeds measure policy/coarse-WM-feature stochasticity and any environment interaction, NOT isolated traffic noise. Exact same-seed SAC replay for firstscene baseline separately checks reproducibility.",
+  "terminal_value_primary": "Original TDQ01 at ACTUAL z_H and actual deterministic Lattice+SAC first physical action. SACmin(Q1,Q2) at actual535 and deterministic residual actor action mapping to that physical action. SAMEphysical first action; native continuation policy/gamma/entropy differences remain explicit.",
+  "q_indices": [
+    0,
+    1
+  ],
+  "terminal_comparison": "continuation RTG starting immediately afterH, no prefix rewards mixed in",
+  "controls": "All originalweights/535/features/mapping/config/reward/native termination frozen. No onlineMPPI, no training, no heads, no rescaling critics.",
+  "historical_data": "197 Fit/InnerStop cachedprefix-replay states, retrospective only. Preserve originalseen validation and sealed6map set; do not train or select onfreshmaps.",
+  "acceptance": "Existing frozen SACcritic considered promising only if freshscene pairedaccuracy improvement CI95low>0 AND top1regret improvement CI95low>0; no MAE-only approval; independent4scene pilot insufficient for online deployment.",
+  "bootstrap_samples": 2000,
+  "bootstrap_seed": 1,
+  "return_tolerance": 1.0,
+  "calibration_edges": [
+    "-inf",
+    -200,
+    -100,
+    0,
+    50,
+    100,
+    150,
+    200,
+    300,
+    500,
+    "inf"
+  ],
+  "new_native_suffixes": 33,
+  "formal100": false,
+  "training": false,
+  "default_changes": false
+}

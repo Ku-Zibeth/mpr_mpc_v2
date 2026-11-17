@@ -1,0 +1,17 @@
+{
+  "original_hashes": {
+    "wm": "d7b43cc09ca6fd2857ac09ea6f8820ad448b62c0dea13b6fd35a16511e2ec8a9",
+    "sac": {
+      "actor": "bbf712618f9a5106784ba1e0b53695cd2a0a537f499456f0676e6bcc2ad73912",
+      "q1": "b5907684c9518cdb66fa1f1fa48fba5a60d4028068436ac230ec02feeb371170",
+      "q2": "419f22eadd7539fc761c83fb1540aae92b458b06c4d37ecbb47098e5d3ee3847",
+      "target_q1": "23aa336b16fb6ad9eba40c2926cee963321928de1e414e7233f7c5be5c030846",
+      "target_q2": "ed1f09308e44d591c2e4dfcd5216728d13b80a7c6e3ecbac92e6e23b661bfa2d"
+    }
+  },
+  "weights_unchanged": true,
+  "prefix_origin_exactly_replayed": true,
+  "terminal_state_observation_traffic_RNG_paired": true,
+  "training": false,
+  "mppi": false
+}

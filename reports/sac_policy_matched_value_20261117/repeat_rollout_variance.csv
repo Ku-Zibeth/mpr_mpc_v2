@@ -1,0 +1,17 @@
+scenario,candidate,policy,mean_return,sample_variance,repeat_difference,repeats,noise_kind
+83964,baseline,lattice_sac,134.2878638956974,0.0,0.0,2,stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling
+83964,baseline,td_actor,-26.72376626284738,164.48103080006524,-18.137311311220593,2,stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling
+83964,gaussian1,lattice_sac,141.38324895398097,0.0,0.0,2,stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling
+83964,gaussian1,td_actor,6.887527065878865,18.343499041468085,6.056979286982593,2,stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling
+83060,baseline,lattice_sac,86.38640572821616,0.0,0.0,2,stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling
+83060,baseline,td_actor,28.891542538222257,1.801626912183235,1.898223860445988,2,stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling
+83060,gaussian1,lattice_sac,98.54051647905166,0.0,0.0,2,stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling
+83060,gaussian1,td_actor,28.864342564477486,0.043065393851601234,0.2934804724393132,2,stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling
+83571,baseline,lattice_sac,155.6714124793303,0.0,0.0,2,stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling
+83571,baseline,td_actor,40.38151510275856,5.32980305270838,-3.2649052215059413,2,stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling
+83571,gaussian1,lattice_sac,156.88954990676527,0.0,0.0,2,stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling
+83571,gaussian1,td_actor,41.3205208726633,0.2899037571984511,-0.7614509271101468,2,stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling
+83797,baseline,lattice_sac,146.5940457535196,0.0,0.0,2,stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling
+83797,baseline,td_actor,28.92601089532421,0.3590741988254641,0.8474363679067167,2,stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling
+83797,gaussian1,lattice_sac,146.66670607589114,0.0,0.0,2,stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling
+83797,gaussian1,td_actor,29.870714074808895,5.446517952637295,-3.3004599535935277,2,stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling

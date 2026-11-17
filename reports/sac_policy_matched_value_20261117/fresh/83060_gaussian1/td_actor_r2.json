@@ -1,0 +1,27 @@
+{
+  "scenario": 83060,
+  "candidate": "gaussian1",
+  "origin_id": "83060_30",
+  "policy": "td_actor",
+  "repeat": 2,
+  "suffix_seed": 830602,
+  "replay": false,
+  "discounted_return": 29.011082800697142,
+  "discounted_return_sac_gamma": 27.655376635304208,
+  "episode_return": 30.399664211465137,
+  "success": 0.0,
+  "crash": 1.0,
+  "out_of_road": 1.0,
+  "route_completion": 0.24805616469750696,
+  "safety_cost": 1.5311239454077528,
+  "suffix_steps": 42,
+  "native_done": true,
+  "end_reason": "crash_sidewalk",
+  "invalid_residual_count": 0,
+  "reward_definition": "info.tdmpc2_reward",
+  "no_mppi": true,
+  "td_first_action": [
+    -0.04019602760672569,
+    1.0
+  ]
+}

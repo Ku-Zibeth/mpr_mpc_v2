@@ -1,0 +1,37 @@
+{
+  "existing_sac_critic_supported_on_pilot": false,
+  "online_deployment": false,
+  "formal100": false,
+  "new_value_head_training": false,
+  "reason": "Phase1 only. Four freshmaps,2prefix candidates,2repeats; existing critics have irreducible objective mismatches. No validated predicted-terminal535 online interface. No newonlinepolicy or score.",
+  "ranking_gate": {
+    "pair_accuracy_gain": {
+      "mean": -0.3333333333333333,
+      "ci95": [
+        -1.0,
+        0.0
+      ],
+      "scenes": 3
+    },
+    "regret_improvement": {
+      "mean": -3.020362607115988,
+      "ci95": [
+        -9.115583063126625,
+        0.054495241778660386
+      ],
+      "scenes": 4
+    },
+    "nested_noise": {
+      "pair_accuracy_gain_ci95": [
+        -1.0,
+        0.0
+      ],
+      "regret_improvement_ci95": [
+        -9.115583063126625,
+        0.054495241778660386
+      ],
+      "draws_without_effective_pair": 7,
+      "definition": "Nested scene bootstrap then paired repeat-index resampling inside eachscene, candidates retain common repeat draws. Only2repeats; percentileCI exploratory, not unbiased stochastic-noise decomposition."
+    }
+  }
+}

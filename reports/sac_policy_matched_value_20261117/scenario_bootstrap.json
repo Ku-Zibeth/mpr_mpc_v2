@@ -1,0 +1,609 @@
+{
+  "value_comparison": {
+    "fresh_independent_pilot": {
+      "pair_accuracy_gain": {
+        "mean": -0.3333333333333333,
+        "ci95": [
+          -1.0,
+          0.0
+        ],
+        "scenes": 3
+      },
+      "regret_improvement": {
+        "mean": -3.020362607115988,
+        "ci95": [
+          -9.115583063126625,
+          0.054495241778660386
+        ],
+        "scenes": 4
+      },
+      "mae_improvement": {
+        "mean": 4.450772043916913,
+        "ci95": [
+          -32.449430750647494,
+          64.1564159467963
+        ],
+        "scenes": 4
+      }
+    },
+    "historical_fit_innerstop": {
+      "pair_accuracy_gain": {
+        "mean": -0.11358024691358022,
+        "ci95": [
+          -0.27655092592592595,
+          0.04723765432098758
+        ],
+        "scenes": 27
+      },
+      "regret_improvement": {
+        "mean": -1.0379945395239185,
+        "ci95": [
+          -5.371844481073755,
+          3.398570142658917
+        ],
+        "scenes": 28
+      },
+      "mae_improvement": {
+        "mean": -4.529085556483056,
+        "ci95": [
+          -26.13820219142922,
+          19.457733318949977
+        ],
+        "scenes": 28
+      }
+    }
+  },
+  "secondary_gamma99": {
+    "fresh_independent_pilot": {
+      "pair_accuracy_gain": {
+        "mean": -0.5,
+        "ci95": [
+          -1.0,
+          0.0
+        ],
+        "scenes": 2
+      },
+      "regret_improvement": {
+        "mean": -2.860506182678021,
+        "ci95": [
+          -8.637215288541297,
+          0.0556967405072335
+        ],
+        "scenes": 4
+      },
+      "mae_improvement": {
+        "mean": 107.83714539931742,
+        "ci95": [
+          90.41680786589089,
+          134.22320132905398
+        ],
+        "scenes": 4
+      }
+    },
+    "historical_fit_innerstop": {
+      "pair_accuracy_gain": {
+        "mean": -0.12314814814814813,
+        "ci95": [
+          -0.28888888888888886,
+          0.038587962962962935
+        ],
+        "scenes": 27
+      },
+      "regret_improvement": {
+        "mean": -1.1040640816013534,
+        "ci95": [
+          -3.7484787669225472,
+          1.5953692379646773
+        ],
+        "scenes": 28
+      },
+      "mae_improvement": {
+        "mean": 81.03616004445291,
+        "ci95": [
+          69.7768973738136,
+          93.60493364437494
+        ],
+        "scenes": 28
+      }
+    }
+  },
+  "policy_takeover": {
+    "by_policy": {
+      "lattice_sac": {
+        "discounted_return": {
+          "mean": 133.30246865905656,
+          "ci95": [
+            106.00518980640177,
+            151.66925000099562
+          ],
+          "scenes": 4
+        },
+        "discounted_return_sac_gamma": {
+          "mean": 81.6092819813563,
+          "ci95": [
+            70.68911054591928,
+            88.31412151283956
+          ],
+          "scenes": 4
+        },
+        "episode_return": {
+          "mean": 264.58308407323096,
+          "ci95": [
+            178.03281604093442,
+            337.16442587728227
+          ],
+          "scenes": 4
+        },
+        "success": {
+          "mean": 0.75,
+          "ci95": [
+            0.25,
+            1.0
+          ],
+          "scenes": 4
+        },
+        "crash": {
+          "mean": 0.125,
+          "ci95": [
+            0.0,
+            0.375
+          ],
+          "scenes": 4
+        },
+        "out_of_road": {
+          "mean": 0.25,
+          "ci95": [
+            0.0,
+            0.75
+          ],
+          "scenes": 4
+        },
+        "route_completion": {
+          "mean": 0.8948740850257004,
+          "ci95": [
+            0.7006052351682432,
+            0.9940364511015107
+          ],
+          "scenes": 4
+        },
+        "safety_cost": {
+          "mean": 1.4550575868553068,
+          "ci95": [
+            0.4181700730873621,
+            2.7404601413890672
+          ],
+          "scenes": 4
+        }
+      },
+      "td_actor": {
+        "discounted_return": {
+          "mean": 22.302300856410778,
+          "ci95": [
+            -0.08899907759655523,
+            37.85774912862067
+          ],
+          "scenes": 4
+        },
+        "discounted_return_sac_gamma": {
+          "mean": 21.008351159725173,
+          "ci95": [
+            0.5136085774478829,
+            34.77040146089636
+          ],
+          "scenes": 4
+        },
+        "episode_return": {
+          "mean": 23.883183394055187,
+          "ci95": [
+            -0.26448729883166866,
+            41.340253703818824
+          ],
+          "scenes": 4
+        },
+        "success": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "scenes": 4
+        },
+        "crash": {
+          "mean": 0.4375,
+          "ci95": [
+            0.0625,
+            0.8125
+          ],
+          "scenes": 4
+        },
+        "out_of_road": {
+          "mean": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ],
+          "scenes": 4
+        },
+        "route_completion": {
+          "mean": 0.2747950292582104,
+          "ci95": [
+            0.23733040170865816,
+            0.3432599105766906
+          ],
+          "scenes": 4
+        },
+        "safety_cost": {
+          "mean": 2.9063718444853883,
+          "ci95": [
+            1.512615975579659,
+            5.652572602637913
+          ],
+          "scenes": 4
+        }
+      }
+    },
+    "td_actor_minus_lattice_sac": {
+      "discounted_return": {
+        "mean": -111.00016780264579,
+        "ci95": [
+          -139.67262281882682,
+          -76.99714227162274
+        ],
+        "scenes": 4
+      },
+      "discounted_return_sac_gamma": {
+        "mean": -60.60093082163114,
+        "ci95": [
+          -83.00816565181162,
+          -43.06890615700141
+        ],
+        "scenes": 4
+      },
+      "episode_return": {
+        "mean": -240.6999006791758,
+        "ci95": [
+          -300.94360503232934,
+          -152.71307867018072
+        ],
+        "scenes": 4
+      },
+      "success": {
+        "mean": -0.75,
+        "ci95": [
+          -1.0,
+          -0.25
+        ],
+        "scenes": 4
+      },
+      "crash": {
+        "mean": 0.3125,
+        "ci95": [
+          0.0625,
+          0.5
+        ],
+        "scenes": 4
+      },
+      "out_of_road": {
+        "mean": 0.75,
+        "ci95": [
+          0.25,
+          1.0
+        ],
+        "scenes": 4
+      },
+      "route_completion": {
+        "mean": -0.62007905576749,
+        "ci95": [
+          -0.7564234868927739,
+          -0.4554062881088637
+        ],
+        "scenes": 4
+      },
+      "safety_cost": {
+        "mean": 1.4513142576300817,
+        "ci95": [
+          0.335648922094631,
+          2.9252062093616495
+        ],
+        "scenes": 4
+      }
+    },
+    "variance": [
+      {
+        "scenario": 83964,
+        "candidate": "baseline",
+        "policy": "lattice_sac",
+        "mean_return": 134.2878638956974,
+        "sample_variance": 0.0,
+        "repeat_difference": 0.0,
+        "repeats": 2,
+        "noise_kind": "stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling"
+      },
+      {
+        "scenario": 83964,
+        "candidate": "baseline",
+        "policy": "td_actor",
+        "mean_return": -26.72376626284738,
+        "sample_variance": 164.48103080006524,
+        "repeat_difference": -18.137311311220593,
+        "repeats": 2,
+        "noise_kind": "stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling"
+      },
+      {
+        "scenario": 83964,
+        "candidate": "gaussian1",
+        "policy": "lattice_sac",
+        "mean_return": 141.38324895398097,
+        "sample_variance": 0.0,
+        "repeat_difference": 0.0,
+        "repeats": 2,
+        "noise_kind": "stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling"
+      },
+      {
+        "scenario": 83964,
+        "candidate": "gaussian1",
+        "policy": "td_actor",
+        "mean_return": 6.887527065878865,
+        "sample_variance": 18.343499041468085,
+        "repeat_difference": 6.056979286982593,
+        "repeats": 2,
+        "noise_kind": "stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling"
+      },
+      {
+        "scenario": 83060,
+        "candidate": "baseline",
+        "policy": "lattice_sac",
+        "mean_return": 86.38640572821616,
+        "sample_variance": 0.0,
+        "repeat_difference": 0.0,
+        "repeats": 2,
+        "noise_kind": "stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling"
+      },
+      {
+        "scenario": 83060,
+        "candidate": "baseline",
+        "policy": "td_actor",
+        "mean_return": 28.891542538222257,
+        "sample_variance": 1.801626912183235,
+        "repeat_difference": 1.898223860445988,
+        "repeats": 2,
+        "noise_kind": "stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling"
+      },
+      {
+        "scenario": 83060,
+        "candidate": "gaussian1",
+        "policy": "lattice_sac",
+        "mean_return": 98.54051647905166,
+        "sample_variance": 0.0,
+        "repeat_difference": 0.0,
+        "repeats": 2,
+        "noise_kind": "stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling"
+      },
+      {
+        "scenario": 83060,
+        "candidate": "gaussian1",
+        "policy": "td_actor",
+        "mean_return": 28.864342564477486,
+        "sample_variance": 0.043065393851601234,
+        "repeat_difference": 0.2934804724393132,
+        "repeats": 2,
+        "noise_kind": "stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling"
+      },
+      {
+        "scenario": 83571,
+        "candidate": "baseline",
+        "policy": "lattice_sac",
+        "mean_return": 155.6714124793303,
+        "sample_variance": 0.0,
+        "repeat_difference": 0.0,
+        "repeats": 2,
+        "noise_kind": "stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling"
+      },
+      {
+        "scenario": 83571,
+        "candidate": "baseline",
+        "policy": "td_actor",
+        "mean_return": 40.38151510275856,
+        "sample_variance": 5.32980305270838,
+        "repeat_difference": -3.2649052215059413,
+        "repeats": 2,
+        "noise_kind": "stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling"
+      },
+      {
+        "scenario": 83571,
+        "candidate": "gaussian1",
+        "policy": "lattice_sac",
+        "mean_return": 156.88954990676527,
+        "sample_variance": 0.0,
+        "repeat_difference": 0.0,
+        "repeats": 2,
+        "noise_kind": "stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling"
+      },
+      {
+        "scenario": 83571,
+        "candidate": "gaussian1",
+        "policy": "td_actor",
+        "mean_return": 41.3205208726633,
+        "sample_variance": 0.2899037571984511,
+        "repeat_difference": -0.7614509271101468,
+        "repeats": 2,
+        "noise_kind": "stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling"
+      },
+      {
+        "scenario": 83797,
+        "candidate": "baseline",
+        "policy": "lattice_sac",
+        "mean_return": 146.5940457535196,
+        "sample_variance": 0.0,
+        "repeat_difference": 0.0,
+        "repeats": 2,
+        "noise_kind": "stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling"
+      },
+      {
+        "scenario": 83797,
+        "candidate": "baseline",
+        "policy": "td_actor",
+        "mean_return": 28.92601089532421,
+        "sample_variance": 0.3590741988254641,
+        "repeat_difference": 0.8474363679067167,
+        "repeats": 2,
+        "noise_kind": "stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling"
+      },
+      {
+        "scenario": 83797,
+        "candidate": "gaussian1",
+        "policy": "lattice_sac",
+        "mean_return": 146.66670607589114,
+        "sample_variance": 0.0,
+        "repeat_difference": 0.0,
+        "repeats": 2,
+        "noise_kind": "stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling"
+      },
+      {
+        "scenario": 83797,
+        "candidate": "gaussian1",
+        "policy": "td_actor",
+        "mean_return": 29.870714074808895,
+        "sample_variance": 5.446517952637295,
+        "repeat_difference": -3.3004599535935277,
+        "repeats": 2,
+        "noise_kind": "stochastic TDactor vsdeterministic SAC; internaltrafficRNG held fixed; NOT isolatedtrafficresampling"
+      }
+    ],
+    "candidate_effect_noise": [
+      {
+        "scenario": 83964,
+        "policy": "lattice_sac",
+        "mean_candidate_gain": 7.0953850582835685,
+        "paired_gain_variance": 0.0,
+        "same_direction_both_seeds": true,
+        "gain_seed1": 7.0953850582835685,
+        "gain_seed2": 7.0953850582835685
+      },
+      {
+        "scenario": 83964,
+        "policy": "td_actor",
+        "mean_candidate_gain": 33.61129332872625,
+        "paired_gain_variance": 292.6818487751515,
+        "same_direction_both_seeds": true,
+        "gain_seed1": 21.514148029624653,
+        "gain_seed2": 45.70843862782784
+      },
+      {
+        "scenario": 83060,
+        "policy": "lattice_sac",
+        "mean_candidate_gain": 12.1541107508355,
+        "paired_gain_variance": 0.0,
+        "same_direction_both_seeds": true,
+        "gain_seed1": 12.1541107508355,
+        "gain_seed2": 12.1541107508355
+      },
+      {
+        "scenario": 83060,
+        "policy": "td_actor",
+        "mean_candidate_gain": -0.027199973744771455,
+        "paired_gain_variance": 1.2876006706755707,
+        "same_direction_both_seeds": false,
+        "gain_seed1": 0.775171720258566,
+        "gain_seed2": -0.8295716677481089
+      },
+      {
+        "scenario": 83571,
+        "policy": "lattice_sac",
+        "mean_candidate_gain": 1.218137427434982,
+        "paired_gain_variance": 0.0,
+        "same_direction_both_seeds": true,
+        "gain_seed1": 1.218137427434982,
+        "gain_seed2": 1.218137427434982
+      },
+      {
+        "scenario": 83571,
+        "policy": "td_actor",
+        "mean_candidate_gain": 0.9390057699047389,
+        "paired_gain_variance": 3.1336417020643728,
+        "same_direction_both_seeds": false,
+        "gain_seed1": -0.3127213772931583,
+        "gain_seed2": 2.190732917102636
+      },
+      {
+        "scenario": 83797,
+        "policy": "lattice_sac",
+        "mean_candidate_gain": 0.07266032237154718,
+        "paired_gain_variance": 0.0,
+        "same_direction_both_seeds": true,
+        "gain_seed1": 0.07266032237154718,
+        "gain_seed2": 0.07266032237154718
+      },
+      {
+        "scenario": 83797,
+        "policy": "td_actor",
+        "mean_candidate_gain": 0.9447031794846854,
+        "paired_gain_variance": 8.60252194695763,
+        "same_direction_both_seeds": false,
+        "gain_seed1": 3.0186513402348076,
+        "gain_seed2": -1.1292449812654368
+      }
+    ],
+    "native_suffixes_excluding_replay": 32,
+    "fresh_maps": 4,
+    "scope": "Each32suffix uses native done, fourmaps, two candidate prefixes andtwo suffixseeds. Not32 independentmaps. TDactor usesstochastic directactor and differentfirstphysical action, NOT TD-MPC2 MPC or firstaction-controlledtail intervention."
+  },
+  "nested_repeat_noise": {
+    "pair_accuracy_gain_ci95": [
+      -1.0,
+      0.0
+    ],
+    "regret_improvement_ci95": [
+      -9.115583063126625,
+      0.054495241778660386
+    ],
+    "draws_without_effective_pair": 7,
+    "definition": "Nested scene bootstrap then paired repeat-index resampling inside eachscene, candidates retain common repeat draws. Only2repeats; percentileCI exploratory, not unbiased stochastic-noise decomposition."
+  },
+  "small_sample_exact_intervals": {
+    "A_tdmpc2_q": {
+      "effective_scenes": 3,
+      "correct": 1,
+      "clopper_pearson95": [
+        0.008403758659612636,
+        0.9057006759497539
+      ],
+      "note": "Only fresh onecandidatepair/map, supplementary small-n uncertainty. Degenerate0-0 empiricalbootstrap is notpopulationcertainty."
+    },
+    "B_sac_critic": {
+      "effective_scenes": 3,
+      "correct": 0,
+      "clopper_pearson95": [
+        0.0,
+        0.7075982261787133
+      ],
+      "note": "Only fresh onecandidatepair/map, supplementary small-n uncertainty. Degenerate0-0 empiricalbootstrap is notpopulationcertainty."
+    }
+  },
+  "td_native_value_consistency": {
+    "td_q_at_own_first_action": {
+      "mean": 237.62852382659912,
+      "ci95": [
+        234.84407901763916,
+        239.5689353942871
+      ],
+      "scenes": 4
+    },
+    "actual_td_actor_continuation": {
+      "mean": 22.302300856410778,
+      "ci95": [
+        -0.08899907759655523,
+        37.85774912862067
+      ],
+      "scenes": 4
+    },
+    "absolute_error": {
+      "mean": 215.32622297018833,
+      "ci95": [
+        200.5895222184252,
+        234.9583638160609
+      ],
+      "scenes": 4
+    }
+  }
+}

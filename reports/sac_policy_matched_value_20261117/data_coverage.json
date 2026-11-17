@@ -1,0 +1,32 @@
+{
+  "available": 197,
+  "excluded": [],
+  "scene_count": 28,
+  "note": "RetrospectiveFit+InnerStop; no independentclaim, no training. Lattice features are original535slice; full rawLattice/controllerstates were not cached.",
+  "historical_terminal_states": 197,
+  "fresh_terminal_states": 8,
+  "fresh_scenarios": [
+    83964,
+    83060,
+    83571,
+    83797
+  ],
+  "fresh_maps": 4,
+  "paired_native_suffixes": 32,
+  "exact_replay_suffixes": 1,
+  "unpaired_pilot_suffixes_preserved": 2,
+  "new_training_samples": 0,
+  "selection_or_tuning_on_fresh": false,
+  "missing": [
+    "historicalfull rawLattice/controllerstate",
+    "serializedoriginaltrainingReplay",
+    "originaltrainingcodeSHA",
+    "independenttraffic-only repeatednoise",
+    "predictedfull535 onlineendpoint features"
+  ],
+  "label_source": "RealnativeLattice+SAC RTG; no imagined labels",
+  "arrays": {
+    "historical": "historical_terminal_dataset.npz",
+    "fresh": "fresh_terminal_dataset.npz"
+  }
+}
