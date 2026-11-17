@@ -1,0 +1,20 @@
+{
+  "scenario": 60073,
+  "before": 50,
+  "branch": "B",
+  "origin_id": "60073_50",
+  "samples": 74,
+  "length": 371,
+  "native_done": true,
+  "prefix_complete": true,
+  "success": true,
+  "crash": false,
+  "out_of_road": false,
+  "route_completion": 0.9892008102892204,
+  "return_sum": 322.54110453091715,
+  "discounted_return": 132.7434716337302,
+  "cost_sum": 0.38186246880094277,
+  "gamma": 0.995,
+  "policy_context_sha256": "82b2a6917b35d7107f49527636d022595aee1cc3723ddabdf1115523c0301a48",
+  "wm_checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a"
+}

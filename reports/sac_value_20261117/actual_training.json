@@ -1,0 +1,89 @@
+{
+  "best_epoch": 1,
+  "loss": "scene-balanced normalized SmoothL1 + matched-origin difference SmoothL1",
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 0.4757817631418055,
+      "inner_stop_loss": 0.38746458292007446,
+      "inner_stop_mae": 35.123992919921875
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.31008282574740326,
+      "inner_stop_loss": 0.4422798752784729,
+      "inner_stop_mae": 36.14639663696289
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.241545632481575,
+      "inner_stop_loss": 0.534092903137207,
+      "inner_stop_mae": 39.428977966308594
+    },
+    {
+      "epoch": 4,
+      "train_loss": 0.19596907631917435,
+      "inner_stop_loss": 0.5700898170471191,
+      "inner_stop_mae": 41.31464385986328
+    },
+    {
+      "epoch": 5,
+      "train_loss": 0.1682928963141008,
+      "inner_stop_loss": 0.5641592741012573,
+      "inner_stop_mae": 41.313751220703125
+    },
+    {
+      "epoch": 6,
+      "train_loss": 0.14464522898197174,
+      "inner_stop_loss": 0.5339256525039673,
+      "inner_stop_mae": 40.72568130493164
+    },
+    {
+      "epoch": 7,
+      "train_loss": 0.12285165691917593,
+      "inner_stop_loss": 0.5286460518836975,
+      "inner_stop_mae": 40.751163482666016
+    },
+    {
+      "epoch": 8,
+      "train_loss": 0.11622038144956935,
+      "inner_stop_loss": 0.5249616503715515,
+      "inner_stop_mae": 41.18463897705078
+    },
+    {
+      "epoch": 9,
+      "train_loss": 0.09815502166748047,
+      "inner_stop_loss": 0.5375945568084717,
+      "inner_stop_mae": 42.123870849609375
+    },
+    {
+      "epoch": 10,
+      "train_loss": 0.09262255240570415,
+      "inner_stop_loss": 0.5591767430305481,
+      "inner_stop_mae": 42.95362091064453
+    },
+    {
+      "epoch": 11,
+      "train_loss": 0.08217348632487384,
+      "inner_stop_loss": 0.5580465793609619,
+      "inner_stop_mae": 42.61419677734375
+    },
+    {
+      "epoch": 12,
+      "train_loss": 0.06936840882355516,
+      "inner_stop_loss": 0.6023016571998596,
+      "inner_stop_mae": 44.04827117919922
+    },
+    {
+      "epoch": 13,
+      "train_loss": 0.06304524297064001,
+      "inner_stop_loss": 0.607986569404602,
+      "inner_stop_mae": 43.73338317871094
+    }
+  ],
+  "training_examples": 2676,
+  "inner_stop_examples": 1017,
+  "training_pairs": 48,
+  "head_state_sha256": "44c6c793ce79628d66adb5b0d320b9f2c08091b24205569f64fe6c75f4420b5d",
+  "torch_version": "2.7.1+cu126"
+}

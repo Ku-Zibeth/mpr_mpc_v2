@@ -82,6 +82,11 @@ class MPRMPCPlanner:
         mppi_cfg = mapping(self.mpr_cfg.get("mppi"))
         self.allow_mppi = self.allow_mppi and bool(mppi_cfg.get("enabled", True))
         self.mppi_cfg = mppi_cfg
+        if mppi_cfg.get("terminal_value", "tdmpc2_q") == "sac_value":
+            path = mppi_cfg.get("sac_value_checkpoint")
+            if not path or not getattr(cfg, "checkpoint", None):
+                raise ValueError("SAC value requires a sidecar and its original checkpoint for compatibility validation.")
+            self.evaluator.load_sac_value(path, cfg.checkpoint)
         self.local_mppi = LocalMPPI(
             self.evaluator,
             mppi_cfg,
@@ -551,7 +556,7 @@ class MPRMPCPlanner:
                 "final_mppi_mean": final_mean.detach().cpu(),
                 "initial_mppi_std": initial_std.detach().cpu(),
                 "final_mppi_std": final_std.detach().cpu(),
-                **({"mppi_iterations": mppi.iterations, "mppi_numerical_error": mppi.numerical_error, "mppi_value_definition": mppi.evaluation} if stage.use_mppi else {}),
+                **({"mppi_iterations": mppi.iterations, "mppi_numerical_error": mppi.numerical_error, "mppi_value_definition": mppi.evaluation, "mppi_candidate_audit": mppi.candidate_audit} if stage.use_mppi else {}),
                 "wm_discount": float(self.agent.discount),
             },
             planning_mode=mppi.planning_mode if stage.use_mppi else "baseline",

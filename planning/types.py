@@ -44,6 +44,8 @@ class TrajectoryConsequence:
     terminal_actions: torch.Tensor | None = None
     terminal_discount: torch.Tensor | None = None
     q_member_values: torch.Tensor | None = None
+    cost_penalty: torch.Tensor | None = None
+    effective_cost_weight: float = 0.0
 
     @property
     def reward_sum(self) -> torch.Tensor:

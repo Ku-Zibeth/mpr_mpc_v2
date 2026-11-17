@@ -1,0 +1,112 @@
+{
+  "base_commit": "430e8abd886cd9759684b1de7c2352e5d3aee7a3",
+  "checkpoint": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt",
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "source_environment_config": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/benchmark/sac_refinement_BD_fixed100_20261111_152755/part1/config_B_lattice_sac_seed1.yaml",
+  "source_snapshot_sha256": "058a003e676e75b3cbfbfc1291ab8875772e45fc0d149a73abb3c840373ff858",
+  "fit_scenarios": [
+    60462,
+    60112,
+    60610,
+    60086,
+    61246,
+    60124,
+    61711,
+    60830
+  ],
+  "early_stop_scenarios": [
+    60566,
+    60073,
+    60541,
+    61499
+  ],
+  "training_scenarios": [
+    60462,
+    60112,
+    60610,
+    60086,
+    61246,
+    60124,
+    61711,
+    60830,
+    60566,
+    60073,
+    60541,
+    61499
+  ],
+  "origin_steps": [
+    50,
+    150
+  ],
+  "train_branches": [
+    "B",
+    "gaussian_1",
+    "gaussian_2"
+  ],
+  "window_stride": 5,
+  "horizon": 10,
+  "seed": 1,
+  "development_scenarios": [
+    40511,
+    40377,
+    40696,
+    40298,
+    40330,
+    40507,
+    40768,
+    40394,
+    40113,
+    40684
+  ],
+  "validation_scenarios": [
+    40614,
+    40250,
+    40765,
+    40936,
+    40058,
+    40974
+  ],
+  "old_data": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/mppi_calibration_20261116/probes",
+  "targeted_dev_origins": [
+    [
+      40511,
+      50
+    ],
+    [
+      40377,
+      150
+    ],
+    [
+      40696,
+      50
+    ],
+    [
+      40298,
+      150
+    ]
+  ],
+  "acceptance": {
+    "min_independent_scenes": 6,
+    "pair_accuracy_ci95_low_greater_than": 0.5,
+    "spearman_ci95_low_greater_than": 0.0,
+    "j_mae_less_than_old_q": true
+  },
+  "training": {
+    "hidden": [
+      128,
+      64
+    ],
+    "lr": 0.0003,
+    "batch_size": 256,
+    "max_epochs": 100,
+    "patience": 12,
+    "loss": "normalized SmoothL1 + matched-origin pair-difference SmoothL1; fixed equal weight; epoch selection only on the four inner-stop scenes"
+  },
+  "protocol": "Only new60000-range scenes train the head. Real frozen SAC after H=10, native done. Gaussian prefixes are the first two pre-fixed AR(1) samples, not value-selected. Imagined terminal latent is primary input. Actual-latent head is diagnostic oracle only, never deployed. Sliding windows are real executed H-prefixes followed by frozen SAC; no invented future states.",
+  "output_policy": "Keep baseline/mean online default. Audit all actual samples under one terminal reference using cached reward/dynamics; no extra full WM rollout or sampling. Cost weight0 unless existing validator passes. No larger driving validation if development suffix return/safety does not improve.",
+  "original_weights_frozen": true,
+  "head_training_authorized": true,
+  "formal100": false,
+  "pilot_source_snapshot_sha256": "4002f2f085198907a8956f89275d045b2b81bbc002de3e09efcc050b5f2403b7",
+  "pilot_note": "Only the cost/terminal-gain diagnostic split changed after pilot; frozen SAC actors and executed controls unchanged. Exact origin matching against the other branches is required."
+}

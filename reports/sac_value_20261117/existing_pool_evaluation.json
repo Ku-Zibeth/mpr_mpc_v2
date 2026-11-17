@@ -1,0 +1,5708 @@
+{
+  "results": {
+    "dev": {
+      "summary": [
+        {
+          "model": "old_Q",
+          "origins": 20,
+          "scenes": 10,
+          "terminal_pair_accuracy": 0.45166666666666666,
+          "terminal_pair_accuracy_ci95_low": 0.355,
+          "terminal_pair_accuracy_ci95_high": 0.5549999999999999,
+          "terminal_spearman": -0.12285714285714285,
+          "terminal_spearman_ci95_low": -0.3571785714285714,
+          "terminal_spearman_ci95_high": 0.12146428571428551,
+          "total_pair_accuracy": 0.5133333333333333,
+          "total_pair_accuracy_ci95_low": 0.45,
+          "total_pair_accuracy_ci95_high": 0.5800416666666666,
+          "total_spearman": 0.01571428571428572,
+          "total_spearman_ci95_low": -0.14007142857142854,
+          "total_spearman_ci95_high": 0.1742857142857143,
+          "top1_regret": 3.904301978338198,
+          "top1_regret_ci95_low": 2.09757519287114,
+          "top1_regret_ci95_high": 5.827709442107222,
+          "v_mae": 112.76637761332738,
+          "v_mae_ci95_low": 100.83539074915497,
+          "v_mae_ci95_high": 126.16506147198544,
+          "j_mae": 107.31474612233296,
+          "j_mae_ci95_low": 95.96649606469468,
+          "j_mae_ci95_high": 120.11222257659959,
+          "j_bias": 107.31474612233296,
+          "j_bias_ci95_low": 95.96649606469468,
+          "j_bias_ci95_high": 120.11222257659959
+        },
+        {
+          "model": "predicted_V_SAC",
+          "origins": 20,
+          "scenes": 10,
+          "terminal_pair_accuracy": 0.545,
+          "terminal_pair_accuracy_ci95_low": 0.46987499999999993,
+          "terminal_pair_accuracy_ci95_high": 0.6201249999999994,
+          "terminal_spearman": 0.10357142857142858,
+          "terminal_spearman_ci95_low": -0.09428571428571426,
+          "terminal_spearman_ci95_high": 0.2857142857142857,
+          "total_pair_accuracy": 0.5883333333333334,
+          "total_pair_accuracy_ci95_low": 0.515,
+          "total_pair_accuracy_ci95_high": 0.6533333333333334,
+          "total_spearman": 0.24499999999999997,
+          "total_spearman_ci95_low": 0.08,
+          "total_spearman_ci95_high": 0.3907142857142856,
+          "top1_regret": 2.560606884734874,
+          "top1_regret_ci95_low": 0.7916692375714999,
+          "top1_regret_ci95_high": 5.027017874270233,
+          "v_mae": 45.13816329191358,
+          "v_mae_ci95_low": 34.83374666452296,
+          "v_mae_ci95_high": 56.38295657447393,
+          "j_mae": 42.93629676616149,
+          "j_mae_ci95_low": 32.9849077481689,
+          "j_mae_ci95_high": 53.55822669317084,
+          "j_bias": -37.81965367620436,
+          "j_bias_ci95_low": -49.451957630335336,
+          "j_bias_ci95_high": -24.232490720930624
+        },
+        {
+          "model": "actual_latent_oracle",
+          "origins": 20,
+          "scenes": 10,
+          "terminal_pair_accuracy": 0.49000000000000005,
+          "terminal_pair_accuracy_ci95_low": 0.3915833333333334,
+          "terminal_pair_accuracy_ci95_high": 0.5900000000000001,
+          "terminal_spearman": -0.013571428571428557,
+          "terminal_spearman_ci95_low": -0.24721428571428566,
+          "terminal_spearman_ci95_high": 0.22794642857142808,
+          "total_pair_accuracy": 0.525,
+          "total_pair_accuracy_ci95_low": 0.4116666666666666,
+          "total_pair_accuracy_ci95_high": 0.64,
+          "total_spearman": 0.08642857142857144,
+          "total_spearman_ci95_low": -0.18437499999999996,
+          "total_spearman_ci95_high": 0.36001785714285706,
+          "top1_regret": 3.441068941043614,
+          "top1_regret_ci95_low": 1.6949388381660206,
+          "top1_regret_ci95_high": 5.8096648407847145,
+          "v_mae": 47.37863707755845,
+          "v_mae_ci95_low": 36.64464168861504,
+          "v_mae_ci95_high": 59.3352987294981,
+          "j_mae": 45.04920244531845,
+          "j_mae_ci95_low": 34.70000962693914,
+          "j_mae_ci95_high": 56.38782327190959,
+          "j_bias": -39.73489078517148,
+          "j_bias_ci95_low": -51.91855886745478,
+          "j_bias_ci95_high": -25.861335594605393
+        }
+      ],
+      "rows": [
+        {
+          "scenario": 40113,
+          "before": 150,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.6,
+          "terminal_spearman": 0.14285714285714288,
+          "total_pair_accuracy": 0.6,
+          "total_spearman": 0.14285714285714288,
+          "top1_regret": 3.131926804554652,
+          "v_mae": 136.9159576708179,
+          "j_mae": 130.4644448165112,
+          "j_bias": 130.4644448165112
+        },
+        {
+          "scenario": 40113,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.26666666666666666,
+          "terminal_spearman": -0.7142857142857143,
+          "total_pair_accuracy": 0.26666666666666666,
+          "total_spearman": -0.7142857142857143,
+          "top1_regret": 23.463185657968282,
+          "v_mae": 19.738079804768038,
+          "j_mae": 18.53078694680031,
+          "j_bias": -18.53078694680031
+        },
+        {
+          "scenario": 40113,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.4,
+          "terminal_spearman": -0.3142857142857143,
+          "total_pair_accuracy": 0.4,
+          "total_spearman": -0.3142857142857143,
+          "top1_regret": 23.463185657968282,
+          "v_mae": 19.6625921662009,
+          "j_mae": 18.69484229335514,
+          "j_bias": -17.1790235568532
+        },
+        {
+          "scenario": 40113,
+          "before": 50,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.5333333333333333,
+          "terminal_spearman": 0.2,
+          "total_pair_accuracy": 0.6,
+          "total_spearman": 0.4285714285714286,
+          "top1_regret": 1.5694777955186225,
+          "v_mae": 87.95158701773197,
+          "j_mae": 84.16867265024614,
+          "j_bias": 84.16867265024614
+        },
+        {
+          "scenario": 40113,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.5333333333333333,
+          "terminal_spearman": 0.2,
+          "total_pair_accuracy": 0.6,
+          "total_spearman": 0.4285714285714286,
+          "top1_regret": 1.5694777955186225,
+          "v_mae": 54.28768160307697,
+          "j_mae": 51.11652737087815,
+          "j_bias": -51.11652737087815
+        },
+        {
+          "scenario": 40113,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.5333333333333333,
+          "terminal_spearman": 0.2,
+          "total_pair_accuracy": 0.6,
+          "total_spearman": 0.4285714285714286,
+          "top1_regret": 1.5694777955186225,
+          "v_mae": 55.040385587655415,
+          "j_mae": 51.8324317065638,
+          "j_bias": -51.8324317065638
+        },
+        {
+          "scenario": 40298,
+          "before": 150,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.4,
+          "terminal_spearman": 0.0,
+          "total_pair_accuracy": 0.7,
+          "total_spearman": 0.39999999999999997,
+          "top1_regret": 4.311552399212587,
+          "v_mae": 121.37155311779327,
+          "j_mae": 116.62014124644774,
+          "j_bias": 116.62014124644774
+        },
+        {
+          "scenario": 40298,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.4,
+          "terminal_spearman": 0.0,
+          "total_pair_accuracy": 0.4,
+          "total_spearman": 0.0,
+          "top1_regret": 0.0,
+          "v_mae": 34.69708701892547,
+          "j_mae": 31.818313215852687,
+          "j_bias": -31.818313215852687
+        },
+        {
+          "scenario": 40298,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.3,
+          "terminal_spearman": -0.6,
+          "total_pair_accuracy": 0.7,
+          "total_spearman": 0.39999999999999997,
+          "top1_regret": 4.311552399212587,
+          "v_mae": 32.540704267460626,
+          "j_mae": 29.767355876977945,
+          "j_bias": -29.767355876977945
+        },
+        {
+          "scenario": 40298,
+          "before": 50,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.1,
+          "terminal_spearman": -0.8999999999999998,
+          "total_pair_accuracy": 0.1,
+          "total_spearman": -0.8999999999999998,
+          "top1_regret": 12.071294609819432,
+          "v_mae": 84.36307885555843,
+          "j_mae": 77.7612826662765,
+          "j_bias": 77.7612826662765
+        },
+        {
+          "scenario": 40298,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.8,
+          "terminal_spearman": 0.7,
+          "total_pair_accuracy": 0.7,
+          "total_spearman": 0.6,
+          "top1_regret": 0.023243748568319234,
+          "v_mae": 79.21006414981267,
+          "j_mae": 77.81478000709573,
+          "j_bias": -77.81478000709573
+        },
+        {
+          "scenario": 40298,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.8,
+          "terminal_spearman": 0.7,
+          "total_pair_accuracy": 0.7,
+          "total_spearman": 0.6,
+          "top1_regret": 0.023243748568319234,
+          "v_mae": 83.44597876162906,
+          "j_mae": 81.84360102880444,
+          "j_bias": -81.84360102880444
+        },
+        {
+          "scenario": 40330,
+          "before": 150,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.26666666666666666,
+          "terminal_spearman": -0.6,
+          "total_pair_accuracy": 0.4666666666666667,
+          "total_spearman": -0.14285714285714288,
+          "top1_regret": 7.384571491695809,
+          "v_mae": 142.8526809182025,
+          "j_mae": 135.81274453483923,
+          "j_bias": 135.81274453483923
+        },
+        {
+          "scenario": 40330,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.8666666666666667,
+          "terminal_spearman": 0.8857142857142858,
+          "total_pair_accuracy": 0.8666666666666667,
+          "total_spearman": 0.8857142857142858,
+          "top1_regret": 1.4576782187233448,
+          "v_mae": 12.136787974212874,
+          "j_mae": 11.599299295163632,
+          "j_bias": -11.599299295163632
+        },
+        {
+          "scenario": 40330,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.8666666666666667,
+          "terminal_spearman": 0.8857142857142858,
+          "total_pair_accuracy": 0.8666666666666667,
+          "total_spearman": 0.8857142857142858,
+          "top1_regret": 1.4576782187233448,
+          "v_mae": 11.542320811126936,
+          "j_mae": 11.033895593050488,
+          "j_bias": -11.033895593050488
+        },
+        {
+          "scenario": 40330,
+          "before": 50,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.3333333333333333,
+          "terminal_spearman": -0.48571428571428577,
+          "total_pair_accuracy": 0.4,
+          "total_spearman": -0.2571428571428572,
+          "top1_regret": 2.5083001096015067,
+          "v_mae": 123.80011729482936,
+          "j_mae": 118.03635700372699,
+          "j_bias": 118.03635700372699
+        },
+        {
+          "scenario": 40330,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.7333333333333333,
+          "terminal_spearman": 0.4285714285714286,
+          "total_pair_accuracy": 0.6666666666666666,
+          "total_spearman": 0.3714285714285715,
+          "top1_regret": 0.0,
+          "v_mae": 43.500096836843795,
+          "j_mae": 41.084560530780045,
+          "j_bias": -41.084560530780045
+        },
+        {
+          "scenario": 40330,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.7333333333333333,
+          "terminal_spearman": 0.6,
+          "total_pair_accuracy": 0.8,
+          "total_spearman": 0.7142857142857143,
+          "top1_regret": 0.0,
+          "v_mae": 44.06663278655083,
+          "j_mae": 41.623398574721314,
+          "j_bias": -41.623398574721314
+        },
+        {
+          "scenario": 40377,
+          "before": 150,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.2,
+          "terminal_spearman": -0.7999999999999999,
+          "total_pair_accuracy": 0.2,
+          "total_spearman": -0.7999999999999999,
+          "top1_regret": 14.323523457134627,
+          "v_mae": 93.89336473871194,
+          "j_mae": 89.52760672277255,
+          "j_bias": 89.52760672277255
+        },
+        {
+          "scenario": 40377,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.8,
+          "terminal_spearman": 0.7,
+          "total_pair_accuracy": 0.8,
+          "total_spearman": 0.7,
+          "top1_regret": 2.048879732074738,
+          "v_mae": 86.71146555057553,
+          "j_mae": 82.18133037905686,
+          "j_bias": -51.94048054188151
+        },
+        {
+          "scenario": 40377,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.8,
+          "terminal_spearman": 0.7,
+          "total_pair_accuracy": 0.8,
+          "total_spearman": 0.7,
+          "top1_regret": 0.033423746349455996,
+          "v_mae": 86.9905854236224,
+          "j_mae": 82.44680409964863,
+          "j_bias": -52.453554033540605
+        },
+        {
+          "scenario": 40377,
+          "before": 50,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.4,
+          "terminal_spearman": -0.49999999999999994,
+          "total_pair_accuracy": 0.5,
+          "total_spearman": -0.09999999999999999,
+          "top1_regret": 4.662483466374653,
+          "v_mae": 55.1254598822929,
+          "j_mae": 53.6498835847231,
+          "j_bias": 53.6498835847231
+        },
+        {
+          "scenario": 40377,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.2,
+          "terminal_spearman": -0.7,
+          "total_pair_accuracy": 0.5,
+          "total_spearman": -0.09999999999999999,
+          "top1_regret": 4.662483466374653,
+          "v_mae": 88.0811548027657,
+          "j_mae": 82.55536901443112,
+          "j_bias": -82.55536901443112
+        },
+        {
+          "scenario": 40377,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.6,
+          "terminal_spearman": 0.19999999999999998,
+          "total_pair_accuracy": 0.4,
+          "total_spearman": -0.19999999999999998,
+          "top1_regret": 5.197141097546478,
+          "v_mae": 95.52312486502156,
+          "j_mae": 89.63350164394757,
+          "j_bias": -89.63350164394757
+        },
+        {
+          "scenario": 40394,
+          "before": 150,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.2,
+          "terminal_spearman": -0.7999999999999999,
+          "total_pair_accuracy": 0.8,
+          "total_spearman": 0.7,
+          "top1_regret": 0.13288081330288293,
+          "v_mae": 181.80739464325137,
+          "j_mae": 173.25336647069392,
+          "j_bias": 173.25336647069392
+        },
+        {
+          "scenario": 40394,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.2,
+          "terminal_spearman": -0.7999999999999999,
+          "total_pair_accuracy": 0.8,
+          "total_spearman": 0.7,
+          "top1_regret": 0.13288081330288293,
+          "v_mae": 36.42357506317327,
+          "j_mae": 34.97735238235556,
+          "j_bias": 34.97735238235556
+        },
+        {
+          "scenario": 40394,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.3,
+          "terminal_spearman": -0.39999999999999997,
+          "total_pair_accuracy": 0.9,
+          "total_spearman": 0.8999999999999998,
+          "top1_regret": 0.0,
+          "v_mae": 38.89067101043889,
+          "j_mae": 37.32383216907957,
+          "j_bias": 37.32383216907957
+        },
+        {
+          "scenario": 40394,
+          "before": 50,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.4,
+          "terminal_spearman": -0.19999999999999998,
+          "total_pair_accuracy": 0.4,
+          "total_spearman": -0.19999999999999998,
+          "top1_regret": 3.434512675793158,
+          "v_mae": 131.96170443853023,
+          "j_mae": 126.0468328240948,
+          "j_bias": 126.0468328240948
+        },
+        {
+          "scenario": 40394,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.6,
+          "terminal_spearman": 0.0,
+          "total_pair_accuracy": 0.5,
+          "total_spearman": -0.09999999999999999,
+          "top1_regret": 3.3049924747220416,
+          "v_mae": 10.642755705512736,
+          "j_mae": 9.585704530424001,
+          "j_bias": -9.585704530424001
+        },
+        {
+          "scenario": 40394,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.6,
+          "terminal_spearman": 0.0,
+          "total_pair_accuracy": 0.5,
+          "total_spearman": -0.09999999999999999,
+          "top1_regret": 3.3049924747220416,
+          "v_mae": 17.950272947944377,
+          "j_mae": 16.53595772974024,
+          "j_bias": -16.53595772974024
+        },
+        {
+          "scenario": 40507,
+          "before": 150,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.7,
+          "terminal_spearman": 0.39999999999999997,
+          "total_pair_accuracy": 0.5,
+          "total_spearman": 0.09999999999999999,
+          "top1_regret": 0.0,
+          "v_mae": 139.10417456275735,
+          "j_mae": 133.0298990359484,
+          "j_bias": 133.0298990359484
+        },
+        {
+          "scenario": 40507,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.5,
+          "terminal_spearman": 0.0,
+          "total_pair_accuracy": 0.5,
+          "total_spearman": 0.09999999999999999,
+          "top1_regret": 0.0,
+          "v_mae": 5.897935602623872,
+          "j_mae": 5.609049621746374,
+          "j_bias": -3.4717424244901336
+        },
+        {
+          "scenario": 40507,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.6,
+          "terminal_spearman": 0.3,
+          "total_pair_accuracy": 0.4,
+          "total_spearman": 0.0,
+          "top1_regret": 0.0,
+          "v_mae": 4.950904325182106,
+          "j_mae": 4.111836468514303,
+          "j_bias": -3.9823364063438875
+        },
+        {
+          "scenario": 40507,
+          "before": 50,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.7,
+          "terminal_spearman": 0.49999999999999994,
+          "total_pair_accuracy": 0.5,
+          "total_spearman": -0.09999999999999999,
+          "top1_regret": 11.561052141032206,
+          "v_mae": 91.42722326790724,
+          "j_mae": 84.95224893600599,
+          "j_bias": 84.95224893600599
+        },
+        {
+          "scenario": 40507,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.7,
+          "terminal_spearman": 0.6,
+          "total_pair_accuracy": 0.6,
+          "total_spearman": 0.49999999999999994,
+          "top1_regret": 1.2479485351195194,
+          "v_mae": 65.41980126822558,
+          "j_mae": 64.2265347630032,
+          "j_bias": -64.2265347630032
+        },
+        {
+          "scenario": 40507,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.3,
+          "terminal_spearman": -0.49999999999999994,
+          "total_pair_accuracy": 0.3,
+          "total_spearman": -0.39999999999999997,
+          "top1_regret": 11.561052141032206,
+          "v_mae": 66.62088311637011,
+          "j_mae": 65.3688957976423,
+          "j_bias": -65.3688957976423
+        },
+        {
+          "scenario": 40511,
+          "before": 150,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.4666666666666667,
+          "terminal_spearman": -0.2,
+          "total_pair_accuracy": 0.6,
+          "total_spearman": 0.2,
+          "top1_regret": 0.3070598274433962,
+          "v_mae": 127.63054063449381,
+          "j_mae": 121.656769870965,
+          "j_bias": 121.656769870965
+        },
+        {
+          "scenario": 40511,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.6666666666666666,
+          "terminal_spearman": 0.48571428571428577,
+          "total_pair_accuracy": 0.6666666666666666,
+          "total_spearman": 0.48571428571428577,
+          "top1_regret": 0.0,
+          "v_mae": 30.106900110542,
+          "j_mae": 28.368897646356157,
+          "j_bias": -28.368897646356157
+        },
+        {
+          "scenario": 40511,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.2,
+          "terminal_spearman": -0.7142857142857143,
+          "total_pair_accuracy": 0.2,
+          "total_spearman": -0.7142857142857143,
+          "top1_regret": 0.6540459741434432,
+          "v_mae": 35.92450290391765,
+          "j_mae": 33.90207821721109,
+          "j_bias": -33.90207821721109
+        },
+        {
+          "scenario": 40511,
+          "before": 50,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.3333333333333333,
+          "terminal_spearman": -0.3142857142857143,
+          "total_pair_accuracy": 0.4,
+          "total_spearman": -0.2571428571428572,
+          "top1_regret": 0.7549386219185124,
+          "v_mae": 89.95174829750988,
+          "j_mae": 84.97081185908564,
+          "j_bias": 84.97081185908564
+        },
+        {
+          "scenario": 40511,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.3333333333333333,
+          "terminal_spearman": -0.3142857142857143,
+          "total_pair_accuracy": 0.4,
+          "total_spearman": -0.2571428571428572,
+          "top1_regret": 0.7549386219185124,
+          "v_mae": 55.599358473323456,
+          "j_mae": 53.46431076012277,
+          "j_bias": -53.46431076012277
+        },
+        {
+          "scenario": 40511,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.26666666666666666,
+          "terminal_spearman": -0.4285714285714286,
+          "total_pair_accuracy": 0.3333333333333333,
+          "total_spearman": -0.3714285714285715,
+          "top1_regret": 0.7549386219185124,
+          "v_mae": 56.23359957744943,
+          "j_mae": 54.06754385788315,
+          "j_bias": -54.06754385788315
+        },
+        {
+          "scenario": 40684,
+          "before": 150,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.5,
+          "terminal_spearman": -0.09999999999999999,
+          "total_pair_accuracy": 0.5,
+          "total_spearman": -0.09999999999999999,
+          "top1_regret": 9.191084802771783,
+          "v_mae": 129.02518676462518,
+          "j_mae": 123.14254271639675,
+          "j_bias": 123.14254271639675
+        },
+        {
+          "scenario": 40684,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.5,
+          "terminal_spearman": -0.09999999999999999,
+          "total_pair_accuracy": 0.4,
+          "total_spearman": -0.3,
+          "top1_regret": 9.546932177847737,
+          "v_mae": 24.543268740745923,
+          "j_mae": 22.917960978712188,
+          "j_bias": -22.917960978712188
+        },
+        {
+          "scenario": 40684,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.4,
+          "terminal_spearman": 0.0,
+          "total_pair_accuracy": 0.4,
+          "total_spearman": 0.0,
+          "top1_regret": 9.546932177847737,
+          "v_mae": 27.676274264427565,
+          "j_mae": 25.897794065934285,
+          "j_bias": -25.897794065934285
+        },
+        {
+          "scenario": 40684,
+          "before": 50,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.9,
+          "terminal_spearman": 0.8999999999999998,
+          "total_pair_accuracy": 0.9,
+          "total_spearman": 0.8999999999999998,
+          "top1_regret": 0.3311875525096042,
+          "v_mae": 93.37069661716535,
+          "j_mae": 89.87174519711365,
+          "j_bias": 89.87174519711365
+        },
+        {
+          "scenario": 40684,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.9,
+          "terminal_spearman": 0.8999999999999998,
+          "total_pair_accuracy": 0.9,
+          "total_spearman": 0.8999999999999998,
+          "top1_regret": 0.3311875525096042,
+          "v_mae": 54.18642313381122,
+          "j_mae": 50.47131655799627,
+          "j_bias": -50.47131655799627
+        },
+        {
+          "scenario": 40684,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.7,
+          "terminal_spearman": 0.6,
+          "total_pair_accuracy": 0.8,
+          "total_spearman": 0.7999999999999999,
+          "top1_regret": 0.3311875525096042,
+          "v_mae": 56.977650855979185,
+          "j_mae": 53.12608133821082,
+          "j_bias": -53.12608133821082
+        },
+        {
+          "scenario": 40696,
+          "before": 150,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.8,
+          "terminal_spearman": 0.7999999999999999,
+          "total_pair_accuracy": 0.6,
+          "total_spearman": 0.49999999999999994,
+          "top1_regret": 0.44203006085786,
+          "v_mae": 135.82544825620252,
+          "j_mae": 129.1621809817556,
+          "j_bias": 129.1621809817556
+        },
+        {
+          "scenario": 40696,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.8,
+          "terminal_spearman": 0.7999999999999999,
+          "total_pair_accuracy": 0.8,
+          "total_spearman": 0.7999999999999999,
+          "top1_regret": 0.010069644582543447,
+          "v_mae": 24.10244481020374,
+          "j_mae": 22.94684778528718,
+          "j_bias": -22.94684778528718
+        },
+        {
+          "scenario": 40696,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.5,
+          "terminal_spearman": -0.09999999999999999,
+          "total_pair_accuracy": 0.4,
+          "total_spearman": -0.3,
+          "top1_regret": 2.027366480884865,
+          "v_mae": 21.981502122215456,
+          "j_mae": 20.929597847488644,
+          "j_bias": -20.929597847488644
+        },
+        {
+          "scenario": 40696,
+          "before": 50,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.2,
+          "terminal_spearman": -0.7,
+          "total_pair_accuracy": 0.3,
+          "total_spearman": -0.6,
+          "top1_regret": 1.1095340601609962,
+          "v_mae": 102.40018291272902,
+          "j_mae": 97.46407720014949,
+          "j_bias": 97.46407720014949
+        },
+        {
+          "scenario": 40696,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.3,
+          "terminal_spearman": -0.6,
+          "total_pair_accuracy": 0.6,
+          "total_spearman": 0.3,
+          "top1_regret": 0.0,
+          "v_mae": 47.77279758653857,
+          "j_mae": 45.36695604125493,
+          "j_bias": -45.36695604125493
+        },
+        {
+          "scenario": 40696,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.1,
+          "terminal_spearman": -0.8999999999999998,
+          "total_pair_accuracy": 0.2,
+          "total_spearman": -0.7999999999999999,
+          "top1_regret": 1.9269214784601019,
+          "v_mae": 51.31574344835498,
+          "j_mae": 48.73668751011969,
+          "j_bias": -48.73668751011969
+        },
+        {
+          "scenario": 40768,
+          "before": 150,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.5,
+          "terminal_spearman": 0.09999999999999999,
+          "total_pair_accuracy": 0.6,
+          "total_spearman": 0.19999999999999998,
+          "top1_regret": 0.8075055517235228,
+          "v_mae": 111.27429009038124,
+          "j_mae": 105.00439516726412,
+          "j_bias": 105.00439516726412
+        },
+        {
+          "scenario": 40768,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.3,
+          "terminal_spearman": -0.49999999999999994,
+          "total_pair_accuracy": 0.3,
+          "total_spearman": -0.49999999999999994,
+          "top1_regret": 2.6279882565485337,
+          "v_mae": 37.78483008784142,
+          "j_mae": 36.76723431180888,
+          "j_bias": -36.76723431180888
+        },
+        {
+          "scenario": 40768,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.2,
+          "terminal_spearman": -0.7,
+          "total_pair_accuracy": 0.2,
+          "total_spearman": -0.7,
+          "top1_regret": 2.6279882565485337,
+          "v_mae": 44.867702097118766,
+          "j_mae": 43.50382516882152,
+          "j_bias": -43.50382516882152
+        },
+        {
+          "scenario": 40768,
+          "before": 50,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.5,
+          "terminal_spearman": 0.09999999999999999,
+          "total_pair_accuracy": 0.6,
+          "total_spearman": 0.19999999999999998,
+          "top1_regret": 0.051123325338153336,
+          "v_mae": 75.27516228505593,
+          "j_mae": 71.69891896164229,
+          "j_bias": 71.69891896164229
+        },
+        {
+          "scenario": 40768,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.5,
+          "terminal_spearman": 0.09999999999999999,
+          "total_pair_accuracy": 0.5,
+          "total_spearman": 0.09999999999999999,
+          "top1_regret": 0.030250998918148753,
+          "v_mae": 91.92075751474877,
+          "j_mae": 87.32280318410389,
+          "j_bias": -87.32280318410389
+        },
+        {
+          "scenario": 40768,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.6,
+          "terminal_spearman": 0.19999999999999998,
+          "total_pair_accuracy": 0.6,
+          "total_spearman": 0.19999999999999998,
+          "top1_regret": 0.030250998918148753,
+          "v_mae": 95.37071021250267,
+          "j_mae": 90.60408791865416,
+          "j_bias": -90.60408791865416
+        }
+      ],
+      "predictions": [
+        {
+          "scenario": 40113,
+          "before": 150,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0",
+            "elite_Q1"
+          ],
+          "predicted_value": [
+            220.46617126464844,
+            227.78836059570312,
+            227.5333251953125,
+            227.3870086669922,
+            221.77000427246094,
+            227.8817596435547
+          ],
+          "real_continuation": [
+            76.25914854146812,
+            70.56463707077016,
+            103.4861997356845,
+            102.0283559406864,
+            78.7997995732079,
+            100.19274275194739
+          ],
+          "predicted_return": [
+            220.505489413762,
+            227.54948463857545,
+            227.3052346671684,
+            227.16666663718297,
+            222.09770232472238,
+            227.63689453096686
+          ],
+          "real_return": [
+            83.08239119485484,
+            77.82175446026265,
+            109.13927756797023,
+            107.74793741680573,
+            85.67609191000194,
+            106.00735076341557
+          ],
+          "selected_label": "elite_Q1",
+          "selected_real_return": 106.00735076341557,
+          "baseline_real_return": 83.08239119485484
+        },
+        {
+          "scenario": 40113,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0",
+            "elite_Q1"
+          ],
+          "predicted_value": [
+            69.53418731689453,
+            67.82420349121094,
+            67.7489013671875,
+            67.80057525634766,
+            72.19715118408203,
+            67.7973861694336
+          ],
+          "real_continuation": [
+            76.25914854146812,
+            70.56463707077016,
+            103.4861997356845,
+            102.0283559406864,
+            78.7997995732079,
+            100.19274275194739
+          ],
+          "predicted_return": [
+            76.95256035314515,
+            75.40596477991221,
+            75.33266093667044,
+            75.38240358552093,
+            79.83745630408657,
+            75.3790356731738
+          ],
+          "real_return": [
+            83.08239119485484,
+            77.82175446026265,
+            109.13927756797023,
+            107.74793741680573,
+            85.67609191000194,
+            106.00735076341557
+          ],
+          "selected_label": "Q0",
+          "selected_real_return": 85.67609191000194,
+          "baseline_real_return": 83.08239119485484
+        },
+        {
+          "scenario": 40113,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0",
+            "elite_Q1"
+          ],
+          "predicted_value": [
+            78.7663345336914,
+            65.69808959960938,
+            65.82070922851562,
+            65.25252532958984,
+            80.32989501953125,
+            65.56233978271484
+          ],
+          "real_continuation": [
+            76.25914854146812,
+            70.56463707077016,
+            103.4861997356845,
+            102.0283559406864,
+            78.7997995732079,
+            100.19274275194739
+          ],
+          "predicted_return": [
+            85.73334849244884,
+            73.383796458309,
+            73.49873798635781,
+            72.95892765410144,
+            87.57259082191376,
+            73.25326055906089
+          ],
+          "real_return": [
+            83.08239119485484,
+            77.82175446026265,
+            109.13927756797023,
+            107.74793741680573,
+            85.67609191000194,
+            106.00735076341557
+          ],
+          "selected_label": "Q0",
+          "selected_real_return": 85.67609191000194,
+          "baseline_real_return": 83.08239119485484
+        },
+        {
+          "scenario": 40113,
+          "before": 50,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0",
+            "elite_Q1"
+          ],
+          "predicted_value": [
+            207.5614013671875,
+            213.27427673339844,
+            213.6099090576172,
+            213.63760375976562,
+            211.38589477539062,
+            213.3622589111328
+          ],
+          "real_continuation": [
+            123.39593602859557,
+            126.90317104464258,
+            122.3950318167179,
+            124.90752985640849,
+            120.79338987200246,
+            126.72676387973347
+          ],
+          "predicted_return": [
+            206.02491634051694,
+            212.32748240679666,
+            212.85324198152466,
+            212.961581516558,
+            210.62921403808105,
+            212.4758203528827
+          ],
+          "real_return": [
+            125.2446319173731,
+            129.59604073268545,
+            125.44249150256223,
+            128.02656293716683,
+            124.44267147582381,
+            129.50782216927172
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 128.02656293716683,
+          "baseline_real_return": 125.2446319173731
+        },
+        {
+          "scenario": 40113,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0",
+            "elite_Q1"
+          ],
+          "predicted_value": [
+            60.036834716796875,
+            73.86080932617188,
+            74.42169189453125,
+            75.29431915283203,
+            61.66667556762695,
+            74.11540222167969
+          ],
+          "real_continuation": [
+            123.39593602859557,
+            126.90317104464258,
+            122.3950318167179,
+            124.90752985640849,
+            120.79338987200246,
+            126.72676387973347
+          ],
+          "predicted_return": [
+            65.71281616702072,
+            79.72993036155276,
+            80.46992771062287,
+            81.38189110404483,
+            68.22975772812583,
+            80.03673343824721
+          ],
+          "real_return": [
+            125.2446319173731,
+            129.59604073268545,
+            125.44249150256223,
+            128.02656293716683,
+            124.44267147582381,
+            129.50782216927172
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 128.02656293716683,
+          "baseline_real_return": 125.2446319173731
+        },
+        {
+          "scenario": 40113,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0",
+            "elite_Q1"
+          ],
+          "predicted_value": [
+            64.23307800292969,
+            69.6142807006836,
+            70.47499084472656,
+            72.62906646728516,
+            68.07018280029297,
+            69.85791015625
+          ],
+          "real_continuation": [
+            123.39593602859557,
+            126.90317104464258,
+            122.3950318167179,
+            124.90752985640849,
+            120.79338987200246,
+            126.72676387973347
+          ],
+          "predicted_return": [
+            69.70390539158052,
+            75.69101424461087,
+            76.7161806186732,
+            78.84694244909724,
+            74.32019790830827,
+            75.98738988323021
+          ],
+          "real_return": [
+            125.2446319173731,
+            129.59604073268545,
+            125.44249150256223,
+            128.02656293716683,
+            124.44267147582381,
+            129.50782216927172
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 128.02656293716683,
+          "baseline_real_return": 125.2446319173731
+        },
+        {
+          "scenario": 40298,
+          "before": 150,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            225.44248962402344,
+            230.3423309326172,
+            230.31558227539062,
+            230.27879333496094,
+            226.80712890625
+          ],
+          "real_continuation": [
+            102.64063915049968,
+            106.59857901572059,
+            106.97755840234973,
+            108.00847357359488,
+            112.10330934211092
+          ],
+          "predicted_return": [
+            226.68671897877812,
+            231.89686641113894,
+            231.90620218164804,
+            231.91629871078203,
+            228.71134287162567
+          ],
+          "real_return": [
+            109.5588320375655,
+            112.73873547620572,
+            113.12936822265765,
+            114.13911739304632,
+            118.4506697922589
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 114.13911739304632,
+          "baseline_real_return": 109.5588320375655
+        },
+        {
+          "scenario": 40298,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            73.56049346923828,
+            71.29019927978516,
+            71.1103515625,
+            70.82211303710938,
+            76.05996704101562
+          ],
+          "real_continuation": [
+            102.64063915049968,
+            106.59857901572059,
+            106.97755840234973,
+            108.00847357359488,
+            112.10330934211092
+          ],
+          "predicted_return": [
+            82.23022374619677,
+            80.62078313907068,
+            80.48450485261856,
+            80.25544515066031,
+            85.33419995392433
+          ],
+          "real_return": [
+            109.5588320375655,
+            112.73873547620572,
+            113.12936822265765,
+            114.13911739304632,
+            118.4506697922589
+          ],
+          "selected_label": "Q0",
+          "selected_real_return": 118.4506697922589,
+          "baseline_real_return": 109.5588320375655
+        },
+        {
+          "scenario": 40298,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            74.97282409667969,
+            74.70539855957031,
+            74.73609161376953,
+            74.85140991210938,
+            74.35931396484375
+          ],
+          "real_continuation": [
+            102.64063915049968,
+            106.59857901572059,
+            106.97755840234973,
+            108.00847357359488,
+            112.10330934211092
+          ],
+          "predicted_return": [
+            83.57350562104057,
+            83.86901354799829,
+            83.93298270839432,
+            84.08774996327884,
+            83.71669169613233
+          ],
+          "real_return": [
+            109.5588320375655,
+            112.73873547620572,
+            113.12936822265765,
+            114.13911739304632,
+            118.4506697922589
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 114.13911739304632,
+          "baseline_real_return": 109.5588320375655
+        },
+        {
+          "scenario": 40298,
+          "before": 50,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            232.77976989746094,
+            236.83316040039062,
+            236.8622283935547,
+            236.82139587402344,
+            232.42324829101562
+          ],
+          "real_continuation": [
+            158.81099605281787,
+            150.30296588478743,
+            138.80052825118204,
+            146.65291508841332,
+            159.33700330145243
+          ],
+          "predicted_return": [
+            233.2947194503913,
+            237.48661464528232,
+            237.62692858988976,
+            237.70509294941894,
+            233.86224532672895
+          ],
+          "real_return": [
+            166.2456687753335,
+            157.7625026512941,
+            146.76421701142186,
+            154.17437416551408,
+            166.2224250267652
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 154.17437416551408,
+          "baseline_real_return": 166.2456687753335
+        },
+        {
+          "scenario": 40298,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            73.48209381103516,
+            69.8264389038086,
+            70.15205383300781,
+            70.26678466796875,
+            74.12671661376953
+          ],
+          "real_continuation": [
+            158.81099605281787,
+            150.30296588478743,
+            138.80052825118204,
+            146.65291508841332,
+            159.33700330145243
+          ],
+          "predicted_return": [
+            81.7850963961314,
+            78.64484091000895,
+            79.06720363021941,
+            79.29332586194869,
+            83.30482079654166
+          ],
+          "real_return": [
+            166.2456687753335,
+            157.7625026512941,
+            146.76421701142186,
+            154.17437416551408,
+            166.2224250267652
+          ],
+          "selected_label": "Q0",
+          "selected_real_return": 166.2224250267652,
+          "baseline_real_return": 166.2456687753335
+        },
+        {
+          "scenario": 40298,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            77.35160827636719,
+            60.04664993286133,
+            60.27339172363281,
+            60.3955192565918,
+            78.60734558105469
+          ],
+          "real_continuation": [
+            158.81099605281787,
+            150.30296588478743,
+            138.80052825118204,
+            146.65291508841332,
+            159.33700330145243
+          ],
+          "predicted_return": [
+            85.46543055070742,
+            69.34318518632767,
+            69.67150866942302,
+            69.90466597506588,
+            87.56639210478261
+          ],
+          "real_return": [
+            166.2456687753335,
+            157.7625026512941,
+            146.76421701142186,
+            154.17437416551408,
+            166.2224250267652
+          ],
+          "selected_label": "Q0",
+          "selected_real_return": 166.2224250267652,
+          "baseline_real_return": 166.2456687753335
+        },
+        {
+          "scenario": 40330,
+          "before": 150,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0",
+            "elite_Q1"
+          ],
+          "predicted_value": [
+            222.73924255371094,
+            225.3866424560547,
+            222.7881317138672,
+            223.1293182373047,
+            222.4593505859375,
+            225.378662109375
+          ],
+          "real_continuation": [
+            78.06799843341388,
+            75.64598720968316,
+            80.9201950431611,
+            84.6564522366449,
+            86.20444365644813,
+            79.2701855676839
+          ],
+          "predicted_return": [
+            220.104915136425,
+            222.4086017937525,
+            220.16410560652093,
+            221.0937360165708,
+            220.48793230375304,
+            222.42654337450222
+          ],
+          "real_return": [
+            82.75205934154138,
+            79.96986119850712,
+            85.37816782678726,
+            89.39283123663417,
+            90.85050945535751,
+            83.4659379636617
+          ],
+          "selected_label": "elite_Q1",
+          "selected_real_return": 83.4659379636617,
+          "baseline_real_return": 82.75205934154138
+        },
+        {
+          "scenario": 40330,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0",
+            "elite_Q1"
+          ],
+          "predicted_value": [
+            68.34982299804688,
+            66.34403991699219,
+            68.55950927734375,
+            71.91182708740234,
+            69.99504852294922,
+            66.78428649902344
+          ],
+          "real_continuation": [
+            78.06799843341388,
+            75.64598720968316,
+            80.9201950431611,
+            84.6564522366449,
+            86.20444365644813,
+            79.2701855676839
+          ],
+          "predicted_return": [
+            73.2635842700929,
+            71.1415817577008,
+            73.47571049862381,
+            77.26925818236532,
+            75.47760006098042,
+            71.58583648174408
+          ],
+          "real_return": [
+            82.75205934154138,
+            79.96986119850712,
+            85.37816782678726,
+            89.39283123663417,
+            90.85050945535751,
+            83.4659379636617
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 89.39283123663417,
+          "baseline_real_return": 82.75205934154138
+        },
+        {
+          "scenario": 40330,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0",
+            "elite_Q1"
+          ],
+          "predicted_value": [
+            68.61346435546875,
+            66.87360382080078,
+            69.00154876708984,
+            71.95621490478516,
+            71.57573699951172,
+            67.49076843261719
+          ],
+          "real_continuation": [
+            78.06799843341388,
+            75.64598720968316,
+            80.9201950431611,
+            84.6564522366449,
+            86.20444365644813,
+            79.2701855676839
+          ],
+          "predicted_return": [
+            73.51433621868273,
+            71.64525531666504,
+            73.89613870644143,
+            77.31147588224076,
+            76.98100878064224,
+            72.25777855951401
+          ],
+          "real_return": [
+            82.75205934154138,
+            79.96986119850712,
+            85.37816782678726,
+            89.39283123663417,
+            90.85050945535751,
+            83.4659379636617
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 89.39283123663417,
+          "baseline_real_return": 82.75205934154138
+        },
+        {
+          "scenario": 40330,
+          "before": 50,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0",
+            "elite_Q1"
+          ],
+          "predicted_value": [
+            232.452392578125,
+            234.69436645507812,
+            234.6667022705078,
+            234.59873962402344,
+            234.5665740966797,
+            234.7767791748047
+          ],
+          "real_continuation": [
+            117.78589038649747,
+            107.2629217359181,
+            110.77565198500018,
+            95.75197223781673,
+            116.09436178340604,
+            115.28405230160395
+          ],
+          "predicted_return": [
+            232.29687946253398,
+            234.60472231757558,
+            234.60226202784452,
+            234.5539499287015,
+            234.55563503281246,
+            234.68870776772474
+          ],
+          "real_return": [
+            123.188332404645,
+            113.09456543991921,
+            116.43802817759597,
+            102.17067835204332,
+            121.51237784558381,
+            120.68003229504349
+          ],
+          "selected_label": "elite_Q1",
+          "selected_real_return": 120.68003229504349,
+          "baseline_real_return": 123.188332404645
+        },
+        {
+          "scenario": 40330,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0",
+            "elite_Q1"
+          ],
+          "predicted_value": [
+            68.71932983398438,
+            66.74055480957031,
+            66.75321960449219,
+            66.64474487304688,
+            66.32836151123047,
+            66.76805877685547
+          ],
+          "real_continuation": [
+            117.78589038649747,
+            107.2629217359181,
+            110.77565198500018,
+            95.75197223781673,
+            116.09436178340604,
+            115.28405230160395
+          ],
+          "predicted_return": [
+            76.56871551602853,
+            74.86216160921231,
+            74.89805861778677,
+            74.81121506688396,
+            74.54257772798019,
+            74.89392279225876
+          ],
+          "real_return": [
+            123.188332404645,
+            113.09456543991921,
+            116.43802817759597,
+            102.17067835204332,
+            121.51237784558381,
+            120.68003229504349
+          ],
+          "selected_label": "B",
+          "selected_real_return": 123.188332404645,
+          "baseline_real_return": 123.188332404645
+        },
+        {
+          "scenario": 40330,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0",
+            "elite_Q1"
+          ],
+          "predicted_value": [
+            69.68714904785156,
+            65.6219482421875,
+            65.9013900756836,
+            65.806396484375,
+            65.88339233398438,
+            65.65477752685547
+          ],
+          "real_continuation": [
+            117.78589038649747,
+            107.2629217359181,
+            110.77565198500018,
+            95.75197223781673,
+            116.09436178340604,
+            115.28405230160395
+          ],
+          "predicted_return": [
+            77.4892181114219,
+            73.79824364421802,
+            74.08787497928688,
+            74.01385347645555,
+            74.11936306489406,
+            73.8350697902265
+          ],
+          "real_return": [
+            123.188332404645,
+            113.09456543991921,
+            116.43802817759597,
+            102.17067835204332,
+            121.51237784558381,
+            120.68003229504349
+          ],
+          "selected_label": "B",
+          "selected_real_return": 123.188332404645,
+          "baseline_real_return": 123.188332404645
+        },
+        {
+          "scenario": 40377,
+          "before": 150,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            219.91796875,
+            227.668212890625,
+            228.1974639892578,
+            223.4293212890625,
+            220.86929321289062
+          ],
+          "real_continuation": [
+            168.7452011158024,
+            -7.356031716870997,
+            153.7827411964067,
+            166.67597428197897,
+            168.76755156095916
+          ],
+          "predicted_return": [
+            218.90269905724563,
+            225.56528735537722,
+            226.31391887246627,
+            222.23666166030307,
+            219.9025069202744
+          ],
+          "real_return": [
+            169.83961812014445,
+            2.1966997213870547,
+            155.54951840935928,
+            167.82416213441917,
+            169.8730418664939
+          ],
+          "selected_label": "Q05",
+          "selected_real_return": 155.54951840935928,
+          "baseline_real_return": 169.83961812014445
+        },
+        {
+          "scenario": 40377,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            74.94600677490234,
+            72.30610656738281,
+            72.53917694091797,
+            80.33511352539062,
+            76.2559814453125
+          ],
+          "real_continuation": [
+            168.7452011158024,
+            -7.356031716870997,
+            153.7827411964067,
+            166.67597428197897,
+            168.76755156095916
+          ],
+          "predicted_return": [
+            81.01840688234415,
+            77.79882431432543,
+            78.26575536272003,
+            86.13832041545356,
+            82.35933056755312
+          ],
+          "real_return": [
+            169.83961812014445,
+            2.1966997213870547,
+            155.54951840935928,
+            167.82416213441917,
+            169.8730418664939
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 167.82416213441917,
+          "baseline_real_return": 169.83961812014445
+        },
+        {
+          "scenario": 40377,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            76.76428985595703,
+            71.65528869628906,
+            73.25222778320312,
+            76.22540283203125,
+            75.7879409790039
+          ],
+          "real_continuation": [
+            168.7452011158024,
+            -7.356031716870997,
+            153.7827411964067,
+            166.67597428197897,
+            168.76755156095916
+          ],
+          "predicted_return": [
+            82.74779422172423,
+            77.17982488665712,
+            78.94394519566231,
+            82.22953321082969,
+            81.9141725692275
+          ],
+          "real_return": [
+            169.83961812014445,
+            2.1966997213870547,
+            155.54951840935928,
+            167.82416213441917,
+            169.8730418664939
+          ],
+          "selected_label": "B",
+          "selected_real_return": 169.83961812014445,
+          "baseline_real_return": 169.83961812014445
+        },
+        {
+          "scenario": 40377,
+          "before": 50,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            208.83189392089844,
+            215.10598754882812,
+            215.98989868164062,
+            216.09019470214844,
+            211.3424072265625
+          ],
+          "real_continuation": [
+            159.0770672954601,
+            154.76744887648252,
+            157.08323374227837,
+            157.83303232214155,
+            162.97230043225113
+          ],
+          "predicted_return": [
+            206.2163225308659,
+            213.10472667759132,
+            214.36855444163484,
+            214.59485500860774,
+            209.66594230673945
+          ],
+          "real_return": [
+            157.4068175129418,
+            154.59127988478275,
+            157.15745188949728,
+            157.94147514411364,
+            162.6039586104883
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 157.94147514411364,
+          "baseline_real_return": 157.4068175129418
+        },
+        {
+          "scenario": 40377,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            61.64729309082031,
+            74.98849487304688,
+            76.58425903320312,
+            76.51852416992188,
+            61.58873748779297
+          ],
+          "real_continuation": [
+            159.0770672954601,
+            154.76744887648252,
+            157.08323374227837,
+            157.83303232214155,
+            162.97230043225113
+          ],
+          "predicted_return": [
+            66.22756727081924,
+            79.83756911342243,
+            81.77844745656148,
+            81.84683437886451,
+            67.23371975000055
+          ],
+          "real_return": [
+            157.4068175129418,
+            154.59127988478275,
+            157.15745188949728,
+            157.94147514411364,
+            162.6039586104883
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 157.94147514411364,
+          "baseline_real_return": 157.4068175129418
+        },
+        {
+          "scenario": 40377,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            64.1241226196289,
+            62.9260368347168,
+            62.121822357177734,
+            62.27822494506836,
+            62.66725158691406
+          ],
+          "real_continuation": [
+            159.0770672954601,
+            154.76744887648252,
+            157.08323374227837,
+            157.83303232214155,
+            162.97230043225113
+          ],
+          "predicted_return": [
+            68.5833047649171,
+            68.36484386472716,
+            68.02307836980913,
+            68.30274245773148,
+            68.25950536490109
+          ],
+          "real_return": [
+            157.4068175129418,
+            154.59127988478275,
+            157.15745188949728,
+            157.94147514411364,
+            162.6039586104883
+          ],
+          "selected_label": "B",
+          "selected_real_return": 157.4068175129418,
+          "baseline_real_return": 157.4068175129418
+        },
+        {
+          "scenario": 40394,
+          "before": 150,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            216.0192108154297,
+            225.22776794433594,
+            224.9894256591797,
+            224.988037109375,
+            222.2257537841797
+          ],
+          "real_continuation": [
+            41.4987312551218,
+            40.67108154466084,
+            40.57742527075912,
+            40.8627233311514,
+            40.80326069454987
+          ],
+          "predicted_return": [
+            213.074153576993,
+            224.1632811608697,
+            223.94951179418513,
+            223.94448705944524,
+            221.49152889211928
+          ],
+          "real_return": [
+            46.22360865106586,
+            48.59843184781668,
+            48.43304274583937,
+            48.73131266111956,
+            48.36973422430141
+          ],
+          "selected_label": "Q1",
+          "selected_real_return": 48.59843184781668,
+          "baseline_real_return": 46.22360865106586
+        },
+        {
+          "scenario": 40394,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            74.71625518798828,
+            78.68840026855469,
+            78.3590087890625,
+            78.29637908935547,
+            76.47105407714844
+          ],
+          "real_continuation": [
+            41.4987312551218,
+            40.67108154466084,
+            40.57742527075912,
+            40.8627233311514,
+            40.80326069454987
+          ],
+          "predicted_return": [
+            78.67949026783526,
+            84.78821364813575,
+            84.48784647630964,
+            84.42457466750648,
+            82.86276698213351
+          ],
+          "real_return": [
+            46.22360865106586,
+            48.59843184781668,
+            48.43304274583937,
+            48.73131266111956,
+            48.36973422430141
+          ],
+          "selected_label": "Q1",
+          "selected_real_return": 48.59843184781668,
+          "baseline_real_return": 46.22360865106586
+        },
+        {
+          "scenario": 40394,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            72.61705780029297,
+            81.9371566772461,
+            82.19697570800781,
+            82.57272338867188,
+            79.54266357421875
+          ],
+          "real_continuation": [
+            41.4987312551218,
+            40.67108154466084,
+            40.57742527075912,
+            40.8627233311514,
+            40.80326069454987
+          ],
+          "predicted_return": [
+            76.68292250401146,
+            87.87813856712137,
+            88.13817544199173,
+            88.49184877192056,
+            85.78420569049558
+          ],
+          "real_return": [
+            46.22360865106586,
+            48.59843184781668,
+            48.43304274583937,
+            48.73131266111956,
+            48.36973422430141
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 48.73131266111956,
+          "baseline_real_return": 46.22360865106586
+        },
+        {
+          "scenario": 40394,
+          "before": 50,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            210.117919921875,
+            217.8203125,
+            220.3494873046875,
+            219.58804321289062,
+            217.9525146484375
+          ],
+          "real_continuation": [
+            89.60045615458378,
+            83.90592415738257,
+            84.39187760984784,
+            84.5022679146291,
+            83.61922955879616
+          ],
+          "predicted_return": [
+            208.71024249297625,
+            217.31610252475366,
+            219.97303662190825,
+            219.27965272660185,
+            217.72169513954577
+          ],
+          "real_return": [
+            93.55783139091461,
+            89.43029646441299,
+            90.12331871512146,
+            90.25283891619257,
+            89.40227989867012
+          ],
+          "selected_label": "Q05",
+          "selected_real_return": 90.12331871512146,
+          "baseline_real_return": 93.55783139091461
+        },
+        {
+          "scenario": 40394,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            62.88740539550781,
+            77.09412384033203,
+            77.84930419921875,
+            77.91450500488281,
+            77.06063842773438
+          ],
+          "real_continuation": [
+            89.60045615458378,
+            83.90592415738257,
+            84.39187760984784,
+            84.5022679146291,
+            83.61922955879616
+          ],
+          "predicted_return": [
+            68.67781825426846,
+            83.47000808379516,
+            84.43967820832404,
+            84.53252459515988,
+            83.7180135916442
+          ],
+          "real_return": [
+            93.55783139091461,
+            89.43029646441299,
+            90.12331871512146,
+            90.25283891619257,
+            89.40227989867012
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 90.25283891619257,
+          "baseline_real_return": 93.55783139091461
+        },
+        {
+          "scenario": 40394,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            63.330265045166016,
+            68.09578704833984,
+            68.37689971923828,
+            68.38993072509766,
+            68.07550811767578
+          ],
+          "real_continuation": [
+            89.60045615458378,
+            83.90592415738257,
+            84.39187760984784,
+            84.5022679146291,
+            83.61922955879616
+          ],
+          "predicted_return": [
+            69.09902652443338,
+            74.91159939282124,
+            75.43037896782107,
+            75.47360613297451,
+            75.17216571856034
+          ],
+          "real_return": [
+            93.55783139091461,
+            89.43029646441299,
+            90.12331871512146,
+            90.25283891619257,
+            89.40227989867012
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 90.25283891619257,
+          "baseline_real_return": 93.55783139091461
+        },
+        {
+          "scenario": 40507,
+          "before": 150,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            205.11865234375,
+            210.2739715576172,
+            210.23948669433594,
+            211.5362091064453,
+            206.33877563476562
+          ],
+          "real_continuation": [
+            69.8692010367095,
+            69.3242786979087,
+            65.96349366003328,
+            78.53404903442555,
+            64.2952000940503
+          ],
+          "predicted_return": [
+            202.21458077177522,
+            207.38073232123224,
+            207.79142440273154,
+            210.65291872329453,
+            206.19637618599336
+          ],
+          "real_return": [
+            72.39561538005691,
+            72.23448634007609,
+            69.79952102195537,
+            83.74851558838377,
+            70.90839889481276
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 83.74851558838377,
+          "baseline_real_return": 72.39561538005691
+        },
+        {
+          "scenario": 40507,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            56.51454162597656,
+            69.27993774414062,
+            69.67317199707031,
+            69.46539306640625,
+            60.98285675048828
+          ],
+          "real_continuation": [
+            69.8692010367095,
+            69.3242786979087,
+            65.96349366003328,
+            78.53404903442555,
+            64.2952000940503
+          ],
+          "predicted_return": [
+            60.87571537019812,
+            73.27988765862938,
+            74.09738769654268,
+            75.52793564721287,
+            67.94689873025118
+          ],
+          "real_return": [
+            72.39561538005691,
+            72.23448634007609,
+            69.79952102195537,
+            83.74851558838377,
+            70.90839889481276
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 83.74851558838377,
+          "baseline_real_return": 72.39561538005691
+        },
+        {
+          "scenario": 40507,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            60.54799270629883,
+            64.21952819824219,
+            65.4947738647461,
+            69.9190444946289,
+            63.05036163330078
+          ],
+          "real_continuation": [
+            69.8692010367095,
+            69.3242786979087,
+            65.96349366003328,
+            78.53404903442555,
+            64.2952000940503
+          ],
+          "predicted_return": [
+            64.71197128931067,
+            68.46688120658746,
+            70.12327117738141,
+            75.95940808658952,
+            69.9133234336964
+          ],
+          "real_return": [
+            72.39561538005691,
+            72.23448634007609,
+            69.79952102195537,
+            83.74851558838377,
+            70.90839889481276
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 83.74851558838377,
+          "baseline_real_return": 72.39561538005691
+        },
+        {
+          "scenario": 40507,
+          "before": 50,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            233.3284454345703,
+            233.69309997558594,
+            233.6543731689453,
+            233.70603942871094,
+            233.58828735351562
+          ],
+          "real_continuation": [
+            143.80218314069018,
+            143.04799003159098,
+            145.05747160600674,
+            145.4109168471349,
+            133.51556739636914
+          ],
+          "predicted_return": [
+            234.29686641109492,
+            234.80569653244766,
+            234.8364900299921,
+            235.04578848702386,
+            235.29360222494688
+          ],
+          "real_return": [
+            151.68036495128115,
+            150.82964527067764,
+            152.71161395174764,
+            152.92831348640067,
+            141.36726134536846
+          ],
+          "selected_label": "Q0",
+          "selected_real_return": 141.36726134536846,
+          "baseline_real_return": 151.68036495128115
+        },
+        {
+          "scenario": 40507,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            77.38639068603516,
+            76.46760559082031,
+            76.98011779785156,
+            76.65914154052734,
+            76.24186706542969
+          ],
+          "real_continuation": [
+            143.80218314069018,
+            143.04799003159098,
+            145.05747160600674,
+            145.4109168471349,
+            133.51556739636914
+          ],
+          "predicted_return": [
+            85.97880858557573,
+            85.26694635111107,
+            85.82202882277033,
+            85.67690323115721,
+            85.63983819984514
+          ],
+          "real_return": [
+            151.68036495128115,
+            150.82964527067764,
+            152.71161395174764,
+            152.92831348640067,
+            141.36726134536846
+          ],
+          "selected_label": "B",
+          "selected_real_return": 151.68036495128115,
+          "baseline_real_return": 151.68036495128115
+        },
+        {
+          "scenario": 40507,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            76.90806579589844,
+            74.53223419189453,
+            75.61071014404297,
+            74.52397918701172,
+            76.15472412109375
+          ],
+          "real_continuation": [
+            143.80218314069018,
+            143.04799003159098,
+            145.05747160600674,
+            145.4109168471349,
+            133.51556739636914
+          ],
+          "predicted_return": [
+            85.52386896823464,
+            83.42619513411182,
+            84.51957142016772,
+            83.64612882635492,
+            85.55695566839495
+          ],
+          "real_return": [
+            151.68036495128115,
+            150.82964527067764,
+            152.71161395174764,
+            152.92831348640067,
+            141.36726134536846
+          ],
+          "selected_label": "Q0",
+          "selected_real_return": 141.36726134536846,
+          "baseline_real_return": 151.68036495128115
+        },
+        {
+          "scenario": 40511,
+          "before": 150,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0",
+            "elite_Q1"
+          ],
+          "predicted_value": [
+            233.2099609375,
+            235.68606567382812,
+            235.67996215820312,
+            235.62124633789062,
+            235.1575469970703,
+            235.68211364746094
+          ],
+          "real_continuation": [
+            107.36756746378799,
+            107.19484964895877,
+            107.64390006515161,
+            107.37315244291531,
+            107.99291100422921,
+            107.68127131994737
+          ],
+          "predicted_return": [
+            229.7699714464252,
+            232.30393603741504,
+            232.30543988223326,
+            232.2639074187009,
+            231.84194225810552,
+            232.32111228395388
+          ],
+          "real_return": [
+            109.9383277531068,
+            109.81541577891291,
+            110.24375879323556,
+            109.99050014873144,
+            110.59237372725025,
+            110.28531389980685
+          ],
+          "selected_label": "elite_Q1",
+          "selected_real_return": 110.28531389980685,
+          "baseline_real_return": 109.9383277531068
+        },
+        {
+          "scenario": 40511,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0",
+            "elite_Q1"
+          ],
+          "predicted_value": [
+            72.06671142578125,
+            78.44261169433594,
+            78.4638900756836,
+            78.58715057373047,
+            78.77975463867188,
+            78.27213287353516
+          ],
+          "real_continuation": [
+            107.36756746378799,
+            107.19484964895877,
+            107.64390006515161,
+            107.37315244291531,
+            107.99291100422921,
+            107.68127131994737
+          ],
+          "predicted_return": [
+            76.5050049317033,
+            82.748104304771,
+            82.77565134739825,
+            82.90719839184612,
+            83.10945000615357,
+            82.60689524103464
+          ],
+          "real_return": [
+            109.9383277531068,
+            109.81541577891291,
+            110.24375879323556,
+            109.99050014873144,
+            110.59237372725025,
+            110.28531389980685
+          ],
+          "selected_label": "Q0",
+          "selected_real_return": 110.59237372725025,
+          "baseline_real_return": 109.9383277531068
+        },
+        {
+          "scenario": 40511,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0",
+            "elite_Q1"
+          ],
+          "predicted_value": [
+            74.53495788574219,
+            71.2955322265625,
+            71.32844543457031,
+            71.27174377441406,
+            70.13024139404297,
+            71.14571380615234
+          ],
+          "real_continuation": [
+            107.36756746378799,
+            107.19484964895877,
+            107.64390006515161,
+            107.37315244291531,
+            107.99291100422921,
+            107.68127131994737
+          ],
+          "predicted_return": [
+            78.85257898263171,
+            75.95044508773572,
+            75.98905813110377,
+            75.94944135556852,
+            74.88281090198006,
+            75.82888633875746
+          ],
+          "real_return": [
+            109.9383277531068,
+            109.81541577891291,
+            110.24375879323556,
+            109.99050014873144,
+            110.59237372725025,
+            110.28531389980685
+          ],
+          "selected_label": "B",
+          "selected_real_return": 109.9383277531068,
+          "baseline_real_return": 109.9383277531068
+        },
+        {
+          "scenario": 40511,
+          "before": 50,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0",
+            "elite_Q1"
+          ],
+          "predicted_value": [
+            211.2177276611328,
+            218.66885375976562,
+            219.13365173339844,
+            221.2045440673828,
+            211.7008819580078,
+            218.8975372314453
+          ],
+          "real_continuation": [
+            127.95506859943926,
+            124.89197384475308,
+            124.65546520396042,
+            129.02985494163417,
+            129.80830497447158,
+            124.77203906181501
+          ],
+          "predicted_return": [
+            210.03145579793545,
+            217.7753212093503,
+            218.45582430977538,
+            221.0405421488167,
+            212.22777364763078,
+            218.1153257342512
+          ],
+          "real_return": [
+            131.5762799380509,
+            129.31400503497622,
+            129.30607395439637,
+            133.79312248048745,
+            134.54806110240597,
+            129.28382918292903
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 133.79312248048745,
+          "baseline_real_return": 131.5762799380509
+        },
+        {
+          "scenario": 40511,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0",
+            "elite_Q1"
+          ],
+          "predicted_value": [
+            60.49713134765625,
+            76.21163940429688,
+            76.63130950927734,
+            76.66670227050781,
+            61.130409240722656,
+            76.37936401367188
+          ],
+          "real_continuation": [
+            127.95506859943926,
+            124.89197384475308,
+            124.65546520396042,
+            129.02985494163417,
+            129.80830497447158,
+            124.77203906181501
+          ],
+          "predicted_return": [
+            66.6795796438928,
+            82.28283080637084,
+            82.92041233670943,
+            83.56914604483518,
+            69.01868155691727,
+            82.56485674378382
+          ],
+          "real_return": [
+            131.5762799380509,
+            129.31400503497622,
+            129.30607395439637,
+            133.79312248048745,
+            134.54806110240597,
+            129.28382918292903
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 133.79312248048745,
+          "baseline_real_return": 131.5762799380509
+        },
+        {
+          "scenario": 40511,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0",
+            "elite_Q1"
+          ],
+          "predicted_value": [
+            67.02540588378906,
+            72.70475006103516,
+            73.25848388671875,
+            73.92094421386719,
+            63.83279800415039,
+            72.9687271118164
+          ],
+          "real_continuation": [
+            127.95506859943926,
+            124.89197384475308,
+            124.65546520396042,
+            129.02985494163417,
+            129.80830497447158,
+            124.77203906181501
+          ],
+          "predicted_return": [
+            72.88868726218334,
+            78.9473930552117,
+            79.71248393966016,
+            80.95762792115511,
+            71.58895070931135,
+            79.3209656584254
+          ],
+          "real_return": [
+            131.5762799380509,
+            129.31400503497622,
+            129.30607395439637,
+            133.79312248048745,
+            134.54806110240597,
+            129.28382918292903
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 133.79312248048745,
+          "baseline_real_return": 131.5762799380509
+        },
+        {
+          "scenario": 40684,
+          "before": 150,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            221.307373046875,
+            223.6522979736328,
+            223.6287078857422,
+            223.5721435546875,
+            223.0572052001953
+          ],
+          "real_continuation": [
+            103.30198503185734,
+            93.7780534609213,
+            94.01560674150672,
+            93.41092847637029,
+            85.58522012735132
+          ],
+          "predicted_return": [
+            218.353019729504,
+            220.66840827864416,
+            220.654632301922,
+            220.60975692791544,
+            220.19233054984852
+          ],
+          "real_return": [
+            105.90930034519826,
+            96.71821554242648,
+            96.94370305293752,
+            96.36236816735052,
+            88.83184709793755
+          ],
+          "selected_label": "Q1",
+          "selected_real_return": 96.71821554242648,
+          "baseline_real_return": 105.90930034519826
+        },
+        {
+          "scenario": 40684,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            68.09181213378906,
+            69.9532470703125,
+            69.97409057617188,
+            69.9715805053711,
+            69.38471984863281
+          ],
+          "real_continuation": [
+            103.30198503185734,
+            93.7780534609213,
+            94.01560674150672,
+            93.41092847637029,
+            85.58522012735132
+          ],
+          "predicted_return": [
+            72.62815763299568,
+            74.48369398610521,
+            74.51217924762204,
+            74.51871542459821,
+            74.03288302096826
+          ],
+          "real_return": [
+            105.90930034519826,
+            96.71821554242648,
+            96.94370305293752,
+            96.36236816735052,
+            88.83184709793755
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 96.36236816735052,
+          "baseline_real_return": 105.90930034519826
+        },
+        {
+          "scenario": 40684,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            64.68650817871094,
+            68.48851776123047,
+            68.36736297607422,
+            68.72727966308594,
+            61.44075393676758
+          ],
+          "real_continuation": [
+            103.30198503185734,
+            93.7780534609213,
+            94.01560674150672,
+            93.41092847637029,
+            85.58522012735132
+          ],
+          "predicted_return": [
+            69.3893387669932,
+            73.09057519776115,
+            72.98400445548259,
+            73.33524836963352,
+            66.47729708630845
+          ],
+          "real_return": [
+            105.90930034519826,
+            96.71821554242648,
+            96.94370305293752,
+            96.36236816735052,
+            88.83184709793755
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 96.36236816735052,
+          "baseline_real_return": 105.90930034519826
+        },
+        {
+          "scenario": 40684,
+          "before": 50,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            211.53372192382812,
+            216.6649932861328,
+            215.03623962402344,
+            213.90184020996094,
+            212.564453125
+          ],
+          "real_continuation": [
+            117.40758388757015,
+            121.9723371117773,
+            122.52190068328115,
+            120.90213371332868,
+            120.0438096871613
+          ],
+          "predicted_return": [
+            209.56843510451108,
+            215.83406137835755,
+            214.43659352776467,
+            213.50802161048068,
+            212.26652447355445
+          ],
+          "real_return": [
+            118.81358370009087,
+            125.1761090722651,
+            125.50729662477471,
+            123.87888868256853,
+            122.87903202940097
+          ],
+          "selected_label": "Q1",
+          "selected_real_return": 125.1761090722651,
+          "baseline_real_return": 118.81358370009087
+        },
+        {
+          "scenario": 40684,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            61.125244140625,
+            72.43949890136719,
+            70.00949096679688,
+            66.55945587158203,
+            61.781959533691406
+          ],
+          "real_continuation": [
+            117.40758388757015,
+            121.9723371117773,
+            122.52190068328115,
+            120.90213371332868,
+            120.0438096871613
+          ],
+          "predicted_return": [
+            66.51341802607931,
+            78.65974204180475,
+            76.50019318806335,
+            73.36919686760075,
+            68.85577719557068
+          ],
+          "real_return": [
+            118.81358370009087,
+            125.1761090722651,
+            125.50729662477471,
+            123.87888868256853,
+            122.87903202940097
+          ],
+          "selected_label": "Q1",
+          "selected_real_return": 125.1761090722651,
+          "baseline_real_return": 118.81358370009087
+        },
+        {
+          "scenario": 40684,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            64.10977935791016,
+            66.4800796508789,
+            64.28590393066406,
+            62.68562316894531,
+            60.39812469482422
+          ],
+          "real_continuation": [
+            117.40758388757015,
+            121.9723371117773,
+            122.52190068328115,
+            120.90213371332868,
+            120.0438096871613
+          ],
+          "predicted_return": [
+            69.35203951053654,
+            72.9916784112097,
+            71.05643195018911,
+            69.68475559406124,
+            67.53959795204946
+          ],
+          "real_return": [
+            118.81358370009087,
+            125.1761090722651,
+            125.50729662477471,
+            123.87888868256853,
+            122.87903202940097
+          ],
+          "selected_label": "Q1",
+          "selected_real_return": 125.1761090722651,
+          "baseline_real_return": 118.81358370009087
+        },
+        {
+          "scenario": 40696,
+          "before": 150,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            232.3750457763672,
+            234.3982696533203,
+            234.3682098388672,
+            234.333251953125,
+            233.3856964111328
+          ],
+          "real_continuation": [
+            96.96838114643025,
+            98.767945106289,
+            98.82714073385839,
+            98.44587341061384,
+            96.72389195460846
+          ],
+          "predicted_return": [
+            234.65750584468424,
+            236.5876490172368,
+            236.67660204567892,
+            236.72947862253932,
+            235.99745372133384
+          ],
+          "real_return": [
+            106.21695998642015,
+            107.77507263565008,
+            107.76500299106753,
+            107.33304257479222,
+            105.74770615476521
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 107.33304257479222,
+          "baseline_real_return": 106.21695998642015
+        },
+        {
+          "scenario": 40696,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            69.25697326660156,
+            75.73843383789062,
+            75.71819305419922,
+            75.0772705078125,
+            73.43013763427734
+          ],
+          "real_continuation": [
+            96.96838114643025,
+            98.767945106289,
+            98.82714073385839,
+            98.44587341061384,
+            96.72389195460846
+          ],
+          "predicted_return": [
+            79.51426529995933,
+            85.68468226457298,
+            85.78297427200096,
+            85.25951176109811,
+            83.86211181862791
+          ],
+          "real_return": [
+            106.21695998642015,
+            107.77507263565008,
+            107.76500299106753,
+            107.33304257479222,
+            105.74770615476521
+          ],
+          "selected_label": "Q05",
+          "selected_real_return": 107.76500299106753,
+          "baseline_real_return": 106.21695998642015
+        },
+        {
+          "scenario": 40696,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            72.34779357910156,
+            76.22830200195312,
+            76.0706787109375,
+            76.03348541259766,
+            79.14546203613281
+          ],
+          "real_continuation": [
+            96.96838114643025,
+            98.767945106289,
+            98.82714073385839,
+            98.44587341061384,
+            96.72389195460846
+          ],
+          "predicted_return": [
+            82.45397560823312,
+            86.15060080592775,
+            86.11822692788701,
+            86.16897738132639,
+            89.29801438187769
+          ],
+          "real_return": [
+            106.21695998642015,
+            107.77507263565008,
+            107.76500299106753,
+            107.33304257479222,
+            105.74770615476521
+          ],
+          "selected_label": "Q0",
+          "selected_real_return": 105.74770615476521,
+          "baseline_real_return": 106.21695998642015
+        },
+        {
+          "scenario": 40696,
+          "before": 50,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            211.42857360839844,
+            217.6463623046875,
+            217.31089782714844,
+            216.8832244873047,
+            213.74290466308594
+          ],
+          "real_continuation": [
+            114.78496428188438,
+            113.0435598528022,
+            110.97512921255755,
+            112.11765583915218,
+            114.08973914058366
+          ],
+          "predicted_return": [
+            211.01107007677365,
+            217.34054855837167,
+            217.14619786137064,
+            216.94949070192615,
+            214.27072245525505
+          ],
+          "real_return": [
+            118.23141893086614,
+            118.19296469456305,
+            116.2951839965325,
+            117.37557727626394,
+            119.30249875472404
+          ],
+          "selected_label": "Q1",
+          "selected_real_return": 118.19296469456305,
+          "baseline_real_return": 118.23141893086614
+        },
+        {
+          "scenario": 40696,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            60.326107025146484,
+            66.79551696777344,
+            66.36872100830078,
+            66.48538208007812,
+            66.17133331298828
+          ],
+          "real_continuation": [
+            114.78496428188438,
+            113.0435598528022,
+            110.97512921255755,
+            112.11765583915218,
+            114.08973914058366
+          ],
+          "predicted_return": [
+            67.2959932656297,
+            73.86479124718335,
+            73.58357425846543,
+            73.90458903663057,
+            73.91391563876596
+          ],
+          "real_return": [
+            118.23141893086614,
+            118.19296469456305,
+            116.2951839965325,
+            117.37557727626394,
+            119.30249875472404
+          ],
+          "selected_label": "Q0",
+          "selected_real_return": 119.30249875472404,
+          "baseline_real_return": 118.23141893086614
+        },
+        {
+          "scenario": 40696,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            58.12521743774414,
+            61.986427307128906,
+            62.29888153076172,
+            65.8174057006836,
+            60.20439910888672
+          ],
+          "real_continuation": [
+            114.78496428188438,
+            113.0435598528022,
+            110.97512921255755,
+            112.11765583915218,
+            114.08973914058366
+          ],
+          "predicted_return": [
+            65.20270502713424,
+            69.29081766753688,
+            69.71270896851138,
+            73.26926997901728,
+            68.23870446015144
+          ],
+          "real_return": [
+            118.23141893086614,
+            118.19296469456305,
+            116.2951839965325,
+            117.37557727626394,
+            119.30249875472404
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 117.37557727626394,
+          "baseline_real_return": 118.23141893086614
+        },
+        {
+          "scenario": 40768,
+          "before": 150,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            232.07164001464844,
+            233.35269165039062,
+            233.2491455078125,
+            232.42979431152344,
+            230.99526977539062
+          ],
+          "real_continuation": [
+            123.02143500844443,
+            120.38371185961483,
+            122.42476289549326,
+            119.76791490388678,
+            120.12926614042017
+          ],
+          "predicted_return": [
+            232.70532120521693,
+            234.34018899552575,
+            234.43384293533018,
+            233.77618711014384,
+            232.39862709672707
+          ],
+          "real_return": [
+            130.5753932434978,
+            127.94740498694928,
+            129.7678876917743,
+            127.03771880853404,
+            127.3037867758677
+          ],
+          "selected_label": "Q05",
+          "selected_real_return": 129.7678876917743,
+          "baseline_real_return": 130.5753932434978
+        },
+        {
+          "scenario": 40768,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            79.14227294921875,
+            85.00909423828125,
+            84.52924346923828,
+            84.59011840820312,
+            83.53221130371094
+          ],
+          "real_continuation": [
+            123.02143500844443,
+            120.38371185961483,
+            122.42476289549326,
+            119.76791490388678,
+            120.12926614042017
+          ],
+          "predicted_return": [
+            87.25266095775078,
+            93.24910042102783,
+            92.98484724310174,
+            93.1643833546168,
+            92.14502797108162
+          ],
+          "real_return": [
+            130.5753932434978,
+            127.94740498694928,
+            129.7678876917743,
+            127.03771880853404,
+            127.3037867758677
+          ],
+          "selected_label": "Q1",
+          "selected_real_return": 127.94740498694928,
+          "baseline_real_return": 130.5753932434978
+        },
+        {
+          "scenario": 40768,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            74.3621826171875,
+            77.8136215209961,
+            75.66842651367188,
+            77.3802490234375,
+            76.16410064697266
+          ],
+          "real_continuation": [
+            123.02143500844443,
+            120.38371185961483,
+            122.42476289549326,
+            119.76791490388678,
+            120.12926614042017
+          ],
+          "predicted_return": [
+            82.70626893142617,
+            86.4054138973047,
+            84.55723505268725,
+            86.30700401555077,
+            85.13714376554663
+          ],
+          "real_return": [
+            130.5753932434978,
+            127.94740498694928,
+            129.7678876917743,
+            127.03771880853404,
+            127.3037867758677
+          ],
+          "selected_label": "Q1",
+          "selected_real_return": 127.94740498694928,
+          "baseline_real_return": 130.5753932434978
+        },
+        {
+          "scenario": 40768,
+          "before": 50,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            237.927734375,
+            240.7498321533203,
+            240.73916625976562,
+            240.5242156982422,
+            239.38829040527344
+          ],
+          "real_continuation": [
+            164.20083395540232,
+            164.4797705587003,
+            164.7300041990824,
+            164.77925899375057,
+            164.7635597593863
+          ],
+          "predicted_return": [
+            239.25590639945585,
+            242.0935087158714,
+            242.1756437113636,
+            241.9386951260758,
+            241.04296510474978
+          ],
+          "real_return": [
+            169.41193522696753,
+            169.55114623232998,
+            169.65901571274975,
+            169.7101390380879,
+            169.67988803916975
+          ],
+          "selected_label": "Q05",
+          "selected_real_return": 169.65901571274975,
+          "baseline_real_return": 169.41193522696753
+        },
+        {
+          "scenario": 40768,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            72.55057525634766,
+            71.32572174072266,
+            71.07786560058594,
+            71.78199768066406,
+            76.61347961425781
+          ],
+          "real_continuation": [
+            164.20083395540232,
+            164.4797705587003,
+            164.7300041990824,
+            164.77925899375057,
+            164.7635597593863
+          ],
+          "predicted_return": [
+            81.96402584334965,
+            80.95253205159634,
+            80.80907301624848,
+            81.44627318193943,
+            86.2262042356515
+          ],
+          "real_return": [
+            169.41193522696753,
+            169.55114623232998,
+            169.65901571274975,
+            169.7101390380879,
+            169.67988803916975
+          ],
+          "selected_label": "Q0",
+          "selected_real_return": 169.67988803916975,
+          "baseline_real_return": 169.41193522696753
+        },
+        {
+          "scenario": 40768,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            69.641845703125,
+            67.42913818359375,
+            67.82408905029297,
+            68.19474792480469,
+            73.01005554199219
+          ],
+          "real_continuation": [
+            164.20083395540232,
+            164.4797705587003,
+            164.7300041990824,
+            164.77925899375057,
+            164.7635597593863
+          ],
+          "predicted_return": [
+            79.197503888965,
+            77.24645221136234,
+            77.71437339005797,
+            78.03440383353245,
+            82.7989513321163
+          ],
+          "real_return": [
+            169.41193522696753,
+            169.55114623232998,
+            169.65901571274975,
+            169.7101390380879,
+            169.67988803916975
+          ],
+          "selected_label": "Q0",
+          "selected_real_return": 169.67988803916975,
+          "baseline_real_return": 169.41193522696753
+        }
+      ]
+    },
+    "validation": {
+      "summary": [
+        {
+          "model": "old_Q",
+          "origins": 12,
+          "scenes": 6,
+          "terminal_pair_accuracy": 0.4222222222222223,
+          "terminal_pair_accuracy_ci95_low": 0.30833333333333335,
+          "terminal_pair_accuracy_ci95_high": 0.5416666666666667,
+          "terminal_spearman": -0.16666666666666663,
+          "terminal_spearman_ci95_low": -0.45,
+          "terminal_spearman_ci95_high": 0.14166666666666666,
+          "total_pair_accuracy": 0.5111111111111112,
+          "total_pair_accuracy_ci95_low": 0.36944444444444446,
+          "total_pair_accuracy_ci95_high": 0.6277777777777778,
+          "total_spearman": 0.03809523809523809,
+          "total_spearman_ci95_low": -0.3167559523809524,
+          "total_spearman_ci95_high": 0.3416666666666666,
+          "top1_regret": 2.6148134335887327,
+          "top1_regret_ci95_low": 0.6615077409377861,
+          "top1_regret_ci95_high": 4.634901067545877,
+          "v_mae": 110.51460062440468,
+          "v_mae_ci95_low": 96.4773672512717,
+          "v_mae_ci95_high": 124.86329832401367,
+          "j_mae": 105.45154671568277,
+          "j_mae_ci95_low": 91.49650226212505,
+          "j_mae_ci95_high": 119.40659116924053,
+          "j_bias": 105.45154671568277,
+          "j_bias_ci95_low": 91.49650226212505,
+          "j_bias_ci95_high": 119.40659116924053
+        },
+        {
+          "model": "predicted_V_SAC",
+          "origins": 12,
+          "scenes": 6,
+          "terminal_pair_accuracy": 0.325,
+          "terminal_pair_accuracy_ci95_low": 0.233125,
+          "terminal_pair_accuracy_ci95_high": 0.4333333333333333,
+          "terminal_spearman": -0.42976190476190473,
+          "terminal_spearman_ci95_low": -0.6797619047619047,
+          "terminal_spearman_ci95_high": -0.14157738095238143,
+          "total_pair_accuracy": 0.43333333333333335,
+          "total_pair_accuracy_ci95_low": 0.308125,
+          "total_pair_accuracy_ci95_high": 0.575,
+          "total_spearman": -0.21309523809523812,
+          "total_spearman_ci95_low": -0.5297619047619048,
+          "total_spearman_ci95_high": 0.10357142857142855,
+          "top1_regret": 4.86974921659075,
+          "top1_regret_ci95_low": 1.29779977592048,
+          "top1_regret_ci95_high": 10.118445382096752,
+          "v_mae": 44.75974946722916,
+          "v_mae_ci95_low": 31.033865231207987,
+          "v_mae_ci95_high": 59.55559470573689,
+          "j_mae": 42.25887005147506,
+          "j_mae_ci95_low": 28.627372457202014,
+          "j_mae_ci95_high": 56.97484234561798,
+          "j_bias": -40.63437296276333,
+          "j_bias_ci95_low": -56.97484234561798,
+          "j_bias_ci95_high": -25.272243303423767
+        },
+        {
+          "model": "actual_latent_oracle",
+          "origins": 12,
+          "scenes": 6,
+          "terminal_pair_accuracy": 0.46388888888888896,
+          "terminal_pair_accuracy_ci95_low": 0.36388888888888893,
+          "terminal_pair_accuracy_ci95_high": 0.5666666666666668,
+          "terminal_spearman": -0.11547619047619047,
+          "terminal_spearman_ci95_low": -0.36547619047619045,
+          "terminal_spearman_ci95_high": 0.1345238095238095,
+          "total_pair_accuracy": 0.513888888888889,
+          "total_pair_accuracy_ci95_low": 0.42777777777777776,
+          "total_pair_accuracy_ci95_high": 0.6,
+          "total_spearman": 0.009523809523809513,
+          "total_spearman_ci95_low": -0.22142857142857145,
+          "total_spearman_ci95_high": 0.24999999999999997,
+          "top1_regret": 3.454978196181861,
+          "top1_regret_ci95_low": 0.7487886762729884,
+          "top1_regret_ci95_high": 8.546598017982683,
+          "v_mae": 46.30757391347115,
+          "v_mae_ci95_low": 31.006497788984564,
+          "v_mae_ci95_high": 61.953998547700905,
+          "j_mae": 43.72354696379332,
+          "j_mae_ci95_low": 28.59990723249048,
+          "j_mae_ci95_high": 59.50839423496925,
+          "j_bias": -43.55409960560459,
+          "j_bias_ci95_low": -59.50839423496925,
+          "j_bias_ci95_high": -28.130736094506982
+        }
+      ],
+      "rows": [
+        {
+          "scenario": 40058,
+          "before": 150,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.5,
+          "terminal_spearman": 0.09999999999999999,
+          "total_pair_accuracy": 0.5,
+          "total_spearman": 0.09999999999999999,
+          "top1_regret": 0.11040969437863168,
+          "v_mae": 138.9234387673962,
+          "j_mae": 132.4164493628742,
+          "j_bias": 132.4164493628742
+        },
+        {
+          "scenario": 40058,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.3,
+          "terminal_spearman": -0.39999999999999997,
+          "total_pair_accuracy": 0.4,
+          "total_spearman": -0.3,
+          "top1_regret": 0.7670649617192851,
+          "v_mae": 15.806984206236658,
+          "j_mae": 14.749213286481682,
+          "j_bias": -14.749213286481682
+        },
+        {
+          "scenario": 40058,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.5,
+          "terminal_spearman": -0.09999999999999999,
+          "total_pair_accuracy": 0.5,
+          "total_spearman": -0.09999999999999999,
+          "top1_regret": 0.7670649617192851,
+          "v_mae": 25.327777358092128,
+          "j_mae": 23.80453547983614,
+          "j_bias": -23.80453547983614
+        },
+        {
+          "scenario": 40058,
+          "before": 50,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.8,
+          "terminal_spearman": 0.7999999999999999,
+          "total_pair_accuracy": 0.8,
+          "total_spearman": 0.7999999999999999,
+          "top1_regret": 0.27763827557211584,
+          "v_mae": 94.77316595631687,
+          "j_mae": 90.34272127408671,
+          "j_bias": 90.34272127408671
+        },
+        {
+          "scenario": 40058,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.7,
+          "terminal_spearman": 0.6,
+          "total_pair_accuracy": 0.7,
+          "total_spearman": 0.6,
+          "top1_regret": 4.391738292206412,
+          "v_mae": 55.49107964915189,
+          "j_mae": 52.57511512840743,
+          "j_bias": -52.57511512840743
+        },
+        {
+          "scenario": 40058,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.8,
+          "terminal_spearman": 0.7999999999999999,
+          "total_pair_accuracy": 0.8,
+          "total_spearman": 0.7999999999999999,
+          "top1_regret": 0.27763827557211584,
+          "v_mae": 59.17057641428861,
+          "j_mae": 56.07472153580271,
+          "j_bias": -56.07472153580271
+        },
+        {
+          "scenario": 40250,
+          "before": 150,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.2,
+          "terminal_spearman": -0.7,
+          "total_pair_accuracy": 0.2,
+          "total_spearman": -0.7,
+          "top1_regret": 0.4065650143645456,
+          "v_mae": 165.9035103449283,
+          "j_mae": 157.95701587265623,
+          "j_bias": 157.95701587265623
+        },
+        {
+          "scenario": 40250,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.2,
+          "terminal_spearman": -0.7,
+          "total_pair_accuracy": 0.2,
+          "total_spearman": -0.7,
+          "top1_regret": 0.407999441036182,
+          "v_mae": 10.075032866900916,
+          "j_mae": 9.74698253227037,
+          "j_bias": 9.74698253227037
+        },
+        {
+          "scenario": 40250,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.9,
+          "terminal_spearman": 0.8999999999999998,
+          "total_pair_accuracy": 0.9,
+          "total_spearman": 0.8999999999999998,
+          "top1_regret": 0.0,
+          "v_mae": 1.0155343964467534,
+          "j_mae": 1.0407083853623817,
+          "j_bias": 0.9926599129023372
+        },
+        {
+          "scenario": 40250,
+          "before": 50,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.2,
+          "terminal_spearman": -0.7999999999999999,
+          "total_pair_accuracy": 0.2,
+          "total_spearman": -0.7999999999999999,
+          "top1_regret": 2.606790336017326,
+          "v_mae": 112.50262671965959,
+          "j_mae": 108.5533900400521,
+          "j_bias": 108.5533900400521
+        },
+        {
+          "scenario": 40250,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.2,
+          "terminal_spearman": -0.7999999999999999,
+          "total_pair_accuracy": 0.2,
+          "total_spearman": -0.7999999999999999,
+          "top1_regret": 2.606790336017326,
+          "v_mae": 30.875714955145117,
+          "j_mae": 27.815193827478915,
+          "j_bias": -27.815193827478915
+        },
+        {
+          "scenario": 40250,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.0,
+          "terminal_spearman": -0.9999999999999999,
+          "total_pair_accuracy": 0.1,
+          "total_spearman": -0.8999999999999998,
+          "top1_regret": 2.606790336017326,
+          "v_mae": 36.71984184723496,
+          "j_mae": 33.37360173558553,
+          "j_bias": -33.37360173558553
+        },
+        {
+          "scenario": 40614,
+          "before": 150,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.1,
+          "terminal_spearman": -0.8999999999999998,
+          "total_pair_accuracy": 0.1,
+          "total_spearman": -0.8999999999999998,
+          "top1_regret": 11.050206523714166,
+          "v_mae": 122.95805270327625,
+          "j_mae": 117.00778575474233,
+          "j_bias": 117.00778575474233
+        },
+        {
+          "scenario": 40614,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.2,
+          "terminal_spearman": -0.7999999999999999,
+          "total_pair_accuracy": 0.2,
+          "total_spearman": -0.7999999999999999,
+          "top1_regret": 11.050206523714166,
+          "v_mae": 27.274797943696388,
+          "j_mae": 25.88019058673646,
+          "j_bias": -25.88019058673646
+        },
+        {
+          "scenario": 40614,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.6,
+          "terminal_spearman": 0.3,
+          "total_pair_accuracy": 0.5,
+          "total_spearman": 0.09999999999999999,
+          "top1_regret": 2.117816353401423,
+          "v_mae": 27.940351227387794,
+          "j_mae": 26.51320501363809,
+          "j_bias": -26.51320501363809
+        },
+        {
+          "scenario": 40614,
+          "before": 50,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.5,
+          "terminal_spearman": -0.09999999999999999,
+          "total_pair_accuracy": 0.7,
+          "total_spearman": 0.6,
+          "top1_regret": 0.0,
+          "v_mae": 100.24009323858843,
+          "j_mae": 97.18196849998739,
+          "j_bias": 97.18196849998739
+        },
+        {
+          "scenario": 40614,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.2,
+          "terminal_spearman": -0.7999999999999999,
+          "total_pair_accuracy": 0.4,
+          "total_spearman": -0.49999999999999994,
+          "top1_regret": 1.403157947738606,
+          "v_mae": 53.903388206724074,
+          "j_mae": 49.425448154226345,
+          "j_bias": -49.425448154226345
+        },
+        {
+          "scenario": 40614,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.6,
+          "terminal_spearman": 0.0,
+          "total_pair_accuracy": 0.8,
+          "total_spearman": 0.7,
+          "top1_regret": 0.0,
+          "v_mae": 59.42052535272016,
+          "j_mae": 54.67285282367684,
+          "j_bias": -54.67285282367684
+        },
+        {
+          "scenario": 40765,
+          "before": 150,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.5333333333333333,
+          "terminal_spearman": 0.028571428571428574,
+          "total_pair_accuracy": 0.6,
+          "total_spearman": 0.08571428571428573,
+          "top1_regret": 5.340769494915662,
+          "v_mae": 79.75179642138148,
+          "j_mae": 75.73677900031815,
+          "j_bias": 75.73677900031815
+        },
+        {
+          "scenario": 40765,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.13333333333333333,
+          "terminal_spearman": -0.8857142857142858,
+          "total_pair_accuracy": 0.13333333333333333,
+          "total_spearman": -0.8857142857142858,
+          "top1_regret": 30.397045530844593,
+          "v_mae": 61.36141489250199,
+          "j_mae": 58.477416582441286,
+          "j_bias": -58.477416582441286
+        },
+        {
+          "scenario": 40765,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.4,
+          "terminal_spearman": -0.5428571428571429,
+          "total_pair_accuracy": 0.4,
+          "total_spearman": -0.5428571428571429,
+          "top1_regret": 23.138961214324837,
+          "v_mae": 65.37242029411331,
+          "j_mae": 62.292324190616476,
+          "j_bias": -62.292324190616476
+        },
+        {
+          "scenario": 40765,
+          "before": 50,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.5333333333333333,
+          "terminal_spearman": -0.028571428571428574,
+          "total_pair_accuracy": 0.5333333333333333,
+          "total_spearman": -0.028571428571428574,
+          "top1_regret": 8.381458265047371,
+          "v_mae": 87.63700963357503,
+          "j_mae": 83.61171302444167,
+          "j_bias": 83.61171302444167
+        },
+        {
+          "scenario": 40765,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.4666666666666667,
+          "terminal_spearman": 0.028571428571428574,
+          "total_pair_accuracy": 0.4666666666666667,
+          "total_spearman": 0.028571428571428574,
+          "top1_regret": 3.910829973460096,
+          "v_mae": 68.41478505433186,
+          "j_mae": 64.81071956194465,
+          "j_bias": -64.81071956194465
+        },
+        {
+          "scenario": 40765,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.4666666666666667,
+          "terminal_spearman": -0.14285714285714288,
+          "total_pair_accuracy": 0.4666666666666667,
+          "total_spearman": -0.14285714285714288,
+          "top1_regret": 8.992017511826504,
+          "v_mae": 70.99930603008056,
+          "j_mae": 67.26888347513987,
+          "j_bias": -67.26888347513987
+        },
+        {
+          "scenario": 40936,
+          "before": 150,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.4,
+          "terminal_spearman": 0.0,
+          "total_pair_accuracy": 0.6,
+          "total_spearman": 0.3,
+          "top1_regret": 1.5488801812744128,
+          "v_mae": 137.85853651507114,
+          "j_mae": 131.25914859212554,
+          "j_bias": 131.25914859212554
+        },
+        {
+          "scenario": 40936,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.6,
+          "terminal_spearman": 0.0,
+          "total_pair_accuracy": 0.6,
+          "total_spearman": 0.0,
+          "top1_regret": 1.3300940088158484,
+          "v_mae": 26.168186965153478,
+          "j_mae": 24.748319036159806,
+          "j_bias": -24.748319036159806
+        },
+        {
+          "scenario": 40936,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.3,
+          "terminal_spearman": -0.39999999999999997,
+          "total_pair_accuracy": 0.3,
+          "total_spearman": -0.39999999999999997,
+          "top1_regret": 1.9276708110737673,
+          "v_mae": 18.207329573796056,
+          "j_mae": 17.176667445342524,
+          "j_bias": -17.176667445342524
+        },
+        {
+          "scenario": 40936,
+          "before": 50,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.4,
+          "terminal_spearman": -0.19999999999999998,
+          "total_pair_accuracy": 0.7,
+          "total_spearman": 0.49999999999999994,
+          "top1_regret": 0.7103254158654693,
+          "v_mae": 102.59895507277795,
+          "j_mae": 100.19553006476396,
+          "j_bias": 100.19553006476396
+        },
+        {
+          "scenario": 40936,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.4,
+          "terminal_spearman": -0.19999999999999998,
+          "total_pair_accuracy": 0.7,
+          "total_spearman": 0.49999999999999994,
+          "top1_regret": 0.7103254158654693,
+          "v_mae": 42.846131597143916,
+          "j_mae": 38.138755769377006,
+          "j_bias": -38.138755769377006
+        },
+        {
+          "scenario": 40936,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.5,
+          "terminal_spearman": 0.09999999999999999,
+          "total_pair_accuracy": 0.4,
+          "total_spearman": -0.19999999999999998,
+          "top1_regret": 0.41298730427628527,
+          "v_mae": 42.743087468725946,
+          "j_mae": 38.04074946170124,
+          "j_bias": -38.04074946170124
+        },
+        {
+          "scenario": 40974,
+          "before": 150,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.1,
+          "terminal_spearman": -0.8999999999999998,
+          "total_pair_accuracy": 0.4,
+          "total_spearman": -0.3,
+          "top1_regret": 0.944718001915092,
+          "v_mae": 118.67062077817445,
+          "j_mae": 113.2095959463099,
+          "j_bias": 113.2095959463099
+        },
+        {
+          "scenario": 40974,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.1,
+          "terminal_spearman": -0.8999999999999998,
+          "total_pair_accuracy": 0.5,
+          "total_spearman": -0.09999999999999999,
+          "top1_regret": 0.24294658170022387,
+          "v_mae": 44.69002070131775,
+          "j_mae": 42.16435438697457,
+          "j_bias": -42.16435438697457
+        },
+        {
+          "scenario": 40974,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.2,
+          "terminal_spearman": -0.7999999999999999,
+          "total_pair_accuracy": 0.7,
+          "total_spearman": 0.49999999999999994,
+          "top1_regret": 0.0,
+          "v_mae": 44.07379603090759,
+          "j_mae": 41.578256900656406,
+          "j_bias": -41.578256900656406
+        },
+        {
+          "scenario": 40974,
+          "before": 50,
+          "model": "old_Q",
+          "terminal_pair_accuracy": 0.8,
+          "terminal_spearman": 0.7,
+          "total_pair_accuracy": 0.8,
+          "total_spearman": 0.7999999999999999,
+          "top1_regret": 0.0,
+          "v_mae": 64.35740134171036,
+          "j_mae": 57.94646315583519,
+          "j_bias": 57.94646315583519
+        },
+        {
+          "scenario": 40974,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "terminal_pair_accuracy": 0.4,
+          "terminal_spearman": -0.3,
+          "total_pair_accuracy": 0.7,
+          "total_spearman": 0.39999999999999997,
+          "top1_regret": 1.2187915859707914,
+          "v_mae": 100.2094565684459,
+          "j_mae": 98.57473176520219,
+          "j_bias": -98.57473176520219
+        },
+        {
+          "scenario": 40974,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "terminal_pair_accuracy": 0.3,
+          "terminal_spearman": -0.49999999999999994,
+          "total_pair_accuracy": 0.3,
+          "total_spearman": -0.6,
+          "top1_regret": 1.2187915859707914,
+          "v_mae": 104.70034096785996,
+          "j_mae": 102.84605711816168,
+          "j_bias": -102.84605711816168
+        }
+      ],
+      "predictions": [
+        {
+          "scenario": 40058,
+          "before": 150,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            233.82119750976562,
+            234.67796325683594,
+            234.65087890625,
+            234.6253662109375,
+            234.0886993408203
+          ],
+          "real_continuation": [
+            94.7825920591819,
+            95.56574413404941,
+            95.59199899176534,
+            95.58357679911607,
+            95.72299940351589
+          ],
+          "predicted_return": [
+            232.49044814218178,
+            233.39346906257288,
+            233.39144200316514,
+            233.3864255842709,
+            232.92984840385816
+          ],
+          "real_return": [
+            100.14857640485585,
+            100.8052316721965,
+            100.82691498987057,
+            100.81302194817968,
+            100.91564136657513
+          ],
+          "selected_label": "Q1",
+          "selected_real_return": 100.8052316721965,
+          "baseline_real_return": 100.14857640485585
+        },
+        {
+          "scenario": 40058,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            81.71322631835938,
+            79.08812713623047,
+            79.15687561035156,
+            79.16561889648438,
+            79.08814239501953
+          ],
+          "real_continuation": [
+            94.7825920591819,
+            95.56574413404941,
+            95.59199899176534,
+            95.58357679911607,
+            95.72299940351589
+          ],
+          "predicted_return": [
+            87.81902577783512,
+            85.41040991915224,
+            85.49953042387915,
+            85.52709521372344,
+            85.50725861467936
+          ],
+          "real_return": [
+            100.14857640485585,
+            100.8052316721965,
+            100.82691498987057,
+            100.81302194817968,
+            100.91564136657513
+          ],
+          "selected_label": "B",
+          "selected_real_return": 100.14857640485585,
+          "baseline_real_return": 100.14857640485585
+        },
+        {
+          "scenario": 40058,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            74.680908203125,
+            68.76094818115234,
+            68.76237487792969,
+            68.57351684570312,
+            69.83027648925781
+          ],
+          "real_continuation": [
+            94.7825920591819,
+            95.56574413404941,
+            95.59199899176534,
+            95.58357679911607,
+            95.72299940351589
+          ],
+          "predicted_return": [
+            81.13051723827084,
+            75.58812607209302,
+            75.61321615679572,
+            75.45284034389442,
+            76.70200917144302
+          ],
+          "real_return": [
+            100.14857640485585,
+            100.8052316721965,
+            100.82691498987057,
+            100.81302194817968,
+            100.91564136657513
+          ],
+          "selected_label": "B",
+          "selected_real_return": 100.14857640485585,
+          "baseline_real_return": 100.14857640485585
+        },
+        {
+          "scenario": 40058,
+          "before": 50,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            211.616943359375,
+            217.3512725830078,
+            218.09805297851562,
+            218.0988006591797,
+            216.281005859375
+          ],
+          "real_continuation": [
+            106.90913858266217,
+            117.6919255744218,
+            129.36098146050594,
+            129.1200341999998,
+            124.49816584027911
+          ],
+          "predicted_return": [
+            211.14513118444302,
+            217.33346821250507,
+            218.49062176460393,
+            218.5477522637675,
+            216.96169928293966
+          ],
+          "real_return": [
+            110.56773928451945,
+            122.61375700298682,
+            134.08431553936597,
+            133.80667726379386,
+            129.69257724715956
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 133.80667726379386,
+          "baseline_real_return": 110.56773928451945
+        },
+        {
+          "scenario": 40058,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            60.634735107421875,
+            65.98396301269531,
+            67.14329528808594,
+            68.04785919189453,
+            68.31499481201172
+          ],
+          "real_continuation": [
+            106.90913858266217,
+            117.6919255744218,
+            129.36098146050594,
+            129.1200341999998,
+            124.49816584027911
+          ],
+          "predicted_return": [
+            67.54443328259549,
+            73.36649657072758,
+            74.91603236811079,
+            75.83279157400239,
+            76.22973690035224
+          ],
+          "real_return": [
+            110.56773928451945,
+            122.61375700298682,
+            134.08431553936597,
+            133.80667726379386,
+            129.69257724715956
+          ],
+          "selected_label": "Q0",
+          "selected_real_return": 129.69257724715956,
+          "baseline_real_return": 110.56773928451945
+        },
+        {
+          "scenario": 40058,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            58.40336608886719,
+            62.09727096557617,
+            64.99700927734375,
+            65.04417419433594,
+            61.185543060302734
+          ],
+          "real_continuation": [
+            106.90913858266217,
+            117.6919255744218,
+            129.36098146050594,
+            129.1200341999998,
+            124.49816584027911
+          ],
+          "predicted_return": [
+            65.42215575035607,
+            69.66982464522175,
+            72.8746781409609,
+            72.97595654078486,
+            69.44884358148852
+          ],
+          "real_return": [
+            110.56773928451945,
+            122.61375700298682,
+            134.08431553936597,
+            133.80667726379386,
+            129.69257724715956
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 133.80667726379386,
+          "baseline_real_return": 110.56773928451945
+        },
+        {
+          "scenario": 40250,
+          "before": 150,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            235.140380859375,
+            235.6925048828125,
+            235.69287109375,
+            235.6606903076172,
+            234.21104431152344
+          ],
+          "real_continuation": [
+            69.41373883727107,
+            68.95435861276437,
+            69.37654761588539,
+            69.36940987667604,
+            69.76588478783997
+          ],
+          "predicted_return": [
+            233.57769628912502,
+            234.16520207360008,
+            234.181718974869,
+            234.1619585969538,
+            232.85906288904243
+          ],
+          "real_return": [
+            75.84008784135116,
+            75.43046463933771,
+            75.82829213064245,
+            75.82685770397082,
+            76.234857145007
+          ],
+          "selected_label": "Q05",
+          "selected_real_return": 75.82829213064245,
+          "baseline_real_return": 75.84008784135116
+        },
+        {
+          "scenario": 40250,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            79.1818618774414,
+            80.03389739990234,
+            80.26316833496094,
+            80.34268188476562,
+            77.4334945678711
+          ],
+          "real_continuation": [
+            69.41373883727107,
+            68.95435861276437,
+            69.37654761588539,
+            69.36940987667604,
+            69.76588478783997
+          ],
+          "predicted_return": [
+            85.24397916550834,
+            86.11673379530885,
+            86.35096428361157,
+            86.43743751280817,
+            83.74635736442406
+          ],
+          "real_return": [
+            75.84008784135116,
+            75.43046463933771,
+            75.82829213064245,
+            75.82685770397082,
+            76.234857145007
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 75.82685770397082,
+          "baseline_real_return": 75.84008784135116
+        },
+        {
+          "scenario": 40250,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            70.51158905029297,
+            68.89554595947266,
+            69.07330322265625,
+            69.43624114990234,
+            73.31681823730469
+          ],
+          "real_continuation": [
+            69.41373883727107,
+            68.95435861276437,
+            69.37654761588539,
+            69.36940987667604,
+            69.76588478783997
+          ],
+          "predicted_return": [
+            76.99759541345566,
+            75.52293563299418,
+            75.70817094949234,
+            76.06421195673511,
+            79.83094507214355
+          ],
+          "real_return": [
+            75.84008784135116,
+            75.43046463933771,
+            75.82829213064245,
+            75.82685770397082,
+            76.234857145007
+          ],
+          "selected_label": "Q0",
+          "selected_real_return": 76.234857145007,
+          "baseline_real_return": 75.84008784135116
+        },
+        {
+          "scenario": 40250,
+          "before": 50,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            207.0695037841797,
+            214.12864685058594,
+            214.5958709716797,
+            214.516845703125,
+            209.9794921875
+          ],
+          "real_continuation": [
+            100.96871535540654,
+            98.74994138477466,
+            98.30989642530677,
+            98.76759940327165,
+            100.98107333001283
+          ],
+          "predicted_return": [
+            203.4201438083992,
+            211.1233120616207,
+            211.66217080246224,
+            211.56557953542506,
+            207.30705900589237
+          ],
+          "real_return": [
+            100.7780203892632,
+            99.8560291354169,
+            99.56761160221228,
+            99.93525194841708,
+            102.17440193822961
+          ],
+          "selected_label": "Q05",
+          "selected_real_return": 99.56761160221228,
+          "baseline_real_return": 100.7780203892632
+        },
+        {
+          "scenario": 40250,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            59.1293830871582,
+            74.03277587890625,
+            74.83425903320312,
+            74.44608306884766,
+            60.95615005493164
+          ],
+          "real_continuation": [
+            100.96871535540654,
+            98.74994138477466,
+            98.30989642530677,
+            98.76759940327165,
+            100.98107333001283
+          ],
+          "predicted_return": [
+            62.71280599860779,
+            77.87671911784491,
+            78.73349498947755,
+            78.34286738406763,
+            65.56945838614661
+          ],
+          "real_return": [
+            100.7780203892632,
+            99.8560291354169,
+            99.56761160221228,
+            99.93525194841708,
+            102.17440193822961
+          ],
+          "selected_label": "Q05",
+          "selected_real_return": 99.56761160221228,
+          "baseline_real_return": 100.7780203892632
+        },
+        {
+          "scenario": 40250,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            62.58594512939453,
+            63.4168815612793,
+            63.456871032714844,
+            63.36060333251953,
+            61.35771560668945
+          ],
+          "real_continuation": [
+            100.96871535540654,
+            98.74994138477466,
+            98.30989642530677,
+            98.76759940327165,
+            100.98107333001283
+          ],
+          "predicted_return": [
+            66.00037694721823,
+            67.77983518355018,
+            67.91234674899215,
+            67.79935603167678,
+            65.95139142417406
+          ],
+          "real_return": [
+            100.7780203892632,
+            99.8560291354169,
+            99.56761160221228,
+            99.93525194841708,
+            102.17440193822961
+          ],
+          "selected_label": "Q05",
+          "selected_real_return": 99.56761160221228,
+          "baseline_real_return": 100.7780203892632
+        },
+        {
+          "scenario": 40614,
+          "before": 150,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            221.4102783203125,
+            221.582763671875,
+            222.409423828125,
+            222.5026397705078,
+            222.1648712158203
+          ],
+          "real_continuation": [
+            102.75813890596724,
+            102.33998213142338,
+            100.39313757102148,
+            90.97977352222402,
+            98.80868115962315
+          ],
+          "predicted_return": [
+            220.86088618882786,
+            221.41309181893303,
+            222.2883411304647,
+            222.41074647084224,
+            222.03464558890755
+          ],
+          "real_return": [
+            108.19448060840034,
+            107.97918466443542,
+            106.07666425499892,
+            97.14427408468617,
+            104.57417881174297
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 97.14427408468617,
+          "baseline_real_return": 108.19448060840034
+        },
+        {
+          "scenario": 40614,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            70.67237091064453,
+            68.4358901977539,
+            73.2137680053711,
+            73.41264343261719,
+            73.17105102539062
+          ],
+          "real_continuation": [
+            102.75813890596724,
+            102.33998213142338,
+            100.39313757102148,
+            90.97977352222402,
+            98.80868115962315
+          ],
+          "predicted_return": [
+            77.49254527696166,
+            75.75355903696209,
+            80.38685122564902,
+            80.609750365541,
+            80.32512358546774
+          ],
+          "real_return": [
+            108.19448060840034,
+            107.97918466443542,
+            106.07666425499892,
+            97.14427408468617,
+            104.57417881174297
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 97.14427408468617,
+          "baseline_real_return": 108.19448060840034
+        },
+        {
+          "scenario": 40614,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            72.71395111083984,
+            69.48812103271484,
+            72.22233581542969,
+            70.99542236328125,
+            70.15812683105469
+          ],
+          "real_continuation": [
+            102.75813890596724,
+            102.33998213142338,
+            100.39313757102148,
+            90.97977352222402,
+            98.80868115962315
+          ],
+          "predicted_return": [
+            79.43431275383819,
+            76.75434637477929,
+            79.44389009104725,
+            78.31070707720573,
+            77.45950105920292
+          ],
+          "real_return": [
+            108.19448060840034,
+            107.97918466443542,
+            106.07666425499892,
+            97.14427408468617,
+            104.57417881174297
+          ],
+          "selected_label": "Q05",
+          "selected_real_return": 106.07666425499892,
+          "baseline_real_return": 108.19448060840034
+        },
+        {
+          "scenario": 40614,
+          "before": 50,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            223.10520935058594,
+            237.66751098632812,
+            237.7750701904297,
+            238.1960906982422,
+            238.0259552001953
+          ],
+          "real_continuation": [
+            136.959163324643,
+            133.737453513356,
+            133.30693641418083,
+            134.87261703400713,
+            134.69319994665213
+          ],
+          "predicted_return": [
+            223.22204616057297,
+            240.10452138132496,
+            240.2407661528714,
+            240.79545218670046,
+            240.58646396305903
+          ],
+          "real_return": [
+            139.73314946664146,
+            139.3058251755713,
+            138.91434527976557,
+            140.7089831233099,
+            140.37710429930362
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 140.7089831233099,
+          "baseline_real_return": 139.73314946664146
+        },
+        {
+          "scenario": 40614,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            76.54924011230469,
+            82.37694549560547,
+            82.0208511352539,
+            81.65254211425781,
+            81.45285034179688
+          ],
+          "real_continuation": [
+            136.959163324643,
+            133.737453513356,
+            133.30693641418083,
+            134.87261703400713,
+            134.69319994665213
+          ],
+          "predicted_return": [
+            83.83118873465082,
+            92.40610154613978,
+            92.10136074586944,
+            91.90530752026007,
+            91.66820802654001
+          ],
+          "real_return": [
+            139.73314946664146,
+            139.3058251755713,
+            138.91434527976557,
+            140.7089831233099,
+            140.37710429930362
+          ],
+          "selected_label": "Q1",
+          "selected_real_return": 139.3058251755713,
+          "baseline_real_return": 139.73314946664146
+        },
+        {
+          "scenario": 40614,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            72.09336853027344,
+            75.94463348388672,
+            75.79833984375,
+            76.46487426757812,
+            76.16552734375
+          ],
+          "real_continuation": [
+            136.959163324643,
+            133.737453513356,
+            133.30693641418083,
+            134.87261703400713,
+            134.69319994665213
+          ],
+          "predicted_return": [
+            79.59316442470754,
+            86.28826485068066,
+            86.18306762704742,
+            86.97126441749242,
+            86.6393819062796
+          ],
+          "real_return": [
+            139.73314946664146,
+            139.3058251755713,
+            138.91434527976557,
+            140.7089831233099,
+            140.37710429930362
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 140.7089831233099,
+          "baseline_real_return": 139.73314946664146
+        },
+        {
+          "scenario": 40765,
+          "before": 150,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0",
+            "elite_Q1"
+          ],
+          "predicted_value": [
+            220.29959106445312,
+            225.1846466064453,
+            224.30810546875,
+            224.29345703125,
+            223.94908142089844,
+            225.2791748046875
+          ],
+          "real_continuation": [
+            159.4289901261216,
+            154.24003111426427,
+            134.60185191363746,
+            135.06848454802028,
+            127.42982911887026,
+            154.03409104728166
+          ],
+          "predicted_return": [
+            218.62238766694463,
+            223.3125947130602,
+            222.91845419970923,
+            222.924337368313,
+            222.58373673573533,
+            223.3784821925001
+          ],
+          "real_return": [
+            161.14990512051213,
+            156.03774646504954,
+            137.5587281673406,
+            138.0109439061873,
+            130.75285958966754,
+            155.80913562559647
+          ],
+          "selected_label": "elite_Q1",
+          "selected_real_return": 155.80913562559647,
+          "baseline_real_return": 161.14990512051213
+        },
+        {
+          "scenario": 40765,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0",
+            "elite_Q1"
+          ],
+          "predicted_value": [
+            77.43778991699219,
+            81.65423583984375,
+            84.55525970458984,
+            85.48074340820312,
+            86.01388549804688,
+            81.49287414550781
+          ],
+          "real_continuation": [
+            159.4289901261216,
+            154.24003111426427,
+            134.60185191363746,
+            135.06848454802028,
+            127.42982911887026,
+            154.03409104728166
+          ],
+          "predicted_return": [
+            82.74509069394207,
+            86.7993764017483,
+            89.99811598334827,
+            90.89816829377924,
+            91.3921835780584,
+            86.62188442882962
+          ],
+          "real_return": [
+            161.14990512051213,
+            156.03774646504954,
+            137.5587281673406,
+            138.0109439061873,
+            130.75285958966754,
+            155.80913562559647
+          ],
+          "selected_label": "Q0",
+          "selected_real_return": 130.75285958966754,
+          "baseline_real_return": 161.14990512051213
+        },
+        {
+          "scenario": 40765,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0",
+            "elite_Q1"
+          ],
+          "predicted_value": [
+            72.92030334472656,
+            70.04547119140625,
+            87.58985900878906,
+            87.74655151367188,
+            85.85121154785156,
+            68.41535949707031
+          ],
+          "real_continuation": [
+            159.4289901261216,
+            154.24003111426427,
+            134.60185191363746,
+            135.06848454802028,
+            127.42982911887026,
+            154.03409104728166
+          ],
+          "predicted_return": [
+            78.44846374663302,
+            75.75816350259629,
+            92.88435392476367,
+            93.05320118821146,
+            91.23746274671703,
+            74.18372862173328
+          ],
+          "real_return": [
+            161.14990512051213,
+            156.03774646504954,
+            137.5587281673406,
+            138.0109439061873,
+            130.75285958966754,
+            155.80913562559647
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 138.0109439061873,
+          "baseline_real_return": 161.14990512051213
+        },
+        {
+          "scenario": 40765,
+          "before": 50,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0",
+            "elite_Q1"
+          ],
+          "predicted_value": [
+            237.84744262695312,
+            238.6632843017578,
+            238.60227966308594,
+            238.46682739257812,
+            237.17466735839844,
+            238.71665954589844
+          ],
+          "real_continuation": [
+            158.42646376993483,
+            159.14029648415797,
+            149.68303378136363,
+            130.986978409449,
+            155.08712787727504,
+            150.32520276504115
+          ],
+          "predicted_return": [
+            240.39082188618158,
+            241.10785243953342,
+            241.0700815877908,
+            240.9773386061188,
+            239.82137884914573,
+            241.12378426337546
+          ],
+          "real_return": [
+            164.5377297153463,
+            165.26523487536556,
+            156.27321736353906,
+            138.50661601902124,
+            161.35440490190547,
+            156.8837766103182
+          ],
+          "selected_label": "elite_Q1",
+          "selected_real_return": 156.8837766103182,
+          "baseline_real_return": 164.5377297153463
+        },
+        {
+          "scenario": 40765,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0",
+            "elite_Q1"
+          ],
+          "predicted_value": [
+            83.2251968383789,
+            80.50342559814453,
+            80.94632720947266,
+            81.8148193359375,
+            86.48922729492188,
+            80.181396484375
+          ],
+          "real_continuation": [
+            158.42646376993483,
+            159.14029648415797,
+            149.68303378136363,
+            130.986978409449,
+            155.08712787727504,
+            150.32520276504115
+          ],
+          "predicted_return": [
+            93.32804764633647,
+            90.6804189501795,
+            91.12191840461992,
+            91.98403704359225,
+            96.50294015832515,
+            90.33929991077457
+          ],
+          "real_return": [
+            164.5377297153463,
+            165.26523487536556,
+            156.27321736353906,
+            138.50661601902124,
+            161.35440490190547,
+            156.8837766103182
+          ],
+          "selected_label": "Q0",
+          "selected_real_return": 161.35440490190547,
+          "baseline_real_return": 164.5377297153463
+        },
+        {
+          "scenario": 40765,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0",
+            "elite_Q1"
+          ],
+          "predicted_value": [
+            79.27950286865234,
+            80.59580993652344,
+            80.83192443847656,
+            79.50037384033203,
+            77.0326919555664,
+            80.4129638671875
+          ],
+          "real_continuation": [
+            158.42646376993483,
+            159.14029648415797,
+            149.68303378136363,
+            130.986978409449,
+            155.08712787727504,
+            150.32520276504115
+          ],
+          "predicted_return": [
+            89.57525839838536,
+            90.76828662425851,
+            91.01310877766355,
+            89.78274463786647,
+            87.50873421719325,
+            90.5595459792894
+          ],
+          "real_return": [
+            164.5377297153463,
+            165.26523487536556,
+            156.27321736353906,
+            138.50661601902124,
+            161.35440490190547,
+            156.8837766103182
+          ],
+          "selected_label": "Q05",
+          "selected_real_return": 156.27321736353906,
+          "baseline_real_return": 164.5377297153463
+        },
+        {
+          "scenario": 40936,
+          "before": 150,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            221.5973663330078,
+            228.79556274414062,
+            228.78965759277344,
+            228.765625,
+            214.6207733154297
+          ],
+          "real_continuation": [
+            88.07266486939209,
+            86.29438930972034,
+            86.33640401556369,
+            86.5523216054784,
+            86.0205226098414
+          ],
+          "predicted_return": [
+            219.52011639065222,
+            226.24826085576024,
+            226.26977930218436,
+            226.25849068444222,
+            213.10722093332242
+          ],
+          "real_return": [
+            92.30168559836163,
+            90.70802781345127,
+            90.75280541708722,
+            90.97159158954578,
+            90.37401478728786
+          ],
+          "selected_label": "Q05",
+          "selected_real_return": 90.75280541708722,
+          "baseline_real_return": 92.30168559836163
+        },
+        {
+          "scenario": 40936,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            57.918548583984375,
+            61.653079986572266,
+            61.827701568603516,
+            62.04667663574219,
+            58.98936080932617
+          ],
+          "real_continuation": [
+            88.07266486939209,
+            86.29438930972034,
+            86.33640401556369,
+            86.5523216054784,
+            86.0205226098414
+          ],
+          "predicted_return": [
+            63.843545404977704,
+            67.27736321872794,
+            67.47058245828589,
+            67.69042087175421,
+            65.08461807118897
+          ],
+          "real_return": [
+            92.30168559836163,
+            90.70802781345127,
+            90.75280541708722,
+            90.97159158954578,
+            90.37401478728786
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 90.97159158954578,
+          "baseline_real_return": 92.30168559836163
+        },
+        {
+          "scenario": 40936,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            69.45248413085938,
+            67.32402038574219,
+            67.10765838623047,
+            67.001708984375,
+            71.3537826538086
+          ],
+          "real_continuation": [
+            88.07266486939209,
+            86.29438930972034,
+            86.33640401556369,
+            86.5523216054784,
+            86.0205226098414
+          ],
+          "predicted_return": [
+            74.81358759247996,
+            72.67105171029925,
+            72.49240253020844,
+            72.40320201085706,
+            76.84454413517642
+          ],
+          "real_return": [
+            92.30168559836163,
+            90.70802781345127,
+            90.75280541708722,
+            90.97159158954578,
+            90.37401478728786
+          ],
+          "selected_label": "Q0",
+          "selected_real_return": 90.37401478728786,
+          "baseline_real_return": 92.30168559836163
+        },
+        {
+          "scenario": 40936,
+          "before": 50,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            213.0266571044922,
+            214.6074676513672,
+            214.47549438476562,
+            214.24560546875,
+            213.72874450683594
+          ],
+          "real_continuation": [
+            111.60713031785717,
+            111.1562820237018,
+            111.88885044326511,
+            110.92095693842539,
+            111.5159740290717
+          ],
+          "predicted_return": [
+            208.9510162983288,
+            211.43810883498463,
+            211.3494205422594,
+            211.1538993899303,
+            210.62870787334123
+          ],
+          "real_return": [
+            110.05487522417856,
+            110.42614049363348,
+            111.13646590949895,
+            110.20254238249088,
+            110.72347860522267
+          ],
+          "selected_label": "Q1",
+          "selected_real_return": 110.42614049363348,
+          "baseline_real_return": 110.05487522417856
+        },
+        {
+          "scenario": 40936,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            65.21964263916016,
+            69.94435119628906,
+            69.65711975097656,
+            69.26960754394531,
+            68.76781463623047
+          ],
+          "real_continuation": [
+            111.60713031785717,
+            111.1562820237018,
+            111.88885044326511,
+            110.92095693842539,
+            111.5159740290717
+          ],
+          "predicted_return": [
+            68.37027716520925,
+            73.84756274269876,
+            73.61120683353056,
+            73.2657685826407,
+            72.75490844406022
+          ],
+          "real_return": [
+            110.05487522417856,
+            110.42614049363348,
+            111.13646590949895,
+            110.20254238249088,
+            110.72347860522267
+          ],
+          "selected_label": "Q1",
+          "selected_real_return": 110.42614049363348,
+          "baseline_real_return": 110.05487522417856
+        },
+        {
+          "scenario": 40936,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            69.53498077392578,
+            67.05012512207031,
+            67.86566162109375,
+            68.28694152832031,
+            70.63604736328125
+          ],
+          "real_continuation": [
+            111.60713031785717,
+            111.1562820237018,
+            111.88885044326511,
+            110.92095693842539,
+            111.5159740290717
+          ],
+          "predicted_return": [
+            72.47463869899138,
+            71.094835193172,
+            71.90733297520273,
+            72.33114504466266,
+            74.53180339448954
+          ],
+          "real_return": [
+            110.05487522417856,
+            110.42614049363348,
+            111.13646590949895,
+            110.20254238249088,
+            110.72347860522267
+          ],
+          "selected_label": "Q0",
+          "selected_real_return": 110.72347860522267,
+          "baseline_real_return": 110.05487522417856
+        },
+        {
+          "scenario": 40974,
+          "before": 150,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            228.3006134033203,
+            238.12588500976562,
+            238.1575164794922,
+            237.9709930419922,
+            235.7224578857422
+          ],
+          "real_continuation": [
+            118.82619314200691,
+            116.74861105207242,
+            115.79215344130917,
+            116.55673062966075,
+            117.00067366439106
+          ],
+          "predicted_return": [
+            225.95503603004818,
+            236.18571105344563,
+            236.21586854192083,
+            236.07063547254893,
+            234.15745105213955
+          ],
+          "real_return": [
+            120.54859600894792,
+            120.73582837990739,
+            119.86860286918942,
+            120.57037428940428,
+            120.81332087110451
+          ],
+          "selected_label": "Q05",
+          "selected_real_return": 119.86860286918942,
+          "baseline_real_return": 120.54859600894792
+        },
+        {
+          "scenario": 40974,
+          "before": 150,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            68.14752960205078,
+            73.11936950683594,
+            73.5810317993164,
+            73.67289733886719,
+            72.95343017578125
+          ],
+          "real_continuation": [
+            118.82619314200691,
+            116.74861105207242,
+            115.79215344130917,
+            116.55673062966075,
+            117.00067366439106
+          ],
+          "predicted_return": [
+            73.63182608853595,
+            79.24635337077507,
+            79.68551750302458,
+            79.80506299170611,
+            79.34619052963899
+          ],
+          "real_return": [
+            120.54859600894792,
+            120.73582837990739,
+            119.86860286918942,
+            120.57037428940428,
+            120.81332087110451
+          ],
+          "selected_label": "Q025",
+          "selected_real_return": 120.57037428940428,
+          "baseline_real_return": 120.54859600894792
+        },
+        {
+          "scenario": 40974,
+          "before": 150,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            67.32849884033203,
+            74.13109588623047,
+            74.34367370605469,
+            74.41673278808594,
+            74.33538055419922
+          ],
+          "real_continuation": [
+            118.82619314200691,
+            116.74861105207242,
+            115.79215344130917,
+            116.55673062966075,
+            117.00067366439106
+          ],
+          "predicted_return": [
+            72.85283768753425,
+            80.20861651322639,
+            80.41087389650147,
+            80.51253237414949,
+            80.66057744385989
+          ],
+          "real_return": [
+            120.54859600894792,
+            120.73582837990739,
+            119.86860286918942,
+            120.57037428940428,
+            120.81332087110451
+          ],
+          "selected_label": "Q0",
+          "selected_real_return": 120.81332087110451,
+          "baseline_real_return": 120.54859600894792
+        },
+        {
+          "scenario": 40974,
+          "before": 50,
+          "model": "old_Q",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            236.25169372558594,
+            237.3199920654297,
+            237.266357421875,
+            237.11099243164062,
+            236.88198852539062
+          ],
+          "real_continuation": [
+            171.75274155406015,
+            172.7674561394227,
+            173.55913095827336,
+            172.82577203831602,
+            172.13891677129791
+          ],
+          "predicted_return": [
+            236.6937324698929,
+            238.39250383783747,
+            238.53870837613067,
+            238.47810977106383,
+            238.23116233217115
+          ],
+          "real_return": [
+            179.71096500462525,
+            180.29496118060405,
+            180.92975659059604,
+            180.16080252386277,
+            179.50541570823194
+          ],
+          "selected_label": "Q05",
+          "selected_real_return": 180.92975659059604,
+          "baseline_real_return": 179.71096500462525
+        },
+        {
+          "scenario": 40974,
+          "before": 50,
+          "model": "predicted_V_SAC",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            77.0218505859375,
+            71.73492431640625,
+            71.58761596679688,
+            71.07221221923828,
+            70.58013153076172
+          ],
+          "real_continuation": [
+            171.75274155406015,
+            172.7674561394227,
+            173.55913095827336,
+            172.82577203831602,
+            172.13891677129791
+          ],
+          "predicted_return": [
+            85.24862601405039,
+            80.9028792907884,
+            80.9599898244287,
+            80.55695473348669,
+            80.0597923191549
+          ],
+          "real_return": [
+            179.71096500462525,
+            180.29496118060405,
+            180.92975659059604,
+            180.16080252386277,
+            179.50541570823194
+          ],
+          "selected_label": "B",
+          "selected_real_return": 179.71096500462525,
+          "baseline_real_return": 179.71096500462525
+        },
+        {
+          "scenario": 40974,
+          "before": 50,
+          "model": "actual_latent_oracle",
+          "labels": [
+            "B",
+            "Q1",
+            "Q05",
+            "Q025",
+            "Q0"
+          ],
+          "predicted_value": [
+            70.42737579345703,
+            66.72438049316406,
+            67.15001678466797,
+            67.69225311279297,
+            67.54828643798828
+          ],
+          "real_continuation": [
+            171.75274155406015,
+            172.7674561394227,
+            173.55913095827336,
+            172.82577203831602,
+            172.13891677129791
+          ],
+          "predicted_return": [
+            78.9765546656431,
+            76.13730062946252,
+            76.73934457794394,
+            77.34224160811436,
+            77.17617393594765
+          ],
+          "real_return": [
+            179.71096500462525,
+            180.29496118060405,
+            180.92975659059604,
+            180.16080252386277,
+            179.50541570823194
+          ],
+          "selected_label": "B",
+          "selected_real_return": 179.71096500462525,
+          "baseline_real_return": 179.71096500462525
+        }
+      ]
+    }
+  },
+  "validation": {
+    "passed": false,
+    "scenarios": [
+      40614,
+      40250,
+      40765,
+      40936,
+      40058,
+      40974
+    ],
+    "pair_accuracy_ci95_low": 0.233125,
+    "spearman_ci95_low": -0.6797619047619047,
+    "j_mae": 42.25887005147506,
+    "old_q_j_mae": 105.45154671568277,
+    "head_state_sha256": "a033460dc9d9445b173b741192204b61d6b52298c8a9ca67fa263f727aa8f433",
+    "interpretation": "Predicted-latent ranking and/or error criteria failed. This candidate must not be configured for online use."
+  },
+  "scope": "Original32 origins/172 branches remain untouched. H=10 prefixes then original SAC. No development/validation labels entered model fitting or epoch selection. Old Q(a_H) is a diagnostic baseline only; V_SAC targets state continuation, never the unexecuted a_H. Oracle actual-latent model is not deployable. CI resamples scenes, not candidate pairs."
+}

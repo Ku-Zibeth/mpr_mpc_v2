@@ -89,6 +89,11 @@ mpr_mpc:
     terminal_action: candidate
     q_aggregation: random_pair
     terminal_q_weight: 1.0  # MPPI only; frozen SAC features retain unweighted Q
+    terminal_value: tdmpc2_q  # sac_value requires an independently validated sidecar
+    sac_value_checkpoint: null
+    audit_candidates: false  # cache/rescore actual samples; output remains baseline/mean
+    record_cost: false
+    cost_weight: 0.0  # continuous score only after existing candidate-ranking validation
     eval_seed: 0
     noise_rho: [0.8, 0.8]
     # Read only by the existing SAC geometry features; never MPPI scoring.
