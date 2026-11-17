@@ -1,0 +1,8 @@
+{
+  "candidate": null,
+  "eligible": [],
+  "iteration_choice": 2,
+  "validation_opened": false,
+  "online_enable": false,
+  "reason": "No method improves development success/return at both seeds without accident worsening. Keep validation sealed; no online selection change."
+}

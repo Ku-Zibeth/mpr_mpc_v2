@@ -46,6 +46,7 @@ class TrajectoryConsequence:
     q_member_values: torch.Tensor | None = None
     cost_penalty: torch.Tensor | None = None
     effective_cost_weight: float = 0.0
+    q_member_indices: tuple[int, ...] | None = None
 
     @property
     def reward_sum(self) -> torch.Tensor:

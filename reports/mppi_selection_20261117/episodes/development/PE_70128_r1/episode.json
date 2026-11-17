@@ -1,0 +1,32 @@
+{
+  "configuration": "PE",
+  "scenario": 70128,
+  "test_seed": 1,
+  "success": 1.0,
+  "crash": 0.0,
+  "out_of_road": 0.0,
+  "route_completion": 0.9840302077872798,
+  "episode_return": 279.8737099180672,
+  "actual_discounted_return": 144.69359130718732,
+  "safety_cost": 0.299168437765943,
+  "length": 290,
+  "baseline_selected_rate": 0.006896551724137931,
+  "first_action_correction": 0.13807078767246728,
+  "selected_predicted_gain": 5.515871225554368,
+  "planning_time_ms": 170.40746990181827,
+  "planning_p95_ms": 185.16465794527903,
+  "counts": {
+    "lattice_prepare": 290,
+    "mppi": 290
+  },
+  "native_done": true,
+  "options": {
+    "mppi": true,
+    "iterations": 2,
+    "terminal_action": "policy_prior",
+    "selection_mode": "best_final_elite"
+  },
+  "policy_context_sha256": "82b2a6917b35d7107f49527636d022595aee1cc3723ddabdf1115523c0301a48",
+  "end_reason": "arrive_dest",
+  "measurement": "Complete agent.act synchronized wall under sharedGPU load; each first action actually executed before new planning. Not isolated latency."
+}

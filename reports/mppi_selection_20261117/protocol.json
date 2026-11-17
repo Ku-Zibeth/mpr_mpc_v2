@@ -1,0 +1,76 @@
+{
+  "base_commit": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+  "checkpoint": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt",
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "source_environment_config": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/benchmark/sac_refinement_BD_fixed100_20261111_152755/part1/config_B_lattice_sac_seed1.yaml",
+  "source_snapshot_sha256": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+  "development_scenarios": [
+    70128,
+    70124,
+    70446,
+    70402
+  ],
+  "validation_scenarios": [
+    73423,
+    73936,
+    73260,
+    73125,
+    73388,
+    73348
+  ],
+  "repeat_seeds": [
+    1,
+    2
+  ],
+  "horizon": 10,
+  "gamma": 0.995,
+  "control_period_ms": 100,
+  "bootstrap_samples": 2000,
+  "bootstrap_seed": 1,
+  "stage1": {
+    "B": {
+      "mppi": false,
+      "iterations": 4,
+      "terminal_action": "candidate",
+      "selection_mode": "weighted_mean"
+    },
+    "M1": {
+      "mppi": true,
+      "iterations": 1,
+      "terminal_action": "candidate",
+      "selection_mode": "weighted_mean"
+    },
+    "M2": {
+      "mppi": true,
+      "iterations": 2,
+      "terminal_action": "candidate",
+      "selection_mode": "weighted_mean"
+    },
+    "M4": {
+      "mppi": true,
+      "iterations": 4,
+      "terminal_action": "candidate",
+      "selection_mode": "weighted_mean"
+    }
+  },
+  "stage2": "At ONE development-selected iteration count, full2x2 terminal_action(candidate/policy_prior) x selection_mode(weighted_mean/best_final_elite); reuse existing candidate+mean data. Exactly24 additional episodes.",
+  "iteration_choice": "Prefer iteration configurations with success>B, crash/OOR<=B, mean actual discounted return>B. If none eligible, choose highest scenario-balanced actual discounted return gain for diagnostic stage2 only, tie fewer iterations; never deploy a diagnostic winner.",
+  "final_choice": "Choose one of six method/iteration definitions acrossstage1 andstage2 using only development: success>B, crash/OOR<=B, actual return gain>0 and positive gain at BOTH repeat seeds. Rank eligible by actual discounted return gain, then success, then fewer iterations. If none eligible, no candidate is qualified; stop without unsealing validation.",
+  "validation": "Only B and ONE selected configuration, both repeats on6 fresh predeclared maps, once. No selection on validation. No switching to another candidate after validation.",
+  "acceptance": {
+    "success_strictly_gt_B": true,
+    "crash_not_worse": true,
+    "OOR_not_worse": true,
+    "paired_actual_return_ci95_low_gt_0": true,
+    "positive_return_gain_both_seeds": true,
+    "leave_one_scene_out_positive_gain": true,
+    "isolated_mean_and_p95_planning_ms_le_100": true
+  },
+  "controls": "Originalcheckpoint/SAC535/actions/Lattice/reward/cost/native1000step horizon frozen.64/8/std/rho/beta=.5/random_pair/cost_weight0 unchanged. Candidate/weighted_mean stage1 only iteration differs. Every act recomputes Lattice+SAC+MPPI, executes selected first action then env.step; no stored H-prefix replay.",
+  "rng": "Same scenario fixes road/traffic RNG; repeat seeds vary global/planner stochasticity. Pair initial observation, traffic and recordableRNG before action. Scene-cluster bootstrap carries both repeats together; repeats are not independent maps.",
+  "logging": "record_candidates=True stores ALL per-round65 action sequences andvalues,3 final candidates/members/sources,real actions/rewards/native done in compressed per-episode NPZ. No full-tensor JSON dumping or extra full WM rollouts. Reevaluate final elite from cachedprefix/z using same final Q members as baseline+mean.",
+  "latency": "Parallel closed-loop times include shared GPU load and are not isolated real-time evidence. After collection, measure full planning on same two fixed development states,100 calls permethod, with oneGPU worker and candidate recording disabled (instrumentationonly). Passing fixed-state latency alone does not certify every driving state.",
+  "formal100": false,
+  "training": false,
+  "online_defaults_changed": false
+}

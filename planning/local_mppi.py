@@ -22,6 +22,7 @@ MPPI_DIAGNOSTIC_KEYS = (
     'q_pair_0','q_pair_1','active_action_steps','terminal_q_weight','weighted_terminal_q_gain',
     'uses_sac_value','effective_cost_weight','cost_penalty','cost_penalty_gain','audit_terminal_candidates',
     'mean_best_sequence_l2','mean_best_first_action_l2','mean_best_predicted_gap','elite_pairwise_l2',
+    'selection_is_elite','selected_source_code','final_elite_value','final_elite_gain',
 ) + tuple(f'iteration_{i}_{name}' for i in range(4) for name in ('elite_value_mean','elite_value_max','sampling_diversity','weight_entropy','effective_sample_size'))
 MPPI_EPISODE_METRICS = {f'mppi_{k}':f'mppi/{k}' for k in (*MPPI_DIAGNOSTIC_KEYS,'total_planning_ms')}
 
@@ -57,6 +58,8 @@ class LocalMPPIResult:
     selected_consequence: dict = field(default_factory=dict)
     evaluation: dict = field(default_factory=dict)
     candidate_audit: dict = field(default_factory=dict)
+    selection_candidates: dict = field(default_factory=dict)
+    candidate_trace: dict = field(default_factory=dict)
     planning_mode: str = 'baseline'  # output provenance, never a search mode
     baseline_score = property(lambda self:self.baseline_wm_value)
     baseline_value = property(lambda self:self.baseline_wm_value)
@@ -82,6 +85,13 @@ class LocalMPPI:
         self.audit_candidates = bool(cfg.get('audit_candidates',False))
         self.record_cost = bool(cfg.get('record_cost',False))
         self.cost_weight = float(cfg.get('cost_weight',0.0))
+        self.selection_mode = str(cfg.get('selection_mode','weighted_mean'))
+        self.compare_final_elite = 'selection_mode' in cfg  # exact legacy behavior when absent
+        self.record_candidates = bool(cfg.get('record_candidates',False))
+        if self.selection_mode not in {'weighted_mean','best_final_elite'}:
+            raise ValueError('Unknown final MPPI selection_mode.')
+        if self.compare_final_elite and self.audit_candidates:
+            raise ValueError('Use record_candidates with explicit selection_mode; legacy audit has a separate Q rescore.')
         if self.terminal_value not in {'tdmpc2_q','sac_value'} or not math.isfinite(self.cost_weight) or self.cost_weight < 0:
             raise ValueError('Invalid MPPI terminal value or continuous cost weight.')
         if self.terminal_value == 'sac_value' and self.terminal_q_weight != 1.:
@@ -165,7 +175,8 @@ class LocalMPPI:
         compute_cost = cost_available and (self.record_cost or self.cost_weight > 0)
         definition = dict(temperature_definition=self.temperature_definition,temperature=self.temperature,
                           terminal_action=self.terminal_action,q_aggregation=self.q_aggregation,q_indices=q_pair,
-                          terminal_q_weight=self.terminal_q_weight,terminal_value=self.terminal_value,cost_weight=self.cost_weight)
+                          terminal_q_weight=self.terminal_q_weight,terminal_value=self.terminal_value,cost_weight=self.cost_weight,
+                          selection_mode=self.selection_mode,uniform_final_comparison=self.compare_final_elite)
         phase,timing,history = PhaseTimings(self.device),{},[]
         evaluated = 0
         error = None
@@ -175,10 +186,18 @@ class LocalMPPI:
         optimized = base
         elite = baseline.new_empty(0)
         audit, cached, sampled, original_scores, original_elites = {}, [], [], [], []
+        trace_actions, trace_values, trace_members = [], [], []
+        selection_candidates = {}
+        final_elite_value = nan
+        selected_source = 'baseline'
+        last_result = last_candidates = last_best = None
 
-        def evaluate(actions):
+        def evaluate(actions, *, final=False):
             nonlocal evaluated
-            result = self.evaluator.evaluate_mppi_candidates(z_t,actions,task=task,compute_cost=compute_cost,**options)
+            kwargs = dict(options)
+            if self.record_candidates or (final and self.compare_final_elite):
+                kwargs['capture_q_indices'] = True
+            result = self.evaluator.evaluate_mppi_candidates(z_t,actions,task=task,compute_cost=compute_cost,**kwargs)
             evaluated += len(actions)
             for key,value in getattr(result,'timings',{}).items():
                 timing[key] = timing.get(key,0.)+value
@@ -207,6 +226,11 @@ class LocalMPPI:
             if not bool(torch.isfinite(values).all()):
                 error = 'non_finite_candidate_return'
                 break
+            last_result, last_candidates, last_best = result, candidates, int(values.argmax())
+            if self.record_candidates:
+                trace_actions.append(candidates.clone())
+                trace_values.append(values.clone())
+                trace_members.append(getattr(result,'q_member_indices',None))
             if self.audit_candidates:
                 cached.append((result,slice(1,None)))
                 sampled.append(candidates[1:].clone())
@@ -230,7 +254,7 @@ class LocalMPPI:
         sequence = baseline
         if error is None:
             with phase.measure('final_value_evaluation'):
-                result,values = evaluate(torch.stack((baseline,mean)))
+                result,values = evaluate(torch.stack((baseline,mean)), final=True)
             if self.audit_candidates:
                 with phase.measure('audit_terminal_rescore'):
                     # All old samples, baseline and mean share ONE reference
@@ -255,13 +279,42 @@ class LocalMPPI:
                     values = common_values[:2]
             baseline_value,optimized_value = values[0],values[1]
             base,optimized = row(result,values,0),row(result,values,1)
+            candidate_sequence, candidate_value, candidate_row = mean,values[1],optimized
+            if self.compare_final_elite:
+                members = getattr(result,'q_member_indices',None)
+                reducer = 'fixed_pair' if self.q_aggregation == 'random_pair' and self.terminal_value == 'tdmpc2_q' else self.q_aggregation
+                if reducer == 'fixed_pair' and members is None:
+                    raise RuntimeError('Final selection requires the exact shared Q member indices.')
+                with phase.measure('final_elite_evaluation'):
+                    elite_result = self.evaluator.rescore_cached_candidates(
+                        [(last_result,[last_best])],task=task,terminal_value=self.terminal_value,
+                        terminal_action=self.terminal_action,q_aggregation=reducer,
+                        q_indices=members if reducer == 'fixed_pair' else q_pair,
+                        terminal_q_weight=self.terminal_q_weight,cost_weight=self.cost_weight)
+                final_elite_value = elite_result.total_value.reshape(-1)[0]
+                elite_sequence = last_candidates[last_best]
+                selection_candidates = dict(mode=self.selection_mode,
+                    actions=torch.stack((baseline,mean,elite_sequence)),
+                    values=torch.stack((values[0],values[1],final_elite_value)),
+                    q_member_indices=members,elite_original_index=last_best,
+                    elite_original_value=float(last_result.total_value[last_best]),
+                    source='last_iteration_top1; cached reward/dynamics; same final Q members')
+                if self.selection_mode == 'best_final_elite':
+                    candidate_sequence,candidate_value=elite_sequence,final_elite_value
+                    candidate_row=row(elite_result,elite_result.total_value.reshape(-1),0)
             if error is not None or not bool(torch.isfinite(values).all()):
                 error = error or 'non_finite_final_return'
-            elif bool(values[1]>values[0]):
-                sequence,selected_value,selected = mean,values[1],row(result,values,1)
+            elif not bool(torch.isfinite(candidate_value)):
+                error = 'non_finite_final_elite'
+            elif bool(candidate_value>values[0]):
+                sequence,selected_value,selected = candidate_sequence,candidate_value,candidate_row
+                selected_source = 'elite' if self.selection_mode == 'best_final_elite' else 'mean'
         baseline_selected = torch.equal(sequence,baseline)
         if baseline_selected:
             selected_value,selected = baseline_value,base
+            selected_source = 'baseline'
+        if selection_candidates:
+            selection_candidates['selected_source'] = selected_source
         if error:
             warnings.warn(f'MPPI WM numerical anomaly ({error}); retaining finite SAC baseline.',RuntimeWarning,stacklevel=2)
         timing.update(phase.finish())
@@ -282,6 +335,9 @@ class LocalMPPI:
             q_ensemble_std=float(selected['q_std']),fixed_q_pair=float(q_pair is not None),
             q_pair_0=float(q_pair[0]) if q_pair else float('nan'),q_pair_1=float(q_pair[1]) if q_pair else float('nan'),
             uses_sac_value=float(self.terminal_value == 'sac_value'),
+            selection_is_elite=float(self.selection_mode == 'best_final_elite'),
+            selected_source_code=float({'baseline':0,'mean':1,'elite':2}[selected_source]),
+            final_elite_value=float(final_elite_value),final_elite_gain=float(final_elite_value-baseline_value),
             effective_cost_weight=float(getattr(result,'effective_cost_weight',0.)),
             cost_penalty=float(result.cost_penalty[0 if baseline_selected else 1]) if getattr(result,'cost_penalty',None) is not None else 0.,
             audit_terminal_candidates=float(len(audit.get('values',[]))),
@@ -316,11 +372,13 @@ class LocalMPPI:
         metrics.update(weight_entropy=float(torch.stack([h['entropy'] for h in history]).mean()) if history else float('nan'),
                        effective_sample_size=float(torch.stack([h['ess'] for h in history]).mean()) if history else float('nan'),
                        sampling_diversity=float(avg.square().mean().sqrt()),sampling_diversity_steering=float(avg[0]),sampling_diversity_throttle=float(avg[-1]))
+        trace = dict(actions=trace_actions,values=trace_values,q_members=trace_members) if self.record_candidates else {}
         return LocalMPPIResult(action=sequence[0],selected_sequence=sequence,initial_mean=initial_mean,final_mean=mean,
             initial_std=initial_std,final_std=std,baseline_wm_value=baseline_value,optimized_wm_value=optimized_value,
             selected_wm_value=selected_value,wm_value_gain=selected_value-baseline_value,elite_values=elite,
             baseline_selected=baseline_selected,max_action_delta=maximum,metrics=metrics,iterations=records,numerical_error=error,evaluation=definition,
             baseline_consequence=base,selected_consequence=selected,candidate_audit=audit,
+            selection_candidates=selection_candidates,candidate_trace=trace,
             planning_mode='baseline' if baseline_selected else 'normal')
 
 

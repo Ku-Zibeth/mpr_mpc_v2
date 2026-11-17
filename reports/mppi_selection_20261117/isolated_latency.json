@@ -1,0 +1,4805 @@
+{
+  "summary": {
+    "B": {
+      "calls": 100,
+      "mean_ms": 67.50285456189886,
+      "p50_ms": 70.50792995141819,
+      "p95_ms": 76.05510776629671,
+      "max_ms": 87.19091396778822,
+      "mean_and_p95_within_control_period": true
+    },
+    "M1": {
+      "calls": 100,
+      "mean_ms": 96.33439163095318,
+      "p50_ms": 99.53346248948947,
+      "p95_ms": 104.25349889555946,
+      "max_ms": 110.97504000645131,
+      "mean_and_p95_within_control_period": false
+    },
+    "M2": {
+      "calls": 100,
+      "mean_ms": 109.20790442149155,
+      "p50_ms": 111.83991597499698,
+      "p95_ms": 117.10251247277483,
+      "max_ms": 125.24181697517633,
+      "mean_and_p95_within_control_period": false
+    },
+    "M4": {
+      "calls": 100,
+      "mean_ms": 133.86850652983412,
+      "p50_ms": 136.0917390557006,
+      "p95_ms": 140.80805959529243,
+      "max_ms": 151.9854220096022,
+      "mean_and_p95_within_control_period": false
+    },
+    "P": {
+      "calls": 100,
+      "mean_ms": 112.05084588611498,
+      "p50_ms": 113.63165150396526,
+      "p95_ms": 118.433852866292,
+      "max_ms": 135.5430770199746,
+      "mean_and_p95_within_control_period": false
+    },
+    "E": {
+      "calls": 100,
+      "mean_ms": 107.8622078965418,
+      "p50_ms": 110.98514997866005,
+      "p95_ms": 114.95851310319267,
+      "max_ms": 125.33314095344394,
+      "mean_and_p95_within_control_period": false
+    },
+    "PE": {
+      "calls": 100,
+      "mean_ms": 110.88360787718557,
+      "p50_ms": 114.1747654764913,
+      "p95_ms": 118.12088643782772,
+      "max_ms": 127.33778299298137,
+      "mean_and_p95_within_control_period": false
+    }
+  },
+  "rows": [
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 0,
+      "planning_time_ms": 60.037759016267955
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 1,
+      "planning_time_ms": 61.3270690664649
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 2,
+      "planning_time_ms": 58.25396999716759
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 3,
+      "planning_time_ms": 58.68810194078833
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 4,
+      "planning_time_ms": 58.293261914514005
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 5,
+      "planning_time_ms": 59.10291092004627
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 6,
+      "planning_time_ms": 59.98346803244203
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 7,
+      "planning_time_ms": 61.23403098899871
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 8,
+      "planning_time_ms": 62.053731991909444
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 9,
+      "planning_time_ms": 57.88720492273569
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 10,
+      "planning_time_ms": 60.00617099925876
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 11,
+      "planning_time_ms": 59.238041983917356
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 12,
+      "planning_time_ms": 60.34060497768223
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 13,
+      "planning_time_ms": 60.26742502581328
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 14,
+      "planning_time_ms": 60.383912990801036
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 15,
+      "planning_time_ms": 60.20178506150842
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 16,
+      "planning_time_ms": 59.76475402712822
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 17,
+      "planning_time_ms": 61.64545798674226
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 18,
+      "planning_time_ms": 59.39580290578306
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 19,
+      "planning_time_ms": 60.908432002179325
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 20,
+      "planning_time_ms": 60.207100003026426
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 21,
+      "planning_time_ms": 60.37839304190129
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 22,
+      "planning_time_ms": 59.704713989049196
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 23,
+      "planning_time_ms": 61.489818966947496
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 24,
+      "planning_time_ms": 60.08235504850745
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 25,
+      "planning_time_ms": 61.16789299994707
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 26,
+      "planning_time_ms": 58.51325509138405
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 27,
+      "planning_time_ms": 59.67952194623649
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 28,
+      "planning_time_ms": 59.83137199655175
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 29,
+      "planning_time_ms": 60.080414987169206
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 30,
+      "planning_time_ms": 60.954266926273704
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 31,
+      "planning_time_ms": 61.936858925037086
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 32,
+      "planning_time_ms": 60.37646101322025
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 33,
+      "planning_time_ms": 61.3747340394184
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 34,
+      "planning_time_ms": 60.14314200729132
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 35,
+      "planning_time_ms": 62.79951997566968
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 36,
+      "planning_time_ms": 60.81549602095038
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 37,
+      "planning_time_ms": 61.353157041594386
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 38,
+      "planning_time_ms": 60.587239102460444
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 39,
+      "planning_time_ms": 59.521331917494535
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 40,
+      "planning_time_ms": 60.403369017876685
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 41,
+      "planning_time_ms": 59.66970499139279
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 42,
+      "planning_time_ms": 61.56262999866158
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 43,
+      "planning_time_ms": 62.40520300343633
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 44,
+      "planning_time_ms": 60.39271305780858
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 45,
+      "planning_time_ms": 60.75741699896753
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 46,
+      "planning_time_ms": 60.615155030973256
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 47,
+      "planning_time_ms": 60.117706074379385
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 48,
+      "planning_time_ms": 60.96356699708849
+    },
+    {
+      "scenario": 70128,
+      "configuration": "B",
+      "call": 49,
+      "planning_time_ms": 69.45285992696881
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 0,
+      "planning_time_ms": 87.73359702900052
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 1,
+      "planning_time_ms": 86.59761701710522
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 2,
+      "planning_time_ms": 86.95567294489592
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 3,
+      "planning_time_ms": 89.88580701407045
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 4,
+      "planning_time_ms": 86.80747100152075
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 5,
+      "planning_time_ms": 89.03274696785957
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 6,
+      "planning_time_ms": 89.06489692162722
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 7,
+      "planning_time_ms": 87.8515139920637
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 8,
+      "planning_time_ms": 87.69772807136178
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 9,
+      "planning_time_ms": 88.45827996265143
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 10,
+      "planning_time_ms": 87.5937829259783
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 11,
+      "planning_time_ms": 87.55147899501026
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 12,
+      "planning_time_ms": 88.71984598226845
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 13,
+      "planning_time_ms": 105.89630110189319
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 14,
+      "planning_time_ms": 101.13547299988568
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 15,
+      "planning_time_ms": 108.08483196888119
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 16,
+      "planning_time_ms": 110.97504000645131
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 17,
+      "planning_time_ms": 88.44933891668916
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 18,
+      "planning_time_ms": 87.7825670177117
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 19,
+      "planning_time_ms": 90.4909479431808
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 20,
+      "planning_time_ms": 92.89209498092532
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 21,
+      "planning_time_ms": 95.0328839244321
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 22,
+      "planning_time_ms": 93.69339398108423
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 23,
+      "planning_time_ms": 94.50290200766176
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 24,
+      "planning_time_ms": 94.56759504973888
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 25,
+      "planning_time_ms": 95.7135979551822
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 26,
+      "planning_time_ms": 92.13496698066592
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 27,
+      "planning_time_ms": 88.87516194954515
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 28,
+      "planning_time_ms": 87.7953649032861
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 29,
+      "planning_time_ms": 88.3128180867061
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 30,
+      "planning_time_ms": 88.28737295698375
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 31,
+      "planning_time_ms": 88.18189799785614
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 32,
+      "planning_time_ms": 87.48808898963034
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 33,
+      "planning_time_ms": 88.27740896958858
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 34,
+      "planning_time_ms": 87.28709805291146
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 35,
+      "planning_time_ms": 89.98979302123189
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 36,
+      "planning_time_ms": 88.707922026515
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 37,
+      "planning_time_ms": 88.99921900592744
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 38,
+      "planning_time_ms": 88.73619395308197
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 39,
+      "planning_time_ms": 88.28502800315619
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 40,
+      "planning_time_ms": 88.07511208578944
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 41,
+      "planning_time_ms": 88.64451199769974
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 42,
+      "planning_time_ms": 90.25423601269722
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 43,
+      "planning_time_ms": 88.27511803247035
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 44,
+      "planning_time_ms": 96.628881059587
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 45,
+      "planning_time_ms": 97.50044299289584
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 46,
+      "planning_time_ms": 92.04221796244383
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 47,
+      "planning_time_ms": 90.31743800733238
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 48,
+      "planning_time_ms": 92.12963411118835
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M1",
+      "call": 49,
+      "planning_time_ms": 99.3943300563842
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 0,
+      "planning_time_ms": 103.99416298605502
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 1,
+      "planning_time_ms": 104.38132600393146
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 2,
+      "planning_time_ms": 103.68161299265921
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 3,
+      "planning_time_ms": 105.7003679452464
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 4,
+      "planning_time_ms": 100.75815801974386
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 5,
+      "planning_time_ms": 99.53911101911217
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 6,
+      "planning_time_ms": 100.9110949235037
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 7,
+      "planning_time_ms": 102.5988720357418
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 8,
+      "planning_time_ms": 103.24045305605978
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 9,
+      "planning_time_ms": 104.42575195338577
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 10,
+      "planning_time_ms": 103.74985600356013
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 11,
+      "planning_time_ms": 107.49928199220449
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 12,
+      "planning_time_ms": 106.18425789289176
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 13,
+      "planning_time_ms": 107.43795894086361
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 14,
+      "planning_time_ms": 107.64853190630674
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 15,
+      "planning_time_ms": 105.73629394639283
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 16,
+      "planning_time_ms": 103.18059590645134
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 17,
+      "planning_time_ms": 105.45588796958327
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 18,
+      "planning_time_ms": 105.0302319927141
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 19,
+      "planning_time_ms": 102.96676901634783
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 20,
+      "planning_time_ms": 104.58592907525599
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 21,
+      "planning_time_ms": 106.53247591108084
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 22,
+      "planning_time_ms": 102.68444393295795
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 23,
+      "planning_time_ms": 100.14841507654637
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 24,
+      "planning_time_ms": 100.86553602013737
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 25,
+      "planning_time_ms": 101.17460996843874
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 26,
+      "planning_time_ms": 100.30509100761265
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 27,
+      "planning_time_ms": 101.07517894357443
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 28,
+      "planning_time_ms": 101.94784891791642
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 29,
+      "planning_time_ms": 101.65540804155171
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 30,
+      "planning_time_ms": 101.30859294440597
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 31,
+      "planning_time_ms": 101.2369260424748
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 32,
+      "planning_time_ms": 103.98879903368652
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 33,
+      "planning_time_ms": 105.2377229789272
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 34,
+      "planning_time_ms": 103.66121190600097
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 35,
+      "planning_time_ms": 102.72557009011507
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 36,
+      "planning_time_ms": 104.48242793790996
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 37,
+      "planning_time_ms": 103.29179500695318
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 38,
+      "planning_time_ms": 101.87113704159856
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 39,
+      "planning_time_ms": 103.85424201376736
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 40,
+      "planning_time_ms": 103.8360190577805
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 41,
+      "planning_time_ms": 103.73506206087768
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 42,
+      "planning_time_ms": 103.18878700491041
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 43,
+      "planning_time_ms": 116.3521739654243
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 44,
+      "planning_time_ms": 102.39090002141893
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 45,
+      "planning_time_ms": 103.96799200680107
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 46,
+      "planning_time_ms": 104.01243902742863
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 47,
+      "planning_time_ms": 100.98241793457419
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 48,
+      "planning_time_ms": 102.71856503095478
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M2",
+      "call": 49,
+      "planning_time_ms": 102.85810299683362
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 0,
+      "planning_time_ms": 129.8994190292433
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 1,
+      "planning_time_ms": 128.16187599673867
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 2,
+      "planning_time_ms": 131.55536097474396
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 3,
+      "planning_time_ms": 130.96284994389862
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 4,
+      "planning_time_ms": 128.36338905617595
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 5,
+      "planning_time_ms": 127.50689499080181
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 6,
+      "planning_time_ms": 128.31854599062353
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 7,
+      "planning_time_ms": 129.35630104038864
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 8,
+      "planning_time_ms": 124.6469879988581
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 9,
+      "planning_time_ms": 126.81401800364256
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 10,
+      "planning_time_ms": 128.92421893775463
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 11,
+      "planning_time_ms": 126.98341091163456
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 12,
+      "planning_time_ms": 129.23516298178583
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 13,
+      "planning_time_ms": 128.6835860228166
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 14,
+      "planning_time_ms": 143.32923607435077
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 15,
+      "planning_time_ms": 130.86567795835435
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 16,
+      "planning_time_ms": 131.109484937042
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 17,
+      "planning_time_ms": 127.83455906901509
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 18,
+      "planning_time_ms": 130.04081102553755
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 19,
+      "planning_time_ms": 126.41609902493656
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 20,
+      "planning_time_ms": 126.04863801971078
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 21,
+      "planning_time_ms": 126.54012604616582
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 22,
+      "planning_time_ms": 128.68924194481224
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 23,
+      "planning_time_ms": 128.7542210193351
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 24,
+      "planning_time_ms": 127.31359899044037
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 25,
+      "planning_time_ms": 127.50614597462118
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 26,
+      "planning_time_ms": 130.82055107224733
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 27,
+      "planning_time_ms": 128.70967504568398
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 28,
+      "planning_time_ms": 134.6381240291521
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 29,
+      "planning_time_ms": 131.54137996025383
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 30,
+      "planning_time_ms": 126.5874820528552
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 31,
+      "planning_time_ms": 126.29767996259034
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 32,
+      "planning_time_ms": 129.5707089593634
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 33,
+      "planning_time_ms": 127.44493805803359
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 34,
+      "planning_time_ms": 128.62846301868558
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 35,
+      "planning_time_ms": 126.24060397502035
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 36,
+      "planning_time_ms": 130.8190580457449
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 37,
+      "planning_time_ms": 126.05773599352688
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 38,
+      "planning_time_ms": 130.94588404055685
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 39,
+      "planning_time_ms": 130.62740804161876
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 40,
+      "planning_time_ms": 128.13157099299133
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 41,
+      "planning_time_ms": 127.77646805625409
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 42,
+      "planning_time_ms": 127.47543898876756
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 43,
+      "planning_time_ms": 127.58512701839209
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 44,
+      "planning_time_ms": 126.06932094786316
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 45,
+      "planning_time_ms": 126.11253396607935
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 46,
+      "planning_time_ms": 127.73766496684402
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 47,
+      "planning_time_ms": 127.43689399212599
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 48,
+      "planning_time_ms": 128.64655500743538
+    },
+    {
+      "scenario": 70128,
+      "configuration": "M4",
+      "call": 49,
+      "planning_time_ms": 127.85826495382935
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 0,
+      "planning_time_ms": 105.44041206594557
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 1,
+      "planning_time_ms": 106.01465706713498
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 2,
+      "planning_time_ms": 104.43234792910516
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 3,
+      "planning_time_ms": 109.16542599443346
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 4,
+      "planning_time_ms": 109.97071804013103
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 5,
+      "planning_time_ms": 106.87982605304569
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 6,
+      "planning_time_ms": 109.70683104824275
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 7,
+      "planning_time_ms": 108.4086779737845
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 8,
+      "planning_time_ms": 107.43971995543689
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 9,
+      "planning_time_ms": 109.951421036385
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 10,
+      "planning_time_ms": 107.74831601884216
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 11,
+      "planning_time_ms": 107.63997805770487
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 12,
+      "planning_time_ms": 107.80774592421949
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 13,
+      "planning_time_ms": 111.77900293841958
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 14,
+      "planning_time_ms": 106.82311200071126
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 15,
+      "planning_time_ms": 104.92745996452868
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 16,
+      "planning_time_ms": 108.81203401368111
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 17,
+      "planning_time_ms": 113.71348099783063
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 18,
+      "planning_time_ms": 106.14848497789353
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 19,
+      "planning_time_ms": 103.09835302177817
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 20,
+      "planning_time_ms": 104.03657099232078
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 21,
+      "planning_time_ms": 104.03017001226544
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 22,
+      "planning_time_ms": 105.33143708016723
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 23,
+      "planning_time_ms": 105.6296790484339
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 24,
+      "planning_time_ms": 106.7951979348436
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 25,
+      "planning_time_ms": 106.33996094111353
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 26,
+      "planning_time_ms": 109.06102892477065
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 27,
+      "planning_time_ms": 110.09414994623512
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 28,
+      "planning_time_ms": 107.76259901467711
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 29,
+      "planning_time_ms": 106.36675008572638
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 30,
+      "planning_time_ms": 106.75592999905348
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 31,
+      "planning_time_ms": 107.93807404115796
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 32,
+      "planning_time_ms": 107.6345689361915
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 33,
+      "planning_time_ms": 104.94000802282244
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 34,
+      "planning_time_ms": 106.59794497769326
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 35,
+      "planning_time_ms": 109.85468700528145
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 36,
+      "planning_time_ms": 104.83006702270359
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 37,
+      "planning_time_ms": 104.6606880845502
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 38,
+      "planning_time_ms": 106.07336997054517
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 39,
+      "planning_time_ms": 103.87403098866343
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 40,
+      "planning_time_ms": 104.13928609341383
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 41,
+      "planning_time_ms": 105.47199693974108
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 42,
+      "planning_time_ms": 104.46993599180132
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 43,
+      "planning_time_ms": 106.39342595823109
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 44,
+      "planning_time_ms": 109.7391169751063
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 45,
+      "planning_time_ms": 107.18803305644542
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 46,
+      "planning_time_ms": 106.58416990190744
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 47,
+      "planning_time_ms": 105.49087496474385
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 48,
+      "planning_time_ms": 106.51761200278997
+    },
+    {
+      "scenario": 70128,
+      "configuration": "P",
+      "call": 49,
+      "planning_time_ms": 106.28304502461106
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 0,
+      "planning_time_ms": 102.29854506906122
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 1,
+      "planning_time_ms": 102.85783803556114
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 2,
+      "planning_time_ms": 102.7012929553166
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 3,
+      "planning_time_ms": 102.36769705079496
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 4,
+      "planning_time_ms": 102.50121203716844
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 5,
+      "planning_time_ms": 105.34718201961368
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 6,
+      "planning_time_ms": 105.60244298540056
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 7,
+      "planning_time_ms": 101.82135598734021
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 8,
+      "planning_time_ms": 100.67066107876599
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 9,
+      "planning_time_ms": 102.29972994420677
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 10,
+      "planning_time_ms": 110.92419794294983
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 11,
+      "planning_time_ms": 102.48864500317723
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 12,
+      "planning_time_ms": 103.27546193730086
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 13,
+      "planning_time_ms": 101.16580396424979
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 14,
+      "planning_time_ms": 100.87754495907575
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 15,
+      "planning_time_ms": 101.05425596702844
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 16,
+      "planning_time_ms": 101.03941604029387
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 17,
+      "planning_time_ms": 100.05761205684394
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 18,
+      "planning_time_ms": 100.15392501372844
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 19,
+      "planning_time_ms": 101.06088290922344
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 20,
+      "planning_time_ms": 101.35755606461316
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 21,
+      "planning_time_ms": 100.78436706680804
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 22,
+      "planning_time_ms": 100.30870197806507
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 23,
+      "planning_time_ms": 103.79580303560942
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 24,
+      "planning_time_ms": 104.803572059609
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 25,
+      "planning_time_ms": 105.16711394302547
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 26,
+      "planning_time_ms": 105.65849801059812
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 27,
+      "planning_time_ms": 105.51531298551708
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 28,
+      "planning_time_ms": 103.44216995872557
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 29,
+      "planning_time_ms": 100.46926501672715
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 30,
+      "planning_time_ms": 101.34379495866597
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 31,
+      "planning_time_ms": 99.91546801757067
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 32,
+      "planning_time_ms": 99.29994901176542
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 33,
+      "planning_time_ms": 100.06687103305012
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 34,
+      "planning_time_ms": 101.57049191184342
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 35,
+      "planning_time_ms": 101.3616370037198
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 36,
+      "planning_time_ms": 101.06362903025001
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 37,
+      "planning_time_ms": 101.53781401459128
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 38,
+      "planning_time_ms": 101.51352791581303
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 39,
+      "planning_time_ms": 102.02159802429378
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 40,
+      "planning_time_ms": 101.53136204462498
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 41,
+      "planning_time_ms": 102.36110293772072
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 42,
+      "planning_time_ms": 102.68895700573921
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 43,
+      "planning_time_ms": 104.0676849661395
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 44,
+      "planning_time_ms": 103.8198210299015
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 45,
+      "planning_time_ms": 103.89103693887591
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 46,
+      "planning_time_ms": 104.24591298215091
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 47,
+      "planning_time_ms": 101.94343398325145
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 48,
+      "planning_time_ms": 101.70984803698957
+    },
+    {
+      "scenario": 70128,
+      "configuration": "E",
+      "call": 49,
+      "planning_time_ms": 101.95701103657484
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 0,
+      "planning_time_ms": 108.03802602458745
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 1,
+      "planning_time_ms": 107.63127298559994
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 2,
+      "planning_time_ms": 106.40956507995725
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 3,
+      "planning_time_ms": 107.42209292948246
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 4,
+      "planning_time_ms": 122.03042197506875
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 5,
+      "planning_time_ms": 104.45204295683652
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 6,
+      "planning_time_ms": 105.0118189305067
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 7,
+      "planning_time_ms": 105.15463002957404
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 8,
+      "planning_time_ms": 106.59907408989966
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 9,
+      "planning_time_ms": 107.07468702457845
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 10,
+      "planning_time_ms": 106.0490469681099
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 11,
+      "planning_time_ms": 108.96586591843516
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 12,
+      "planning_time_ms": 106.58208304084837
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 13,
+      "planning_time_ms": 106.11129808239639
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 14,
+      "planning_time_ms": 105.62788799870759
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 15,
+      "planning_time_ms": 104.9993570195511
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 16,
+      "planning_time_ms": 105.19316198769957
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 17,
+      "planning_time_ms": 104.2873120168224
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 18,
+      "planning_time_ms": 102.9373339843005
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 19,
+      "planning_time_ms": 102.2808289853856
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 20,
+      "planning_time_ms": 101.94351407699287
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 21,
+      "planning_time_ms": 102.26271999999881
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 22,
+      "planning_time_ms": 109.08853099681437
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 23,
+      "planning_time_ms": 104.26392999943346
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 24,
+      "planning_time_ms": 103.63364906515926
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 25,
+      "planning_time_ms": 104.46222603786737
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 26,
+      "planning_time_ms": 103.97026594728231
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 27,
+      "planning_time_ms": 104.75141007918864
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 28,
+      "planning_time_ms": 103.06378407403827
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 29,
+      "planning_time_ms": 103.3632509643212
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 30,
+      "planning_time_ms": 102.20128705259413
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 31,
+      "planning_time_ms": 102.56263799965382
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 32,
+      "planning_time_ms": 103.93825289793313
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 33,
+      "planning_time_ms": 104.1088990168646
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 34,
+      "planning_time_ms": 102.76666306890547
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 35,
+      "planning_time_ms": 103.04288496263325
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 36,
+      "planning_time_ms": 103.3013480482623
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 37,
+      "planning_time_ms": 104.88125099800527
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 38,
+      "planning_time_ms": 103.86162693612278
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 39,
+      "planning_time_ms": 102.18479903414845
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 40,
+      "planning_time_ms": 102.92235296219587
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 41,
+      "planning_time_ms": 103.2401219708845
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 42,
+      "planning_time_ms": 110.74290901888162
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 43,
+      "planning_time_ms": 103.13701909035444
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 44,
+      "planning_time_ms": 102.47562802396715
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 45,
+      "planning_time_ms": 103.49528305232525
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 46,
+      "planning_time_ms": 104.56997598521411
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 47,
+      "planning_time_ms": 105.6063330033794
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 48,
+      "planning_time_ms": 104.62632193230093
+    },
+    {
+      "scenario": 70128,
+      "configuration": "PE",
+      "call": 49,
+      "planning_time_ms": 104.17233104817569
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 0,
+      "planning_time_ms": 73.95849993918091
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 1,
+      "planning_time_ms": 75.02810296136886
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 2,
+      "planning_time_ms": 74.86287294887006
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 3,
+      "planning_time_ms": 73.91062192618847
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 4,
+      "planning_time_ms": 74.16412595193833
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 5,
+      "planning_time_ms": 76.60859392490238
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 6,
+      "planning_time_ms": 74.29897598922253
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 7,
+      "planning_time_ms": 74.40381997730583
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 8,
+      "planning_time_ms": 73.11491400469095
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 9,
+      "planning_time_ms": 73.81239195819944
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 10,
+      "planning_time_ms": 74.2787680355832
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 11,
+      "planning_time_ms": 74.16570000350475
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 12,
+      "planning_time_ms": 75.47550101298839
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 13,
+      "planning_time_ms": 74.11524595227093
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 14,
+      "planning_time_ms": 73.89249908737838
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 15,
+      "planning_time_ms": 74.44676896557212
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 16,
+      "planning_time_ms": 74.05556202866137
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 17,
+      "planning_time_ms": 73.2785789296031
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 18,
+      "planning_time_ms": 74.43514105398208
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 19,
+      "planning_time_ms": 75.85377304349095
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 20,
+      "planning_time_ms": 73.88302695471793
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 21,
+      "planning_time_ms": 87.19091396778822
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 22,
+      "planning_time_ms": 79.05453001148999
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 23,
+      "planning_time_ms": 73.90384108293802
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 24,
+      "planning_time_ms": 73.7374119926244
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 25,
+      "planning_time_ms": 76.91724598407745
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 26,
+      "planning_time_ms": 74.15638607926667
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 27,
+      "planning_time_ms": 74.6587049216032
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 28,
+      "planning_time_ms": 74.64057102333754
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 29,
+      "planning_time_ms": 73.14875104930252
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 30,
+      "planning_time_ms": 73.92258394975215
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 31,
+      "planning_time_ms": 73.88563803397119
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 32,
+      "planning_time_ms": 76.02597691584378
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 33,
+      "planning_time_ms": 73.0036529712379
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 34,
+      "planning_time_ms": 72.80012802220881
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 35,
+      "planning_time_ms": 73.07751197367907
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 36,
+      "planning_time_ms": 71.56299997586757
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 37,
+      "planning_time_ms": 71.75124401692301
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 38,
+      "planning_time_ms": 72.786760982126
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 39,
+      "planning_time_ms": 72.83290394116193
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 40,
+      "planning_time_ms": 73.69762600865215
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 41,
+      "planning_time_ms": 73.03183199837804
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 42,
+      "planning_time_ms": 72.90318794548512
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 43,
+      "planning_time_ms": 72.49669695738703
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 44,
+      "planning_time_ms": 72.49676098581403
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 45,
+      "planning_time_ms": 75.06375689990819
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 46,
+      "planning_time_ms": 74.7457550605759
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 47,
+      "planning_time_ms": 80.42863698210567
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 48,
+      "planning_time_ms": 73.89174692798406
+    },
+    {
+      "scenario": 70124,
+      "configuration": "B",
+      "call": 49,
+      "planning_time_ms": 74.07694798894227
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 0,
+      "planning_time_ms": 102.52098995260894
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 1,
+      "planning_time_ms": 103.69043098762631
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 2,
+      "planning_time_ms": 103.20152505300939
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 3,
+      "planning_time_ms": 102.45869995560497
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 4,
+      "planning_time_ms": 101.31980199366808
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 5,
+      "planning_time_ms": 101.59260907676071
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 6,
+      "planning_time_ms": 101.3327669352293
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 7,
+      "planning_time_ms": 103.20903605315834
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 8,
+      "planning_time_ms": 102.20811201725155
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 9,
+      "planning_time_ms": 101.31094802636653
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 10,
+      "planning_time_ms": 101.70993895735592
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 11,
+      "planning_time_ms": 101.69946204405278
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 12,
+      "planning_time_ms": 99.74740096367896
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 13,
+      "planning_time_ms": 100.12822598218918
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 14,
+      "planning_time_ms": 100.10553000029176
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 15,
+      "planning_time_ms": 101.36862704530358
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 16,
+      "planning_time_ms": 99.65896897483617
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 17,
+      "planning_time_ms": 100.1587180653587
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 18,
+      "planning_time_ms": 99.25162000581622
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 19,
+      "planning_time_ms": 99.02361396234483
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 20,
+      "planning_time_ms": 99.40795600414276
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 21,
+      "planning_time_ms": 101.26069106627256
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 22,
+      "planning_time_ms": 100.04802502226084
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 23,
+      "planning_time_ms": 105.72229302488267
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 24,
+      "planning_time_ms": 106.99603892862797
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 25,
+      "planning_time_ms": 100.61072499956936
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 26,
+      "planning_time_ms": 103.69959904346615
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 27,
+      "planning_time_ms": 100.34981998614967
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 28,
+      "planning_time_ms": 100.49223189707845
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 29,
+      "planning_time_ms": 100.56440206244588
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 30,
+      "planning_time_ms": 99.78716797195375
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 31,
+      "planning_time_ms": 104.17619394138455
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 32,
+      "planning_time_ms": 99.9997149920091
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 33,
+      "planning_time_ms": 100.12854996602982
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 34,
+      "planning_time_ms": 99.6950559783727
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 35,
+      "planning_time_ms": 102.13715606369078
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 36,
+      "planning_time_ms": 103.01083198282868
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 37,
+      "planning_time_ms": 101.31343500688672
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 38,
+      "planning_time_ms": 101.30076203495264
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 39,
+      "planning_time_ms": 101.04834497906268
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 40,
+      "planning_time_ms": 100.09880899451673
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 41,
+      "planning_time_ms": 103.96003699861467
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 42,
+      "planning_time_ms": 100.53455305751413
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 43,
+      "planning_time_ms": 99.8002610867843
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 44,
+      "planning_time_ms": 99.37266202177852
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 45,
+      "planning_time_ms": 101.23712196946144
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 46,
+      "planning_time_ms": 102.57624404039234
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 47,
+      "planning_time_ms": 99.67549308203161
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 48,
+      "planning_time_ms": 100.11621296871454
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M1",
+      "call": 49,
+      "planning_time_ms": 100.83408397622406
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 0,
+      "planning_time_ms": 112.90024104528129
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 1,
+      "planning_time_ms": 112.56001004949212
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 2,
+      "planning_time_ms": 113.06469200644642
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 3,
+      "planning_time_ms": 112.79857694171369
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 4,
+      "planning_time_ms": 114.83463493641466
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 5,
+      "planning_time_ms": 114.77226600982249
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 6,
+      "planning_time_ms": 113.06379095185548
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 7,
+      "planning_time_ms": 113.34587901365012
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 8,
+      "planning_time_ms": 113.21703693829477
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 9,
+      "planning_time_ms": 114.26138796377927
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 10,
+      "planning_time_ms": 112.61330405250192
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 11,
+      "planning_time_ms": 112.7439079573378
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 12,
+      "planning_time_ms": 111.84488399885595
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 13,
+      "planning_time_ms": 113.64204902201891
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 14,
+      "planning_time_ms": 112.50198702327907
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 15,
+      "planning_time_ms": 112.43177589494735
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 16,
+      "planning_time_ms": 125.09499303996563
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 17,
+      "planning_time_ms": 113.05508902296424
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 18,
+      "planning_time_ms": 115.19668600521982
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 19,
+      "planning_time_ms": 113.98795596323907
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 20,
+      "planning_time_ms": 116.90938100218773
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 21,
+      "planning_time_ms": 114.01993199251592
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 22,
+      "planning_time_ms": 114.55505201593041
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 23,
+      "planning_time_ms": 115.88451499119401
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 24,
+      "planning_time_ms": 111.83494795113802
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 25,
+      "planning_time_ms": 115.43735803570598
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 26,
+      "planning_time_ms": 113.980054971762
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 27,
+      "planning_time_ms": 117.16641497332603
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 28,
+      "planning_time_ms": 113.96934406366199
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 29,
+      "planning_time_ms": 113.76311304047704
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 30,
+      "planning_time_ms": 115.17558398190886
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 31,
+      "planning_time_ms": 117.09976696874946
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 32,
+      "planning_time_ms": 116.28253501839936
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 33,
+      "planning_time_ms": 116.83864891529083
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 34,
+      "planning_time_ms": 115.87289092130959
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 35,
+      "planning_time_ms": 125.24181697517633
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 36,
+      "planning_time_ms": 117.15467704925686
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 37,
+      "planning_time_ms": 114.07328501809388
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 38,
+      "planning_time_ms": 113.34434198215604
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 39,
+      "planning_time_ms": 115.63924397341907
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 40,
+      "planning_time_ms": 115.74617703445256
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 41,
+      "planning_time_ms": 113.68361697532237
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 42,
+      "planning_time_ms": 112.45486699044704
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 43,
+      "planning_time_ms": 116.31839396432042
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 44,
+      "planning_time_ms": 117.8497300716117
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 45,
+      "planning_time_ms": 112.98558302223682
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 46,
+      "planning_time_ms": 113.41302399523556
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 47,
+      "planning_time_ms": 113.9558469876647
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 48,
+      "planning_time_ms": 116.02066794876009
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M2",
+      "call": 49,
+      "planning_time_ms": 115.39208597969264
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 0,
+      "planning_time_ms": 140.7848180970177
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 1,
+      "planning_time_ms": 137.79162894934416
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 2,
+      "planning_time_ms": 139.20365495141596
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 3,
+      "planning_time_ms": 151.9854220096022
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 4,
+      "planning_time_ms": 137.27097993250936
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 5,
+      "planning_time_ms": 138.12123704701662
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 6,
+      "planning_time_ms": 138.5339250555262
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 7,
+      "planning_time_ms": 139.24990594387054
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 8,
+      "planning_time_ms": 138.73409305233508
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 9,
+      "planning_time_ms": 139.71004693303257
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 10,
+      "planning_time_ms": 139.39151400700212
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 11,
+      "planning_time_ms": 139.46147996466607
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 12,
+      "planning_time_ms": 138.1526169134304
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 13,
+      "planning_time_ms": 138.18613498006016
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 14,
+      "planning_time_ms": 139.68428398948163
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 15,
+      "planning_time_ms": 139.54422296956182
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 16,
+      "planning_time_ms": 139.41981398966163
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 17,
+      "planning_time_ms": 137.0998569764197
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 18,
+      "planning_time_ms": 137.24832702428102
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 19,
+      "planning_time_ms": 137.9993329755962
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 20,
+      "planning_time_ms": 136.43447996582836
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 21,
+      "planning_time_ms": 138.1800170056522
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 22,
+      "planning_time_ms": 139.57906607538462
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 23,
+      "planning_time_ms": 139.87949304282665
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 24,
+      "planning_time_ms": 138.22270301170647
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 25,
+      "planning_time_ms": 143.11165700200945
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 26,
+      "planning_time_ms": 139.0845699934289
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 27,
+      "planning_time_ms": 137.6766669563949
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 28,
+      "planning_time_ms": 137.30332301929593
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 29,
+      "planning_time_ms": 138.95319402217865
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 30,
+      "planning_time_ms": 137.34947994817048
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 31,
+      "planning_time_ms": 135.85437508299947
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 32,
+      "planning_time_ms": 138.21446790825576
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 33,
+      "planning_time_ms": 138.93474196083844
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 34,
+      "planning_time_ms": 137.99253094475716
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 35,
+      "planning_time_ms": 136.32910302840173
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 36,
+      "planning_time_ms": 138.28341697808355
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 37,
+      "planning_time_ms": 138.52275104727596
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 38,
+      "planning_time_ms": 136.66356005705893
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 39,
+      "planning_time_ms": 141.24964806251228
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 40,
+      "planning_time_ms": 149.27279902622104
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 41,
+      "planning_time_ms": 139.6370530128479
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 42,
+      "planning_time_ms": 137.97212694771588
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 43,
+      "planning_time_ms": 138.18643102422357
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 44,
+      "planning_time_ms": 138.7494259979576
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 45,
+      "planning_time_ms": 137.6972539583221
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 46,
+      "planning_time_ms": 139.09031404182315
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 47,
+      "planning_time_ms": 138.58263997826725
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 48,
+      "planning_time_ms": 137.45642499998212
+    },
+    {
+      "scenario": 70124,
+      "configuration": "M4",
+      "call": 49,
+      "planning_time_ms": 137.19425001181662
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 0,
+      "planning_time_ms": 115.76062301173806
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 1,
+      "planning_time_ms": 117.48591507785022
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 2,
+      "planning_time_ms": 117.48505104333162
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 3,
+      "planning_time_ms": 115.77801406383514
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 4,
+      "planning_time_ms": 119.07732801046222
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 5,
+      "planning_time_ms": 114.78383000940084
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 6,
+      "planning_time_ms": 114.90490904543549
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 7,
+      "planning_time_ms": 115.21430697757751
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 8,
+      "planning_time_ms": 118.42136806808412
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 9,
+      "planning_time_ms": 116.23728298582137
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 10,
+      "planning_time_ms": 116.38363101519644
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 11,
+      "planning_time_ms": 116.07488803565502
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 12,
+      "planning_time_ms": 115.33949698787183
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 13,
+      "planning_time_ms": 115.25300506036729
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 14,
+      "planning_time_ms": 116.0866500576958
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 15,
+      "planning_time_ms": 116.35449703317136
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 16,
+      "planning_time_ms": 117.36238293815404
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 17,
+      "planning_time_ms": 116.2879989715293
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 18,
+      "planning_time_ms": 118.6710640322417
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 19,
+      "planning_time_ms": 116.46980897057801
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 20,
+      "planning_time_ms": 115.5114519642666
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 21,
+      "planning_time_ms": 116.30426603369415
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 22,
+      "planning_time_ms": 115.6179370591417
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 23,
+      "planning_time_ms": 115.2806410100311
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 24,
+      "planning_time_ms": 114.90183998830616
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 25,
+      "planning_time_ms": 113.54982201009989
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 26,
+      "planning_time_ms": 128.19468800444156
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 27,
+      "planning_time_ms": 115.58682704344392
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 28,
+      "planning_time_ms": 115.70423294324428
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 29,
+      "planning_time_ms": 115.27862504590303
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 30,
+      "planning_time_ms": 115.38958293385804
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 31,
+      "planning_time_ms": 115.57910009287298
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 32,
+      "planning_time_ms": 130.77955704648048
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 33,
+      "planning_time_ms": 135.5430770199746
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 34,
+      "planning_time_ms": 116.56007601413876
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 35,
+      "planning_time_ms": 115.75591389555484
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 36,
+      "planning_time_ms": 117.7930359262973
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 37,
+      "planning_time_ms": 118.03838703781366
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 38,
+      "planning_time_ms": 117.39535699598491
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 39,
+      "planning_time_ms": 116.8928761035204
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 40,
+      "planning_time_ms": 116.5729840286076
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 41,
+      "planning_time_ms": 115.92792894225568
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 42,
+      "planning_time_ms": 118.16931993234903
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 43,
+      "planning_time_ms": 115.9986041020602
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 44,
+      "planning_time_ms": 115.75047695077956
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 45,
+      "planning_time_ms": 114.94630004744977
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 46,
+      "planning_time_ms": 116.88324995338917
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 47,
+      "planning_time_ms": 116.86567706055939
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 48,
+      "planning_time_ms": 115.26515299919993
+    },
+    {
+      "scenario": 70124,
+      "configuration": "P",
+      "call": 49,
+      "planning_time_ms": 116.82313401252031
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 0,
+      "planning_time_ms": 112.82008001580834
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 1,
+      "planning_time_ms": 113.30732598435134
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 2,
+      "planning_time_ms": 111.37613200116903
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 3,
+      "planning_time_ms": 111.74270999617875
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 4,
+      "planning_time_ms": 113.47918992396444
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 5,
+      "planning_time_ms": 113.27968304976821
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 6,
+      "planning_time_ms": 113.93909202888608
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 7,
+      "planning_time_ms": 113.11378504615277
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 8,
+      "planning_time_ms": 112.44488100055605
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 9,
+      "planning_time_ms": 114.81949710287154
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 10,
+      "planning_time_ms": 113.12531202565879
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 11,
+      "planning_time_ms": 112.29578498750925
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 12,
+      "planning_time_ms": 112.41812398657203
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 13,
+      "planning_time_ms": 114.96708495542407
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 14,
+      "planning_time_ms": 114.52176398597658
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 15,
+      "planning_time_ms": 125.33314095344394
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 16,
+      "planning_time_ms": 115.56850408669561
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 17,
+      "planning_time_ms": 112.51444497611374
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 18,
+      "planning_time_ms": 112.7119439188391
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 19,
+      "planning_time_ms": 113.07554203085601
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 20,
+      "planning_time_ms": 113.457903964445
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 21,
+      "planning_time_ms": 113.9975949190557
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 22,
+      "planning_time_ms": 113.5002929950133
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 23,
+      "planning_time_ms": 113.5401870124042
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 24,
+      "planning_time_ms": 112.56943899206817
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 25,
+      "planning_time_ms": 115.07406400050968
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 26,
+      "planning_time_ms": 114.95806195307523
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 27,
+      "planning_time_ms": 112.2061109635979
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 28,
+      "planning_time_ms": 112.68059199210256
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 29,
+      "planning_time_ms": 112.33435198664665
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 30,
+      "planning_time_ms": 113.87930402997881
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 31,
+      "planning_time_ms": 117.27708496619016
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 32,
+      "planning_time_ms": 112.27958393283188
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 33,
+      "planning_time_ms": 113.18873695563525
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 34,
+      "planning_time_ms": 112.88041004445404
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 35,
+      "planning_time_ms": 111.89829499926418
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 36,
+      "planning_time_ms": 112.54194902721792
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 37,
+      "planning_time_ms": 111.11927393358201
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 38,
+      "planning_time_ms": 111.79046996403486
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 39,
+      "planning_time_ms": 112.9101290134713
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 40,
+      "planning_time_ms": 112.63649503234774
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 41,
+      "planning_time_ms": 111.04610201437026
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 42,
+      "planning_time_ms": 112.91049490682781
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 43,
+      "planning_time_ms": 112.48380108736455
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 44,
+      "planning_time_ms": 112.95314994640648
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 45,
+      "planning_time_ms": 112.01491393148899
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 46,
+      "planning_time_ms": 112.21496399957687
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 47,
+      "planning_time_ms": 113.46082901582122
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 48,
+      "planning_time_ms": 112.96361905988306
+    },
+    {
+      "scenario": 70124,
+      "configuration": "E",
+      "call": 49,
+      "planning_time_ms": 112.8195479977876
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 0,
+      "planning_time_ms": 115.60278793331236
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 1,
+      "planning_time_ms": 115.4512430075556
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 2,
+      "planning_time_ms": 118.98729403037578
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 3,
+      "planning_time_ms": 115.51257001701742
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 4,
+      "planning_time_ms": 123.36358695756644
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 5,
+      "planning_time_ms": 114.49689895380288
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 6,
+      "planning_time_ms": 115.66003505140543
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 7,
+      "planning_time_ms": 115.67873903550208
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 8,
+      "planning_time_ms": 114.9503979831934
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 9,
+      "planning_time_ms": 116.94767489098012
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 10,
+      "planning_time_ms": 116.1883210297674
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 11,
+      "planning_time_ms": 117.76174290571362
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 12,
+      "planning_time_ms": 117.6911819493398
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 13,
+      "planning_time_ms": 116.18777201510966
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 14,
+      "planning_time_ms": 116.63530999794602
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 15,
+      "planning_time_ms": 116.52198689989746
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 16,
+      "planning_time_ms": 114.01685501914471
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 17,
+      "planning_time_ms": 115.12583692092448
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 18,
+      "planning_time_ms": 115.93791597988456
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 19,
+      "planning_time_ms": 116.66761105880141
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 20,
+      "planning_time_ms": 116.87854898627847
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 21,
+      "planning_time_ms": 117.24840197712183
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 22,
+      "planning_time_ms": 116.49657099042088
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 23,
+      "planning_time_ms": 117.27243103086948
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 24,
+      "planning_time_ms": 117.35283897724003
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 25,
+      "planning_time_ms": 115.92285800725222
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 26,
+      "planning_time_ms": 116.7502390453592
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 27,
+      "planning_time_ms": 115.99134199786931
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 28,
+      "planning_time_ms": 119.78320800699294
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 29,
+      "planning_time_ms": 116.11251800786704
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 30,
+      "planning_time_ms": 117.07153404131532
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 31,
+      "planning_time_ms": 116.35270703118294
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 32,
+      "planning_time_ms": 116.78902991116047
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 33,
+      "planning_time_ms": 115.52698502782732
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 34,
+      "planning_time_ms": 117.09100694861263
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 35,
+      "planning_time_ms": 116.50729307439178
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 36,
+      "planning_time_ms": 118.07528603821993
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 37,
+      "planning_time_ms": 114.89454202819616
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 38,
+      "planning_time_ms": 114.33267593383789
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 39,
+      "planning_time_ms": 115.41748302988708
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 40,
+      "planning_time_ms": 117.65190493315458
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 41,
+      "planning_time_ms": 117.57761903572828
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 42,
+      "planning_time_ms": 115.55091291666031
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 43,
+      "planning_time_ms": 115.23897002916783
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 44,
+      "planning_time_ms": 116.06019688770175
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 45,
+      "planning_time_ms": 117.1713009243831
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 46,
+      "planning_time_ms": 115.13617797754705
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 47,
+      "planning_time_ms": 117.39015893545002
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 48,
+      "planning_time_ms": 127.33778299298137
+    },
+    {
+      "scenario": 70124,
+      "configuration": "PE",
+      "call": 49,
+      "planning_time_ms": 116.49348598439246
+    }
+  ],
+  "states": [
+    {
+      "scenario": 70128,
+      "position": [
+        18.314069747924805,
+        2.7260525226593018
+      ],
+      "heading": -0.03510312632833479,
+      "speed": 9.067396279188673,
+      "observation": [
+        0.3346637487411499,
+        0.2486695796251297,
+        0.5175479650497437,
+        0.4153410792350769,
+        0.4998661279678345,
+        0.491967111825943,
+        1.0,
+        0.04664526507258415,
+        0.671988308429718,
+        0.8163923621177673,
+        0.5188549757003784,
+        -0.0,
+        0.5,
+        0.5,
+        0.9994642734527588,
+        0.5231359601020813,
+        -0.0,
+        0.5,
+        0.5,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "scenario": 70124,
+      "position": [
+        16.663227081298828,
+        1.528225302696228
+      ],
+      "heading": 0.09474461894065911,
+      "speed": 8.102920557266875,
+      "observation": [
+        0.4012097120285034,
+        0.18212363123893738,
+        0.4526985287666321,
+        0.3724754750728607,
+        0.5001190900802612,
+        0.5071439743041992,
+        1.0,
+        0.014245248399674892,
+        0.16039437055587769,
+        0.8337376713752747,
+        0.4880920648574829,
+        -0.0,
+        0.5,
+        0.5,
+        0.8338103294372559,
+        0.12774993479251862,
+        0.8401463031768799,
+        1.0,
+        0.9260029792785645,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.6214614510536194,
+        0.6207246780395508,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    }
+  ],
+  "measurement": "One GPU worker after experiments; complete Lattice+SAC+MPPI+action construction, synchronized. Same two live states,50calls/state plus5warmups, no candidate recorder, no control executed during timing. Fixed-state reference only; does not certify every episode state."
+}

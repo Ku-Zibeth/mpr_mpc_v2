@@ -1,0 +1,874 @@
+diff --git a/planning/coordinator.py b/planning/coordinator.py
+index 1872c0b..d4580d2 100644
+--- a/planning/coordinator.py
++++ b/planning/coordinator.py
+@@ -556,7 +556,8 @@ class MPRMPCPlanner:
+                 "final_mppi_mean": final_mean.detach().cpu(),
+                 "initial_mppi_std": initial_std.detach().cpu(),
+                 "final_mppi_std": final_std.detach().cpu(),
+-                **({"mppi_iterations": mppi.iterations, "mppi_numerical_error": mppi.numerical_error, "mppi_value_definition": mppi.evaluation, "mppi_candidate_audit": mppi.candidate_audit} if stage.use_mppi else {}),
++                **({"mppi_iterations": mppi.iterations, "mppi_numerical_error": mppi.numerical_error, "mppi_value_definition": mppi.evaluation, "mppi_candidate_audit": mppi.candidate_audit,
++                    "mppi_selection_candidates": mppi.selection_candidates,"mppi_candidate_trace":mppi.candidate_trace} if stage.use_mppi else {}),
+                 "wm_discount": float(self.agent.discount),
+             },
+             planning_mode=mppi.planning_mode if stage.use_mppi else "baseline",
+diff --git a/planning/evaluator.py b/planning/evaluator.py
+index 1504a44..663d789 100644
+--- a/planning/evaluator.py
++++ b/planning/evaluator.py
+@@ -266,12 +266,14 @@ class TrajectoryWorldModelEvaluator:
+             terminal_discount=discount,terminal_actions=a,q_member_values=qs.squeeze(-1) if qs is not None else None,
+             cumulative_cost=cat("cumulative_cost"),predicted_cost=cat("predicted_cost"),cost_penalty=penalty,
+             cost_validated_mask=cat("cost_validated_mask"),effective_cost_weight=effective,
++            q_member_indices=tuple(q_indices) if q_aggregation == "fixed_pair" and q_indices is not None else None,
+             cost_ranking_validated=bool(cat("cumulative_cost") is not None and self.cost_ranking_ready()))
+ 
+     def evaluate_mppi_candidates(self, z_t, actions, task=None, *, compute_cost=None,
+                                  terminal_action="candidate", q_aggregation="random_pair",
+                                  q_indices=None, capture_ensemble=False, terminal_q_weight=1.0,
+-                                 terminal_value="tdmpc2_q", cost_weight=0.0):
++                                 terminal_value="tdmpc2_q", cost_weight=0.0,
++                                 capture_q_indices=False):
+         if actions.ndim != 3 or actions.shape[1] != self.horizon+1:
+             raise ValueError("MPPI keeps the Coordinator H+1 interface.")
+         if terminal_action not in {"candidate", "policy_prior"}:
+@@ -285,10 +287,28 @@ class TrajectoryWorldModelEvaluator:
+             raise ValueError("SAC continuation value uses unit terminal weight, not Q-weight calibration.")
+         mode = "state_value" if terminal_value == "sac_value" else "trajectory" if terminal_action == "candidate" else "policy_mean"
+         controls = actions if mode == "trajectory" else actions[:, :self.horizon]
+-        return self.evaluate(z_t, controls, terminal_action_mode=mode, task=task,
++        members = None
++        if capture_q_indices and terminal_value == "tdmpc2_q":
++            if q_aggregation == "random_pair":
++                # Frozen eval-mode rollouts consume no RNG; policy_mean also
++                # restores pi()'s unused sample. Peek at the original Q(avg)
++                # draw without consuming it, to reuse these exact members.
++                device = torch.device(self.agent.device)
++                devices = [device.index if device.index is not None else torch.cuda.current_device()] if device.type == "cuda" else []
++                with torch.random.fork_rng(devices=devices):
++                    members = self.new_mppi_q_pair()
++            elif q_aggregation == "fixed_pair":
++                members = tuple(q_indices)
++            else:
++                members = tuple(range(int(self.agent.cfg.num_q)))
++        result = self.evaluate(z_t, controls, terminal_action_mode=mode, task=task,
+             compute_cost=compute_cost, q_aggregation=reducers[q_aggregation],
+             q_indices=q_indices, capture_ensemble=capture_ensemble, terminal_q_weight=terminal_q_weight,
+             cost_weight=cost_weight, mppi_scoring=True)
++        if capture_q_indices:
++            from dataclasses import replace
++            result = replace(result, q_member_indices=members)
++        return result
+ 
+ 
+ __all__ = ["TrajectoryWorldModelEvaluator"]
+diff --git a/planning/local_mppi.py b/planning/local_mppi.py
+index 5f499f5..f64952f 100644
+--- a/planning/local_mppi.py
++++ b/planning/local_mppi.py
+@@ -22,6 +22,7 @@ MPPI_DIAGNOSTIC_KEYS = (
+     'q_pair_0','q_pair_1','active_action_steps','terminal_q_weight','weighted_terminal_q_gain',
+     'uses_sac_value','effective_cost_weight','cost_penalty','cost_penalty_gain','audit_terminal_candidates',
+     'mean_best_sequence_l2','mean_best_first_action_l2','mean_best_predicted_gap','elite_pairwise_l2',
++    'selection_is_elite','selected_source_code','final_elite_value','final_elite_gain',
+ ) + tuple(f'iteration_{i}_{name}' for i in range(4) for name in ('elite_value_mean','elite_value_max','sampling_diversity','weight_entropy','effective_sample_size'))
+ MPPI_EPISODE_METRICS = {f'mppi_{k}':f'mppi/{k}' for k in (*MPPI_DIAGNOSTIC_KEYS,'total_planning_ms')}
+ 
+@@ -57,6 +58,8 @@ class LocalMPPIResult:
+     selected_consequence: dict = field(default_factory=dict)
+     evaluation: dict = field(default_factory=dict)
+     candidate_audit: dict = field(default_factory=dict)
++    selection_candidates: dict = field(default_factory=dict)
++    candidate_trace: dict = field(default_factory=dict)
+     planning_mode: str = 'baseline'  # output provenance, never a search mode
+     baseline_score = property(lambda self:self.baseline_wm_value)
+     baseline_value = property(lambda self:self.baseline_wm_value)
+@@ -82,6 +85,13 @@ class LocalMPPI:
+         self.audit_candidates = bool(cfg.get('audit_candidates',False))
+         self.record_cost = bool(cfg.get('record_cost',False))
+         self.cost_weight = float(cfg.get('cost_weight',0.0))
++        self.selection_mode = str(cfg.get('selection_mode','weighted_mean'))
++        self.compare_final_elite = 'selection_mode' in cfg  # exact legacy behavior when absent
++        self.record_candidates = bool(cfg.get('record_candidates',False))
++        if self.selection_mode not in {'weighted_mean','best_final_elite'}:
++            raise ValueError('Unknown final MPPI selection_mode.')
++        if self.compare_final_elite and self.audit_candidates:
++            raise ValueError('Use record_candidates with explicit selection_mode; legacy audit has a separate Q rescore.')
+         if self.terminal_value not in {'tdmpc2_q','sac_value'} or not math.isfinite(self.cost_weight) or self.cost_weight < 0:
+             raise ValueError('Invalid MPPI terminal value or continuous cost weight.')
+         if self.terminal_value == 'sac_value' and self.terminal_q_weight != 1.:
+@@ -165,7 +175,8 @@ class LocalMPPI:
+         compute_cost = cost_available and (self.record_cost or self.cost_weight > 0)
+         definition = dict(temperature_definition=self.temperature_definition,temperature=self.temperature,
+                           terminal_action=self.terminal_action,q_aggregation=self.q_aggregation,q_indices=q_pair,
+-                          terminal_q_weight=self.terminal_q_weight,terminal_value=self.terminal_value,cost_weight=self.cost_weight)
++                          terminal_q_weight=self.terminal_q_weight,terminal_value=self.terminal_value,cost_weight=self.cost_weight,
++                          selection_mode=self.selection_mode,uniform_final_comparison=self.compare_final_elite)
+         phase,timing,history = PhaseTimings(self.device),{},[]
+         evaluated = 0
+         error = None
+@@ -175,10 +186,18 @@ class LocalMPPI:
+         optimized = base
+         elite = baseline.new_empty(0)
+         audit, cached, sampled, original_scores, original_elites = {}, [], [], [], []
++        trace_actions, trace_values, trace_members = [], [], []
++        selection_candidates = {}
++        final_elite_value = nan
++        selected_source = 'baseline'
++        last_result = last_candidates = last_best = None
+ 
+-        def evaluate(actions):
++        def evaluate(actions, *, final=False):
+             nonlocal evaluated
+-            result = self.evaluator.evaluate_mppi_candidates(z_t,actions,task=task,compute_cost=compute_cost,**options)
++            kwargs = dict(options)
++            if self.record_candidates or (final and self.compare_final_elite):
++                kwargs['capture_q_indices'] = True
++            result = self.evaluator.evaluate_mppi_candidates(z_t,actions,task=task,compute_cost=compute_cost,**kwargs)
+             evaluated += len(actions)
+             for key,value in getattr(result,'timings',{}).items():
+                 timing[key] = timing.get(key,0.)+value
+@@ -207,6 +226,11 @@ class LocalMPPI:
+             if not bool(torch.isfinite(values).all()):
+                 error = 'non_finite_candidate_return'
+                 break
++            last_result, last_candidates, last_best = result, candidates, int(values.argmax())
++            if self.record_candidates:
++                trace_actions.append(candidates.clone())
++                trace_values.append(values.clone())
++                trace_members.append(getattr(result,'q_member_indices',None))
+             if self.audit_candidates:
+                 cached.append((result,slice(1,None)))
+                 sampled.append(candidates[1:].clone())
+@@ -230,7 +254,7 @@ class LocalMPPI:
+         sequence = baseline
+         if error is None:
+             with phase.measure('final_value_evaluation'):
+-                result,values = evaluate(torch.stack((baseline,mean)))
++                result,values = evaluate(torch.stack((baseline,mean)), final=True)
+             if self.audit_candidates:
+                 with phase.measure('audit_terminal_rescore'):
+                     # All old samples, baseline and mean share ONE reference
+@@ -255,13 +279,42 @@ class LocalMPPI:
+                     values = common_values[:2]
+             baseline_value,optimized_value = values[0],values[1]
+             base,optimized = row(result,values,0),row(result,values,1)
++            candidate_sequence, candidate_value, candidate_row = mean,values[1],optimized
++            if self.compare_final_elite:
++                members = getattr(result,'q_member_indices',None)
++                reducer = 'fixed_pair' if self.q_aggregation == 'random_pair' and self.terminal_value == 'tdmpc2_q' else self.q_aggregation
++                if reducer == 'fixed_pair' and members is None:
++                    raise RuntimeError('Final selection requires the exact shared Q member indices.')
++                with phase.measure('final_elite_evaluation'):
++                    elite_result = self.evaluator.rescore_cached_candidates(
++                        [(last_result,[last_best])],task=task,terminal_value=self.terminal_value,
++                        terminal_action=self.terminal_action,q_aggregation=reducer,
++                        q_indices=members if reducer == 'fixed_pair' else q_pair,
++                        terminal_q_weight=self.terminal_q_weight,cost_weight=self.cost_weight)
++                final_elite_value = elite_result.total_value.reshape(-1)[0]
++                elite_sequence = last_candidates[last_best]
++                selection_candidates = dict(mode=self.selection_mode,
++                    actions=torch.stack((baseline,mean,elite_sequence)),
++                    values=torch.stack((values[0],values[1],final_elite_value)),
++                    q_member_indices=members,elite_original_index=last_best,
++                    elite_original_value=float(last_result.total_value[last_best]),
++                    source='last_iteration_top1; cached reward/dynamics; same final Q members')
++                if self.selection_mode == 'best_final_elite':
++                    candidate_sequence,candidate_value=elite_sequence,final_elite_value
++                    candidate_row=row(elite_result,elite_result.total_value.reshape(-1),0)
+             if error is not None or not bool(torch.isfinite(values).all()):
+                 error = error or 'non_finite_final_return'
+-            elif bool(values[1]>values[0]):
+-                sequence,selected_value,selected = mean,values[1],row(result,values,1)
++            elif not bool(torch.isfinite(candidate_value)):
++                error = 'non_finite_final_elite'
++            elif bool(candidate_value>values[0]):
++                sequence,selected_value,selected = candidate_sequence,candidate_value,candidate_row
++                selected_source = 'elite' if self.selection_mode == 'best_final_elite' else 'mean'
+         baseline_selected = torch.equal(sequence,baseline)
+         if baseline_selected:
+             selected_value,selected = baseline_value,base
++            selected_source = 'baseline'
++        if selection_candidates:
++            selection_candidates['selected_source'] = selected_source
+         if error:
+             warnings.warn(f'MPPI WM numerical anomaly ({error}); retaining finite SAC baseline.',RuntimeWarning,stacklevel=2)
+         timing.update(phase.finish())
+@@ -282,6 +335,9 @@ class LocalMPPI:
+             q_ensemble_std=float(selected['q_std']),fixed_q_pair=float(q_pair is not None),
+             q_pair_0=float(q_pair[0]) if q_pair else float('nan'),q_pair_1=float(q_pair[1]) if q_pair else float('nan'),
+             uses_sac_value=float(self.terminal_value == 'sac_value'),
++            selection_is_elite=float(self.selection_mode == 'best_final_elite'),
++            selected_source_code=float({'baseline':0,'mean':1,'elite':2}[selected_source]),
++            final_elite_value=float(final_elite_value),final_elite_gain=float(final_elite_value-baseline_value),
+             effective_cost_weight=float(getattr(result,'effective_cost_weight',0.)),
+             cost_penalty=float(result.cost_penalty[0 if baseline_selected else 1]) if getattr(result,'cost_penalty',None) is not None else 0.,
+             audit_terminal_candidates=float(len(audit.get('values',[]))),
+@@ -316,11 +372,13 @@ class LocalMPPI:
+         metrics.update(weight_entropy=float(torch.stack([h['entropy'] for h in history]).mean()) if history else float('nan'),
+                        effective_sample_size=float(torch.stack([h['ess'] for h in history]).mean()) if history else float('nan'),
+                        sampling_diversity=float(avg.square().mean().sqrt()),sampling_diversity_steering=float(avg[0]),sampling_diversity_throttle=float(avg[-1]))
++        trace = dict(actions=trace_actions,values=trace_values,q_members=trace_members) if self.record_candidates else {}
+         return LocalMPPIResult(action=sequence[0],selected_sequence=sequence,initial_mean=initial_mean,final_mean=mean,
+             initial_std=initial_std,final_std=std,baseline_wm_value=baseline_value,optimized_wm_value=optimized_value,
+             selected_wm_value=selected_value,wm_value_gain=selected_value-baseline_value,elite_values=elite,
+             baseline_selected=baseline_selected,max_action_delta=maximum,metrics=metrics,iterations=records,numerical_error=error,evaluation=definition,
+             baseline_consequence=base,selected_consequence=selected,candidate_audit=audit,
++            selection_candidates=selection_candidates,candidate_trace=trace,
+             planning_mode='baseline' if baseline_selected else 'normal')
+ 
+ 
+diff --git a/planning/native_config.py b/planning/native_config.py
+index 87e8033..4af0f8a 100644
+--- a/planning/native_config.py
++++ b/planning/native_config.py
+@@ -8,6 +8,7 @@ NATIVE_MPPI_KEYS = frozenset({
+     "temperature_definition", "terminal_action", "q_aggregation",
+     "terminal_q_weight",
+     "terminal_value", "sac_value_checkpoint", "audit_candidates", "record_cost", "cost_weight",
++    "selection_mode", "record_candidates",
+ })
+ 
+ 
+diff --git a/planning/types.py b/planning/types.py
+index 7ebf4cb..ab0b577 100644
+--- a/planning/types.py
++++ b/planning/types.py
+@@ -46,6 +46,7 @@ class TrajectoryConsequence:
+     q_member_values: torch.Tensor | None = None
+     cost_penalty: torch.Tensor | None = None
+     effective_cost_weight: float = 0.0
++    q_member_indices: tuple[int, ...] | None = None
+ 
+     @property
+     def reward_sum(self) -> torch.Tensor:
+diff --git a/tests/test_mppi_final_selection.py b/tests/test_mppi_final_selection.py
+new file mode 100644
+index 0000000..eed008f
+--- /dev/null
++++ b/tests/test_mppi_final_selection.py
+@@ -0,0 +1,59 @@
++"""Opt-in selection must share Q members, preserve mean behavior and execute a0."""
++import torch
++from unittest.mock import patch
++from tests.test_mppi_value_evaluation import evaluator
++from mpr_mpc.planning.local_mppi import LocalMPPI
++
++
++def test_captured_members_restore_rng_and_reproduce_final_values_for_both_terminals():
++    for terminal in ('candidate','policy_prior'):
++        e=evaluator();a=torch.rand(3,4,2);z=torch.zeros(1,3)
++        torch.manual_seed(19);normal=e.evaluate_mppi_candidates(z,a,terminal_action=terminal,compute_cost=False);rng=torch.random.get_rng_state()
++        torch.manual_seed(19);captured=e.evaluate_mppi_candidates(z,a,terminal_action=terminal,compute_cost=False,capture_q_indices=True)
++        assert torch.equal(rng,torch.random.get_rng_state())
++        assert torch.equal(normal.total_value,captured.total_value)
++        assert len(captured.q_member_indices)==2
++        fixed=e.evaluate_mppi_candidates(z,a,terminal_action=terminal,compute_cost=False,q_aggregation='fixed_pair',q_indices=captured.q_member_indices)
++        torch.testing.assert_close(fixed.total_value,captured.total_value)
++
++
++def test_mean_elite_and_baseline_use_identical_final_members_without_extra_WM_rollout():
++    for terminal in ('candidate','policy_prior'):
++        results={}
++        for selection in ('weighted_mean','best_final_elite'):
++            e=evaluator();base=torch.zeros(4,2)
++            cfg=dict(num_samples=8,num_elites=4,iterations=2,terminal_action=terminal,selection_mode=selection,record_candidates=True)
++            p=LocalMPPI(e,cfg,horizon=3,action_dim=2,device='cpu')
++            def candidates(*args):
++                a=base[None].expand(9,-1,-1).clone();a[1:,:,0]=torch.linspace(.1,.8,8)[:,None]
++                if terminal=='policy_prior':a[:,-1]=base[-1]
++                return a
++            p._candidate_batch=candidates
++            torch.manual_seed(4)
++            with patch.object(e,'rescore_cached_candidates',wraps=e.rescore_cached_candidates) as rescore:
++                r=p.plan(torch.zeros(1,3),base,eval_mode=True)
++                assert rescore.call_count==1
++                assert rescore.call_args.kwargs['q_indices']==r.selection_candidates['q_member_indices']
++            expected=r.selection_candidates['actions'][1 if selection=='weighted_mean' else 2]
++            assert torch.equal(r.selected_sequence,expected) and torch.equal(r.action,expected[0])
++            assert r.selection_candidates['selected_source']==('mean' if selection=='weighted_mean' else 'elite')
++            assert r.selected_wm_value>r.baseline_wm_value
++            assert r.metrics['wm_evaluated_candidates']==20 and e.agent.model.next_calls==9
++            assert len(r.candidate_trace['actions'])==2 and all(x.shape==(9,4,2) for x in r.candidate_trace['actions'])
++            if terminal=='policy_prior':assert (r.final_std[-1]==0).all() and torch.equal(r.final_mean[-1],base[-1])
++            results[selection]=r
++        assert torch.equal(results['weighted_mean'].final_mean,results['best_final_elite'].final_mean)
++
++
++def test_no_gain_keeps_baseline_and_recording_does_not_change_weighted_mean():
++    base=torch.zeros(4,2);saved=[]
++    for extra in ({},{'selection_mode':'weighted_mean'},{'selection_mode':'weighted_mean','record_candidates':True}):
++        e=evaluator();cfg=dict(num_samples=8,num_elites=4,iterations=2,**extra);p=LocalMPPI(e,cfg,horizon=3,action_dim=2,device='cpu');p.reset(17);torch.manual_seed(5)
++        r=p.plan(torch.zeros(1,3),base,eval_mode=True);saved.append((r.selected_sequence,torch.random.get_rng_state()))
++    assert all(torch.equal(saved[0][0],x[0]) and torch.equal(saved[0][1],x[1]) for x in saved[1:])
++    for mode in ('weighted_mean','best_final_elite'):
++        e=evaluator();p=LocalMPPI(e,dict(num_samples=8,num_elites=4,iterations=2,selection_mode=mode),horizon=3,action_dim=2,device='cpu')
++        p._candidate_batch=lambda *args:base[None].expand(9,-1,-1).clone()
++        r=p.plan(torch.zeros(1,3),base,eval_mode=True)
++        assert r.baseline_selected and torch.equal(r.action,base[0])
++        assert r.selection_candidates['selected_source']=='baseline'
+diff --git a/reports/mppi_selection_20261117/analyze.py b/reports/mppi_selection_20261117/analyze.py
+new file mode 100644
+index 0000000..a569f8e
+--- /dev/null
++++ b/reports/mppi_selection_20261117/analyze.py
+@@ -0,0 +1,45 @@
++"""Scene-clustered paired comparisons; development-only choices before validation."""
++import argparse,json,sys
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
++import numpy as np
++from evaluation_statistics import cluster_intervals
++sys.path.insert(0,str(ROOT/'reports/mppi_calibration_20261116'));from probe import dump
++KEYS=['success','crash','out_of_road','route_completion','episode_return','actual_discounted_return','safety_cost','baseline_selected_rate','first_action_correction','selected_predicted_gain','planning_time_ms','planning_p95_ms']
++
++
++def analyze(phase,groups,p):
++ rows=[];origins={}
++ for scene in p[phase+'_scenarios']:
++  for seed in p['repeat_seeds']:
++   ref=None
++   for group in groups:
++    folder=R/'episodes'/phase/f'{group}_{scene}_r{seed}';row=json.loads((folder/'episode.json').read_text());assert row['native_done'];origin=json.loads((folder/'origin.json').read_text())
++    if ref is None:ref=origin
++    else:assert ref==origin,(scene,seed,group,'Initial observed/RNG state mismatch')
++    rows.append(row)
++ summary={g:cluster_intervals([r for r in rows if r['configuration']==g],{k:(k,None) for k in KEYS},samples=p['bootstrap_samples'],seed=p['bootstrap_seed']) for g in groups};base={(r['scenario'],r['test_seed']):r for r in rows if r['configuration']=='B'};comparisons={};paired={};seed_gains={}
++ for group in groups:
++  if group=='B':continue
++  rr=[]
++  for row in [r for r in rows if r['configuration']==group]:
++   b=base[(row['scenario'],row['test_seed'])];rr.append(dict(scenario=row['scenario'],test_seed=row['test_seed'],**{key+'_difference':row[key]-b[key] for key in ['success','crash','out_of_road','route_completion','episode_return','actual_discounted_return','safety_cost','planning_time_ms']}))
++  comparisons[group]=cluster_intervals(rr,{key:(key,None) for key in rr[0] if key not in ['scenario','test_seed']},samples=p['bootstrap_samples'],seed=p['bootstrap_seed']);paired[group]=rr;seed_gains[group]={str(seed):float(np.mean([r['actual_discounted_return_difference'] for r in rr if r['test_seed']==seed])) for seed in p['repeat_seeds']}
++ return dict(phase=phase,summary=summary,comparisons=comparisons,paired_rows=paired,seed_return_gains=seed_gains,rows=rows,initial_state_RNG_pairs_matched=True,native_closed_loop=True)
++
++
++def eligible(group,result,require_seeds):
++ r=result['summary'][group];b=result['summary']['B'];return bool(r['success']>b['success'] and r['crash']<=b['crash'] and r['out_of_road']<=b['out_of_road'] and r['actual_discounted_return']>b['actual_discounted_return'] and (not require_seeds or all(x>0 for x in result['seed_return_gains'][group].values())))
++
++
++def main():
++ ap=argparse.ArgumentParser();ap.add_argument('--stage',choices=['stage1','stage2','validation'],required=True);a=ap.parse_args();p=json.loads((R/'protocol.json').read_text())
++ if a.stage=='stage1':
++  result=analyze('development',['B','M1','M2','M4'],p);allowed=[g for g in ['M1','M2','M4'] if eligible(g,result,False)];pool=allowed or ['M1','M2','M4'];chosen=max(pool,key=lambda g:(result['summary'][g]['actual_discounted_return']-result['summary']['B']['actual_discounted_return'],-p['stage1'][g]['iterations']));choice=dict(iterations=p['stage1'][chosen]['iterations'],group=chosen,eligible=allowed,diagnostic_only=not bool(allowed),selection_source='Development ONLY; validation unread. No online default changed.');assert not (R/'iteration_choice.json').exists();dump(R/'iteration_choice.json',choice);print('Iteration choice',choice,flush=True)
++ elif a.stage=='stage2':
++  result=analyze('development',['B','M1','M2','M4','P','E','PE'],p);allowed=[g for g in result['summary'] if g!='B' and eligible(g,result,True)];k=json.loads((R/'iteration_choice.json').read_text())['iterations'];chosen=max(allowed,key=lambda g:(result['summary'][g]['actual_discounted_return']-result['summary']['B']['actual_discounted_return'],result['summary'][g]['success'],-p['stage1'][g]['iterations'] if g in p['stage1'] else -k)) if allowed else None
++  selection=dict(candidate=chosen,eligible=allowed,iteration_choice=k,validation_opened=False,online_enable=False,reason='One development-selected candidate may undergo exactly one paired validation.' if chosen else 'No method improves development success/return at both seeds without accident worsening. Keep validation sealed; no online selection change.');assert not (R/'development_selection.json').exists();dump(R/'development_selection.json',selection);print(selection,flush=True)
++ else:
++  choice=json.loads((R/'development_selection.json').read_text());assert choice['candidate'];result=analyze('validation',['B',choice['candidate']],p);group=choice['candidate'];comp=result['comparisons'][group];rr=result['paired_rows'][group];loso={str(scene):float(np.mean([r['actual_discounted_return_difference'] for r in rr if r['scenario']!=scene])) for scene in p['validation_scenarios']};passed=eligible(group,result,True) and comp['actual_discounted_return_difference_ci95_low']>0 and all(x>0 for x in loso.values());dump(R/'validation_decision.json',dict(candidate=group,driving_criteria_passed=bool(passed),leave_one_scene_out_return_gain=loso,latency_gate_pending=True,online_enable=False,interpretation='A single held-out evaluation; no switch/retraining/extra parameter search after this result.'))
++ path=R/(a.stage+'_analysis.json');assert not path.exists();dump(path,result);print({g:{k:r[k] for k in ['success','crash','out_of_road','actual_discounted_return']} for g,r in result['summary'].items()},flush=True)
++if __name__=='__main__':main()
+diff --git a/reports/mppi_selection_20261117/closed_loop.py b/reports/mppi_selection_20261117/closed_loop.py
+new file mode 100644
+index 0000000..32fc5b4
+--- /dev/null
++++ b/reports/mppi_selection_20261117/closed_loop.py
+@@ -0,0 +1,59 @@
++"""Native terminal episodes; Lattice/SAC/MPPI recomputed on EVERY control tick."""
++import argparse,contextlib,io,json,sys,time
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
++sys.path.insert(0,str(ROOT/'reports/mppi_calibration_20261116'))
++from probe import dump,snapshot
++import numpy as np,torch
++from omegaconf import OmegaConf
++from mpr_mpc._bootstrap import bootstrap
++bootstrap()
++from common.seed import set_seed
++from env import make_env
++import evaluate_model_suite as suite
++from planning.sac_value import policy_context_sha256
++
++
++def method(name,p):
++ if name in p['stage1']:return p['stage1'][name]
++ k=json.loads((R/'iteration_choice.json').read_text())['iterations'];options=dict(mppi=True,iterations=k,terminal_action='policy_prior' if name in ['P','PE'] else 'candidate',selection_mode='best_final_elite' if name in ['E','PE'] else 'weighted_mean')
++ assert name in ['P','E','PE'];return options
++
++
++@torch.no_grad()
++def main():
++ ap=argparse.ArgumentParser();ap.add_argument('--phase',choices=['development','validation'],required=True);ap.add_argument('--group',required=True);ap.add_argument('--scenario',type=int,required=True);ap.add_argument('--seed',type=int,required=True);a=ap.parse_args();p=json.loads((R/'protocol.json').read_text());assert a.scenario in p[a.phase+'_scenarios'];assert a.seed in p['repeat_seeds'];opt=method(a.group,p);ck=Path(p['checkpoint']);out=R/'episodes'/a.phase/f'{a.group}_{a.scenario}_r{a.seed}';out.mkdir(parents=True,exist_ok=False)
++ raw=OmegaConf.load(p['source_environment_config']);raw.mpr_mpc.mppi=OmegaConf.load(ROOT/'config.yaml').mpr_mpc.mppi;raw.mpr_mpc.mppi.update({k:v for k,v in opt.items() if k!='mppi'});raw.mpr_mpc.mppi.update(dict(audit_candidates=False,record_candidates=True,record_cost=False,cost_weight=0.))
++ raw.restore_checkpoint_runtime=True;raw.restore_mppi_runtime=False;raw.enable_wandb=raw.save_agent=raw.save_video=False;raw.residual_rl.buffer_size=8;raw.metadrive.simulator.horizon=1000;raw.seed=a.seed
++ parsed,cfg=suite._make_cfg(raw,ck.parent.parent.name,ck,[a.scenario]);assert cfg.horizon==10;OmegaConf.save(parsed,out/'config.yaml');torch.set_num_threads(1);torch.set_float32_matmul_precision('high');set_seed(a.seed);env=make_env(cfg)
++ try:
++  with contextlib.redirect_stdout(io.StringIO()):agent=suite._make_agent(cfg,env);state=agent.load(ck)
++  agent.eval();suite._apply_evaluation_stack(agent.planner,'full_mpr_mpc' if opt['mppi'] else 'world_model_residual_rl',state);agent.set_global_step(max(agent.global_env_step,agent.planner.mppi_start_step));assert agent.planner.residual_state_dim==535
++  seed=a.seed+a.scenario;set_seed(seed);agent.planner.reset(seed=seed);obs=env.reset(seed=a.scenario);assert int(env.unwrapped_metadrive.current_seed)==a.scenario
++  initial=snapshot(env,agent,obs,torch.empty((0,11,2),device=agent.device),a.scenario,1);initial['episode_config']['seed']=seed;initial['episode_config']['repeat_seed']=a.seed;dump(out/'origin.json',initial)
++  context_reference=ROOT/'reports/sac_value_20261117/dataset_manifest.json';assert policy_context_sha256(cfg)==json.loads(context_reference.read_text())['context']
++  counts=dict(lattice_prepare=0,mppi=0);prepare=agent.planner.prepare;plan=agent.planner.local_mppi.plan
++  def wrapped_prepare(*args,**kw):counts['lattice_prepare']+=1;return prepare(*args,**kw)
++  def wrapped_plan(*args,**kw):counts['mppi']+=1;return plan(*args,**kw)
++  agent.planner.prepare=wrapped_prepare;agent.planner.local_mppi.plan=wrapped_plan
++  observations=[obs.cpu().numpy().copy()];actions=[];rewards=[];costs=[];dones=[];times=[];planner_ms=[];base_selected=[];correction=[];gains=[];sources=[];iteration_actions=[];iteration_values=[];iteration_members=[];final_actions=[];final_values=[];final_members=[];done=crash=offroad=False
++  while not done:
++   i=len(actions);torch.cuda.synchronize();begin=time.perf_counter();action=agent.act(obs,t0=(i==0),eval_mode=True);torch.cuda.synchronize();ms=1000*(time.perf_counter()-begin);result=agent.last_plan;assert result.stage.use_residual and result.stage.use_mppi==opt['mppi'];assert counts['lattice_prepare']==i+1
++   if opt['mppi']:
++    assert counts['mppi']==i+1;assert torch.equal(action,result.debug['selected_mppi_actions'][0]);assert result.metrics['mppi/iterations_completed']==opt['iterations'];assert result.metrics['mppi/wm_evaluated_candidates']==opt['iterations']*65+2
++    selection=result.debug['mppi_selection_candidates'];trace=result.debug['mppi_candidate_trace'];assert len(trace['actions'])==opt['iterations'];assert len(selection['q_member_indices'])==2
++    iteration_actions.append(torch.stack(trace['actions']).cpu().numpy());iteration_values.append(torch.stack(trace['values']).cpu().numpy());iteration_members.append(np.asarray(trace['q_members'],np.int64));final_actions.append(selection['actions'].cpu().numpy());final_values.append(selection['values'].cpu().numpy());final_members.append(np.asarray(selection['q_member_indices'],np.int64))
++    source=int(result.metrics['mppi/selected_source_code']);assert source in ([0,1] if opt['selection_mode']=='weighted_mean' else [0,2]);assert torch.equal(action,selection['actions'][source,0].cpu());assert source==0 or float(selection['values'][source])>float(selection['values'][0]);sources.append(source)
++    if opt['terminal_action']=='policy_prior':
++     assert result.metrics['mppi/active_action_steps']==10;assert (result.debug['final_mppi_std'][-1]==0).all();assert torch.equal(result.debug['final_mppi_mean'][-1],result.refined_actions[-1].cpu())
++    base_selected.append(float(result.metrics['mppi/baseline_selected']));correction.append(float(result.metrics['mppi/first_action_delta_norm']));gains.append(float(result.metrics['mppi/score_gain']))
++   else:assert counts['mppi']==0;sources.append(0)
++   times.append(ms);planner_ms.append(float(result.metrics['total_planning_ms']));obs,_,done,info=env.step(action);observations.append(obs.cpu().numpy().copy());actions.append(action.cpu().numpy().copy());rewards.append(float(info['tdmpc2_reward']));costs.append(float(info['cost']));dones.append(bool(done));crash|=any(bool(info.get(k,False)) for k in ['crash','crash_vehicle','crash_object','crash_human','crash_building','crash_sidewalk']);offroad|=bool(info.get('out_of_road',False));assert len(actions)<=1000
++   if (i+1)%100==0:print(a.group,a.scenario,a.seed,'step',i+1,'route',info['route_completion'],'act_ms',round(ms,1),flush=True)
++  gamma=float(agent.tdmpc_agent.discount);assert gamma==p['gamma'];actual=sum(gamma**i*r for i,r in enumerate(rewards));arr=dict(observations=observations,actions=actions,rewards=rewards,costs=costs,done=dones,act_wall_ms=times,planner_ms=planner_ms,baseline_selected=base_selected,first_correction=correction,selected_gain=gains,selected_source=sources)
++  if opt['mppi']:arr.update(iteration_actions=iteration_actions,iteration_values=iteration_values,iteration_q_members=iteration_members,final_candidates=final_actions,final_values=final_values,final_q_members=final_members)
++  np.savez_compressed(out/'trace.npz',**arr)
++  row=dict(configuration=a.group,scenario=a.scenario,test_seed=a.seed,success=float(info['success']),crash=float(crash),out_of_road=float(offroad),route_completion=float(info['route_completion']),episode_return=sum(rewards),actual_discounted_return=actual,safety_cost=sum(costs),length=len(actions),baseline_selected_rate=float(np.mean(base_selected)) if base_selected else None,first_action_correction=float(np.mean(correction)) if correction else 0.,selected_predicted_gain=float(np.mean(gains)) if gains else None,planning_time_ms=float(np.mean(times)),planning_p95_ms=float(np.quantile(times,.95)),counts=counts,native_done=True,options=opt,policy_context_sha256=policy_context_sha256(cfg),end_reason=info.get('end_reason',''),measurement='Complete agent.act synchronized wall under sharedGPU load; each first action actually executed before new planning. Not isolated latency.')
++  dump(out/'episode.json',row);print('DONE',a.group,a.scenario,a.seed,actual,row['success'],row['crash'],row['out_of_road'],flush=True)
++ finally:env.close()
++if __name__=='__main__':main()
+diff --git a/reports/mppi_selection_20261117/finalize.py b/reports/mppi_selection_20261117/finalize.py
+new file mode 100644
+index 0000000..38cfcec
+--- /dev/null
++++ b/reports/mppi_selection_20261117/finalize.py
+@@ -0,0 +1,33 @@
++"""Frozen-source/model checks and a complete reviewable source diff."""
++import json,subprocess,sys
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
++import numpy as np,torch
++from planning.sac_value import file_sha256,state_sha256
++from tools.benchmark_mppi import source_fingerprint
++p=json.loads((R/'protocol.json').read_text());assert subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()==p['base_commit'];assert file_sha256(p['checkpoint'])==p['checkpoint_sha256'];assert source_fingerprint(ROOT)==p['source_snapshot_sha256'];assert '56 passed' in (R/'tests_final.txt').read_text();assert not list(R.rglob('*.pt')) and not list(R.rglob('*.pth'))
++allowed={'planning/coordinator.py','planning/evaluator.py','planning/local_mppi.py','planning/native_config.py','planning/types.py'};changed=set(subprocess.check_output(['git','diff','--name-only'],cwd=ROOT,text=True).splitlines());assert changed==allowed,changed
++protected=['config.yaml','agent.py','train.py','residual_rl/networks.py','residual_rl/state_builder.py','residual_rl/features.py','residual_rl/action_adapter.py','planning/sac_value.py','planning/candidate_value.py','planning/cost_validation.py','planning/trajectory_adapter.py','lattice/frenet_metadrive.py','vendor/tdmpc2_runtime/tdmpc2.py','vendor/tdmpc2_runtime/common/world_model.py']
++for path in protected:assert (ROOT/path).read_bytes()==subprocess.check_output(['git','show',p['base_commit']+':'+path],cwd=ROOT)
++for stage,count in [('stage1',32),('stage2',24)]:
++ status=json.loads((R/(stage+'_status.json')).read_text());assert len(status)==count and not any(status.values())
++selection=json.loads((R/'development_selection.json').read_text());assert selection['candidate'] is None and not (R/'episodes/validation').exists()
++trace=json.loads((R/'trace_verification.json').read_text());assert all(trace[k] for k in ['all56_native_episodes_validated','all_control_ticks_replanned','all_selected_first_actions_match','all_nonbaseline_selections_strictly_better_predicted','complete_candidate_arrays_saved','policy_prior_padding_fixed'])
++gpu=json.loads((R/'gpu_regression.json').read_text());assert gpu['SAC535_unchanged'] and gpu['coarse_SAC_WM_features_unchanged']
++original=json.loads((ROOT/'reports/candidate_ranking_20261117/ranking_evaluation.json').read_text())['head_hashes']
++for name,expected in original.items():assert state_sha256(torch.load(ROOT/'reports/candidate_ranking_20261117/models'/f'{name}.pt',map_location='cpu',weights_only=True)['state_dict'])==expected
++metadata=[];countticks=0;currentconfigs={}
++for folder in sorted((R/'episodes/development').iterdir()):
++ if not (folder/'episode.json').exists():continue
++ row=json.loads((folder/'episode.json').read_text());assert row['native_done'];countticks+=row['length'];metadata.append(dict(path=str((folder/'trace.npz').relative_to(ROOT)),sha256=file_sha256(folder/'trace.npz'),steps=row['length'],counts=row['counts']));currentconfigs[row['configuration']]=row['options']
++assert len(metadata)==56
++(R/'artifacts_manifest.json').write_text(json.dumps(metadata,indent=2))
++result=dict(base_commit=p['base_commit'],source_snapshot_sha256=p['source_snapshot_sha256'],original_checkpoint_sha256=p['checkpoint_sha256'],original_models_and_config_unchanged=True,protected_files=protected,prior_scoring_heads_unchanged=len(original),new_neural_models=0,tests='56 passed (original53 retained +3)',actual_native_closed_loop_episodes=56,environment_control_ticks=countticks,development_maps=4,planner_repeat_seeds=p['repeat_seeds'],independent_validation_opened=False,independent_validation_not_run_reason='No development method qualifies; sealed6-map set untouched',all_ticks_fresh_Lattice_SAC_and_requested_MPPI=True,all_sampling_budgets_verified=True,complete_action_and_Q_trace_saved=True,
++ no_extra_full_WM_rollout_for_elite=True,terminal_policy_prior='deterministic squashed TD-MPC2 actor mean, NOT original stochastic actor and NOT imaginedResidualSAC',selection='Explicit opt-in mode; legacy missing-field behavior preserved. Baseline/Mean final2 Qavg unchanged, cachedfinalElite terminal reevaluated with EXACT same Q member IDs; strict gain>0.',cost_weight=0.,default_candidate_mode_and_old_config_unchanged=True,
++ gpu=torch.cuda.get_device_name(),isolated_timing_calls_per_method=100,diagnostic_cached_vs_direct_max_error=max(r['maximum_cached_vs_direct_error'] for r in gpu['rows']),SAC535_regression_max_error=0.,formal100=False,training=False,git_commit_push_reset=False,collector_retries='24 failed-before-first-env-step GPU/CPU verifier attempts archived; sampler/model unchanged. Eight completedB native episodes reused; only same24 planned episodes rerun. Initial latency import-path failure produced no timing sample; retried after correcting report-module import.')
++(R/'verification.json').write_text(json.dumps(result,indent=2))
++subprocess.run(['git','diff','--check'],cwd=ROOT,check=True);patch=[subprocess.check_output(['git','diff'],cwd=ROOT,text=True)]
++for name in ['tests/test_mppi_final_selection.py']+[str(x.relative_to(ROOT)) for x in sorted(R.glob('*.py'))]+[str((R/'protocol.json').relative_to(ROOT))]:
++ check=subprocess.run(['git','diff','--no-index','--check','--','/dev/null',name],cwd=ROOT,capture_output=True,text=True);assert not check.stdout and not check.stderr,(name,check.stdout,check.stderr)
++ diff=subprocess.run(['git','diff','--no-index','--','/dev/null',name],cwd=ROOT,capture_output=True,text=True);assert diff.returncode==1;patch.append(diff.stdout)
++(R/'code_changes.patch').write_text(''.join(patch));print(json.dumps(result,indent=2))
+diff --git a/reports/mppi_selection_20261117/latency.py b/reports/mppi_selection_20261117/latency.py
+new file mode 100644
+index 0000000..5eefbb4
+--- /dev/null
++++ b/reports/mppi_selection_20261117/latency.py
+@@ -0,0 +1,41 @@
++"""Isolated complete planning on two identical live states; not driving outcomes."""
++import contextlib,io,json,sys,time
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
++sys.path.insert(0,str(ROOT/'reports/mppi_calibration_20261116'));from probe import dump
++import numpy as np,torch
++from omegaconf import OmegaConf
++from mpr_mpc._bootstrap import bootstrap
++bootstrap()
++from common.seed import set_seed
++from env import make_env
++import evaluate_model_suite as suite
++from planning.local_mppi import LocalMPPI
++sys.path.insert(0,str(R))
++from closed_loop import method
++
++
++@torch.no_grad()
++def main():
++ p=json.loads((R/'protocol.json').read_text());ck=Path(p['checkpoint']);rows=[];states=[];torch.set_num_threads(1);torch.set_float32_matmul_precision('high')
++ for scene in p['development_scenarios'][:2]:
++  raw=OmegaConf.load(p['source_environment_config']);raw.mpr_mpc.mppi=OmegaConf.load(ROOT/'config.yaml').mpr_mpc.mppi;raw.mpr_mpc.mppi.update(dict(selection_mode='weighted_mean',audit_candidates=False,record_candidates=False,record_cost=False,cost_weight=0.));raw.restore_checkpoint_runtime=True;raw.restore_mppi_runtime=False;raw.enable_wandb=raw.save_agent=raw.save_video=False;raw.residual_rl.buffer_size=8;raw.metadrive.simulator.horizon=1000
++  _,cfg=suite._make_cfg(raw,ck.parent.parent.name,ck,[scene]);set_seed(1);env=make_env(cfg)
++  try:
++   with contextlib.redirect_stdout(io.StringIO()):agent=suite._make_agent(cfg,env);state=agent.load(ck)
++   agent.eval();agent.set_global_step(max(agent.global_env_step,agent.planner.mppi_start_step));suite._apply_evaluation_stack(agent.planner,'world_model_residual_rl',state);set_seed(1+scene);agent.planner.reset(seed=1+scene);obs=env.reset(seed=scene)
++   for step in range(30):
++    action=agent.act(obs,t0=(step==0),eval_mode=True);obs,_,done,info=env.step(action);assert not done
++   v=env.unwrapped_metadrive.agent;states.append(dict(scenario=scene,position=v.position.tolist(),heading=float(v.heading_theta),speed=float(v.speed),observation=obs.cpu().tolist()))
++   for group in ['B','M1','M2','M4','P','E','PE']:
++    option=method(group,p);op=dict(cfg.mpr_mpc['mppi']);op.update({k:val for k,val in option.items() if k!='mppi'});agent.planner.local_mppi=LocalMPPI(agent.planner.evaluator,op,horizon=10,action_dim=2,device=agent.device);agent.planner.mppi_cfg=op;agent.planner.allow_mppi=option['mppi'];set_seed(1+scene);agent.planner.reset(seed=1+scene)
++    for _ in range(5):agent.act(obs,t0=False,eval_mode=True)
++    for i in range(50):
++     torch.cuda.synchronize();begin=time.perf_counter();agent.act(obs,t0=False,eval_mode=True);torch.cuda.synchronize();elapsed=1000*(time.perf_counter()-begin);rows.append(dict(scenario=scene,configuration=group,call=i,planning_time_ms=elapsed))
++  finally:env.close()
++ summary={}
++ for group in ['B','M1','M2','M4','P','E','PE']:
++  x=np.array([r['planning_time_ms'] for r in rows if r['configuration']==group]);summary[group]=dict(calls=len(x),mean_ms=float(x.mean()),p50_ms=float(np.median(x)),p95_ms=float(np.quantile(x,.95)),max_ms=float(x.max()),mean_and_p95_within_control_period=bool(x.mean()<=100 and np.quantile(x,.95)<=100))
++ dump(R/'isolated_latency.json',dict(summary=summary,rows=rows,states=states,measurement='One GPU worker after experiments; complete Lattice+SAC+MPPI+action construction, synchronized. Same two live states,50calls/state plus5warmups, no candidate recorder, no control executed during timing. Fixed-state reference only; does not certify every episode state.'))
++ print(summary,flush=True)
++if __name__=='__main__':main()
+diff --git a/reports/mppi_selection_20261117/latency_queue.py b/reports/mppi_selection_20261117/latency_queue.py
+new file mode 100644
+index 0000000..ec2debc
+--- /dev/null
++++ b/reports/mppi_selection_20261117/latency_queue.py
+@@ -0,0 +1,8 @@
++import json,os,subprocess,sys,time
++from pathlib import Path
++R=Path(__file__).parent;ROOT=R.parents[1]
++while not (R/'stage2_analysis.json').exists() or not (R/'development_selection.json').exists():time.sleep(3)
++choice=json.loads((R/'development_selection.json').read_text())
++if choice['candidate']:
++ while not (R/'validation_analysis.json').exists():time.sleep(3)
++with (R/'latency.log').open('x') as log:subprocess.run([sys.executable,'-u',str(R/'latency.py')],cwd=ROOT,stdout=log,stderr=subprocess.STDOUT,check=True,env=dict(os.environ,OMP_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',MKL_NUM_THREADS='1',MUJOCO_GL='egl'))
+diff --git a/reports/mppi_selection_20261117/pipeline.py b/reports/mppi_selection_20261117/pipeline.py
+new file mode 100644
+index 0000000..473a181
+--- /dev/null
++++ b/reports/mppi_selection_20261117/pipeline.py
+@@ -0,0 +1,20 @@
++import json,os,subprocess,sys,time
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];R=Path(__file__).parent;env=dict(os.environ,OMP_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',MKL_NUM_THREADS='1',MUJOCO_GL='egl')
++
++def complete(stage,n):
++ try:
++  d=json.loads((R/(stage+'_status.json')).read_text());return len(d)==n and not any(d.values())
++ except (FileNotFoundError,json.JSONDecodeError):return False
++
++def run(script,*args,log):
++ with (R/log).open('x') as f:subprocess.run([sys.executable,'-u',str(R/(script+'.py')),*args],cwd=ROOT,stdout=f,stderr=subprocess.STDOUT,env=env,check=True)
++ print(script,args,'complete',flush=True)
++while not complete('stage1',32):time.sleep(3)
++run('analyze','--stage','stage1',log='stage1_analysis.log')
++run('run_stage','--stage','stage2',log='stage2.log')
++run('analyze','--stage','stage2',log='stage2_analysis.log')
++selection=json.loads((R/'development_selection.json').read_text())
++if selection['candidate']:
++ run('run_stage','--stage','validation',log='validation.log');run('analyze','--stage','validation',log='validation_analysis.log')
++else:print('Validation remains sealed: no qualified development candidate.',flush=True)
+diff --git a/reports/mppi_selection_20261117/plot_results.py b/reports/mppi_selection_20261117/plot_results.py
+new file mode 100644
+index 0000000..08b6a29
+--- /dev/null
++++ b/reports/mppi_selection_20261117/plot_results.py
+@@ -0,0 +1,17 @@
++import json,csv
++from pathlib import Path
++R=Path(__file__).parent
++import numpy as np
++import matplotlib
++matplotlib.use('Agg')
++import matplotlib.pyplot as plt
++p=json.loads((R/'protocol.json').read_text());data=json.loads((R/'stage2_analysis.json').read_text());lat=json.loads((R/'isolated_latency.json').read_text());figs=R/'figures';figs.mkdir(exist_ok=True);groups=['M1','M2','M4','P','E','PE'];labels=['M1','M2','M4','Prior+Mean','Candidate+Elite','Prior+Elite'];means=np.array([data['comparisons'][g]['actual_discounted_return_difference'] for g in groups]);lo=np.array([data['comparisons'][g]['actual_discounted_return_difference_ci95_low'] for g in groups]);hi=np.array([data['comparisons'][g]['actual_discounted_return_difference_ci95_high'] for g in groups]);plt.rcParams.update({'font.size':10,'axes.spines.top':False,'axes.spines.right':False})
++fig,ax=plt.subplots(figsize=(10,4),layout='constrained');x=np.arange(len(groups));ax.bar(x,means,color=['#2d6da3']*3+['#b56a25']*3,alpha=.8);ax.errorbar(x,means,yerr=[means-lo,hi-means],fmt='none',ecolor='black',capsize=4);ax.axhline(0,color='gray',lw=1);ax.set(xticks=x,xticklabels=labels,ylabel='Actual discounted return difference vs SAC',title='True native closed-loop: 4 fresh development maps x 2 planner seeds');ax.grid(axis='y',alpha=.2);fig.savefig(figs/'paired_return.png',dpi=180);plt.close(fig)
++fig,axes=plt.subplots(1,2,figsize=(11,4),layout='constrained');allgroups=['B',*groups];xt=np.arange(len(allgroups));names=['SAC',*labels]
++for key,color in [('success','#2d6da3'),('crash','#b42d35'),('out_of_road','#c08b32')]:axes[0].plot(xt,[data['summary'][g][key]*100 for g in allgroups],'o-',label=key,color=color)
++axes[0].set(xticks=xt,xticklabels=names,ylabel='Episode fraction (%)',title='Development driving outcomes');axes[0].tick_params(axis='x',rotation=25);axes[0].legend();axes[0].grid(alpha=.2)
++for key,label in [('mean_ms','mean'),('p95_ms','P95')]:axes[1].plot(xt,[lat['summary'][g][key] for g in allgroups],'o-',label=label)
++axes[1].axhline(100,color='#b42d35',ls=':',label='100ms control period');axes[1].set(xticks=xt,xticklabels=names,ylabel='Complete planning wall time (ms)',title='Single-worker, matched fixed-state timing');axes[1].tick_params(axis='x',rotation=25);axes[1].legend();axes[1].grid(alpha=.2);fig.savefig(figs/'driving_and_latency.png',dpi=180);plt.close(fig)
++with (R/'summary.csv').open('w',newline='') as f:
++ cols=['configuration',*data['summary']['B'].keys()];w=csv.DictWriter(f,fieldnames=cols);w.writeheader()
++ for group,row in data['summary'].items():w.writerow(dict(configuration=group,**row))
+diff --git a/reports/mppi_selection_20261117/postprocess.py b/reports/mppi_selection_20261117/postprocess.py
+new file mode 100644
+index 0000000..cce3efc
+--- /dev/null
++++ b/reports/mppi_selection_20261117/postprocess.py
+@@ -0,0 +1,33 @@
++"""Complete paired factorial contrasts and trace-level causal/logging checks."""
++import csv,json,sys
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
++import numpy as np
++from evaluation_statistics import cluster_intervals
++sys.path.insert(0,str(ROOT/'reports/mppi_calibration_20261116'));from probe import dump
++p=json.loads((R/'protocol.json').read_text());data=json.loads((R/'stage2_analysis.json').read_text());k=json.loads((R/'iteration_choice.json').read_text())['iterations'];ref=f'M{k}';by={(r['configuration'],r['scenario'],r['test_seed']):r for r in data['rows']};contrasts={};comparisons=[('M1','M2'),('M1','M4'),('M2','M4'),(ref,'P'),(ref,'E'),('P','PE'),('E','PE'),(ref,'PE')]
++for reference,candidate in comparisons:
++ rows=[]
++ for scene in p['development_scenarios']:
++  for seed in p['repeat_seeds']:
++   a=by[(reference,scene,seed)];b=by[(candidate,scene,seed)];rows.append(dict(scenario=scene,test_seed=seed,**{key+'_difference':b[key]-a[key] for key in ['success','crash','out_of_road','route_completion','episode_return','actual_discounted_return','first_action_correction','baseline_selected_rate']}))
++ metrics={key:(key,None) for key in rows[0] if key not in ['scenario','test_seed']};contrasts[candidate+'_minus_'+reference]=dict(rows=rows,summary=cluster_intervals(rows,metrics,samples=p['bootstrap_samples'],seed=p['bootstrap_seed']))
++checks=[]
++for scene in p['development_scenarios']:
++ for seed in p['repeat_seeds']:
++  directory=R/'episodes/development';tr={g:np.load(directory/f'{g}_{scene}_r{seed}'/'trace.npz') for g in [ref,'P','E','PE']}
++  for a,b in [(ref,'E'),('P','PE')]:
++   check=dict(scenario=scene,test_seed=seed,reference=a,candidate=b,first_cycle_search_actions_equal=np.array_equal(tr[a]['iteration_actions'][0],tr[b]['iteration_actions'][0]),first_cycle_search_values_equal=np.array_equal(tr[a]['iteration_values'][0],tr[b]['iteration_values'][0]),first_cycle_Q_members_equal=np.array_equal(tr[a]['iteration_q_members'][0],tr[b]['iteration_q_members'][0]));checks.append(check);assert all(check[key] for key in ['first_cycle_search_actions_equal','first_cycle_search_values_equal','first_cycle_Q_members_equal'])
++  assert np.array_equal(tr[ref]['iteration_actions'][0,0,:,:10],tr['P']['iteration_actions'][0,0,:,:10])
++  for g in ['P','PE']:
++   x=tr[g]['iteration_actions'];assert np.all(x[:,:,:,-1]==x[:,:,0:1,-1])
++for row in data['rows']:
++ f=R/'episodes/development'/f"{row['configuration']}_{row['scenario']}_r{row['test_seed']}"/'trace.npz';tr=np.load(f);n=len(tr['actions']);assert row['counts']['lattice_prepare']==n and row['counts']['mppi']==(n if row['options']['mppi'] else 0);assert len(tr['observations'])==n+1 and bool(tr['done'][-1]) and not tr['done'][:-1].any()
++ if row['options']['mppi']:
++  assert tr['iteration_actions'].shape[1:]==(row['options']['iterations'],65,11,2);source=tr['selected_source'];selected=tr['final_candidates'][np.arange(n),source,0];assert np.array_equal(selected,tr['actions']);assert np.all((source==0)|(tr['final_values'][np.arange(n),source]>tr['final_values'][:,0]));assert tr['final_q_members'].shape==(n,2)
++with (R/'paired_returns.csv').open('w',newline='') as f:
++ columns=['configuration','scenario','test_seed','reference']+list(next(iter(data['paired_rows'].values()))[0]);columns=list(dict.fromkeys(columns));writer=csv.DictWriter(f,fieldnames=columns);writer.writeheader()
++ for group,rows in data['paired_rows'].items():
++  for r in rows:writer.writerow(dict(configuration=group,reference='B',**r))
++dump(R/'factorial_contrasts.json',dict(iterations=k,contrasts=contrasts,scope='Paired whole-native-episode effects, same maps/seeds; terminal/selection comparisons at the single preselected iteration count. No endpoint replay or re-selection by future returns.'))
++dump(R/'trace_verification.json',dict(first_cycle_checks=checks,all56_native_episodes_validated=True,all_control_ticks_replanned=True,all_selected_first_actions_match=True,all_nonbaseline_selections_strictly_better_predicted=True,complete_candidate_arrays_saved=True,policy_prior_padding_fixed=True,initial_common_rng_matched=data['initial_state_RNG_pairs_matched']))
+diff --git a/reports/mppi_selection_20261117/regression.py b/reports/mppi_selection_20261117/regression.py
+new file mode 100644
+index 0000000..40a11f2
+--- /dev/null
++++ b/reports/mppi_selection_20261117/regression.py
+@@ -0,0 +1,30 @@
++"""Real-checkpoint GPU checks: shared members, cached scoring, frozen SAC features."""
++import contextlib,io,json,sys
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
++sys.path.insert(0,str(ROOT/'reports/mppi_calibration_20261116'));from probe import dump
++import numpy as np,torch
++from omegaconf import OmegaConf
++from mpr_mpc._bootstrap import bootstrap
++bootstrap()
++from common.seed import set_seed
++from env import make_env
++import evaluate_model_suite as suite
++from planning.local_mppi import LocalMPPI
++
++
++@torch.no_grad()
++def main():
++ p=json.loads((R/'protocol.json').read_text());ck=Path(p['checkpoint']);scene=p['development_scenarios'][0];raw=OmegaConf.load(p['source_environment_config']);raw.mpr_mpc.mppi=OmegaConf.load(ROOT/'config.yaml').mpr_mpc.mppi;raw.restore_checkpoint_runtime=True;raw.restore_mppi_runtime=False;raw.enable_wandb=raw.save_agent=raw.save_video=False;raw.residual_rl.buffer_size=8
++ _,cfg=suite._make_cfg(raw,ck.parent.parent.name,ck,[scene]);torch.set_num_threads(1);torch.set_float32_matmul_precision('high');set_seed(1);env=make_env(cfg)
++ try:
++  with contextlib.redirect_stdout(io.StringIO()):agent=suite._make_agent(cfg,env);state=agent.load(ck)
++  agent.eval();suite._apply_evaluation_stack(agent.planner,'world_model_residual_rl',state);agent.set_global_step(max(agent.global_env_step,agent.planner.mppi_start_step));set_seed(scene+1);agent.planner.reset(seed=scene+1);obs=env.reset(seed=scene);agent.act(obs,t0=True,eval_mode=True);context=agent.planner.last_context;baseline=agent.last_plan.refined_actions;old=context.residual_state.clone();wm=agent.planner.evaluator.evaluate_trajectory_consequence(context.latent,context.coarse_actions[None]).features.clone();rows=[]
++  for terminal in ['candidate','policy_prior']:
++   for selection in ['weighted_mean','best_final_elite']:
++    options=dict(cfg.mpr_mpc['mppi']);options.update(iterations=2,terminal_action=terminal,selection_mode=selection,audit_candidates=False,record_candidates=True);local=LocalMPPI(agent.planner.evaluator,options,horizon=10,action_dim=2,device=agent.device);local.reset(scene+1);set_seed(scene+1);result=local.plan(context.latent,baseline,eval_mode=True);record=result.selection_candidates;direct=agent.planner.evaluator.evaluate_mppi_candidates(context.latent,record['actions'],compute_cost=False,terminal_action=terminal,q_aggregation='fixed_pair',q_indices=record['q_member_indices']);error=(direct.total_value-record['values']).abs();assert float(error.max())<.01,float(error.max());assert torch.equal(result.action,result.selected_sequence[0]);assert torch.equal(context.residual_state,old)
++    if terminal=='policy_prior':assert (result.final_std[-1]==0).all() and torch.equal(result.final_mean[-1],baseline[-1])
++    rows.append(dict(terminal_action=terminal,selection_mode=selection,shared_Q=record['q_member_indices'],values=record['values'].cpu().tolist(),direct_three_candidate_values=direct.total_value.cpu().tolist(),maximum_cached_vs_direct_error=float(error.max()),source=record['selected_source'],frozen_SAC535_max_error=float((context.residual_state-old).abs().max())))
++  after=agent.planner.evaluator.evaluate_trajectory_consequence(context.latent,context.coarse_actions[None]).features;assert torch.equal(wm,after);dump(R/'gpu_regression.json',dict(rows=rows,SAC535_unchanged=True,coarse_SAC_WM_features_unchanged=True,note='Direct3-batch vs cached1/2-batch GPU comparison has small TF32 rounding; .01 absolute score tolerance for diagnostic only, never a selection margin. All sampling/online comparisons unchanged.'))
++ finally:env.close()
++if __name__=='__main__':main()
+diff --git a/reports/mppi_selection_20261117/report.py b/reports/mppi_selection_20261117/report.py
+new file mode 100644
+index 0000000..d116e49
+--- /dev/null
++++ b/reports/mppi_selection_20261117/report.py
+@@ -0,0 +1,72 @@
++"""Driving-first experimental report; no claims from predicted values alone."""
++import json
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];R=Path(__file__).parent
++
++def load(name):return json.loads((R/(name+'.json')).read_text())
++def n(x,d=3):return 'NA' if x is None else f'{x:.{d}f}'
++def ci(row,key,percent=False):
++ f=100 if percent else 1
++ def v(x):return 'NA' if x is None else n(x*f,1 if percent else 3)
++ return f"{v(row.get(key))} [{v(row.get(key+'_ci95_low'))}, {v(row.get(key+'_ci95_high'))}]"
++
++p=load('protocol');d=load('stage2_analysis');stage1=load('stage1_analysis');choice=load('iteration_choice');selection=load('development_selection');lat=load('isolated_latency');verify=load('verification');contrast=load('factorial_contrasts');gpu=load('gpu_regression');k=choice['iterations'];labels=dict(B='Lattice+SAC',M1='Candidate / Mean /1',M2='Candidate / Mean /2',M4='Candidate / Mean /4',P=f'Policy prior / Mean /{k}',E=f'Candidate / Final Elite /{k}',PE=f'Policy prior / Final Elite /{k}')
++lines=['# MPPI动作评价与选择：真实闭环消融',
++'', '**本轮完成修改与实验，但没有获得相对Lattice+SAC的可重复正收益。当前冻结WM/Q/SAC组合下，不建议启用这些实验配置或继续增加头、采样量与规则。** 这不是证明所有MPPI结构不可能有效，而是本轮预定开发样本未通过验收。独立验证6张新地图保持封存，没有用于再选参数。',
++'',f"代码基线 `{p['base_commit']}`，开始时工作区干净。原checkpoint SHA256 `{p['checkpoint_sha256']}`；没有训练、覆盖checkpoint、修改SAC535维输入/动作映射、Lattice、环境Reward/Cost/成功或终止规则，没有commit/push/reset。",
++'', '## 代码修改与语义',
++'', '- planning/evaluator.py：已有policy_prior确定性均值路径复用；新增可选RNG无扰动的Q成员记录。冻结eval模式WM无随机rollout，pi()未使用采样的RNG被恢复，记录的成员与原Q(avg)实际抽样一致。固定成员供最终Elite复评。',
++'- planning/local_mppi.py：增加selection_mode=weighted_mean/best_final_elite。旧配置没有该字段时走原路径；显式weighted_mean仍只按原Baseline/Mean最终2候选评分决策，额外记录最后轮Elite的共享成员评分。Elite为最后轮原65候选中预测Top1（可能是Baseline），不跨轮选择、不看真实未来Return；用最终Baseline/Mean同一Q成员复评后，仅严格高于Baseline才执行。',
++'- Elite复用已计算的prefix Reward、terminal latent、discount/termination，只重算终端价值，没有增加H步WM rollout。64个Gaussian+额外Baseline、8个Elite、AR(1)、Mean/Std更新和温度均未改。K轮完整候选推演仍为K×65+2，4轮262。Baseline与Mean最终同批，缓存Elite同成员；未声称三个完整rollout都是同一batch。',
++'- 新record_candidates只记录，不重评分/改变RNG；保留全部每轮65候选动作和原始分数/Q成员，三个最终候选、成员、原始Elite索引与选择来源baseline/mean/elite。显式新选择模式使用record_candidates，不与旧audit_candidates的额外随机Q复评混用。',
++'- planning/coordinator.py转交选择/候选trace；planning/types.py只增加Q成员元数据；planning/native_config.py仅允许迁移两个新配置字段。config.yaml、原网络文件及vendor/tdmpc2_runtime/tdmpc2.py未修改。',
++'', 'policy_prior前H步仍为候选物理动作；z_H处使用TD-MPC2 Actor的**squashed deterministic mean**计算Q。H+1接口保留，但填充a_H固定为Baseline填充值、std=0、不参与搜索。它不是Residual SAC的535维策略延续，也不是完全复现原生TD-MPC2随机Actor的行为。candidate模式和旧配置保留，不替换默认。',
++'', '实验配置示例（仅显式消融，未修改全局默认）：', '', '```yaml', 'mpr_mpc:', '  mppi:', '    terminal_action: policy_prior  # control: candidate', '    selection_mode: best_final_elite  # control: weighted_mean', '    audit_candidates: false', '    record_candidates: true', '```',
++'', '## 实验协议与控制变量',
++'',f"预先固定新开发场景{p['development_scenarios']}、planner seeds{p['repeat_seeds']}；每组8个原生终止回合、4张地图。场景seed固定道路/交通，repeat seed改变全局和规划随机性，不把同路况的两次运行算两张独立地图。每轮64 Samples/8 Elites、AR(1)、温度beta=.5、Q random_pair、std/rho、TD gamma=.995、cost_weight=0、原生horizon1000全部冻结。",
++'', '每个控制周期真实重新执行Lattice生成、原SAC残差、当组MPPI、选中首动作、env.step、下一观测重新规划。不是回放H步计划，也不是一次首动作后SAC接管。所有已执行控制步检查Lattice prepare计数==episode length、MPPI计数==length（B为0）、selected_sequence[0]==实际动作、非Baseline预测分数严格高于Baseline。实际tdmpc2_reward逐步累计Episode Return和原gamma折扣Return。',
++'', '阶段1：B/M1/M2/M4，只改变iterations。阶段2：按开发规则固定一个迭代数，再比较2×2的Terminal Action和Mean/Elite；复用阶段1对应Candidate+Mean对照。阶段1没有合格迭代，M2仅比M1的Return点估计高0.006，故按预先规则选择2轮做后续**诊断**，不是证明2轮优于1轮或可上线。',
++'', '所有初始观测、车辆/交通和可记录RNG跨方案精确匹配。真实第一周期M2/E的全部搜索动作、值和Q成员完全一致，P/PE亦完全一致；M2/P第一轮前H步Gaussian扰动相同，policy_prior仅固定填充动作并改终端评价。完整检查见trace_verification.json。',
++'', '## 1/2/4轮真实闭环结果',
++'', '|组|Success%|Crash%|OOR%|Route%|Episode Return|实际折扣Return|相对B折扣Return [95% CI]|', '|---|---:|---:|---:|---:|---:|---:|---:|']
++for g in ['B','M1','M2','M4']:
++ r=d['summary'][g];gain='—' if g=='B' else ci(d['comparisons'][g],'actual_discounted_return_difference');lines.append(f"|{labels[g]}|{n(100*r['success'],1)}|{n(100*r['crash'],1)}|{n(100*r['out_of_road'],1)}|{n(100*r['route_completion'],1)}|{n(r['episode_return'],2)}|{n(r['actual_discounted_return'],2)}|{gain}|")
++lines += ['', '成功率三组均未超过B；M4还在8回合中出现1次碰撞。M1的未折扣Episode Return虽更高，但平均用433.1步，B为395.0步，路线完成率近似；实际折扣Return更低，不能把累积Reward上升当作驾驶效率或任务收益改善。M1/M2的实际折扣Return均比B低约3，M4低约6.50。M2−M1仅约0.006，没有可靠证据证明2轮优于1轮；完整迭代配对CI在factorial_contrasts.json。不要根据预测收益或开发集微小最优点修改默认迭代数。',
++'', '## Terminal Action和Mean/Elite消融（固定2轮）',
++'', '|Terminal / Selection|Success%|Crash%|OOR%|Route%|Episode Return|实际折扣Return|相对B折扣Return [95% CI]|', '|---|---:|---:|---:|---:|---:|---:|---:|']
++for g in ['M2','P','E','PE']:
++ r=d['summary'][g];lines.append(f"|{labels[g]}|{n(100*r['success'],1)}|{n(100*r['crash'],1)}|{n(100*r['out_of_road'],1)}|{n(100*r['route_completion'],1)}|{n(r['episode_return'],2)}|{n(r['actual_discounted_return'],2)}|{ci(d['comparisons'][g],'actual_discounted_return_difference')}|")
++lines += ['', '|单变量配对比较|Success变化百分点 [CI]|OOR变化百分点 [CI]|折扣Return变化 [CI]|', '|---|---:|---:|---:|']
++for key,label in [(f'P_minus_M{k}','Policy prior−Candidate（Mean）'),(f'E_minus_M{k}','Elite−Mean（Candidate）'),('PE_minus_P','Elite−Mean（Policy prior）'),('PE_minus_E','Policy prior−Candidate（Elite）')]:
++ r=contrast['contrasts'][key]['summary'];lines.append(f"|{label}|{ci(r,'success_difference',True)}|{ci(r,'out_of_road_difference',True)}|{ci(r,'actual_discounted_return_difference')}|")
++lines += ['', '单独采用policy_prior或Final Elite均为37.5%成功、62.5%OOR，差于B及Candidate+Mean的50%/50%；组合回到50%，但折扣Return仍低3.92。不能把组合比某个较差消融更好解释为超过SAC；没有启用未验证Cost或加入新规则补救。',
++'', '![真实配对收益](reports/mppi_selection_20261117/figures/paired_return.png)',
++'', '## 模型选择行为与逐场景配对',
++'', '|方案|Baseline Selected%|首动作修正范数|平均局部预测增益|seed1实际增益|seed2实际增益|', '|---|---:|---:|---:|---:|---:|']
++for g in ['M1','M2','M4','P','E','PE']:
++ r=d['summary'][g];seeds=d['seed_return_gains'][g];lines.append(f"|{g}|{n(100*r['baseline_selected_rate'],2)}|{n(r['first_action_correction'])}|{n(r['selected_predicted_gain'])}|{n(seeds['1'])}|{n(seeds['2'])}|")
++lines += ['', 'M1→M2→M4的首动作修正逐渐增大，Baseline选中率降至不足1%；预测选择仍几乎总偏向优化结果，而实际Return均降低。平均局部预测增益是每步J(candidate)−J(SAC)，不是整集Return增益，二者不能直接相减当误差。两种planner seed的实际增益均为负，没有单个种子支撑的可重复正收益。',
++'', '逐场景、逐seed的Return/Success/Crash/OOR/Route和配对差在episodes/development/*/episode.json与paired_returns.csv；全部候选、Q成员、实际动作、rewards/done、观测在每回合trace.npz。场景聚类bootstrap2000次、seed1，两个repeat随整张地图一起重采样；未做多重比较校正。样本只有4张地图，不能把56分支当56张地图，也不能据此证明所有MPPI不可能有效。',
++'', '## 规划耗时',
++'', '回合报告记录完整agent.act同步wall time，但4个worker共享GPU，不能用这些并行时间判断实时性。采集完成后，在同两张开发地图step30的相同真实状态，单worker分别测100次完整Lattice+SAC+MPPI（每状态50次、5次warmup），关闭候选记录这一诊断开销。没有执行计时中的候选控制，也没有改搜索预算。',
++'',f"硬件：{verify['gpu']}。完整规划耗时包含Lattice/SAC/WM/最终动作构建；参考控制周期100ms。",
++'', '|组|Mean(ms)|P50(ms)|P95(ms)|Max(ms)|Mean及P95<=100ms|', '|---|---:|---:|---:|---:|---|']
++for g in ['B','M1','M2','M4','P','E','PE']:
++ r=lat['summary'][g];lines.append(f"|{g}|{n(r['mean_ms'],1)}|{n(r['p50_ms'],1)}|{n(r['p95_ms'],1)}|{n(r['max_ms'],1)}|{r['mean_and_p95_within_control_period']}|")
++lines += ['', 'B满足本次参考；M1均值96.3ms但P95为104.3ms，仍未通过预定门槛；其余方案均值已超过100ms。固定两状态不能认证整集所有复杂路况的时延。没有通过减少Samples/Elites或取消检查来制造达标结果。',
++'', '![驾驶与时延](reports/mppi_selection_20261117/figures/driving_and_latency.png)',
++'', '## 独立验证与验收',
++'',f"预先封存验证场景{p['validation_scenarios']}，没有执行。原因是开发集不存在成功率严格超过B、事故不恶化且两个seed Return均正改善的候选；不是先看验证再挑另一个方案。独立验证报告状态为**未开启**，不能宣称独立验证通过或有泛化改善。若未来出现合格方案，协议只允许B对单一已选方案在这6张地图上验证一次，不能在验证后重挑。",
++'', '本轮验收：实际成功率未改善；P/E单独还增加OOR，M4增加碰撞；全部实际Return差为负；两种seed未出现正收益；MPPI实时性也未通过。**不建议继续沿当前冻结WM/Q的动作评价与选择路线直接启用或扩展，也不建议正式100场。保留Lattice+SAC为工作基准、MPPI为可选实验分支，不继续加网络、采样或规则。** 这是对当前组合和本轮证据的判断，不是对MPPI理论的普遍否定。',
++'', '## 测试、回归与完整性',
++'', f"**{verify['tests']}**。新增3项覆盖RNG无扰动成员捕获及两种terminal动作、Mean/Elite同成员复评与首动作一致、无收益保留Baseline、记录不改变Mean/RNG；原53项未删/放宽。",
++'', f"真实checkpoint GPU回归：三候选直接同成员重评与缓存评分最大差{n(verify['diagnostic_cached_vs_direct_max_error'],6)}（不同batch的TF32浮点差异）；诊断容差.01不参与在线选择。SAC535与原粗轨迹WM特征前后误差0。相同terminal下Mean/Elite优化得到同一分布，只改最终选择。",
++'', '原checkpoint、旧5个评分头、网络结构、旧配置、原训练入口和旧实验完整性均校验。没有生成新模型权重。主改动文件：planning/local_mppi.py、planning/evaluator.py、planning/types.py、planning/coordinator.py、planning/native_config.py；测试tests/test_mppi_final_selection.py；本目录实验脚本、预定protocol、日志、数据和报告。',
++'', '首轮24个MPPI采集任务因采集器CPU/GPU张量比对错误，在首次env.step之前退出；失败目录/日志已归档，不计为驾驶失败/完整回合。只修正比对，按相同场景/seed补跑；8个已完成SAC回合保留。首次时延脚本导入旧同名报告模块导致argparse退出，未产生计时样本；修正本目录导入后完成测量。未为这些修复改变模型、分布、方案或重选场景。',
++'', '交付目录reports/mppi_selection_20261117/：stage1/stage2_analysis、factorial_contrasts、paired_returns.csv、summary.csv、完整trace、isolated_latency、gpu_regression、trace_verification、verification和code_changes.patch。完整原生实验56回合，计时调用700次不计为驾驶回合，没有正式100场或验证集泄漏。']
++(ROOT/'MPPI_CLOSED_LOOP_SELECTION_REPORT_20261117.md').write_text('\n'.join(lines)+'\n')
++# Focused deliverables share the same fixed data/CI; no new selection/experiments.
++sections=[('iterations_report.md','## 1/2/4轮真实闭环结果','## Terminal Action和Mean/Elite消融（固定2轮）'),('terminal_action_report.md','## Terminal Action和Mean/Elite消融（固定2轮）','## 模型选择行为与逐场景配对'),('selection_report.md','## Terminal Action和Mean/Elite消融（固定2轮）','## 模型选择行为与逐场景配对')]
++text='\n'.join(lines)
++for filename,start,end in sections:
++ content=text[text.index(start):text.index(end)];(R/filename).write_text('# '+filename.replace('_',' ').removesuffix('.md')+'\n\n本节是同一真实闭环实验的摘录，不是额外验证。完整协议和限制见仓库根目录MPPI_CLOSED_LOOP_SELECTION_REPORT_20261117.md。\n\n'+content+'\n\n结论：开发集未获相对SAC的可重复正收益；验证保持封存，默认配置及checkpoint未变。\n')
+diff --git a/reports/mppi_selection_20261117/run_stage.py b/reports/mppi_selection_20261117/run_stage.py
+new file mode 100644
+index 0000000..9bfcafe
+--- /dev/null
++++ b/reports/mppi_selection_20261117/run_stage.py
+@@ -0,0 +1,32 @@
++"""Fresh process per paired native episode; never overwrite earlier experiments."""
++import argparse,json,os,subprocess,sys,time
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
++from tools.benchmark_mppi import source_fingerprint
++from planning.sac_value import file_sha256
++ap=argparse.ArgumentParser();ap.add_argument('--stage',choices=['stage1','stage2','validation'],required=True);ap.add_argument('--resume',action='store_true');a=ap.parse_args();p=json.loads((R/'protocol.json').read_text());assert source_fingerprint(ROOT)==p['source_snapshot_sha256'];assert file_sha256(p['checkpoint'])==p['checkpoint_sha256']
++phase='validation' if a.stage=='validation' else 'development';groups=['B',json.loads((R/'development_selection.json').read_text())['candidate']] if a.stage=='validation' else ['B','M1','M2','M4'] if a.stage=='stage1' else ['P','E','PE'];scenes=p[phase+'_scenarios'];queue=[];done={};running=[];attempt=0
++while (R/(a.stage+('' if attempt==0 else f'_retry{attempt}')+'_logs')).exists():
++ if not a.resume and attempt==0:break
++ attempt+=1
++logs=R/(a.stage+('' if attempt==0 else f'_retry{attempt}')+'_logs');logs.mkdir(exist_ok=True)
++for scene in scenes:
++ for seed in p['repeat_seeds']:
++  for group in groups:
++   key=f'{group}_{scene}_r{seed}';out=R/'episodes'/phase/key
++   if a.resume and (out/'episode.json').exists():done[key]=0;continue
++   if a.resume and out.exists():
++    archive=R/'failed_collector_device'/phase/key;archive.parent.mkdir(parents=True,exist_ok=True);assert not archive.exists();out.rename(archive)
++   queue.append((key,group,scene,seed))
++expected=len(queue)+len(done);env=dict(os.environ,OMP_NUM_THREADS='1',MKL_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',MUJOCO_GL='egl')
++while queue or running:
++ while queue and len(running)<4 and not any(done.values()):
++  key,g,s,seed=queue.pop(0);log=(logs/(key+'.log')).open('x');job=subprocess.Popen([sys.executable,'-u',str(R/'closed_loop.py'),'--phase',phase,'--group',g,'--scenario',str(s),'--seed',str(seed)],cwd=ROOT,stdout=log,stderr=subprocess.STDOUT,env=env);running.append((key,job,log))
++ for key,job,log in running[:]:
++  status=job.poll()
++  if status is not None:
++   running.remove((key,job,log));log.close();done[key]=status;temp=R/(a.stage+'_status.tmp');temp.write_text(json.dumps(done,indent=2));temp.replace(R/(a.stage+'_status.json'));print(len(done),'/',expected,key,status,flush=True)
++ if any(done.values()) and not running:break
++ if running:time.sleep(2)
++assert len(done)==expected and not any(done.values()),done
++assert source_fingerprint(ROOT)==p['source_snapshot_sha256'];assert file_sha256(p['checkpoint'])==p['checkpoint_sha256']
+diff --git a/reports/mppi_selection_20261117/setup.py b/reports/mppi_selection_20261117/setup.py
+new file mode 100644
+index 0000000..be4c560
+--- /dev/null
++++ b/reports/mppi_selection_20261117/setup.py
+@@ -0,0 +1,20 @@
++import json,subprocess,sys
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
++import numpy as np
++from tools.benchmark_mppi import source_fingerprint
++from planning.sac_value import file_sha256
++old=json.loads((ROOT/'reports/mppi_root_cause_20261117/protocol.json').read_text());dev=np.random.default_rng(2026111705).choice(np.arange(70000,71000),4,replace=False).tolist();val=np.random.default_rng(2026111706).choice(np.arange(73000,74000),6,replace=False).tolist()
++p=dict(base_commit=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),checkpoint=old['checkpoint'],checkpoint_sha256=old['checkpoint_sha256'],source_environment_config=old['source_environment_config'],source_snapshot_sha256=source_fingerprint(ROOT),development_scenarios=dev,validation_scenarios=val,repeat_seeds=[1,2],horizon=10,gamma=.995,control_period_ms=100,bootstrap_samples=2000,bootstrap_seed=1,
++ stage1=dict(B=dict(mppi=False,iterations=4,terminal_action='candidate',selection_mode='weighted_mean'),M1=dict(mppi=True,iterations=1,terminal_action='candidate',selection_mode='weighted_mean'),M2=dict(mppi=True,iterations=2,terminal_action='candidate',selection_mode='weighted_mean'),M4=dict(mppi=True,iterations=4,terminal_action='candidate',selection_mode='weighted_mean')),
++ stage2='At ONE development-selected iteration count, full2x2 terminal_action(candidate/policy_prior) x selection_mode(weighted_mean/best_final_elite); reuse existing candidate+mean data. Exactly24 additional episodes.',
++ iteration_choice='Prefer iteration configurations with success>B, crash/OOR<=B, mean actual discounted return>B. If none eligible, choose highest scenario-balanced actual discounted return gain for diagnostic stage2 only, tie fewer iterations; never deploy a diagnostic winner.',
++ final_choice='Choose one of six method/iteration definitions acrossstage1 andstage2 using only development: success>B, crash/OOR<=B, actual return gain>0 and positive gain at BOTH repeat seeds. Rank eligible by actual discounted return gain, then success, then fewer iterations. If none eligible, no candidate is qualified; stop without unsealing validation.',
++ validation='Only B and ONE selected configuration, both repeats on6 fresh predeclared maps, once. No selection on validation. No switching to another candidate after validation.',
++ acceptance=dict(success_strictly_gt_B=True,crash_not_worse=True,OOR_not_worse=True,paired_actual_return_ci95_low_gt_0=True,positive_return_gain_both_seeds=True,leave_one_scene_out_positive_gain=True,isolated_mean_and_p95_planning_ms_le_100=True),
++ controls='Originalcheckpoint/SAC535/actions/Lattice/reward/cost/native1000step horizon frozen.64/8/std/rho/beta=.5/random_pair/cost_weight0 unchanged. Candidate/weighted_mean stage1 only iteration differs. Every act recomputes Lattice+SAC+MPPI, executes selected first action then env.step; no stored H-prefix replay.',
++ rng='Same scenario fixes road/traffic RNG; repeat seeds vary global/planner stochasticity. Pair initial observation, traffic and recordableRNG before action. Scene-cluster bootstrap carries both repeats together; repeats are not independent maps.',
++ logging='record_candidates=True stores ALL per-round65 action sequences andvalues,3 final candidates/members/sources,real actions/rewards/native done in compressed per-episode NPZ. No full-tensor JSON dumping or extra full WM rollouts. Reevaluate final elite from cachedprefix/z using same final Q members as baseline+mean.',
++ latency='Parallel closed-loop times include shared GPU load and are not isolated real-time evidence. After collection, measure full planning on same two fixed development states,100 calls permethod, with oneGPU worker and candidate recording disabled (instrumentationonly). Passing fixed-state latency alone does not certify every driving state.',
++ formal100=False,training=False,online_defaults_changed=False)
++assert file_sha256(p['checkpoint'])==p['checkpoint_sha256'];assert not set(dev)&set(val);assert not (R/'protocol.json').exists();(R/'protocol.json').write_text(json.dumps(p,indent=2));print('dev',dev,'validation sealed',val)
+diff --git a/reports/mppi_selection_20261117/protocol.json b/reports/mppi_selection_20261117/protocol.json
+new file mode 100644
+index 0000000..75fee5d
+--- /dev/null
++++ b/reports/mppi_selection_20261117/protocol.json
+@@ -0,0 +1,76 @@
++{
++  "base_commit": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
++  "checkpoint": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt",
++  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
++  "source_environment_config": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/benchmark/sac_refinement_BD_fixed100_20261111_152755/part1/config_B_lattice_sac_seed1.yaml",
++  "source_snapshot_sha256": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
++  "development_scenarios": [
++    70128,
++    70124,
++    70446,
++    70402
++  ],
++  "validation_scenarios": [
++    73423,
++    73936,
++    73260,
++    73125,
++    73388,
++    73348
++  ],
++  "repeat_seeds": [
++    1,
++    2
++  ],
++  "horizon": 10,
++  "gamma": 0.995,
++  "control_period_ms": 100,
++  "bootstrap_samples": 2000,
++  "bootstrap_seed": 1,
++  "stage1": {
++    "B": {
++      "mppi": false,
++      "iterations": 4,
++      "terminal_action": "candidate",
++      "selection_mode": "weighted_mean"
++    },
++    "M1": {
++      "mppi": true,
++      "iterations": 1,
++      "terminal_action": "candidate",
++      "selection_mode": "weighted_mean"
++    },
++    "M2": {
++      "mppi": true,
++      "iterations": 2,
++      "terminal_action": "candidate",
++      "selection_mode": "weighted_mean"
++    },
++    "M4": {
++      "mppi": true,
++      "iterations": 4,
++      "terminal_action": "candidate",
++      "selection_mode": "weighted_mean"
++    }
++  },
++  "stage2": "At ONE development-selected iteration count, full2x2 terminal_action(candidate/policy_prior) x selection_mode(weighted_mean/best_final_elite); reuse existing candidate+mean data. Exactly24 additional episodes.",
++  "iteration_choice": "Prefer iteration configurations with success>B, crash/OOR<=B, mean actual discounted return>B. If none eligible, choose highest scenario-balanced actual discounted return gain for diagnostic stage2 only, tie fewer iterations; never deploy a diagnostic winner.",
++  "final_choice": "Choose one of six method/iteration definitions acrossstage1 andstage2 using only development: success>B, crash/OOR<=B, actual return gain>0 and positive gain at BOTH repeat seeds. Rank eligible by actual discounted return gain, then success, then fewer iterations. If none eligible, no candidate is qualified; stop without unsealing validation.",
++  "validation": "Only B and ONE selected configuration, both repeats on6 fresh predeclared maps, once. No selection on validation. No switching to another candidate after validation.",
++  "acceptance": {
++    "success_strictly_gt_B": true,
++    "crash_not_worse": true,
++    "OOR_not_worse": true,
++    "paired_actual_return_ci95_low_gt_0": true,
++    "positive_return_gain_both_seeds": true,
++    "leave_one_scene_out_positive_gain": true,
++    "isolated_mean_and_p95_planning_ms_le_100": true
++  },
++  "controls": "Originalcheckpoint/SAC535/actions/Lattice/reward/cost/native1000step horizon frozen.64/8/std/rho/beta=.5/random_pair/cost_weight0 unchanged. Candidate/weighted_mean stage1 only iteration differs. Every act recomputes Lattice+SAC+MPPI, executes selected first action then env.step; no stored H-prefix replay.",
++  "rng": "Same scenario fixes road/traffic RNG; repeat seeds vary global/planner stochasticity. Pair initial observation, traffic and recordableRNG before action. Scene-cluster bootstrap carries both repeats together; repeats are not independent maps.",
++  "logging": "record_candidates=True stores ALL per-round65 action sequences andvalues,3 final candidates/members/sources,real actions/rewards/native done in compressed per-episode NPZ. No full-tensor JSON dumping or extra full WM rollouts. Reevaluate final elite from cachedprefix/z using same final Q members as baseline+mean.",
++  "latency": "Parallel closed-loop times include shared GPU load and are not isolated real-time evidence. After collection, measure full planning on same two fixed development states,100 calls permethod, with oneGPU worker and candidate recording disabled (instrumentationonly). Passing fixed-state latency alone does not certify every driving state.",
++  "formal100": false,
++  "training": false,
++  "online_defaults_changed": false
++}
+\ No newline at end of file

@@ -1,0 +1,20 @@
+import json,subprocess,sys
+from pathlib import Path
+ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
+import numpy as np
+from tools.benchmark_mppi import source_fingerprint
+from planning.sac_value import file_sha256
+old=json.loads((ROOT/'reports/mppi_root_cause_20261117/protocol.json').read_text());dev=np.random.default_rng(2026111705).choice(np.arange(70000,71000),4,replace=False).tolist();val=np.random.default_rng(2026111706).choice(np.arange(73000,74000),6,replace=False).tolist()
+p=dict(base_commit=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),checkpoint=old['checkpoint'],checkpoint_sha256=old['checkpoint_sha256'],source_environment_config=old['source_environment_config'],source_snapshot_sha256=source_fingerprint(ROOT),development_scenarios=dev,validation_scenarios=val,repeat_seeds=[1,2],horizon=10,gamma=.995,control_period_ms=100,bootstrap_samples=2000,bootstrap_seed=1,
+ stage1=dict(B=dict(mppi=False,iterations=4,terminal_action='candidate',selection_mode='weighted_mean'),M1=dict(mppi=True,iterations=1,terminal_action='candidate',selection_mode='weighted_mean'),M2=dict(mppi=True,iterations=2,terminal_action='candidate',selection_mode='weighted_mean'),M4=dict(mppi=True,iterations=4,terminal_action='candidate',selection_mode='weighted_mean')),
+ stage2='At ONE development-selected iteration count, full2x2 terminal_action(candidate/policy_prior) x selection_mode(weighted_mean/best_final_elite); reuse existing candidate+mean data. Exactly24 additional episodes.',
+ iteration_choice='Prefer iteration configurations with success>B, crash/OOR<=B, mean actual discounted return>B. If none eligible, choose highest scenario-balanced actual discounted return gain for diagnostic stage2 only, tie fewer iterations; never deploy a diagnostic winner.',
+ final_choice='Choose one of six method/iteration definitions acrossstage1 andstage2 using only development: success>B, crash/OOR<=B, actual return gain>0 and positive gain at BOTH repeat seeds. Rank eligible by actual discounted return gain, then success, then fewer iterations. If none eligible, no candidate is qualified; stop without unsealing validation.',
+ validation='Only B and ONE selected configuration, both repeats on6 fresh predeclared maps, once. No selection on validation. No switching to another candidate after validation.',
+ acceptance=dict(success_strictly_gt_B=True,crash_not_worse=True,OOR_not_worse=True,paired_actual_return_ci95_low_gt_0=True,positive_return_gain_both_seeds=True,leave_one_scene_out_positive_gain=True,isolated_mean_and_p95_planning_ms_le_100=True),
+ controls='Originalcheckpoint/SAC535/actions/Lattice/reward/cost/native1000step horizon frozen.64/8/std/rho/beta=.5/random_pair/cost_weight0 unchanged. Candidate/weighted_mean stage1 only iteration differs. Every act recomputes Lattice+SAC+MPPI, executes selected first action then env.step; no stored H-prefix replay.',
+ rng='Same scenario fixes road/traffic RNG; repeat seeds vary global/planner stochasticity. Pair initial observation, traffic and recordableRNG before action. Scene-cluster bootstrap carries both repeats together; repeats are not independent maps.',
+ logging='record_candidates=True stores ALL per-round65 action sequences andvalues,3 final candidates/members/sources,real actions/rewards/native done in compressed per-episode NPZ. No full-tensor JSON dumping or extra full WM rollouts. Reevaluate final elite from cachedprefix/z using same final Q members as baseline+mean.',
+ latency='Parallel closed-loop times include shared GPU load and are not isolated real-time evidence. After collection, measure full planning on same two fixed development states,100 calls permethod, with oneGPU worker and candidate recording disabled (instrumentationonly). Passing fixed-state latency alone does not certify every driving state.',
+ formal100=False,training=False,online_defaults_changed=False)
+assert file_sha256(p['checkpoint'])==p['checkpoint_sha256'];assert not set(dev)&set(val);assert not (R/'protocol.json').exists();(R/'protocol.json').write_text(json.dumps(p,indent=2));print('dev',dev,'validation sealed',val)

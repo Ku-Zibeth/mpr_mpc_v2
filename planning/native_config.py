@@ -8,6 +8,7 @@ NATIVE_MPPI_KEYS = frozenset({
     "temperature_definition", "terminal_action", "q_aggregation",
     "terminal_q_weight",
     "terminal_value", "sac_value_checkpoint", "audit_candidates", "record_cost", "cost_weight",
+    "selection_mode", "record_candidates",
 })
 
 

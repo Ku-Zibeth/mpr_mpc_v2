@@ -266,12 +266,14 @@ class TrajectoryWorldModelEvaluator:
             terminal_discount=discount,terminal_actions=a,q_member_values=qs.squeeze(-1) if qs is not None else None,
             cumulative_cost=cat("cumulative_cost"),predicted_cost=cat("predicted_cost"),cost_penalty=penalty,
             cost_validated_mask=cat("cost_validated_mask"),effective_cost_weight=effective,
+            q_member_indices=tuple(q_indices) if q_aggregation == "fixed_pair" and q_indices is not None else None,
             cost_ranking_validated=bool(cat("cumulative_cost") is not None and self.cost_ranking_ready()))
 
     def evaluate_mppi_candidates(self, z_t, actions, task=None, *, compute_cost=None,
                                  terminal_action="candidate", q_aggregation="random_pair",
                                  q_indices=None, capture_ensemble=False, terminal_q_weight=1.0,
-                                 terminal_value="tdmpc2_q", cost_weight=0.0):
+                                 terminal_value="tdmpc2_q", cost_weight=0.0,
+                                 capture_q_indices=False):
         if actions.ndim != 3 or actions.shape[1] != self.horizon+1:
             raise ValueError("MPPI keeps the Coordinator H+1 interface.")
         if terminal_action not in {"candidate", "policy_prior"}:
@@ -285,10 +287,28 @@ class TrajectoryWorldModelEvaluator:
             raise ValueError("SAC continuation value uses unit terminal weight, not Q-weight calibration.")
         mode = "state_value" if terminal_value == "sac_value" else "trajectory" if terminal_action == "candidate" else "policy_mean"
         controls = actions if mode == "trajectory" else actions[:, :self.horizon]
-        return self.evaluate(z_t, controls, terminal_action_mode=mode, task=task,
+        members = None
+        if capture_q_indices and terminal_value == "tdmpc2_q":
+            if q_aggregation == "random_pair":
+                # Frozen eval-mode rollouts consume no RNG; policy_mean also
+                # restores pi()'s unused sample. Peek at the original Q(avg)
+                # draw without consuming it, to reuse these exact members.
+                device = torch.device(self.agent.device)
+                devices = [device.index if device.index is not None else torch.cuda.current_device()] if device.type == "cuda" else []
+                with torch.random.fork_rng(devices=devices):
+                    members = self.new_mppi_q_pair()
+            elif q_aggregation == "fixed_pair":
+                members = tuple(q_indices)
+            else:
+                members = tuple(range(int(self.agent.cfg.num_q)))
+        result = self.evaluate(z_t, controls, terminal_action_mode=mode, task=task,
             compute_cost=compute_cost, q_aggregation=reducers[q_aggregation],
             q_indices=q_indices, capture_ensemble=capture_ensemble, terminal_q_weight=terminal_q_weight,
             cost_weight=cost_weight, mppi_scoring=True)
+        if capture_q_indices:
+            from dataclasses import replace
+            result = replace(result, q_member_indices=members)
+        return result
 
 
 __all__ = ["TrajectoryWorldModelEvaluator"]
