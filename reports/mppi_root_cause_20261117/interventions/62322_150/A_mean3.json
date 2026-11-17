@@ -1,0 +1,17 @@
+{
+  "scenario": 62322,
+  "before": 150,
+  "choice": "mean3",
+  "protocol": "A",
+  "intervention_steps": 10,
+  "actual_return": 137.43158543431835,
+  "episode_return": 209.83440680628843,
+  "cost": 0.5195835849325211,
+  "length": 193,
+  "success": true,
+  "crash": false,
+  "out_of_road": false,
+  "route_completion": 0.9908652408587719,
+  "predicted_return": 238.0175323486328,
+  "native_done": true
+}

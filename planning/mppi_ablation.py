@@ -30,3 +30,16 @@ def terminal_weight_ablation_config(config, name):
     result.update(temperature_definition="inverse", temperature=2.0,
                   terminal_q_weight=TERMINAL_WEIGHT_ABLATIONS[name])
     return result
+
+
+def iterations_ablation_config(config, iterations):
+    """Independent experiment only; preserve every option except iterations.
+
+    This does not select or change the online default. In particular, an H-step
+    intervention experiment cannot establish receding-horizon driving benefit.
+    """
+    if iterations not in (1, 2, 4):
+        raise ValueError("Iteration ablations require 1, 2 or 4 iterations.")
+    result = deepcopy(dict(config))
+    result["iterations"] = int(iterations)
+    return result

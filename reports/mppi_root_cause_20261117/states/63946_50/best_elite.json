@@ -1,0 +1,45 @@
+{
+  "scenario": 63946,
+  "before": 50,
+  "branch": "best_elite",
+  "source": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/63946_50/best_elite.npz",
+  "h_available": 10,
+  "full_state_available": true,
+  "native_early_termination": false,
+  "prefix_exactly_replayed": true,
+  "real_state_builder": "original agent.planner.last_context.residual_state from actual H observation",
+  "risk_feature_order": [
+    "cumulative_cost",
+    "min_ttc",
+    "min_clearance",
+    "boundary_margin"
+  ],
+  "coverage": {
+    "speed": 9.992855108014915,
+    "lane_type": "StraightLane",
+    "traffic_count": 13,
+    "lateral": -1.143585205078125,
+    "lane_heading_change_10m": 0.0
+  },
+  "end": {
+    "scenario": 63946,
+    "before": 50,
+    "branch": "best_elite",
+    "native_done": true,
+    "length": 387,
+    "prefix_complete": true,
+    "success": true,
+    "crash": false,
+    "out_of_road": false,
+    "route_completion": 0.990288225135498,
+    "episode_return": 342.5237579869569,
+    "actual_return": 157.13447395740482,
+    "actual_continuation": 153.34147086578693,
+    "cost_sum": 0.5412125271161545,
+    "planning_time_ms": 160.36729200277478,
+    "average_speed": 8.55141460620559,
+    "policy_context_sha256": "82b2a6917b35d7107f49527636d022595aee1cc3723ddabdf1115523c0301a48",
+    "wm_checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+    "end_reason": "arrive_dest"
+  }
+}

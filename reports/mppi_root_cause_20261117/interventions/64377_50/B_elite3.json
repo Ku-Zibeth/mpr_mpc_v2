@@ -1,0 +1,17 @@
+{
+  "scenario": 64377,
+  "before": 50,
+  "choice": "elite3",
+  "protocol": "B",
+  "intervention_steps": 1,
+  "actual_return": 134.78107638400388,
+  "episode_return": 289.52645663888757,
+  "cost": 4.8938662996457785,
+  "length": 439,
+  "success": false,
+  "crash": false,
+  "out_of_road": true,
+  "route_completion": 0.7960556938705912,
+  "predicted_return": 237.42596435546875,
+  "native_done": true
+}

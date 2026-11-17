@@ -1,0 +1,191 @@
+{
+  "scenario": 62322,
+  "before": 150,
+  "choices": [
+    "baseline",
+    "gaussian",
+    "mean1",
+    "elite1",
+    "mean2",
+    "elite2",
+    "mean3",
+    "elite3",
+    "mean4",
+    "elite4"
+  ],
+  "iterations": {
+    "1": {
+      "selected": "mean1",
+      "predicted_gain": 6.5426483154296875,
+      "raw_mean_gain": 6.5426483154296875,
+      "evaluation": {
+        "temperature_definition": "inverse",
+        "temperature": 0.5,
+        "terminal_action": "candidate",
+        "q_aggregation": "random_pair",
+        "q_indices": null,
+        "terminal_q_weight": 1.0,
+        "terminal_value": "tdmpc2_q",
+        "cost_weight": 0.0
+      }
+    },
+    "2": {
+      "selected": "mean2",
+      "predicted_gain": 9.83843994140625,
+      "raw_mean_gain": 9.83843994140625,
+      "evaluation": {
+        "temperature_definition": "inverse",
+        "temperature": 0.5,
+        "terminal_action": "candidate",
+        "q_aggregation": "random_pair",
+        "q_indices": null,
+        "terminal_q_weight": 1.0,
+        "terminal_value": "tdmpc2_q",
+        "cost_weight": 0.0
+      }
+    },
+    "4": {
+      "selected": "mean4",
+      "predicted_gain": 13.041732788085938,
+      "raw_mean_gain": 13.041732788085938,
+      "evaluation": {
+        "temperature_definition": "inverse",
+        "temperature": 0.5,
+        "terminal_action": "candidate",
+        "q_aggregation": "random_pair",
+        "q_indices": null,
+        "terminal_q_weight": 1.0,
+        "terminal_value": "tdmpc2_q",
+        "cost_weight": 0.0
+      }
+    }
+  },
+  "raw_rounds": [
+    {
+      "k": 1,
+      "raw_pair": [
+        3,
+        0
+      ],
+      "raw_best_gain": 7.5672149658203125,
+      "best_pool_index": 34,
+      "top8": [
+        34,
+        29,
+        24,
+        12,
+        32,
+        19,
+        40,
+        46
+      ],
+      "raw_baseline": 226.09556579589844,
+      "raw_best": 233.66278076171875
+    },
+    {
+      "k": 2,
+      "raw_pair": [
+        1,
+        3
+      ],
+      "raw_best_gain": 10.885055541992188,
+      "best_pool_index": 3,
+      "top8": [
+        3,
+        1,
+        11,
+        32,
+        10,
+        35,
+        63,
+        61
+      ],
+      "raw_baseline": 225.7758026123047,
+      "raw_best": 236.66085815429688
+    },
+    {
+      "k": 3,
+      "raw_pair": [
+        2,
+        3
+      ],
+      "raw_best_gain": 11.870773315429688,
+      "best_pool_index": 4,
+      "top8": [
+        4,
+        60,
+        18,
+        34,
+        29,
+        52,
+        62,
+        59
+      ],
+      "raw_baseline": 225.79364013671875,
+      "raw_best": 237.66441345214844
+    },
+    {
+      "k": 4,
+      "raw_pair": [
+        2,
+        0
+      ],
+      "raw_best_gain": 13.33233642578125,
+      "best_pool_index": 19,
+      "top8": [
+        19,
+        20,
+        49,
+        59,
+        17,
+        34,
+        56,
+        12
+      ],
+      "raw_baseline": 225.66213989257812,
+      "raw_best": 238.99447631835938
+    }
+  ],
+  "common_q_pair": [
+    1,
+    0
+  ],
+  "exact_existing_pool_reconstruction": true,
+  "budget": {
+    "enabled": true,
+    "num_samples": 64,
+    "num_elites": 8,
+    "iterations": 4,
+    "initial_std": [
+      0.04,
+      0.12
+    ],
+    "min_std": [
+      0.01,
+      0.03
+    ],
+    "max_std": [
+      0.08,
+      0.25
+    ],
+    "temperature": 0.5,
+    "temperature_definition": "inverse",
+    "terminal_action": "candidate",
+    "q_aggregation": "random_pair",
+    "terminal_q_weight": 1.0,
+    "terminal_value": "tdmpc2_q",
+    "sac_value_checkpoint": null,
+    "audit_candidates": true,
+    "record_cost": false,
+    "cost_weight": 0.0,
+    "eval_seed": 0,
+    "noise_rho": [
+      0.8,
+      0.8
+    ],
+    "kinematic_vehicle_width": 1.852,
+    "kinematic_wheelbase": 2.46894,
+    "kinematic_max_steering_angle": 0.6981317
+  },
+  "online_default_unchanged": true
+}

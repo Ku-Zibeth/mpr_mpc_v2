@@ -1,0 +1,44 @@
+{
+  "scenario": 60462,
+  "before": 50,
+  "branch": "B",
+  "source": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/sac_value_20261117/training_data/60462_50/B.npz",
+  "h_available": 10,
+  "full_state_available": true,
+  "native_early_termination": false,
+  "prefix_exactly_replayed": true,
+  "real_state_builder": "original agent.planner.last_context.residual_state from actual H observation",
+  "risk_feature_order": [
+    "cumulative_cost",
+    "min_ttc",
+    "min_clearance",
+    "boundary_margin"
+  ],
+  "coverage": {
+    "speed": 9.06162876084279,
+    "lane_type": "StraightLane",
+    "traffic_count": 12,
+    "lateral": 0.1460270881652832,
+    "lane_heading_change_10m": 0.0
+  },
+  "end": {
+    "scenario": 60462,
+    "before": 50,
+    "branch": "B",
+    "origin_id": "60462_50",
+    "samples": 60,
+    "length": 305,
+    "native_done": true,
+    "prefix_complete": true,
+    "success": true,
+    "crash": true,
+    "out_of_road": false,
+    "route_completion": 0.9882768135029116,
+    "return_sum": 287.3549568478241,
+    "discounted_return": 161.41066328463373,
+    "cost_sum": 2.945261986743832,
+    "gamma": 0.995,
+    "policy_context_sha256": "82b2a6917b35d7107f49527636d022595aee1cc3723ddabdf1115523c0301a48",
+    "wm_checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a"
+  }
+}

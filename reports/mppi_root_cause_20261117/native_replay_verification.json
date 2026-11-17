@@ -1,0 +1,110 @@
+[
+  {
+    "scenario": 64377,
+    "before": 50,
+    "choice": "baseline",
+    "actions_equal": true,
+    "rewards_equal": true,
+    "observations_equal": true,
+    "return_difference": 0.0
+  },
+  {
+    "scenario": 64377,
+    "before": 50,
+    "choice": "gaussian",
+    "actions_equal": true,
+    "rewards_equal": true,
+    "observations_equal": true,
+    "return_difference": 0.0
+  },
+  {
+    "scenario": 64377,
+    "before": 50,
+    "choice": "mean4",
+    "actions_equal": true,
+    "rewards_equal": true,
+    "observations_equal": true,
+    "return_difference": 0.0
+  },
+  {
+    "scenario": 63946,
+    "before": 150,
+    "choice": "baseline",
+    "actions_equal": true,
+    "rewards_equal": true,
+    "observations_equal": true,
+    "return_difference": 0.0
+  },
+  {
+    "scenario": 63946,
+    "before": 150,
+    "choice": "gaussian",
+    "actions_equal": true,
+    "rewards_equal": true,
+    "observations_equal": true,
+    "return_difference": 0.0
+  },
+  {
+    "scenario": 63946,
+    "before": 150,
+    "choice": "mean4",
+    "actions_equal": true,
+    "rewards_equal": true,
+    "observations_equal": true,
+    "return_difference": 0.0
+  },
+  {
+    "scenario": 64391,
+    "before": 50,
+    "choice": "baseline",
+    "actions_equal": true,
+    "rewards_equal": true,
+    "observations_equal": true,
+    "return_difference": 0.0
+  },
+  {
+    "scenario": 64391,
+    "before": 50,
+    "choice": "gaussian",
+    "actions_equal": true,
+    "rewards_equal": true,
+    "observations_equal": true,
+    "return_difference": 0.0
+  },
+  {
+    "scenario": 64391,
+    "before": 50,
+    "choice": "mean4",
+    "actions_equal": true,
+    "rewards_equal": true,
+    "observations_equal": true,
+    "return_difference": 0.0
+  },
+  {
+    "scenario": 62322,
+    "before": 150,
+    "choice": "baseline",
+    "actions_equal": true,
+    "rewards_equal": true,
+    "observations_equal": true,
+    "return_difference": 0.0
+  },
+  {
+    "scenario": 62322,
+    "before": 150,
+    "choice": "gaussian",
+    "actions_equal": true,
+    "rewards_equal": true,
+    "observations_equal": true,
+    "return_difference": 0.0
+  },
+  {
+    "scenario": 62322,
+    "before": 150,
+    "choice": "mean4",
+    "actions_equal": true,
+    "rewards_equal": true,
+    "observations_equal": true,
+    "return_difference": 0.0
+  }
+]
