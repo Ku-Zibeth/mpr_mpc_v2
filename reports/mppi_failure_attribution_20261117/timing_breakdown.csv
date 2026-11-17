@@ -1,0 +1,36 @@
+configuration,phase,source,samples,p50_ms,p95_ms,p99_ms,mean_ms
+B,total_planning,previous isolated synchronized complete agent.act; same runtime code,100,70.50792995141819,76.05510776629671,80.49625975196253,67.50285456189886
+E,total_planning,previous isolated synchronized complete agent.act; same runtime code,100,110.98514997866005,114.95851310319267,117.35764552606274,107.8622078965418
+M1,total_planning,previous isolated synchronized complete agent.act; same runtime code,100,99.53346248948947,104.25349889555946,108.1137340492569,96.33439163095318
+M2,total_planning,previous isolated synchronized complete agent.act; same runtime code,100,111.83991597499698,117.10251247277483,125.09646127931774,109.20790442149155
+M4,total_planning,previous isolated synchronized complete agent.act; same runtime code,100,136.0917390557006,140.80805959529243,149.29992525605485,133.86850652983412
+P,total_planning,previous isolated synchronized complete agent.act; same runtime code,100,113.63165150396526,118.433852866292,130.82719224621545,112.05084588611498
+PE,total_planning,previous isolated synchronized complete agent.act; same runtime code,100,114.1747654764913,118.12088643782772,123.4033289179206,110.88360787718557
+M4_cached,mppi_sampling,new synchronized instrumented offline cached z/actions; instrumentation overhead; nested phases not additive,120,0.7232514908537269,0.7858833181671797,0.8510273811407387,0.7274334716688221
+M4_cached,q_evaluation,new synchronized instrumented offline cached z/actions; instrumentation overhead; nested phases not additive,180,0.9931555250659585,1.1831526702735573,1.211239113472402,0.9925428215259066
+M4_cached,candidate_evaluation_including_q,new synchronized instrumented offline cached z/actions; instrumentation overhead; nested phases not additive,150,10.030912992078811,10.558312165085226,10.676928549073637,10.053822201831887
+M4_cached,elite_update,new synchronized instrumented offline cached z/actions; instrumentation overhead; nested phases not additive,120,0.25107047986239195,0.300040771253407,0.3405325615312904,0.2578474348410964
+M4_cached,local_mppi_total,new synchronized instrumented offline cached z/actions; instrumentation overhead; nested phases not additive,30,60.86192902876064,62.8828712273389,63.789031045744196,61.104023087924965
+historical56,lattice_generation,NOT SAVED. Cached obs lacks full planner/traffic geometry; no fabricated attribution.,0,,,,
+historical56,sac_inference,NOT SAVED. Cached obs lacks full planner/traffic geometry; no fabricated attribution.,0,,,,
+historical56,trajectory_adaptation,NOT SAVED. Cached obs lacks full planner/traffic geometry; no fabricated attribution.,0,,,,
+historical56,final_selection_exclusive,NOT SAVED. Cached obs lacks full planner/traffic geometry; no fabricated attribution.,0,,,,
+M4_cached_phase_profile,total_cpu_wall_ms,same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead,30,74.21865046489984,77.72401783149688,80.67930484306999,74.61879112524912
+M4_cached_phase_profile,mppi_sampling_cpu_wall_ms,same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead,30,3.09763039695099,3.328788443468511,3.3628658996894956,3.093921944188575
+M4_cached_phase_profile,wm_reward_cpu_wall_ms,same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead,30,12.89386540884152,13.45756882801652,13.48761503584683,12.94204315636307
+M4_cached_phase_profile,wm_dynamics_cpu_wall_ms,same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead,30,15.69838565774262,16.421694570453838,16.547506705392152,15.74205158976838
+M4_cached_phase_profile,wm_termination_cpu_wall_ms,same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead,30,12.416325858794153,13.133615569677202,13.451249562203884,12.483612541109324
+M4_cached_phase_profile,q_evaluation_cpu_wall_ms,same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead,30,6.258820474613458,6.712968513602391,7.102163116214797,6.33889267531534
+M4_cached_phase_profile,candidate_evaluation_cpu_wall_ms,same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead,30,50.33270950661972,52.49915468739346,53.53446526802145,50.508647586684674
+M4_cached_phase_profile,elite_update_cpu_wall_ms,same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead,30,1.166731002740562,1.3083355152048168,1.3544554309919477,1.174949974908183
+M4_cached_phase_profile,final_candidate_evaluation_inclusive_cpu_wall_ms,same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead,30,12.566220539156348,13.0439464119263,14.210401099408047,12.615064531564713
+M4_cached_phase_profile,final_elite_rescore_inclusive_cpu_wall_ms,same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead,30,1.48065946996212,1.9408034801017493,1.9841879152227193,1.5581803124708433
+M4_cached_phase_profile,mppi_sampling_ms,same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead,30,3.002575993537903,3.2575471878051756,3.399746181368828,3.0212565302848815
+M4_cached_phase_profile,wm_reward_ms,same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead,30,11.559327989816666,12.240015985444188,12.609650250822305,11.607039998968443
+M4_cached_phase_profile,wm_dynamics_ms,same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead,30,14.399920016527176,14.960623969510197,15.218817642256617,14.32499306400617
+M4_cached_phase_profile,wm_termination_ms,same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead,30,11.07985595986247,11.83925922065973,12.201208356916904,11.12107306420803
+M4_cached_phase_profile,q_evaluation_ms,same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead,30,6.073808044195175,6.55360798239708,6.9077730804681785,6.1532021224498745
+M4_cached_phase_profile,candidate_evaluation_ms,same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead,30,50.24380874633789,52.3808301448822,53.43850021362305,50.42045342127482
+M4_cached_phase_profile,elite_update_ms,same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead,30,1.0871039927005768,1.2543712213635443,1.2857743874192238,1.097980802754561
+M4_cached_phase_profile,final_candidate_evaluation_inclusive_ms,same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead,30,12.536159992218018,13.020507144927977,14.178259115219118,12.587352498372395
+M4_cached_phase_profile,final_elite_rescore_inclusive_ms,same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead,30,1.4586880207061768,1.9146432042121886,1.9572326588630677,1.537122134367625

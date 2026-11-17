@@ -1,0 +1,25 @@
+scenario,origin,protocol,k,selected,actual_gain,measured_subset_selection_regret,best_measured_gain,scope
+64377,64377_50,H10_SAC,1,mean1,-7.963461265982488,12.418357863927127,4.454896597944639,Frozen starting-state prefix intervention thenSAC; NOT receding MPPI closed-loop
+64377,64377_50,H10_SAC,2,mean2,-7.102784687005737,11.557681284950377,4.454896597944639,Frozen starting-state prefix intervention thenSAC; NOT receding MPPI closed-loop
+64377,64377_50,H10_SAC,4,mean4,2.0975874396917504,2.357309158252889,4.454896597944639,Frozen starting-state prefix intervention thenSAC; NOT receding MPPI closed-loop
+64377,64377_50,first_action_SAC,1,mean1,-2.7471859903141365,3.1113671195075483,0.36418112919341183,Frozen starting-state prefix intervention thenSAC; NOT receding MPPI closed-loop
+64377,64377_50,first_action_SAC,2,mean2,-2.2635344629628946,2.6277155921563065,0.36418112919341183,Frozen starting-state prefix intervention thenSAC; NOT receding MPPI closed-loop
+64377,64377_50,first_action_SAC,4,mean4,-3.695216670551872,4.059397799745284,0.36418112919341183,Frozen starting-state prefix intervention thenSAC; NOT receding MPPI closed-loop
+63946,63946_150,H10_SAC,1,mean1,1.9201449914289697,0.6879790014218656,2.6081239928508353,Frozen starting-state prefix intervention thenSAC; NOT receding MPPI closed-loop
+63946,63946_150,H10_SAC,2,mean2,2.6081239928508353,0.0,2.6081239928508353,Frozen starting-state prefix intervention thenSAC; NOT receding MPPI closed-loop
+63946,63946_150,H10_SAC,4,mean4,-0.974793304927843,3.5829172977786783,2.6081239928508353,Frozen starting-state prefix intervention thenSAC; NOT receding MPPI closed-loop
+63946,63946_150,first_action_SAC,1,mean1,2.128211892658868,0.22189987361444707,2.350111766273315,Frozen starting-state prefix intervention thenSAC; NOT receding MPPI closed-loop
+63946,63946_150,first_action_SAC,2,mean2,1.557311069999713,0.7928006962736021,2.350111766273315,Frozen starting-state prefix intervention thenSAC; NOT receding MPPI closed-loop
+63946,63946_150,first_action_SAC,4,mean4,1.8365343704793986,0.5135773957939165,2.350111766273315,Frozen starting-state prefix intervention thenSAC; NOT receding MPPI closed-loop
+64391,64391_50,H10_SAC,1,mean1,-1.2974931201151634,20.052033333842118,18.754540213726955,Frozen starting-state prefix intervention thenSAC; NOT receding MPPI closed-loop
+64391,64391_50,H10_SAC,2,mean2,11.029806855205464,7.72473335852149,18.754540213726955,Frozen starting-state prefix intervention thenSAC; NOT receding MPPI closed-loop
+64391,64391_50,H10_SAC,4,mean4,-0.09279158345026417,18.84733179717722,18.754540213726955,Frozen starting-state prefix intervention thenSAC; NOT receding MPPI closed-loop
+64391,64391_50,first_action_SAC,1,mean1,-1.7757696457942274,3.710863757944665,1.9350941121504377,Frozen starting-state prefix intervention thenSAC; NOT receding MPPI closed-loop
+64391,64391_50,first_action_SAC,2,mean2,-2.9369472113232433,4.872041323473681,1.9350941121504377,Frozen starting-state prefix intervention thenSAC; NOT receding MPPI closed-loop
+64391,64391_50,first_action_SAC,4,mean4,-2.8913469625747865,4.826441074725224,1.9350941121504377,Frozen starting-state prefix intervention thenSAC; NOT receding MPPI closed-loop
+62322,62322_150,H10_SAC,1,mean1,4.457752005063156,0.0,4.457752005063156,Frozen starting-state prefix intervention thenSAC; NOT receding MPPI closed-loop
+62322,62322_150,H10_SAC,2,mean2,-1.6206720678297586,6.078424072892915,4.457752005063156,Frozen starting-state prefix intervention thenSAC; NOT receding MPPI closed-loop
+62322,62322_150,H10_SAC,4,mean4,0.41152363152329485,4.046228373539861,4.457752005063156,Frozen starting-state prefix intervention thenSAC; NOT receding MPPI closed-loop
+62322,62322_150,first_action_SAC,1,mean1,2.0884710120067496,4.649109056453085,6.737580068459835,Frozen starting-state prefix intervention thenSAC; NOT receding MPPI closed-loop
+62322,62322_150,first_action_SAC,2,mean2,6.737580068459835,0.0,6.737580068459835,Frozen starting-state prefix intervention thenSAC; NOT receding MPPI closed-loop
+62322,62322_150,first_action_SAC,4,mean4,0.8279156925937343,5.9096643758661,6.737580068459835,Frozen starting-state prefix intervention thenSAC; NOT receding MPPI closed-loop

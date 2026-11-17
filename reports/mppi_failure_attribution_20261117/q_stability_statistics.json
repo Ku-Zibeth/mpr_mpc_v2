@@ -1,0 +1,199 @@
+{
+  "summary": {
+    "ranking_spearman": {
+      "mean": 0.8834297520661156,
+      "ci95": [
+        0.7358634972981564,
+        0.971929632867133
+      ],
+      "scenes": 4
+    },
+    "top8_jaccard": {
+      "mean": 0.6672791854610036,
+      "ci95": [
+        0.4914614678251042,
+        0.8416122261576807
+      ],
+      "scenes": 4
+    },
+    "mean_sequence_rmse": {
+      "mean": 0.010421277398590351,
+      "ci95": [
+        0.0059316658060253324,
+        0.016250848281165242
+      ],
+      "scenes": 4
+    },
+    "first_action_delta": {
+      "mean": 0.012989037202276087,
+      "ci95": [
+        0.007842108172350953,
+        0.02006961417302462
+      ],
+      "scenes": 4
+    },
+    "q_std_mean": {
+      "mean": 0.6770687531679869,
+      "ci95": [
+        0.28703841380774975,
+        1.3559610024094582
+      ],
+      "scenes": 4
+    },
+    "relative_gain_std_mean": {
+      "mean": 0.20269792842710244,
+      "ci95": [
+        0.09128861443598549,
+        0.3141072424182194
+      ],
+      "scenes": 4
+    }
+  },
+  "actual_Q_indices": [
+    {
+      "scenario": 64377,
+      "origin": "64377_50",
+      "k": 1,
+      "pair": [
+        2,
+        4
+      ]
+    },
+    {
+      "scenario": 64377,
+      "origin": "64377_50",
+      "k": 2,
+      "pair": [
+        0,
+        3
+      ]
+    },
+    {
+      "scenario": 64377,
+      "origin": "64377_50",
+      "k": 3,
+      "pair": [
+        4,
+        0
+      ]
+    },
+    {
+      "scenario": 64377,
+      "origin": "64377_50",
+      "k": 4,
+      "pair": [
+        4,
+        0
+      ]
+    },
+    {
+      "scenario": 63946,
+      "origin": "63946_150",
+      "k": 1,
+      "pair": [
+        4,
+        2
+      ]
+    },
+    {
+      "scenario": 63946,
+      "origin": "63946_150",
+      "k": 2,
+      "pair": [
+        2,
+        0
+      ]
+    },
+    {
+      "scenario": 63946,
+      "origin": "63946_150",
+      "k": 3,
+      "pair": [
+        1,
+        3
+      ]
+    },
+    {
+      "scenario": 63946,
+      "origin": "63946_150",
+      "k": 4,
+      "pair": [
+        1,
+        0
+      ]
+    },
+    {
+      "scenario": 64391,
+      "origin": "64391_50",
+      "k": 1,
+      "pair": [
+        3,
+        2
+      ]
+    },
+    {
+      "scenario": 64391,
+      "origin": "64391_50",
+      "k": 2,
+      "pair": [
+        4,
+        2
+      ]
+    },
+    {
+      "scenario": 64391,
+      "origin": "64391_50",
+      "k": 3,
+      "pair": [
+        2,
+        0
+      ]
+    },
+    {
+      "scenario": 64391,
+      "origin": "64391_50",
+      "k": 4,
+      "pair": [
+        1,
+        2
+      ]
+    },
+    {
+      "scenario": 62322,
+      "origin": "62322_150",
+      "k": 1,
+      "pair": [
+        3,
+        0
+      ]
+    },
+    {
+      "scenario": 62322,
+      "origin": "62322_150",
+      "k": 2,
+      "pair": [
+        1,
+        3
+      ]
+    },
+    {
+      "scenario": 62322,
+      "origin": "62322_150",
+      "k": 3,
+      "pair": [
+        2,
+        3
+      ]
+    },
+    {
+      "scenario": 62322,
+      "origin": "62322_150",
+      "k": 4,
+      "pair": [
+        2,
+        0
+      ]
+    }
+  ],
+  "scope": "All10 pairs plus ensemble, same four cached65x4 pools. Conditional one-update Mean, NOT rerunning search under another Q. No actual returns for unexecuted pools."
+}

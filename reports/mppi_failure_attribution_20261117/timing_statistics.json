@@ -1,0 +1,356 @@
+{
+  "gpu": "NVIDIA GeForce RTX 3070",
+  "rows": [
+    {
+      "configuration": "B",
+      "phase": "total_planning",
+      "source": "previous isolated synchronized complete agent.act; same runtime code",
+      "samples": 100,
+      "p50_ms": 70.50792995141819,
+      "p95_ms": 76.05510776629671,
+      "p99_ms": 80.49625975196253,
+      "mean_ms": 67.50285456189886
+    },
+    {
+      "configuration": "E",
+      "phase": "total_planning",
+      "source": "previous isolated synchronized complete agent.act; same runtime code",
+      "samples": 100,
+      "p50_ms": 110.98514997866005,
+      "p95_ms": 114.95851310319267,
+      "p99_ms": 117.35764552606274,
+      "mean_ms": 107.8622078965418
+    },
+    {
+      "configuration": "M1",
+      "phase": "total_planning",
+      "source": "previous isolated synchronized complete agent.act; same runtime code",
+      "samples": 100,
+      "p50_ms": 99.53346248948947,
+      "p95_ms": 104.25349889555946,
+      "p99_ms": 108.1137340492569,
+      "mean_ms": 96.33439163095318
+    },
+    {
+      "configuration": "M2",
+      "phase": "total_planning",
+      "source": "previous isolated synchronized complete agent.act; same runtime code",
+      "samples": 100,
+      "p50_ms": 111.83991597499698,
+      "p95_ms": 117.10251247277483,
+      "p99_ms": 125.09646127931774,
+      "mean_ms": 109.20790442149155
+    },
+    {
+      "configuration": "M4",
+      "phase": "total_planning",
+      "source": "previous isolated synchronized complete agent.act; same runtime code",
+      "samples": 100,
+      "p50_ms": 136.0917390557006,
+      "p95_ms": 140.80805959529243,
+      "p99_ms": 149.29992525605485,
+      "mean_ms": 133.86850652983412
+    },
+    {
+      "configuration": "P",
+      "phase": "total_planning",
+      "source": "previous isolated synchronized complete agent.act; same runtime code",
+      "samples": 100,
+      "p50_ms": 113.63165150396526,
+      "p95_ms": 118.433852866292,
+      "p99_ms": 130.82719224621545,
+      "mean_ms": 112.05084588611498
+    },
+    {
+      "configuration": "PE",
+      "phase": "total_planning",
+      "source": "previous isolated synchronized complete agent.act; same runtime code",
+      "samples": 100,
+      "p50_ms": 114.1747654764913,
+      "p95_ms": 118.12088643782772,
+      "p99_ms": 123.4033289179206,
+      "mean_ms": 110.88360787718557
+    },
+    {
+      "configuration": "M4_cached",
+      "phase": "mppi_sampling",
+      "source": "new synchronized instrumented offline cached z/actions; instrumentation overhead; nested phases not additive",
+      "samples": 120,
+      "p50_ms": 0.7232514908537269,
+      "p95_ms": 0.7858833181671797,
+      "p99_ms": 0.8510273811407387,
+      "mean_ms": 0.7274334716688221
+    },
+    {
+      "configuration": "M4_cached",
+      "phase": "q_evaluation",
+      "source": "new synchronized instrumented offline cached z/actions; instrumentation overhead; nested phases not additive",
+      "samples": 180,
+      "p50_ms": 0.9931555250659585,
+      "p95_ms": 1.1831526702735573,
+      "p99_ms": 1.211239113472402,
+      "mean_ms": 0.9925428215259066
+    },
+    {
+      "configuration": "M4_cached",
+      "phase": "candidate_evaluation_including_q",
+      "source": "new synchronized instrumented offline cached z/actions; instrumentation overhead; nested phases not additive",
+      "samples": 150,
+      "p50_ms": 10.030912992078811,
+      "p95_ms": 10.558312165085226,
+      "p99_ms": 10.676928549073637,
+      "mean_ms": 10.053822201831887
+    },
+    {
+      "configuration": "M4_cached",
+      "phase": "elite_update",
+      "source": "new synchronized instrumented offline cached z/actions; instrumentation overhead; nested phases not additive",
+      "samples": 120,
+      "p50_ms": 0.25107047986239195,
+      "p95_ms": 0.300040771253407,
+      "p99_ms": 0.3405325615312904,
+      "mean_ms": 0.2578474348410964
+    },
+    {
+      "configuration": "M4_cached",
+      "phase": "local_mppi_total",
+      "source": "new synchronized instrumented offline cached z/actions; instrumentation overhead; nested phases not additive",
+      "samples": 30,
+      "p50_ms": 60.86192902876064,
+      "p95_ms": 62.8828712273389,
+      "p99_ms": 63.789031045744196,
+      "mean_ms": 61.104023087924965
+    },
+    {
+      "configuration": "historical56",
+      "phase": "lattice_generation",
+      "source": "NOT SAVED. Cached obs lacks full planner/traffic geometry; no fabricated attribution.",
+      "samples": 0,
+      "p50_ms": null,
+      "p95_ms": null,
+      "p99_ms": null,
+      "mean_ms": null
+    },
+    {
+      "configuration": "historical56",
+      "phase": "sac_inference",
+      "source": "NOT SAVED. Cached obs lacks full planner/traffic geometry; no fabricated attribution.",
+      "samples": 0,
+      "p50_ms": null,
+      "p95_ms": null,
+      "p99_ms": null,
+      "mean_ms": null
+    },
+    {
+      "configuration": "historical56",
+      "phase": "trajectory_adaptation",
+      "source": "NOT SAVED. Cached obs lacks full planner/traffic geometry; no fabricated attribution.",
+      "samples": 0,
+      "p50_ms": null,
+      "p95_ms": null,
+      "p99_ms": null,
+      "mean_ms": null
+    },
+    {
+      "configuration": "historical56",
+      "phase": "final_selection_exclusive",
+      "source": "NOT SAVED. Cached obs lacks full planner/traffic geometry; no fabricated attribution.",
+      "samples": 0,
+      "p50_ms": null,
+      "p95_ms": null,
+      "p99_ms": null,
+      "mean_ms": null
+    },
+    {
+      "configuration": "M4_cached_phase_profile",
+      "phase": "total_cpu_wall_ms",
+      "source": "same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead",
+      "samples": 30,
+      "p50_ms": 74.21865046489984,
+      "p95_ms": 77.72401783149688,
+      "p99_ms": 80.67930484306999,
+      "mean_ms": 74.61879112524912
+    },
+    {
+      "configuration": "M4_cached_phase_profile",
+      "phase": "mppi_sampling_cpu_wall_ms",
+      "source": "same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead",
+      "samples": 30,
+      "p50_ms": 3.09763039695099,
+      "p95_ms": 3.328788443468511,
+      "p99_ms": 3.3628658996894956,
+      "mean_ms": 3.093921944188575
+    },
+    {
+      "configuration": "M4_cached_phase_profile",
+      "phase": "wm_reward_cpu_wall_ms",
+      "source": "same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead",
+      "samples": 30,
+      "p50_ms": 12.89386540884152,
+      "p95_ms": 13.45756882801652,
+      "p99_ms": 13.48761503584683,
+      "mean_ms": 12.94204315636307
+    },
+    {
+      "configuration": "M4_cached_phase_profile",
+      "phase": "wm_dynamics_cpu_wall_ms",
+      "source": "same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead",
+      "samples": 30,
+      "p50_ms": 15.69838565774262,
+      "p95_ms": 16.421694570453838,
+      "p99_ms": 16.547506705392152,
+      "mean_ms": 15.74205158976838
+    },
+    {
+      "configuration": "M4_cached_phase_profile",
+      "phase": "wm_termination_cpu_wall_ms",
+      "source": "same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead",
+      "samples": 30,
+      "p50_ms": 12.416325858794153,
+      "p95_ms": 13.133615569677202,
+      "p99_ms": 13.451249562203884,
+      "mean_ms": 12.483612541109324
+    },
+    {
+      "configuration": "M4_cached_phase_profile",
+      "phase": "q_evaluation_cpu_wall_ms",
+      "source": "same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead",
+      "samples": 30,
+      "p50_ms": 6.258820474613458,
+      "p95_ms": 6.712968513602391,
+      "p99_ms": 7.102163116214797,
+      "mean_ms": 6.33889267531534
+    },
+    {
+      "configuration": "M4_cached_phase_profile",
+      "phase": "candidate_evaluation_cpu_wall_ms",
+      "source": "same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead",
+      "samples": 30,
+      "p50_ms": 50.33270950661972,
+      "p95_ms": 52.49915468739346,
+      "p99_ms": 53.53446526802145,
+      "mean_ms": 50.508647586684674
+    },
+    {
+      "configuration": "M4_cached_phase_profile",
+      "phase": "elite_update_cpu_wall_ms",
+      "source": "same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead",
+      "samples": 30,
+      "p50_ms": 1.166731002740562,
+      "p95_ms": 1.3083355152048168,
+      "p99_ms": 1.3544554309919477,
+      "mean_ms": 1.174949974908183
+    },
+    {
+      "configuration": "M4_cached_phase_profile",
+      "phase": "final_candidate_evaluation_inclusive_cpu_wall_ms",
+      "source": "same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead",
+      "samples": 30,
+      "p50_ms": 12.566220539156348,
+      "p95_ms": 13.0439464119263,
+      "p99_ms": 14.210401099408047,
+      "mean_ms": 12.615064531564713
+    },
+    {
+      "configuration": "M4_cached_phase_profile",
+      "phase": "final_elite_rescore_inclusive_cpu_wall_ms",
+      "source": "same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead",
+      "samples": 30,
+      "p50_ms": 1.48065946996212,
+      "p95_ms": 1.9408034801017493,
+      "p99_ms": 1.9841879152227193,
+      "mean_ms": 1.5581803124708433
+    },
+    {
+      "configuration": "M4_cached_phase_profile",
+      "phase": "mppi_sampling_ms",
+      "source": "same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead",
+      "samples": 30,
+      "p50_ms": 3.002575993537903,
+      "p95_ms": 3.2575471878051756,
+      "p99_ms": 3.399746181368828,
+      "mean_ms": 3.0212565302848815
+    },
+    {
+      "configuration": "M4_cached_phase_profile",
+      "phase": "wm_reward_ms",
+      "source": "same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead",
+      "samples": 30,
+      "p50_ms": 11.559327989816666,
+      "p95_ms": 12.240015985444188,
+      "p99_ms": 12.609650250822305,
+      "mean_ms": 11.607039998968443
+    },
+    {
+      "configuration": "M4_cached_phase_profile",
+      "phase": "wm_dynamics_ms",
+      "source": "same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead",
+      "samples": 30,
+      "p50_ms": 14.399920016527176,
+      "p95_ms": 14.960623969510197,
+      "p99_ms": 15.218817642256617,
+      "mean_ms": 14.32499306400617
+    },
+    {
+      "configuration": "M4_cached_phase_profile",
+      "phase": "wm_termination_ms",
+      "source": "same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead",
+      "samples": 30,
+      "p50_ms": 11.07985595986247,
+      "p95_ms": 11.83925922065973,
+      "p99_ms": 12.201208356916904,
+      "mean_ms": 11.12107306420803
+    },
+    {
+      "configuration": "M4_cached_phase_profile",
+      "phase": "q_evaluation_ms",
+      "source": "same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead",
+      "samples": 30,
+      "p50_ms": 6.073808044195175,
+      "p95_ms": 6.55360798239708,
+      "p99_ms": 6.9077730804681785,
+      "mean_ms": 6.1532021224498745
+    },
+    {
+      "configuration": "M4_cached_phase_profile",
+      "phase": "candidate_evaluation_ms",
+      "source": "same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead",
+      "samples": 30,
+      "p50_ms": 50.24380874633789,
+      "p95_ms": 52.3808301448822,
+      "p99_ms": 53.43850021362305,
+      "mean_ms": 50.42045342127482
+    },
+    {
+      "configuration": "M4_cached_phase_profile",
+      "phase": "elite_update_ms",
+      "source": "same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead",
+      "samples": 30,
+      "p50_ms": 1.0871039927005768,
+      "p95_ms": 1.2543712213635443,
+      "p99_ms": 1.2857743874192238,
+      "mean_ms": 1.097980802754561
+    },
+    {
+      "configuration": "M4_cached_phase_profile",
+      "phase": "final_candidate_evaluation_inclusive_ms",
+      "source": "same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead",
+      "samples": 30,
+      "p50_ms": 12.536159992218018,
+      "p95_ms": 13.020507144927977,
+      "p99_ms": 14.178259115219118,
+      "mean_ms": 12.587352498372395
+    },
+    {
+      "configuration": "M4_cached_phase_profile",
+      "phase": "final_elite_rescore_inclusive_ms",
+      "source": "same cachedorigin; per-plan accumulated PhaseTimings; nested phases not additive; event instrumentation overhead",
+      "samples": 30,
+      "p50_ms": 1.4586880207061768,
+      "p95_ms": 1.9146432042121886,
+      "p99_ms": 1.9572326588630677,
+      "mean_ms": 1.537122134367625
+    }
+  ],
+  "warning": "Historical full planning and new instrumented cached local planner are different scopes/states. Nested times cannot sum; no new MetaDrive calls."
+}

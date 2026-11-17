@@ -1,0 +1,245 @@
+{
+  "rows": [
+    {
+      "episode": "E_70124_r1",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "E_70124_r2",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "E_70128_r1",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "E_70128_r2",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "E_70402_r1",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "E_70402_r2",
+      "max_reconstruction_error": 2.980232238769531e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "E_70446_r1",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "E_70446_r2",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 1
+    },
+    {
+      "episode": "M1_70124_r1",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "M1_70124_r2",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "M1_70128_r1",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "M1_70128_r2",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "M1_70402_r1",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "M1_70402_r2",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "M1_70446_r1",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "M1_70446_r2",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "M2_70124_r1",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "M2_70124_r2",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 1
+    },
+    {
+      "episode": "M2_70128_r1",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "M2_70128_r2",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "M2_70402_r1",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "M2_70402_r2",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 1
+    },
+    {
+      "episode": "M2_70446_r1",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "M2_70446_r2",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "M4_70124_r1",
+      "max_reconstruction_error": 1.7881393432617188e-07,
+      "cutoff_ties": 1
+    },
+    {
+      "episode": "M4_70124_r2",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 1
+    },
+    {
+      "episode": "M4_70128_r1",
+      "max_reconstruction_error": 1.7881393432617188e-07,
+      "cutoff_ties": 1
+    },
+    {
+      "episode": "M4_70128_r2",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 2
+    },
+    {
+      "episode": "M4_70402_r1",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 2
+    },
+    {
+      "episode": "M4_70402_r2",
+      "max_reconstruction_error": 1.7881393432617188e-07,
+      "cutoff_ties": 2
+    },
+    {
+      "episode": "M4_70446_r1",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 2
+    },
+    {
+      "episode": "M4_70446_r2",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 1
+    },
+    {
+      "episode": "PE_70124_r1",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "PE_70124_r2",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "PE_70128_r1",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "PE_70128_r2",
+      "max_reconstruction_error": 1.7881393432617188e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "PE_70402_r1",
+      "max_reconstruction_error": 1.7881393432617188e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "PE_70402_r2",
+      "max_reconstruction_error": 2.980232238769531e-07,
+      "cutoff_ties": 1
+    },
+    {
+      "episode": "PE_70446_r1",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "PE_70446_r2",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "P_70124_r1",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "P_70124_r2",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 1
+    },
+    {
+      "episode": "P_70128_r1",
+      "max_reconstruction_error": 2.980232238769531e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "P_70128_r2",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "P_70402_r1",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "P_70402_r2",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "P_70446_r1",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    },
+    {
+      "episode": "P_70446_r2",
+      "max_reconstruction_error": 2.384185791015625e-07,
+      "cutoff_ties": 0
+    }
+  ],
+  "explanation": "Use original per-vector CUDA topk. CPU/batched tie ordering could substitute different equal-score candidates; that was an offline diagnostic mismatch, NOT an online planner bug."
+}

@@ -1,0 +1,974 @@
+{
+  "current_head": "45073e15f4d38ea53840a4bef22a5bd06e2774a5",
+  "current_branch": "main",
+  "log5": [
+    "45073e1 Update MPR-MPC project",
+    "ced7688 Update MPR-MPC project",
+    "bfe035d Update MPR-MPC project",
+    "4f17fce Update MPR-MPC project",
+    "430e8ab Update MPR-MPC project"
+  ],
+  "status_at_start": [
+    "?? reports/mppi_failure_attribution_20261117/",
+    "?? tests/test_mppi_failure_attribution.py",
+    "?? tools/mppi_failure_attribution.py"
+  ],
+  "historical_56_base_commit": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+  "historical_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+  "source_fingerprint_now": "aca032237945b50fd2c19fbffe39a245795f2b18670ac6f2f6943a1729e2e716",
+  "version_note": "56 episodes ran ced7688 plus recorded uncommitted patch. Current45073e1 incorporates that patch; runtime fingerprint before this task was identical bdae7742...; reverse-check succeeds. Commit IDs differ, core code is identical.",
+  "old_patch_sha256": "42c1e6642cd13c7a8d65202372b377efe9dbea3d19b4c284c4770b8a931694c1",
+  "old_patch_reverse_check": true,
+  "core_sha256": {
+    "planning/local_mppi.py": "a0c0784d09bff0352745fffa9d7d6753b8c6eb4cf9d02124f228967936fa394c",
+    "planning/evaluator.py": "bf214ddc0350e0280cb2cf7f66434138b8c50e50b08cbb866c028673ae067c44",
+    "planning/coordinator.py": "4f581956c69e09d11f5e6e4f97910118b729588537e40e118726164c4f7b0943",
+    "planning/types.py": "3ab8ecfeb502d87e4a01af58d8262a418ea96552bb6b874284aa70d721069759",
+    "planning/native_config.py": "21b6d2e6495dd0cb37bbf3106873a08a1c0ee31b5c77c98ea16f712dce758baf"
+  },
+  "checkpoint": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt",
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "online_elite_selection_present": true,
+  "online_elite_evidence": "local_mppi selection_mode=best_final_elite compares cached last-roundTop1 with Baseline using common final Q members; trace selected_source=2 is actual executed action.",
+  "episodes": [
+    {
+      "configuration": "B",
+      "scenario": 70124,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/B_70124_r1/config.yaml",
+      "config_sha256": "3844ffa050836a451a63bce50fd5be46f5367f27f53028279a0a0bc01e3b1608",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": false,
+        "iterations": 4,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "B",
+      "scenario": 70124,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/B_70124_r2/config.yaml",
+      "config_sha256": "92eec853885ceccaf1f7bd5d6019f4551daca06b03a8a0520922553ee5c1492b",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": false,
+        "iterations": 4,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "B",
+      "scenario": 70128,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/B_70128_r1/config.yaml",
+      "config_sha256": "f79104326c7ba3c0f40d50b0d6f0e3b595cc2beb96d73b070fea7f81b780ee15",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": false,
+        "iterations": 4,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "B",
+      "scenario": 70128,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/B_70128_r2/config.yaml",
+      "config_sha256": "884f710c01a2a5dccd93ca826fcbb9301b13364f0873be467c3191c5708907fd",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": false,
+        "iterations": 4,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "B",
+      "scenario": 70402,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/B_70402_r1/config.yaml",
+      "config_sha256": "dcf7078a33e8e03a1f93b9b464dbd819129369e218f47b0715ecea00cf220f00",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": false,
+        "iterations": 4,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "B",
+      "scenario": 70402,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/B_70402_r2/config.yaml",
+      "config_sha256": "b96d166402a8afe89726a4005e76d87c92b23faafb91e15f829174c16d006aa3",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": false,
+        "iterations": 4,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "B",
+      "scenario": 70446,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/B_70446_r1/config.yaml",
+      "config_sha256": "4d6dca6f509624ee8574a71f8cc5c0cc20cbbbdfdaff72eeed76165571ed9c8e",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": false,
+        "iterations": 4,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "B",
+      "scenario": 70446,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/B_70446_r2/config.yaml",
+      "config_sha256": "1f764406d1573b103dc73606c16351aa4292348ea9cc713d0574ab2b9f49c292",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": false,
+        "iterations": 4,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "E",
+      "scenario": 70124,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/E_70124_r1/config.yaml",
+      "config_sha256": "b56cf72f157ada796c7e41f6c6ae248a78a3ed1c3741e117c207c783bb313326",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "candidate",
+        "selection_mode": "best_final_elite"
+      }
+    },
+    {
+      "configuration": "E",
+      "scenario": 70124,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/E_70124_r2/config.yaml",
+      "config_sha256": "1b938864356d2794be0f0228fba67ed17bc4e8e368cfe937351de8ef3d520898",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "candidate",
+        "selection_mode": "best_final_elite"
+      }
+    },
+    {
+      "configuration": "E",
+      "scenario": 70128,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/E_70128_r1/config.yaml",
+      "config_sha256": "989898406b4cee17b8014fd4ccbf9cb68298c9c2bbbfdf31393e5f8022b55834",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "candidate",
+        "selection_mode": "best_final_elite"
+      }
+    },
+    {
+      "configuration": "E",
+      "scenario": 70128,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/E_70128_r2/config.yaml",
+      "config_sha256": "b4c8fcb1f1c97c18efd906f0573ad6ee9fe504092bd15debcfa14d4702a203fd",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "candidate",
+        "selection_mode": "best_final_elite"
+      }
+    },
+    {
+      "configuration": "E",
+      "scenario": 70402,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/E_70402_r1/config.yaml",
+      "config_sha256": "707a65aff3f1e42d4c12dcbf2115cce639c514ff9e9f49140e347297488a38bb",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "candidate",
+        "selection_mode": "best_final_elite"
+      }
+    },
+    {
+      "configuration": "E",
+      "scenario": 70402,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/E_70402_r2/config.yaml",
+      "config_sha256": "6b85e730ae10d4b4654940a56cc504f3db9c65d57a14e5cfc352470623f048af",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "candidate",
+        "selection_mode": "best_final_elite"
+      }
+    },
+    {
+      "configuration": "E",
+      "scenario": 70446,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/E_70446_r1/config.yaml",
+      "config_sha256": "86fdc91c6e9f95280321b406d88d0d6891a4db893def6d3b6bd506f5331f49a9",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "candidate",
+        "selection_mode": "best_final_elite"
+      }
+    },
+    {
+      "configuration": "E",
+      "scenario": 70446,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/E_70446_r2/config.yaml",
+      "config_sha256": "6bc32859a68120eca3903b2def7bcc8af93cdec17b221ae3f514a77c7f3be5fc",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "candidate",
+        "selection_mode": "best_final_elite"
+      }
+    },
+    {
+      "configuration": "M1",
+      "scenario": 70124,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/M1_70124_r1/config.yaml",
+      "config_sha256": "b814b9b2d2b5fef0ff3f8499fbf1646454df629d8264923ca8876dc88631bf55",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 1,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "M1",
+      "scenario": 70124,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/M1_70124_r2/config.yaml",
+      "config_sha256": "5f2baed391e82ad5de312e321e694cb41d5a0e6f3e230287a745126b568be44c",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 1,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "M1",
+      "scenario": 70128,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/M1_70128_r1/config.yaml",
+      "config_sha256": "769f968c5f06f5815bf4736ddb28a80bf8c75783e1043b8fa1d3181b0d350d7e",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 1,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "M1",
+      "scenario": 70128,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/M1_70128_r2/config.yaml",
+      "config_sha256": "ea691d81de152fef0727592c54fcce2ff8db13ac4078a11dfa8c35afe8ed50d1",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 1,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "M1",
+      "scenario": 70402,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/M1_70402_r1/config.yaml",
+      "config_sha256": "b18feed611d4833e5ec45f3fec7a37f5f135f8f5a8e00e40bbdb9b1d7bee608b",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 1,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "M1",
+      "scenario": 70402,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/M1_70402_r2/config.yaml",
+      "config_sha256": "ccce121db8758c9fdc873d436d06f3d5ff879b6b33a896def6fd8a5cc84302e3",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 1,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "M1",
+      "scenario": 70446,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/M1_70446_r1/config.yaml",
+      "config_sha256": "c8e6c3eb52284eb6c6b585c2919e30afc27d6870451606a5bb0226f3b34eecf7",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 1,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "M1",
+      "scenario": 70446,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/M1_70446_r2/config.yaml",
+      "config_sha256": "a0e0ef73fa5da505c50c5946cd295b8012fe9d964ddd39169ec803e1ee344d2a",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 1,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "M2",
+      "scenario": 70124,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/M2_70124_r1/config.yaml",
+      "config_sha256": "528ce2d757ade895f5eb744077867033682f71b4d34eb4b9a1edd8e7e13d1d58",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "M2",
+      "scenario": 70124,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/M2_70124_r2/config.yaml",
+      "config_sha256": "72556abe347613ce3550887b8b441ea5253b8ca89c93d634cb2d078725c0d766",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "M2",
+      "scenario": 70128,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/M2_70128_r1/config.yaml",
+      "config_sha256": "3d372a51fbc0e43120f2a1d517f0c60fa19513f8632e4c3c02b3313fc496ba1c",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "M2",
+      "scenario": 70128,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/M2_70128_r2/config.yaml",
+      "config_sha256": "f4260ce9311ed584764bae4d1a359e7c5b0a545e3a2eff75d51dac324f07ce5d",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "M2",
+      "scenario": 70402,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/M2_70402_r1/config.yaml",
+      "config_sha256": "c13d6407ab63c089b74ed79e78a43b88ac1bfc3bb1218daa0efb65b056822b04",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "M2",
+      "scenario": 70402,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/M2_70402_r2/config.yaml",
+      "config_sha256": "bade0bcfd23e24a6e8c906cffc432e4207b43efb8ea4a4f46a7bcd5b3a091dc6",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "M2",
+      "scenario": 70446,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/M2_70446_r1/config.yaml",
+      "config_sha256": "ce52e4d197bc08c458d15ddc495dacc9471b64fdd12e5d45fbaba7032bd8940f",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "M2",
+      "scenario": 70446,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/M2_70446_r2/config.yaml",
+      "config_sha256": "09930613ac630d5213db6d1290b90e9b5d9e3c4b83cf6a63c30453b2e7ecd75c",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "M4",
+      "scenario": 70124,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/M4_70124_r1/config.yaml",
+      "config_sha256": "3844ffa050836a451a63bce50fd5be46f5367f27f53028279a0a0bc01e3b1608",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 4,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "M4",
+      "scenario": 70124,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/M4_70124_r2/config.yaml",
+      "config_sha256": "92eec853885ceccaf1f7bd5d6019f4551daca06b03a8a0520922553ee5c1492b",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 4,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "M4",
+      "scenario": 70128,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/M4_70128_r1/config.yaml",
+      "config_sha256": "f79104326c7ba3c0f40d50b0d6f0e3b595cc2beb96d73b070fea7f81b780ee15",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 4,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "M4",
+      "scenario": 70128,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/M4_70128_r2/config.yaml",
+      "config_sha256": "884f710c01a2a5dccd93ca826fcbb9301b13364f0873be467c3191c5708907fd",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 4,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "M4",
+      "scenario": 70402,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/M4_70402_r1/config.yaml",
+      "config_sha256": "dcf7078a33e8e03a1f93b9b464dbd819129369e218f47b0715ecea00cf220f00",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 4,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "M4",
+      "scenario": 70402,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/M4_70402_r2/config.yaml",
+      "config_sha256": "b96d166402a8afe89726a4005e76d87c92b23faafb91e15f829174c16d006aa3",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 4,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "M4",
+      "scenario": 70446,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/M4_70446_r1/config.yaml",
+      "config_sha256": "4d6dca6f509624ee8574a71f8cc5c0cc20cbbbdfdaff72eeed76165571ed9c8e",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 4,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "M4",
+      "scenario": 70446,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/M4_70446_r2/config.yaml",
+      "config_sha256": "1f764406d1573b103dc73606c16351aa4292348ea9cc713d0574ab2b9f49c292",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 4,
+        "terminal_action": "candidate",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "PE",
+      "scenario": 70124,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/PE_70124_r1/config.yaml",
+      "config_sha256": "6dcf6c6fb6564181cbb3fdc8248f5bd1e5021a962f052660395fd8736f1b0d39",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "policy_prior",
+        "selection_mode": "best_final_elite"
+      }
+    },
+    {
+      "configuration": "PE",
+      "scenario": 70124,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/PE_70124_r2/config.yaml",
+      "config_sha256": "238cfeac0b36b43342cd8971cd4919c060238ba823d7abc311382c6c43bba407",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "policy_prior",
+        "selection_mode": "best_final_elite"
+      }
+    },
+    {
+      "configuration": "PE",
+      "scenario": 70128,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/PE_70128_r1/config.yaml",
+      "config_sha256": "a48e3f9777dfe82eabbf4bead8f61d12cd39b57916e8a0d86ad12f095e2b838b",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "policy_prior",
+        "selection_mode": "best_final_elite"
+      }
+    },
+    {
+      "configuration": "PE",
+      "scenario": 70128,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/PE_70128_r2/config.yaml",
+      "config_sha256": "9efcadf4cce4c8727e96f744c2c73359f509ab75019b389fa0d4cbed6ad68a61",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "policy_prior",
+        "selection_mode": "best_final_elite"
+      }
+    },
+    {
+      "configuration": "PE",
+      "scenario": 70402,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/PE_70402_r1/config.yaml",
+      "config_sha256": "2aa9fd53a2d0b44f41033b2e6103b5bd01b221c41bc4a19226b37893910a2a8e",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "policy_prior",
+        "selection_mode": "best_final_elite"
+      }
+    },
+    {
+      "configuration": "PE",
+      "scenario": 70402,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/PE_70402_r2/config.yaml",
+      "config_sha256": "8201206bbc3fa3ea140040a7d2243dbb9c820b0061de2bab26da74ca60df6852",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "policy_prior",
+        "selection_mode": "best_final_elite"
+      }
+    },
+    {
+      "configuration": "PE",
+      "scenario": 70446,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/PE_70446_r1/config.yaml",
+      "config_sha256": "e2fb6d0a7db2acce44c43db3899a1c46b34b4d0dffac223c42cb61d1f267d66f",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "policy_prior",
+        "selection_mode": "best_final_elite"
+      }
+    },
+    {
+      "configuration": "PE",
+      "scenario": 70446,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/PE_70446_r2/config.yaml",
+      "config_sha256": "31ceb84aab790efcde6af4f6223a15c31d2d9e1bba9f59b4ba245678d9674621",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "policy_prior",
+        "selection_mode": "best_final_elite"
+      }
+    },
+    {
+      "configuration": "P",
+      "scenario": 70124,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/P_70124_r1/config.yaml",
+      "config_sha256": "6336bea031b418a24788dccf1df6454e6823381dca00abcb71c0eb1e5f0a94ff",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "policy_prior",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "P",
+      "scenario": 70124,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/P_70124_r2/config.yaml",
+      "config_sha256": "ff2237a67b685be3895fdb8e7a86dc678bcda2bb56635af2098a164d9083ac60",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "policy_prior",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "P",
+      "scenario": 70128,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/P_70128_r1/config.yaml",
+      "config_sha256": "c82acf401b7de386f3171a43cac01b28326a18abe0d8617fcce21b81a147c690",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "policy_prior",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "P",
+      "scenario": 70128,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/P_70128_r2/config.yaml",
+      "config_sha256": "f0a0ac3362d63d7abc10ab693b6984b33a44ae0dd892d7d898a550c8c92840bd",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "policy_prior",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "P",
+      "scenario": 70402,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/P_70402_r1/config.yaml",
+      "config_sha256": "13ce68fd40466b37c7954852269b30c93dda3ab2ebec7e33364a09274a5d808b",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "policy_prior",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "P",
+      "scenario": 70402,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/P_70402_r2/config.yaml",
+      "config_sha256": "aab66156256a9c55cea9ae66201daa59d62d561054eaeac3ff491cb5a2a2ff7b",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "policy_prior",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "P",
+      "scenario": 70446,
+      "seed": 1,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/P_70446_r1/config.yaml",
+      "config_sha256": "d1c456f66dbb4b94f38c091c3da4932582100a0f0c74fae0742e915aaa3365fb",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "policy_prior",
+        "selection_mode": "weighted_mean"
+      }
+    },
+    {
+      "configuration": "P",
+      "scenario": 70446,
+      "seed": 2,
+      "config_path": "reports/mppi_selection_20261117/episodes/development/P_70446_r2/config.yaml",
+      "config_sha256": "adc32e7e8d4688754cd4d417d0ea1d174185dd1e736eea4b2a6f293b5c2a9ba4",
+      "recorded_code_base": "ced768831d7c79e16b5e7799dfcc07267ee1a52f",
+      "recorded_source_fingerprint": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+      "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+      "options": {
+        "mppi": true,
+        "iterations": 2,
+        "terminal_action": "policy_prior",
+        "selection_mode": "weighted_mean"
+      }
+    }
+  ],
+  "required_reports": {
+    "MPPI_CLOSED_LOOP_SELECTION_REPORT_20261117.md": true,
+    "reports/mppi_selection_20261117/paired_returns.csv": true,
+    "MPPI_RELATIVE_RANKING_REPORT_20261117.md": true,
+    "SAC_CONTINUATION_VALUE_REPORT.md": true
+  },
+  "protocol": {
+    "gamma": 0.995,
+    "horizon": 10,
+    "return_tolerance": 1.0,
+    "score_tie_credit": 0.5,
+    "actual_ties": "exclude abs(deltaReturn)<=1 pairs; retain for coverage equal_fraction",
+    "top1_tie": "original candidate order",
+    "bootstrap": "2000 draws seed1; aggregate within scene before scene bootstrap; paired differences inside origin",
+    "primary_q_pair": [
+      0,
+      1
+    ],
+    "sensitivity": "all10pairs and five-member mean, NO selecting a best pair on observed labels",
+    "new_environment_runs": 0,
+    "new_training": 0,
+    "online_defaults_changed": false
+  },
+  "missing_data": [
+    "Real SAC-continuation Return exists for only executed candidate subsets; no labels for all65x4 candidates or all online ticks. Coverage/oracle/regret are measured-subset lower bounds.",
+    "56 closed-loop traces lack per-stage planning times, vehicle XY/yaw/speed and full planner contexts. Cannot reconstruct original full phase breakdown or physical WM trajectory from latent distances.",
+    "Saved clipping flags/pre-clamp Gaussian innovations are absent. Boundary saturation is observable; exact clipping fraction is not.",
+    "No WM physical decoder. Existing bicycle predictions are a separate physical model, never WM XY predictions.",
+    "Fixed/ensemble Q offline rescores use same cached candidate pools; they are not new closed-loop runs and cannot establish causal driving improvement.",
+    "All historical validation results already seen are retrospective only; new six-map sealed validation remains unopened."
+  ],
+  "tracked_runtime_fingerprint_now": "bdae7742d1b69bc3404a41273cc48c7ff582dd4fc02c3fe53ce4b58ac5c800d0",
+  "tracked_runtime_matches_56_episodes": true,
+  "source_fingerprint_note": "Full now fingerprint includes NEW untracked offline tools; original tracked runtime byte-for-byte fingerprint still matches56. No historical source was modified.",
+  "remote_version": {
+    "local_main": "45073e15f4d38ea53840a4bef22a5bd06e2774a5",
+    "remote_main_observed_by_git_ls_remote": "bfe035d7ea441bb845f65d7b72c3e3dbebfb3d33",
+    "remote_tracking_origin_main": "bfe035d7ea441bb845f65d7b72c3e3dbebfb3d33",
+    "local_contains_online_elite": true,
+    "remote_contains_online_elite": false,
+    "remote_operation": "git ls-remote origin refs/heads/main (read-only)",
+    "conclusion": "56 episodes match current local main runtime fingerprint; DO NOT attribute them to current GitHub main. No fetch/checkout/reset/push."
+  }
+}
