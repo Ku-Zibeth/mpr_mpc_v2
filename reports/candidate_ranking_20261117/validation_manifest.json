@@ -1,0 +1,194 @@
+[
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/62922_50/baseline.npz",
+    "sha256": "dd524671e2be7e5321a2562cba8c33074fdfa04b678cd6d9aee090af793a23b5"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/62922_50/gaussian.npz",
+    "sha256": "52079378fcac3ee9af9d430d7611e57049098ba3998135ab9ecdefce0a785dbc"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/62922_50/mean.npz",
+    "sha256": "df130d08923392ae108b56c588d8915c793a4aca15061dbd6e72fd64d2fc0bec"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/62922_50/best_elite.npz",
+    "sha256": "6024c5da5dd5b371570312b5f7e28030279601cc53653e4bd0c0a1c61d28a2ea"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/62922_150/baseline.npz",
+    "sha256": "df20147fa19d8696e668ef5ac3663cf060f2014f0e837e8b6231e27b651a23f8"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/62922_150/gaussian.npz",
+    "sha256": "74255fc75c5489d05ad276a745b18489faec1281d9e67beda8e2ffa21985bbe9"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/62922_150/mean.npz",
+    "sha256": "1c61423d037937bcfcd3c77512cf1642b54f141d0ced1a3d09267d9ff78dc51d"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/62922_150/best_elite.npz",
+    "sha256": "da9c04abf87133582236fb6e36917afe427ec2f41f0ce12d6a5fa9d50404f70b"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/62014_50/baseline.npz",
+    "sha256": "667856cc10514ca4b6a46b3399de6764936f603a6947772603bfa4887dfb41b8"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/62014_50/gaussian.npz",
+    "sha256": "d3d8bda674b7cd93826c7659366d86355a483736c9d7c38b912d9f9eaffe1ac9"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/62014_50/mean.npz",
+    "sha256": "50906f801aa42b5e699bce36bd7ff152b0f6054424a1a24a18b73bdbbadcc855"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/62014_50/best_elite.npz",
+    "sha256": "399ceb46dc497c5e99010c65545c87dcead537ad01c1c237c2db64415dad3f29"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/62014_150/baseline.npz",
+    "sha256": "5d74a6db61153342648923d3d09c7f1fb7977e58418eebae8c8179709d654dc5"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/62014_150/gaussian.npz",
+    "sha256": "4015cdd5c66a1bfac7c30d9472b1d8c20071087aa7bff979e7c505742128d2d2"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/62014_150/mean.npz",
+    "sha256": "9bf7db4f34fca9c27e34f61e70f389966cd62e304f203050a0e05f6632c569fb"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/62014_150/best_elite.npz",
+    "sha256": "52c69b9700d6ffa812d8fc95b95a5ef66b830ee938b8be82b30ce8904d011d10"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/62203_50/baseline.npz",
+    "sha256": "6125d35d867e7165d381143f8bbe5a58da649fa59ce7811953f3b457d2504800"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/62203_50/gaussian.npz",
+    "sha256": "df5fed19170d64f3ebc1cf3cc10f8fb2a4e7399badcc7b4f2c6aef013451f719"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/62203_50/mean.npz",
+    "sha256": "b2dce273cf64e0b803a002e09ba4d1357a5b65764f05d130a40672b3cfb2055f"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/62203_50/best_elite.npz",
+    "sha256": "de9935a279e6950280a9255c821a5536733997d5f0d7fe3ef6ffb34a347012c6"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/62203_150/baseline.npz",
+    "sha256": "8073830cbcb0c4b0cc3eda546510be79bd0431ff92a398028a885ecfe965deff"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/62203_150/gaussian.npz",
+    "sha256": "d7997264ee5b94c466cd6d7f9c1f2fc4a85b46d3ed64771b56f20ee89fe9a054"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/62203_150/mean.npz",
+    "sha256": "b74b481ed08c307d0e40cc53c465af833e566c09e44b381ccc7418419a1b035f"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/62203_150/best_elite.npz",
+    "sha256": "c9dfa8cabc11cb5d77babeaacfa2e71276a6225ab9c4c1efb57fdf55bc36f8ee"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/63893_50/baseline.npz",
+    "sha256": "ea71cda9838e10c3572ee5aed51443c80b28d9b4d8caf1de210d30e54d127410"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/63893_50/gaussian.npz",
+    "sha256": "2b2707b2c9689b192426b50d6f4e2f6bf933d04f8298f933d0e1e8da58b6f508"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/63893_50/mean.npz",
+    "sha256": "3e113af729f799737648aef9d8141a489e64b8f106c53eaaf9bb69696a9981e2"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/63893_50/best_elite.npz",
+    "sha256": "2877327aabf6fed1d8d398f8749c38df5b51846457f89c6262114ee1d20d606a"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/63893_150/baseline.npz",
+    "sha256": "9e03600b1b67486fe8889f707f815b2b2332743c2bf3b4d5d8694b67229377d7"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/63893_150/gaussian.npz",
+    "sha256": "e04e589dbefb8ce94393670651b39cf747eddb874ef249824bf96ef09df162e1"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/63893_150/mean.npz",
+    "sha256": "6a12e55437cec45da995d2e0ddfb55e8aee2959101dfee21795934093248365b"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/63893_150/best_elite.npz",
+    "sha256": "d18354c48f7b248a21188729325de8f7ac74c7fe7ebefd7691cd1997586bfc4d"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/63147_50/baseline.npz",
+    "sha256": "f037e336dbeb13e725b0b31ab6797d4fe53f7aa2fb916670a2d5e3b0b54753a9"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/63147_50/gaussian.npz",
+    "sha256": "7706005859646fb1f7ce98cdbc2782a91f12f4a855d2fd0f6b43e95d4ee040a5"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/63147_50/mean.npz",
+    "sha256": "d7e06c9306401292823a52ba6040f4fbe96687dfd00ea02833f43800245c1e1b"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/63147_50/best_elite.npz",
+    "sha256": "68218cf8b9840fecb2a2df02ce0046946d69f1a380d98dc320e19b22f92e7375"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/63147_150/baseline.npz",
+    "sha256": "2aa1e843d5bddbb511f02e5fcf0a448005c8522a5c351e0afec21e8aa2a0915e"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/63147_150/gaussian.npz",
+    "sha256": "37f72409e272be5b238c90a89e70cede16aaa88744ed14912e6ceee54fd85950"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/63147_150/mean.npz",
+    "sha256": "93511272a7da9a205f7c64daab5370111226d925eceb0eefe1b03b8d4161c5d8"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/63147_150/best_elite.npz",
+    "sha256": "c2d5400482260b313be4d8cad5c690ec5253790307ec532975a0cd432139c380"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/64641_50/baseline.npz",
+    "sha256": "150e8d0731e4323dc6e1ba84f332464dbadd49d61e694b35a8b96a92c5e07e17"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/64641_50/gaussian.npz",
+    "sha256": "bfd56e64e25ba2c4fd0deaa9e23011225f93a9c2928af057a9dd0c195f90440f"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/64641_50/mean.npz",
+    "sha256": "8ebd97c77f73245b0f69ab4d210cc570bab641ade3979c3f33832a5c641a20e7"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/64641_50/best_elite.npz",
+    "sha256": "76ed419f39f87f82c8a689a021aff89899b8089fc8598e4617632c3be9c548c9"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/64641_150/baseline.npz",
+    "sha256": "7c9ab52a4cff3161ae9d5687f4029ee31a651fac667b586ba619c727e0eeac9a"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/64641_150/gaussian.npz",
+    "sha256": "a7eb5c8db43a2c3c6c8a372e4195c83ca62146d57548ba207fc702e02434193f"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/64641_150/mean.npz",
+    "sha256": "ce2d1b46e49b4a5e01d589d79a40be47690a9b3f881a480443579507e64675e0"
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/candidate_ranking_20261117/data/64641_150/best_elite.npz",
+    "sha256": "e8065134747beaf492f6f20b24b849c69d312b1b7beffb5ee4c2f824ed3b7585"
+  }
+]

@@ -1,0 +1,1063 @@
+diff --git a/planning/candidate_value.py b/planning/candidate_value.py
+new file mode 100644
+index 0000000..d6a2f90
+--- /dev/null
++++ b/planning/candidate_value.py
+@@ -0,0 +1,95 @@
++"""Offline shared scalar candidate ranking. Never imported by action selection.
++
++Inputs are current encoded observation, imagined terminal latent and planned
++physical commands only. Actual future observations/rewards are labels, not inputs.
++"""
++from __future__ import annotations
++
++import numpy as np
++import torch
++from torch import nn
++from torch.nn import functional as F
++
++
++class CandidateValue(nn.Module):
++    def __init__(self, latent_dim=512, horizon=10, action_dim=2,
++                 input_kind="context_terminal_actions", hidden=(66, 64)):
++        super().__init__()
++        if input_kind not in {"terminal", "context_terminal", "context_terminal_actions"}:
++            raise ValueError("Unknown candidate input definition.")
++        self.latent_dim, self.horizon, self.action_dim = latent_dim, horizon, action_dim
++        self.input_kind, self.hidden = input_kind, tuple(hidden)
++        width = latent_dim if input_kind == "terminal" else 2 * latent_dim
++        if input_kind == "context_terminal_actions":
++            width += horizon * action_dim
++        self.register_buffer("input_mean", torch.zeros(width))
++        self.register_buffer("input_std", torch.ones(width))
++        # Pairwise supervision cannot identify a common absolute-return offset.
++        self.register_buffer("difference_scale", torch.ones(()))
++        layers = []
++        for i, (left, right) in enumerate(zip((width, *hidden), (*hidden, 1))):
++            layers.append(nn.Linear(left, right))
++            if i < len(hidden):
++                layers.append(nn.SiLU())
++        self.net = nn.Sequential(*layers)
++
++    def features(self, z0, terminal, actions):
++        if terminal.ndim != 2 or terminal.shape[-1] != self.latent_dim:
++            raise ValueError("Expected a batch of imagined terminal latents.")
++        if self.input_kind == "terminal":
++            return terminal
++        z0 = z0.reshape(-1, self.latent_dim).expand_as(terminal)
++        pieces = [z0, terminal]
++        if self.input_kind == "context_terminal_actions":
++            if actions.ndim != 3 or actions.shape[0] != len(terminal) or actions.shape[1] < self.horizon or actions.shape[2] != self.action_dim:
++                raise ValueError("Expected matching H-command candidate sequences.")
++            pieces.append(actions[:, :self.horizon].flatten(1))
++        return torch.cat(pieces, -1)
++
++    def forward(self, z0, terminal, actions):
++        x = self.features(z0, terminal, actions)
++        return self.net((x - self.input_mean) / self.input_std.clamp_min(1e-3)).squeeze(-1) * self.difference_scale
++
++
++def pairwise_objective(scores, returns, pairs, *, weights=None, tolerance=1.,
++                       difference_scale=1., difference_weight=.25):
++    """Rank non-ties, regress all differences; balance scenes/origins upstream.
++
++    The tolerance is in native discounted-return units. Near-ties are retained
++    for difference fitting, never turned into noisy binary preferences.
++    """
++    if tolerance < 0 or difference_scale <= 0 or difference_weight < 0:
++        raise ValueError("Invalid fixed pairwise loss scales.")
++    pairs = pairs.reshape(-1, 2)
++    prediction = (scores[pairs[:, 0]] - scores[pairs[:, 1]]) / difference_scale
++    target = (returns[pairs[:, 0]] - returns[pairs[:, 1]]) / difference_scale
++    weight = torch.ones_like(target) if weights is None else weights.to(target)
++    active = target.abs() > tolerance / difference_scale
++    rank_terms = F.softplus(-target.sign() * prediction)
++    rank = (weight[active] * rank_terms[active]).sum() / weight[active].sum().clamp_min(1e-12)
++    difference = (weight * F.smooth_l1_loss(prediction, target, reduction="none")).sum() / weight.sum().clamp_min(1e-12)
++    return rank + difference_weight * difference, dict(rank=rank, difference=difference, effective_pairs=int(active.sum()))
++
++
++def aligned_returns(rewards, starts, *, horizon, gamma, done):
++    """Native terminal RTG; no invented H-endpoint for an early failure.
++
++    Returns total/prefix/continuation labels and a valid-H mask. A prefix that
++    ends early still has a real total label, but no terminal latent is supplied.
++    """
++    rewards = np.asarray(rewards, dtype=np.float64)
++    starts = np.asarray(starts, dtype=np.int64)
++    done = np.asarray(done, dtype=bool)
++    if not 0 <= gamma <= 1 or horizon <= 0 or len(done) != len(rewards):
++        raise ValueError("Invalid native reward/done alignment.")
++    if not len(done) or not done[-1] or done[:-1].any() or (starts < 0).any() or (starts >= len(rewards)).any():
++        raise ValueError("Require one native episode, no post-terminal samples.")
++    rtg = np.zeros(len(rewards) + 1)
++    for i in range(len(rewards) - 1, -1, -1):
++        rtg[i] = rewards[i] + gamma * rtg[i + 1]
++    valid = starts + horizon <= len(rewards)
++    continuation = np.full(len(starts), np.nan)
++    continuation[valid] = rtg[starts[valid] + horizon]
++    prefix = np.array([sum(gamma**j * r for j, r in enumerate(rewards[s:s + horizon])) for s in starts])
++    return dict(total=rtg[starts], prefix=prefix, continuation=continuation,
++                valid_terminal=valid, rtg=rtg)
+diff --git a/tests/test_candidate_value.py b/tests/test_candidate_value.py
+new file mode 100644
+index 0000000..d10a79f
+--- /dev/null
++++ b/tests/test_candidate_value.py
+@@ -0,0 +1,50 @@
++"""Small regressions for the offline ranking objective and native label alignment."""
++import numpy as np
++import pytest
++import torch
++from planning.candidate_value import CandidateValue, aligned_returns, pairwise_objective
++
++
++def test_native_h_prefix_alignment_and_early_failure():
++    label = aligned_returns([1., 2., 3., 4.], [0, 2], horizon=3, gamma=.5, done=[0, 0, 0, 1])
++    assert np.allclose(label['total'], [3.25, 5.])
++    assert label['continuation'][0] == 4.
++    assert label['total'][0] == label['prefix'][0] + .5**3 * label['continuation'][0]
++    assert label['valid_terminal'].tolist() == [True, False]
++    assert np.isnan(label['continuation'][1])
++    assert label['prefix'][1] == label['total'][1]  # retain real early failure total
++    with pytest.raises(ValueError, match='post-terminal'):
++        aligned_returns([1., 2.], [0], horizon=1, gamma=.5, done=[1, 1])
++
++
++def test_pairwise_ranking_is_consistent_balanced_and_excludes_near_ties():
++    pairs = torch.tensor([[0, 1], [1, 2], [0, 2]])
++    target = torch.tensor([4., 2., 0.])
++    correct = torch.tensor([3., 1.5, 0.], requires_grad=True)
++    good, detail = pairwise_objective(correct, target, pairs, tolerance=1.)
++    wrong, _ = pairwise_objective(-correct, target, pairs, tolerance=1.)
++    shifted, _ = pairwise_objective(correct + 100., target, pairs, tolerance=1.)
++    assert good < wrong and torch.allclose(good, shifted)
++    assert (correct[0]-correct[2]) == (correct[0]-correct[1])+(correct[1]-correct[2])
++    good.backward(); assert torch.isfinite(correct.grad).all()
++    ties, info = pairwise_objective(correct, torch.zeros(3), pairs, tolerance=1.)
++    assert info['effective_pairs'] == 0 and info['rank'] == 0 and torch.isfinite(ties)
++    duplicate = torch.tensor([[0, 1], [0, 1], [1, 2], [0, 2]])
++    weighted, _ = pairwise_objective(correct, target, duplicate, weights=torch.tensor([.5,.5,1.,1.]))
++    assert torch.allclose(good, weighted)
++
++
++def test_candidate_inputs_and_tail_action_do_not_leak_future():
++    torch.manual_seed(1)
++    head = CandidateValue(latent_dim=5, horizon=3, hidden=(8,4))
++    z0, terminal, actions = torch.rand(1,5), torch.rand(4,5), torch.rand(4,4,2)
++    score = head(z0, terminal, actions)
++    actions[:,3] = 99.  # Coordinator-only padding is not an optimized input
++    assert torch.equal(score, head(z0,terminal,actions))
++    assert score.shape == (4,)
++    assert torch.equal(torch.topk(score,3).indices, torch.topk(score-score[0],3).indices)
++    head.zero_grad(); score.sum().backward()
++    assert all(p.grad is not None and torch.isfinite(p.grad).all() for p in head.parameters())
++    for kind in ('terminal','context_terminal'):
++        model = CandidateValue(latent_dim=5,horizon=3,input_kind=kind,hidden=(8,4))
++        assert model(z0,terminal,actions).shape == (4,)
+diff --git a/reports/candidate_ranking_20261117/audit_old.py b/reports/candidate_ranking_20261117/audit_old.py
+new file mode 100644
+index 0000000..26be902
+--- /dev/null
++++ b/reports/candidate_ranking_20261117/audit_old.py
+@@ -0,0 +1,62 @@
++"""Read-only audit and frozen-WM reconstruction of ALL previous training windows."""
++import contextlib,io,json,sys
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
++import numpy as np,torch
++from omegaconf import OmegaConf
++from mpr_mpc._bootstrap import bootstrap
++bootstrap()
++from common.seed import set_seed
++from common import math as wm_math
++from env import make_env
++import evaluate_model_suite as suite
++from tools.value_calibration import assert_origin_match
++from planning.candidate_value import aligned_returns
++from planning.sac_value import file_sha256
++sys.path.insert(0,str(ROOT/'reports/mppi_calibration_20261116'));from probe import dump
++
++@torch.no_grad()
++def main():
++ p=json.loads((R/'protocol.json').read_text());old=Path(p['old_data']);op=json.loads((old/'protocol.json').read_text());manifest=json.loads((old/'dataset_manifest.json').read_text());assert file_sha256(p['checkpoint'])==p['checkpoint_sha256']
++ raw=OmegaConf.load(p['source_environment_config']);raw.mpr_mpc.mppi=OmegaConf.load(ROOT/'config.yaml').mpr_mpc.mppi;raw.restore_checkpoint_runtime=True;raw.restore_mppi_runtime=False;raw.enable_wandb=raw.save_agent=raw.save_video=False;raw.residual_rl.buffer_size=8
++ ck=Path(p['checkpoint']);_,cfg=suite._make_cfg(raw,ck.parent.parent.name,ck,[op['training_scenarios'][0]]);set_seed(1);torch.set_num_threads(1);torch.set_float32_matmul_precision('high');env=make_env(cfg)
++ try:
++  with contextlib.redirect_stdout(io.StringIO()):agent=suite._make_agent(cfg,env);agent.load(ck)
++  agent.eval();model=agent.tdmpc_agent.model;model.requires_grad_(False);H=10;rows=[];features=[];pairs=[];windows=[];sources=[];unavailable=[];seenorigins={};worst=dict(predicted_latent=0.,actual_latent=0.,label=0.)
++  expected={x['path']:x['sha256'] for split in ['fit','inner_stop'] for x in manifest[split]}
++  for scene in op['training_scenarios']:
++   for before in op['origin_steps']:
++    folder=old/'training_data'/f'{scene}_{before}'
++    if list(folder.glob('unavailable_*.json')):
++     unavailable.extend([dict(path=str(f),record=json.loads(f.read_text())) for f in sorted(folder.glob('unavailable_*.json'))]);continue
++    reference=json.loads((folder/'B_origin.json').read_text());group=[]
++    for branch in op['train_branches']:
++     origin=json.loads((folder/(branch+'_origin.json')).read_text());assert_origin_match(reference,origin);path=folder/(branch+'.npz');assert file_sha256(path)==expected[str(path)];d=np.load(path);m=json.loads((folder/(branch+'_meta.json')).read_text());assert m['native_done'];n=len(d['actions']);done=np.zeros(n,bool);done[-1]=True
++     label=aligned_returns(d['rewards'],d['starts'],horizon=H,gamma=float(d['gamma']),done=done);assert label['valid_terminal'].all();assert np.allclose(label['rtg'],d['rtg'],atol=1e-8,rtol=0);assert np.allclose(label['continuation'],d['targets'],atol=1e-8,rtol=0)
++     obs=torch.tensor(d['observations'],device=agent.device);z=torch.cat([model.encode(obs[i:i+256],None) for i in range(0,len(obs),256)])
++     predictions=[];prefixes=[]
++     for b in range(0,len(d['starts']),256):
++      starts=d['starts'][b:b+256];zz=z[starts].clone();prefix=torch.zeros(len(starts),device=agent.device)
++      for t in range(H):
++       actions=torch.tensor(d['actions'][starts+t],device=agent.device);prefix+=float(d['gamma'])**t*wm_math.two_hot_inv(model.reward(zz,actions,None),agent.tdmpc_agent.cfg).reshape(-1);zz=model.next(zz,actions,None)
++      predictions.append(zz.cpu().numpy());prefixes.append(prefix.cpu().numpy())
++     pred=np.concatenate(predictions);true=z[d['starts']+H].cpu().numpy();pe=float(np.max(abs(pred-d['predicted_latents'])));ae=float(np.max(abs(true-d['actual_latents'])));worst['predicted_latent']=max(worst['predicted_latent'],pe);worst['actual_latent']=max(worst['actual_latent'],ae);print('max reconstruction',pe,ae,flush=True);assert pe<1e-4 and ae<1e-4
++     i=len(features);commands=np.asarray(origin['candidate_actions'][op['train_branches'].index(branch)],np.float32);assert np.array_equal(d['actions'][:min(H,n)],commands[:min(H,n)]);assert n>=H
++     features.append(dict(z0=z[0].cpu().numpy(),terminal=pred[0],actual_terminal=true[0],actions=commands,baseline=np.asarray(origin['candidate_actions'][0],np.float32),target=float(label['total'][0]),continuation=float(label['continuation'][0]),predicted_prefix=float(np.concatenate(prefixes)[0]),scene=scene,before=before,branch=branch,split='fit' if scene in op['fit_scenarios'] else 'inner_stop'))
++     group.append(i);sources.append(dict(path=str(path),sha256=expected[str(path)],samples=len(d['starts'])))
++     row=dict(scenario=scene,before=before,branch=branch,windows=len(d['starts']),length=n,actual_return=float(label['total'][0]),success=m['success'],crash=m['crash'],out_of_road=m['out_of_road'],action_rmse=float(np.sqrt(np.mean((commands[:H]-features[-1]['baseline'][:H])**2))),coverage=origin['coverage'],prefix_hash=commands[:H].tobytes().hex(),position_error=pe,actual_error=ae,
++      labels_native_flags_last=dict(terminated=bool(d['terminated'][-1]),truncated=bool(d['truncated'][-1])),consecutive_window_overlap_ratio=max(0.,(H-op['window_stride'])/H))
++     rows.append(row);windows.append(d['targets']);print(scene,before,branch,'audit',pe,ae,flush=True)
++    for a in range(len(group)):
++     for b in range(a+1,len(group)):
++      left,right=group[a],group[b];delta=features[left]['target']-features[right]['target'];pairs.append(dict(scenario=scene,before=before,left=features[left]['branch'],right=features[right]['branch'],delta_real=delta,effective=abs(delta)>p['pair_tolerance'],identical_prefix=bool(np.array_equal(features[left]['actions'][:H],features[right]['actions'][:H]))))
++  arr=dict(z0=np.stack([f['z0'] for f in features]),terminal=np.stack([f['terminal'] for f in features]),actual_terminal=np.stack([f['actual_terminal'] for f in features]),actions=np.stack([f['actions'] for f in features]),baseline=np.stack([f['baseline'] for f in features]))
++  for k in ['target','continuation','predicted_prefix','scene','before','branch','split']:arr[k]=np.array([f[k] for f in features])
++  np.savez_compressed(R/'old_origin_features.npz',**arr)
++  scene_pairs={str(s):dict(pairs=sum(x['scenario']==s for x in pairs),effective_pairs=sum(x['scenario']==s and x['effective'] for x in pairs)) for s in op['training_scenarios']}
++  history=json.loads((old/'predicted_training.json').read_text())['history'];dup=sum(x['identical_prefix'] for x in pairs)
++  report=dict(independent_scenes=len(op['training_scenarios']),fit_scenes=8,inner_stop_scenes=4,origins=len(rows)//3,native_branches=len(rows),planned_tasks=72,unavailable_tasks=unavailable,fit_windows=sum(x['windows'] for x in rows if x['scenario'] in op['fit_scenarios']),stop_windows=sum(x['windows'] for x in rows if x['scenario'] in op['early_stop_scenarios']),matched_fit_pairs=sum(x['scenario'] in op['fit_scenarios'] for x in pairs),all_pairs=len(pairs),effective_pairs=sum(x['effective'] for x in pairs),tolerance=p['pair_tolerance'],identical_prefix_pairs=dup,by_scene=scene_pairs,pairs=pairs,branches=rows,reconstruction_max_error=worst,
++   diagnosis=['Only24 origin states, not3693 independent windows. Sliding windows at stride5 overlap H10 prefixes by50%; nearby continuation RTGs are autocorrelated.','Original optimized loss puts absolute regression on2676 fit windows but difference supervision on48 matched-origin pairs. Independent early-stop maps differ from fit maps.','Training loss is sampled minibatch mean, early-stop is exact scene-weighted objective: raw scales are not perfectly identical; train decreases while held-out-map loss rises. This supports overfit/distribution shift, not a proven label error.','All saved starts+H are native available, all actual/predicted latents reconstructed; early failures shorter thanH cannot invent terminal latent. Actual total labels would be retained even when excluded from H-endpoint head fitting.'],old_training_history=history)
++  dump(R/'data_audit.json',report);dump(R/'old_sources.json',sources)
++ finally:env.close()
++if __name__=='__main__':main()
+diff --git a/reports/candidate_ranking_20261117/collect.py b/reports/candidate_ranking_20261117/collect.py
+new file mode 100644
+index 0000000..e6d7a52
+--- /dev/null
++++ b/reports/candidate_ranking_20261117/collect.py
+@@ -0,0 +1,64 @@
++"""Four reward-blind Q-MPPI proposals, followed by native frozen SAC execution."""
++import argparse,contextlib,io,json,sys,time
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
++sys.path.insert(0,str(ROOT/'reports/mppi_calibration_20261116'))
++from probe import snapshot,dump
++import numpy as np,torch
++from omegaconf import OmegaConf
++from mpr_mpc._bootstrap import bootstrap
++bootstrap()
++from common.seed import set_seed
++from env import make_env
++import evaluate_model_suite as suite
++from planning.local_mppi import LocalMPPI
++from planning.sac_value import policy_context_sha256
++from planning.candidate_value import aligned_returns
++
++@torch.no_grad()
++def main():
++ ap=argparse.ArgumentParser();ap.add_argument('--scenario',type=int,required=True);ap.add_argument('--before',type=int,required=True);ap.add_argument('--branch',required=True);a=ap.parse_args()
++ p=json.loads((R/'protocol.json').read_text());assert a.scenario in p['new_fit_scenarios']+p['new_stop_scenarios']+p['validation_scenarios'];assert a.branch in p['branches'];ck=Path(p['checkpoint']);out=R/'data'/f'{a.scenario}_{a.before}';out.mkdir(parents=True,exist_ok=True)
++ if ((out/(a.branch+'.npz')).exists() and (out/(a.branch+'_meta.json')).exists()) or (out/('unavailable_'+a.branch+'.json')).exists():
++  print('Already completed; retained',a.scenario,a.before,a.branch,flush=True);return
++ raw=OmegaConf.load(p['source_environment_config']);raw.mpr_mpc.mppi=OmegaConf.load(ROOT/'config.yaml').mpr_mpc.mppi;raw.restore_checkpoint_runtime=True;raw.restore_mppi_runtime=False
++ raw.enable_wandb=raw.save_agent=raw.save_video=False;raw.residual_rl.buffer_size=8;raw.metadrive.simulator.horizon=1000
++ _,cfg=suite._make_cfg(raw,ck.parent.parent.name,ck,[a.scenario]);torch.set_num_threads(1);torch.set_float32_matmul_precision('high');set_seed(1);env=make_env(cfg)
++ try:
++  with contextlib.redirect_stdout(io.StringIO()):agent=suite._make_agent(cfg,env);state=agent.load(ck)
++  agent.eval();suite._apply_evaluation_stack(agent.planner,'world_model_residual_rl',state);agent.set_global_step(max(agent.global_env_step,agent.planner.mppi_start_step))
++  seed=1+a.scenario;set_seed(seed);agent.planner.reset(seed=seed);obs=env.reset(seed=a.scenario);assert int(env.unwrapped_metadrive.current_seed)==a.scenario
++  for i in range(a.before-1):
++   action=agent.act(obs,t0=(i==0),eval_mode=True);obs,_,done,info=env.step(action)
++   if done:
++    dump(out/('unavailable_'+a.branch+'.json'),dict(reason='native SAC terminated before prescribed origin; never replaced based on reward',scenario=a.scenario,before=a.before,steps=i+1,success=bool(info['success']),out_of_road=bool(info.get('out_of_road',False))));return
++  agent.act(obs,t0=False,eval_mode=True);baseline=agent.last_plan.refined_actions.clone();z0=agent.planner.last_context.latent.clone();H=int(cfg.horizon);assert H==10
++  options=dict(cfg.mpr_mpc['mppi']);options.update(audit_candidates=True,record_cost=False,cost_weight=0.)
++  planner=LocalMPPI(agent.planner.evaluator,options,horizon=H,action_dim=2,device=agent.device);planner.reset(seed)
++  torch.cuda.synchronize();begin=time.perf_counter();plan=planner.plan(z0,baseline,eval_mode=True);torch.cuda.synchronize();ms=1000*(time.perf_counter()-begin)
++  audit=plan.candidate_audit;assert not plan.numerical_error
++  ids=[0,2,1,audit['indices']['best_elite']];pool=audit['actions'][ids];idx=p['branches'].index(a.branch);commands=pool[idx]
++  origin=snapshot(env,agent,obs,pool,a.scenario,a.before);dump(out/(a.branch+'_origin.json'),origin)
++  if a.branch=='baseline':
++   np.savez_compressed(out/'audit.npz',actions=audit['actions'].cpu().numpy(),scores=audit['values'].cpu().numpy(),latents=audit['terminal_latents'].cpu().numpy(),iteration_actions=torch.stack(audit['iteration_actions']).cpu().numpy(),iteration_scores=torch.stack(audit['iteration_values']).cpu().numpy())
++   dump(out/'audit.json',dict(indices=ids,branches=p['branches'],metrics=plan.metrics,planning_time_ms=ms,definition=plan.evaluation,default_output='baseline' if plan.baseline_selected else 'mean',selected_action_consistent=bool(torch.equal(plan.action,plan.selected_sequence[0]))))
++  observations=[obs.cpu().numpy().copy()];actions=[];rewards=[];costs=[];dones=[];terms=[];truncs=[];xy=[];speeds=[];done=crash=offroad=False
++  while not done:
++   i=len(actions);act=commands[i] if i<H else agent.act(obs,t0=False,eval_mode=True)
++   obs,_,done,info=env.step(act);v=env.unwrapped_metadrive.agent
++   observations.append(obs.cpu().numpy().copy());actions.append(act.cpu().numpy().copy());rewards.append(float(info['tdmpc2_reward']));costs.append(float(info['cost']));dones.append(bool(done));terms.append(bool(info.get('terminated',False)));truncs.append(bool(info.get('truncated',False)));xy.append(np.asarray(v.position).copy());speeds.append(float(np.linalg.norm(v.velocity)))
++   crash|=any(bool(info.get(k,False)) for k in ('crash','crash_vehicle','crash_object','crash_building','crash_human','crash_sidewalk'));offroad|=bool(info.get('out_of_road',False));assert len(actions)<=1000
++  observations=np.asarray(observations,np.float32);actions=np.asarray(actions,np.float32);gamma=float(agent.tdmpc_agent.discount);assert gamma==p['gamma'];labels=aligned_returns(rewards,[0],horizon=H,gamma=gamma,done=dones)
++  complete=bool(labels['valid_terminal'][0]);actual_z=agent.planner.evaluator.encode(torch.tensor(observations[min(H,len(actions))])).cpu().numpy().reshape(-1)
++  np.savez_compressed(out/(a.branch+'.npz'),observations=observations,actions=actions,rewards=rewards,costs=costs,done=dones,terminated=terms,truncated=truncs,positions=xy,speeds=speeds,rtg=labels['rtg'],
++   z0=z0.cpu().numpy().reshape(-1),predicted_terminal=audit['terminal_latents'][ids[idx]].cpu().numpy(),actual_terminal=actual_z if complete else np.empty(0),planned_actions=commands.cpu().numpy(),baseline_actions=baseline.cpu().numpy(),
++   predicted_return=np.array(float(audit['values'][ids[idx]])),predicted_prefix=np.array(float(audit['discounted_rewards'][ids[idx]])),terminal_discount=np.array(float(audit['terminal_discounts'][ids[idx]])),gamma=np.array(gamma))
++  dump(out/(a.branch+'_meta.json'),dict(scenario=a.scenario,before=a.before,branch=a.branch,native_done=True,length=len(actions),prefix_complete=complete,success=bool(info['success']),crash=crash,out_of_road=offroad,route_completion=float(info['route_completion']),episode_return=sum(rewards),actual_return=float(labels['total'][0]),actual_continuation=float(labels['continuation'][0]) if complete else None,cost_sum=sum(costs),planning_time_ms=ms,average_speed=float(np.mean(speeds)),policy_context_sha256=policy_context_sha256(cfg),wm_checkpoint_sha256=p['checkpoint_sha256'],end_reason=info.get('end_reason','')))
++  print(a.scenario,a.before,a.branch,len(actions),float(labels['total'][0]),flush=True)
++ finally:env.close()
++if __name__=='__main__':
++ import fcntl
++ scenario=sys.argv[sys.argv.index('--scenario')+1];before=sys.argv[sys.argv.index('--before')+1];branch=sys.argv[sys.argv.index('--branch')+1]
++ locks=R/'locks';locks.mkdir(exist_ok=True)
++ with (locks/f'{scenario}_{before}_{branch}.lock').open('a') as guard:
++  fcntl.flock(guard,fcntl.LOCK_EX);main()
+diff --git a/reports/candidate_ranking_20261117/collect_queue.py b/reports/candidate_ranking_20261117/collect_queue.py
+new file mode 100644
+index 0000000..111c989
+--- /dev/null
++++ b/reports/candidate_ranking_20261117/collect_queue.py
+@@ -0,0 +1,26 @@
++import json,os,subprocess,sys,time,argparse
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
++from tools.benchmark_mppi import source_fingerprint
++from planning.sac_value import file_sha256
++ap=argparse.ArgumentParser();ap.add_argument('--validation-only',action='store_true');ap.add_argument('--stop-only',action='store_true');args=ap.parse_args()
++p=json.loads((R/'protocol.json').read_text());assert source_fingerprint(ROOT)==p['source_snapshot_sha256'];assert file_sha256(p['checkpoint'])==p['checkpoint_sha256']
++queue=[];done={};running=[];logs=R/('validation_collect_logs' if args.validation_only else 'stop_collect_logs' if args.stop_only else 'collect_logs');logs.mkdir(exist_ok=True)
++scenes=p['validation_scenarios'] if args.validation_only else p['new_stop_scenarios'] if args.stop_only else p['new_fit_scenarios']+p['new_stop_scenarios']+p['validation_scenarios']
++for s in scenes:
++ for before in p['origin_steps']:
++  for b in p['branches']:
++   name=f'{s}_{before}_{b}';folder=R/'data'/f'{s}_{before}'
++   if (folder/(b+'.npz')).exists() or (folder/('unavailable_'+b+'.json')).exists():done[name]=0
++   else:queue.append((name,s,before,b))
++while queue or running:
++ while queue and len(running)<4:
++  name,s,before,b=queue.pop(0);log=(logs/(name+'.log')).open('x');job=subprocess.Popen([sys.executable,'-u',str(R/'collect.py'),'--scenario',str(s),'--before',str(before),'--branch',b],cwd=ROOT,stdout=log,stderr=subprocess.STDOUT,env=dict(os.environ,OMP_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',MKL_NUM_THREADS='1',MUJOCO_GL='egl'))
++  running.append((name,job,log))
++ for name,job,log in running[:]:
++  status=job.poll()
++  if status is not None:
++   running.remove((name,job,log));log.close();done[name]=status;status_path=R/('validation_collection_status.json' if args.validation_only else 'stop_collection_status.json' if args.stop_only else 'collection_status.json');temporary=status_path.with_suffix('.tmp');temporary.write_text(json.dumps(done,indent=2));temporary.replace(status_path);print(len(done),'/176',name,status,flush=True)
++ if running:time.sleep(2)
++assert len(done)==len(scenes)*8 and not any(done.values()),done
++assert source_fingerprint(ROOT)==p['source_snapshot_sha256'];assert file_sha256(p['checkpoint'])==p['checkpoint_sha256']
+diff --git a/reports/candidate_ranking_20261117/counterfactual.py b/reports/candidate_ranking_20261117/counterfactual.py
+new file mode 100644
+index 0000000..2550ed5
+--- /dev/null
++++ b/reports/candidate_ranking_20261117/counterfactual.py
+@@ -0,0 +1,28 @@
++"""Real fixed-origin branch outcomes and frozen-scorer pool selection."""
++import json,sys
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
++import numpy as np
++from evaluation_statistics import cluster_intervals
++sys.path.insert(0,str(ROOT/'reports/mppi_calibration_20261116'));from probe import dump
++
++
++def main():
++ p=json.loads((R/'protocol.json').read_text());ev=json.loads((R/'ranking_evaluation.json').read_text());rows=[];predictions={name:{(x['scenario'],x['before']):x for x in v['selections']} for name,v in ev['results']['validation'].items()};paired=[];prefix_error=[]
++ for s in p['validation_scenarios']:
++  for before in p['origin_steps']:
++   folder=R/'data'/f'{s}_{before}'
++   if not all((folder/(b+'.npz')).exists() for b in p['branches']):continue
++   outcomes={b:json.loads((folder/(b+'_meta.json')).read_text()) for b in p['branches']};base=outcomes['baseline']
++   for name in p['branches']:
++    m=outcomes[name];d=np.load(folder/(name+'.npz'));gain=float(m['actual_return']-base['actual_return']);prefix=sum(p['gamma']**i*x for i,x in enumerate(d['rewards'][:10]));prefix_error.append(dict(scenario=s,before=before,branch=name,predicted_prefix=float(d['predicted_prefix']),actual_prefix=prefix,prefix_error=float(d['predicted_prefix'])-prefix,imagined_actual_terminal_l2=float(np.linalg.norm(d['predicted_terminal']-d['actual_terminal'])) if len(d['actual_terminal']) else None))
++    rows.append(dict(scenario=s,before=before,method='candidate_'+name,success=float(m['success']),crash=float(m['crash']),out_of_road=float(m['out_of_road']),route_completion=m['route_completion'],episode_return=m['episode_return'],actual_discounted_return=m['actual_return'],average_safety_cost=m['cost_sum'],planning_time_ms=m['planning_time_ms'],predicted_gain=float(d['predicted_return'])-float(np.load(folder/'baseline.npz')['predicted_return']),actual_return_gain=gain))
++   for name,origins in predictions.items():
++    chosen=origins[(s,before)];m=outcomes[chosen['selected']];bidx=chosen['labels'].index('baseline');ix=chosen['labels'].index(chosen['selected']);gain=chosen['scores'][ix]-chosen['scores'][bidx]
++    rows.append(dict(scenario=s,before=before,method='pool_selected_'+name,success=float(m['success']),crash=float(m['crash']),out_of_road=float(m['out_of_road']),route_completion=m['route_completion'],episode_return=m['episode_return'],actual_discounted_return=m['actual_return'],average_safety_cost=m['cost_sum'],planning_time_ms=m['planning_time_ms'],predicted_gain=gain,actual_return_gain=m['actual_return']-base['actual_return']))
++    paired.append(dict(scenario=s,before=before,model=name,selected=chosen['selected'],predicted_gain=gain,actual_return_gain=m['actual_return']-base['actual_return'],crash_change=float(m['crash'])-float(base['crash']),oor_change=float(m['out_of_road'])-float(base['out_of_road'])))
++ keys=['success','crash','out_of_road','route_completion','episode_return','actual_discounted_return','average_safety_cost','planning_time_ms','predicted_gain','actual_return_gain'];summaries={}
++ for name in sorted(set(r['method'] for r in rows)):
++  rr=[r for r in rows if r['method']==name];summaries[name]=dict(origins=len(rr),scenes=len(set(x['scenario'] for x in rr)),**cluster_intervals(rr,{k:(k,None) for k in keys},samples=p['bootstrap_samples'],seed=p['bootstrap_seed']))
++ dump(R/'counterfactual_results.json',dict(summary=summaries,rows=rows,paired=paired,prefix_error=prefix_error,note='Real H10 interventions followed by frozen original SAC to native done. Candidate definitions are pre-reward original-Q Gaussian/Mean/Elite; selecting one from this already executed pool tests ranking, NOT new-score full sequential MPPI or full-episode closed-loop driving. No new score was enabled online. Suffix episode metrics start at origin; original-Q search times measured under shared GPU worker load are not a latency comparison.'))
++if __name__=='__main__':main()
+diff --git a/reports/candidate_ranking_20261117/coverage.py b/reports/candidate_ranking_20261117/coverage.py
+new file mode 100644
+index 0000000..26af99d
+--- /dev/null
++++ b/reports/candidate_ranking_20261117/coverage.py
+@@ -0,0 +1,49 @@
++"""Coverage/scale diagnostics; never select observations by realized return."""
++import json,sys,hashlib
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
++import numpy as np
++from dataset import build
++sys.path.insert(0,str(ROOT/'reports/mppi_calibration_20261116'));from probe import dump
++
++
++def describe(x):
++ x=np.asarray(x,float);x=x[np.isfinite(x)];return dict(n=len(x),p0=float(np.min(x)),p25=float(np.quantile(x,.25)),p50=float(np.median(x)),p75=float(np.quantile(x,.75)),p95=float(np.quantile(x,.95)),p100=float(np.max(x))) if len(x) else dict(n=0)
++
++
++def main():
++ p=json.loads((R/'protocol.json').read_text());old=Path(p['old_data']);aud=json.loads((R/'data_audit.json').read_text());correlations=[];tokens={};duplicate_windows=0;windows=0
++ for row in aud['branches']:
++  d=np.load(old/'training_data'/f"{row['scenario']}_{row['before']}"/(row['branch']+'.npz'));y=d['targets']
++  if len(y)>2 and np.std(y)>0:correlations.append(float(np.corrcoef(y[:-1],y[1:])[0,1]))
++  for start in d['starts']:
++   token=hashlib.sha256(d['observations'][start].tobytes()+d['actions'][start:start+10].tobytes()).hexdigest();duplicate_windows+=int(token in tokens);tokens[token]=1;windows+=1
++ result=dict(old_coverage=dict(native_branches=69,unavailable_tasks=3,origins=23,fit_origins=16,fit_pairs=48,effective_fit_pairs=sum(x['effective'] and x['scenario'] in p['old_fit_scenarios'] for x in aud['pairs']),all_pair_delta=describe([x['delta_real'] for x in aud['pairs']]),abs_pair_delta=describe([abs(x['delta_real']) for x in aud['pairs']]),positive_delta_fraction=float(np.mean([x['delta_real']>0 for x in aud['pairs']])),near_tie_fraction=float(np.mean([not x['effective'] for x in aud['pairs']])),lag1_rtg_correlation=describe(correlations),exact_duplicate_windows=duplicate_windows,windows=windows,action_perturbation_rmse=describe([x['action_rmse'] for x in aud['branches'] if x['branch']!='B']),crash_branches=sum(x['crash'] for x in aud['branches']),offroad_branches=sum(x['out_of_road'] for x in aud['branches'])))
++ for split in ['fit','inner_stop','validation']:
++  d=build(split);items=d['items'];groups=d['groups'];scene_rows=[];deltas=[];rmse=[];per_origin=[];coverage=[];within_separation=[];prediction_error=[];between_returns=[];baseline_deltas=[];branch_gains={}
++  for group in groups:
++   first=items[group[0]];base=next(i for i in group if items[i]['branch'] in ('B','baseline'));yy=np.array([items[i]['target'] for i in group]);between_returns.append(float(yy.mean()))
++   local=[]
++   for i in group:
++    if i!=base:
++     gain=items[i]['target']-items[base]['target'];baseline_deltas.append(gain);branch_gains.setdefault(items[i]['branch'],[]).append(gain)
++   for a,i in enumerate(group):
++    for j in group[a+1:]:
++     real=items[i]['target']-items[j]['target'];deltas.append(real);local.append(abs(real)>p['pair_tolerance']);within_separation.append(float(np.linalg.norm(items[i]['terminal']-items[j]['terminal'])))
++   rmse.extend([float(np.mean((items[i]['actions'][:10]-items[base]['actions'][:10])**2)**.5) for i in group if i!=base]);per_origin.append(dict(scene=first['scene'],before=first['before'],candidates=len(group),pairs=len(local),effective=sum(local),within_return_std=float(yy.std())))
++   if first['source']=='new':
++    folder=R/'data'/f"{first['scene']}_{first['before']}";origin=json.loads((folder/'baseline_origin.json').read_text());coverage.append(dict(scene=first['scene'],before=first['before'],**origin['coverage']))
++   for i in group:
++    if np.isfinite(items[i]['actual_terminal']).all():prediction_error.append(float(np.linalg.norm(items[i]['terminal']-items[i]['actual_terminal'])))
++  for s in sorted(set(x['scene'] for x in items)):
++   rr=[x for x in per_origin if x['scene']==s];scene_rows.append(dict(scene=s,origins=len(rr),pairs=sum(x['pairs'] for x in rr),effective_pairs=sum(x['effective'] for x in rr)))
++  meta=[]
++  for i in items:
++   if i['source']=='new':meta.append(json.loads((R/'data'/f"{i['scene']}_{i['before']}"/(i['branch']+'_meta.json')).read_text()))
++  result[split]=dict(scenes=len(scene_rows),origins=len(groups),raw_branches=len(items),deduplicated=d['deduplicated'],pairs=len(d['pairs']),effective_pairs=sum(x['effective_pairs'] for x in scene_rows),unavailable=d['unavailable'],per_scene=scene_rows,per_origin=per_origin,all_pair_delta=describe(deltas),abs_pair_delta=describe(np.abs(deltas)),candidate_vs_baseline=describe(baseline_deltas),positive_vs_baseline_fraction=float(np.mean(np.array(baseline_deltas)>p['pair_tolerance'])),negative_vs_baseline_fraction=float(np.mean(np.array(baseline_deltas)<-p['pair_tolerance'])),branch_gain_counts={b:dict(count=len(g),better=int((np.array(g)>p['pair_tolerance']).sum()),worse=int((np.array(g)<-p['pair_tolerance']).sum()),near=int((np.abs(g)<=p['pair_tolerance']).sum())) for b,g in branch_gains.items()},positive_delta_fraction=float(np.mean(np.array(deltas)>0)),near_tie_fraction=float(np.mean(np.abs(deltas)<=p['pair_tolerance'])),action_rmse=describe(rmse),within_return_std=describe([x['within_return_std'] for x in per_origin]),between_origin_return_std=float(np.std(between_returns)),within_candidate_terminal_l2=describe(within_separation),imagined_vs_actual_terminal_l2=describe(prediction_error),coverage=coverage,new_branch_crashes=sum(x['crash'] for x in meta),new_branch_oor=sum(x['out_of_road'] for x in meta),new_branch_success=sum(x['success'] for x in meta),near_zero_constant_features=None)
++  # Scale and redundancy diagnostics are fitted ONLY on training maps.
++  if split=='fit':
++   w=d['sample_weight'].numpy();w=w/w.sum();z0=d['z0'].numpy();z=d['terminal'].numpy();a=d['actions'][:,:10].flatten(1).numpy();x=np.concatenate([z0,z,a],1);mu=(w[:,None]*x).sum(0);sd=(w[:,None]*(x-mu)**2).sum(0)**.5
++   result['fit']['feature_scales']=dict(z0_std=describe(sd[:512]),terminal_std=describe(sd[512:1024]),actions_std=describe(sd[1024:]),near_constant_count=int((sd<.001).sum()),context_terminal_coordinate_correlation=describe([np.corrcoef(z0[:,j],z[:,j])[0,1] for j in range(512) if np.std(z0[:,j])>1e-6 and np.std(z[:,j])>1e-6]),note='Statistics/normalization are fit-only; z0 is repeated within origin. Repeated origins and correlated windows never create extra independent maps.')
++ dump(R/'data_coverage.json',result)
++if __name__=='__main__':main()
+diff --git a/reports/candidate_ranking_20261117/dataset.py b/reports/candidate_ranking_20261117/dataset.py
+new file mode 100644
+index 0000000..0d1e1fc
+--- /dev/null
++++ b/reports/candidate_ranking_20261117/dataset.py
+@@ -0,0 +1,58 @@
++"""One supervised sample per matched candidate, grouped by true origin, not window."""
++import json,sys
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
++import numpy as np,torch
++from planning.candidate_value import aligned_returns
++from planning.sac_value import file_sha256
++from tools.value_calibration import assert_origin_match
++
++
++def build(split, *, require_complete=True):
++ p=json.loads((R/'protocol.json').read_text());items=[];sources=[];unavailable=[]
++ old=np.load(R/'old_origin_features.npz')
++ if split in ('fit','inner_stop'):
++  for i in np.flatnonzero(old['split']==split):
++   items.append(dict(z0=old['z0'][i],terminal=old['terminal'][i],actual_terminal=old['actual_terminal'][i],actions=old['actions'][i],baseline=old['baseline'][i],target=float(old['target'][i]),continuation=float(old['continuation'][i]),prefix=float(old['predicted_prefix'][i]),discount=p['gamma']**10,scene=int(old['scene'][i]),before=int(old['before'][i]),branch=str(old['branch'][i]),source='old',complete=True,old_q=float('nan')))
++  sources.extend([x for x in json.loads((R/'old_sources.json').read_text()) if int(Path(x['path']).parent.name.split('_')[0]) in (p['old_fit_scenarios'] if split=='fit' else p['old_stop_scenarios'])])
++ scenes=p['new_fit_scenarios'] if split=='fit' else p['new_stop_scenarios'] if split=='inner_stop' else p['validation_scenarios']
++ for s in scenes:
++  for before in p['origin_steps']:
++   folder=R/'data'/f'{s}_{before}';missing=[b for b in p['branches'] if not (folder/(b+'.npz')).exists()]
++   if missing:
++    if all((folder/('unavailable_'+b+'.json')).exists() for b in p['branches']):unavailable.extend([json.loads((folder/('unavailable_'+b+'.json')).read_text()) for b in p['branches']]);continue
++    if require_complete:raise RuntimeError(f'Incomplete prespecified origin {s}:{before}: {missing}')
++    continue
++   reference=json.loads((folder/'baseline_origin.json').read_text());audit=json.loads((folder/'audit.json').read_text())
++   for b in p['branches']:
++    origin=json.loads((folder/(b+'_origin.json')).read_text());assert_origin_match(reference,origin);path=folder/(b+'.npz');d=np.load(path);m=json.loads((folder/(b+'_meta.json')).read_text());assert m['native_done'];assert m['wm_checkpoint_sha256']==p['checkpoint_sha256'];assert m['policy_context_sha256']==json.loads((Path(p['old_data'])/'dataset_manifest.json').read_text())['context']
++    labels=aligned_returns(d['rewards'],[0],horizon=10,gamma=float(d['gamma']),done=d['done']);assert np.allclose(labels['rtg'],d['rtg'],atol=1e-8,rtol=0);assert np.array_equal(d['planned_actions'][:min(10,len(d['actions']))],d['actions'][:10]);assert np.array_equal(d['planned_actions'],np.array(reference['candidate_actions'][p['branches'].index(b)],np.float32))
++    items.append(dict(z0=d['z0'],terminal=d['predicted_terminal'],actual_terminal=d['actual_terminal'] if len(d['actual_terminal']) else np.full(512,np.nan),actions=d['planned_actions'],baseline=d['baseline_actions'],target=float(labels['total'][0]),continuation=float(labels['continuation'][0]),prefix=float(d['predicted_prefix']),discount=float(d['terminal_discount']),scene=s,before=before,branch=b,source='new',complete=bool(labels['valid_terminal'][0]),old_q=float(d['predicted_return'])))
++    sources.append(dict(path=str(path),sha256=file_sha256(path),samples=1))
++ # Exact duplicate first-H controls are one training unit, irrespective of label.
++ # Same observations/RNG make their labels deterministic; a mismatch is an error.
++ groups=[];deduplicated=[]
++ for key in sorted({(i['scene'],i['before']) for i in items}):
++  indices=[j for j,i in enumerate(items) if (i['scene'],i['before'])==key];seen={};members=[]
++  for j in indices:
++   token=items[j]['actions'][:10].tobytes()
++   if token in seen:
++    other=seen[token];assert abs(items[j]['target']-items[other]['target'])<1e-5
++    deduplicated.append(dict(scene=key[0],before=key[1],branch=items[j]['branch'],same_as=items[other]['branch']));continue
++   seen[token]=j;members.append(j)
++  groups.append(members)
++ assert items and all(len(g)>=1 for g in groups)
++ # Normalize scenario contribution, then origin, then candidate, only on fit.
++ counts={s:sum(items[g[0]]['scene']==s for g in groups) for s in {i['scene'] for i in items}}
++ sample_weights=np.zeros(len(items));pairs=[];pair_weights=[];rank_weights=[]
++ for g in groups:
++  factor=1./counts[items[g[0]]['scene']]
++  for i in g:sample_weights[i]=factor/len(g)
++  local=[(g[a],g[b]) for a in range(len(g)) for b in range(a+1,len(g))]
++  pairs.extend(local);pair_weights.extend([factor/len(local)]*len(local) if local else [])
++  active=[abs(items[a]['target']-items[b]['target'])>p['pair_tolerance'] for a,b in local]
++  rank_weights.extend([factor/max(1,sum(active)) if ok else 0. for ok in active])
++ arrays={k:torch.tensor(np.stack([i[k] for i in items]),dtype=torch.float32) for k in ('z0','terminal','actual_terminal','actions','baseline','target','continuation','prefix','discount')}
++ for key in ('z0','terminal','actions','baseline','target','prefix','discount'):assert torch.isfinite(arrays[key]).all(),key
++ arrays.update(scene=torch.tensor([i['scene'] for i in items]),complete=torch.tensor([i['complete'] for i in items]),sample_weight=torch.tensor(sample_weights,dtype=torch.float32),pairs=torch.tensor(pairs,dtype=torch.long).reshape(-1,2),pair_weight=torch.tensor(pair_weights,dtype=torch.float32),rank_weight=torch.tensor(rank_weights,dtype=torch.float32),groups=groups,items=items,sources=sources,deduplicated=deduplicated,unavailable=unavailable)
++ return arrays
+diff --git a/reports/candidate_ranking_20261117/evaluate.py b/reports/candidate_ranking_20261117/evaluate.py
+new file mode 100644
+index 0000000..9a5a82d
+--- /dev/null
++++ b/reports/candidate_ranking_20261117/evaluate.py
+@@ -0,0 +1,87 @@
++"""Single fresh-map validation after ALL heads/epochs are frozen; no tuning."""
++import json,sys,time
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
++import numpy as np,torch
++from scipy.stats import spearmanr,kendalltau
++from dataset import build
++from fit import scores,to_device
++from planning.candidate_value import CandidateValue
++from planning.sac_value import SACContinuationValue,state_sha256
++from evaluation_statistics import cluster_intervals
++sys.path.insert(0,str(ROOT/'reports/mppi_calibration_20261116'));from probe import dump
++
++
++def summary(rows,p,keys):
++ return dict(origins=len(rows),scenes=len({x['scenario'] for x in rows}),**cluster_intervals(rows,{k:(k,None) for k in keys},samples=p['bootstrap_samples'],seed=p['bootstrap_seed']))
++
++
++def statistics(name,pred,d,p):
++ rows=[];pairs=[];selections=[];tol=p['pair_tolerance'];truth=d['target'].cpu().numpy();pred=np.asarray(pred)
++ for group in d['groups']:
++  if not np.isfinite(pred[group]).all():continue
++  first=d['items'][group[0]];scene,before=first['scene'],first['before'];yy=truth[group];ss=pred[group];base=next(j for j in group if d['items'][j]['branch'] in ('B','baseline'));mean=next((j for j in group if d['items'][j]['branch']=='mean'),None);select=group[int(np.argmax(ss))]
++  pp=[(i,j) for a,i in enumerate(group) for j in group[a+1:]];effective=[(i,j) for i,j in pp if abs(truth[i]-truth[j])>tol]
++  accuracy=float(np.mean([(pred[i]-pred[j])*(truth[i]-truth[j])>0 for i,j in effective])) if effective else None
++  has_mean=mean is not None and abs(truth[mean]-truth[base])>tol
++  higher=[j for j in group if j!=base and pred[j]-pred[base]>tol];bad=sum(truth[j]-truth[base]<-tol for j in higher)
++  row=dict(scenario=scene,before=before,model=name,pair_accuracy=accuracy,all_pair_accuracy=float(np.mean([(pred[i]-pred[j])*(truth[i]-truth[j])>0 for i,j in pp])) if pp else None,
++   baseline_mean_accuracy=float((pred[mean]-pred[base])*(truth[mean]-truth[base])>0) if has_mean else None,
++   spearman=float(spearmanr(ss,yy).statistic) if np.std(ss)>0 and np.std(yy)>0 else None,kendall=float(kendalltau(ss,yy).statistic) if np.std(ss)>0 and np.std(yy)>0 else None,
++   top1_regret=float(yy.max()-truth[select]),difference_mae=float(np.mean([abs((pred[i]-pred[j])-(truth[i]-truth[j])) for i,j in pp])) if pp else None,
++   actual_return_gain=float(truth[select]-truth[base]),negative_selection=float(truth[select]-truth[base]<-tol),high_pred_bad_numerator=bad,high_pred_count=len(higher),high_prediction_drop_rate=bad/len(higher) if higher else None,
++   predicted_gain=float(pred[select]-pred[base]),effective_pairs=len(effective),all_pairs=len(pp),selected=d['items'][select]['branch'])
++  folder=(Path(p['old_data'])/'training_data' if first['source']=='old' else R/'data')/f'{scene}_{before}'
++  coverage=json.loads((folder/('B_origin.json' if first['source']=='old' else 'baseline_origin.json')).read_text())['coverage']
++  row.update(lane_type=coverage['lane_type'],curve_class='curved' if abs(coverage.get('lane_heading_change_10m',0.))>.05 else 'near_straight',traffic_class='0-4' if coverage['traffic_count']<5 else '5-9' if coverage['traffic_count']<10 else '10+',origin_speed=coverage['speed'])
++  rows.append(row)
++  for i,j in pp:
++   real=float(truth[i]-truth[j]);delta=float(pred[i]-pred[j]);action=float(torch.mean((d['actions'][i,:10]-d['actions'][j,:10])**2).sqrt());pairs.append(dict(scenario=scene,before=before,model=name,left=d['items'][i]['branch'],right=d['items'][j]['branch'],real_delta=real,predicted_delta=delta,effective=abs(real)>tol,correct=float(delta*real>0),absolute_error=abs(delta-real),action_rmse=action))
++  selections.append(dict(scenario=scene,before=before,model=name,labels=[d['items'][j]['branch'] for j in group],scores=ss.tolist(),real_returns=yy.tolist(),selected=d['items'][select]['branch'],baseline=d['items'][base]['branch']))
++ keys=['pair_accuracy','all_pair_accuracy','baseline_mean_accuracy','spearman','kendall','top1_regret','difference_mae','actual_return_gain','negative_selection','predicted_gain']
++ result=summary(rows,p,keys);result.update(high_prediction_drop=cluster_intervals(rows,{'rate':('high_pred_bad_numerator','high_pred_count')},samples=p['bootstrap_samples'],seed=p['bootstrap_seed']),effective_pairs=sum(x['effective_pairs'] for x in rows),all_pairs=sum(x['all_pairs'] for x in rows))
++ stratified={}
++ for axis,bounds in [('real_delta',p['difference_bands']),('action_rmse',p['action_rmse_bands'])]:
++  groups=[]
++  for lo,hi in zip(bounds[:-1],bounds[1:]):
++   rr=[x for x in pairs if lo<=abs(x[axis])<(hi if hi is not None else np.inf)];active=[x for x in rr if x['effective']]
++   # Within each map, average pairs before resampling whole maps.
++   cluster=[dict(scenario=s,correct=float(np.mean([x['correct'] for x in active if x['scenario']==s])),absolute_error=float(np.mean([x['absolute_error'] for x in active if x['scenario']==s]))) for s in sorted({x['scenario'] for x in active})]
++   groups.append(dict(low=lo,high=hi,pairs=len(rr),effective_pairs=len(active),**(summary(cluster,p,['correct','absolute_error']) if cluster else {})))
++  stratified[axis]=groups
++ for axis in ['lane_type','curve_class','traffic_class']:
++  stratified[axis]={label:summary([r for r in rows if r[axis]==label],p,keys) for label in sorted({r[axis] for r in rows})}
++ return dict(summary=result,rows=rows,pairs=pairs,selections=selections,stratified=stratified)
++
++
++@torch.no_grad()
++def main():
++ p=json.loads((R/'protocol.json').read_text());manifest=json.loads((R/'dataset_manifest.json').read_text());device='cuda' if torch.cuda.is_available() else 'cpu';torch.set_num_threads(1);torch.set_float32_matmul_precision('high')
++ models={};hashes={}
++ for name in p['models']:
++  a=torch.load(R/'models'/f'{name}.pt',map_location=device,weights_only=True);head=SACContinuationValue(**a['architecture']) if name.startswith('absolute') else CandidateValue(**a['architecture']);head.to(device).load_state_dict(a['state_dict']);head.eval().requires_grad_(False);models[name]=head;hashes[name]=state_sha256(a['state_dict']);assert not set(a['training_scenarios'])&set(p['validation_scenarios'])
++ old=torch.load(Path(p['old_data'])/'models/sac_value_candidate.pt',map_location=device,weights_only=True);head=SACContinuationValue(**old['architecture']).to(device);head.load_state_dict(old['state_dict']);head.freeze();models['previous_V_SAC']=head
++ result={}
++ for split in ['fit','inner_stop','validation']:
++  d=to_device(build(split),device);predictions={}
++  for name,head in models.items():
++   if name=='previous_V_SAC':prediction=d['prefix']+d['discount']*head(d['terminal'])
++   else:prediction,_=scores(head,name,d)
++   predictions[name]=prediction.cpu().numpy()
++  predictions['original_Q']=np.array([i['old_q'] for i in d['items']])
++  results={name:statistics(name,pred,d,p) for name,pred in predictions.items()}
++  # Paired per-origin regret changes; positive means the new model is better.
++  for name in p['models']:
++   rr={}
++   for reference in ['original_Q','previous_V_SAC','rank_terminal']:
++    oldrows={(x['scenario'],x['before']):x for x in results[reference]['rows']};rows=[dict(scenario=x['scenario'],regret_improvement=oldrows[(x['scenario'],x['before'])]['top1_regret']-x['top1_regret']) for x in results[name]['rows'] if (x['scenario'],x['before']) in oldrows]
++    rr[reference]=summary(rows,p,['regret_improvement']) if rows else None
++   results[name]['paired_regret']=rr
++  result[split]=results;print(split,{name:(r['summary']['pair_accuracy'],r['summary']['top1_regret']) for name,r in results.items()},flush=True)
++ validation=result['validation'];primary=validation[p['training']['primary']];v=primary['summary'];q=validation['original_Q']['summary'];oldv=validation['previous_V_SAC']['summary'];gain=primary['paired_regret']['original_Q']
++ def gt(x,y):return x is not None and y is not None and x>y
++ passed=bool(v['scenes']>=6 and gt(v['pair_accuracy_ci95_low'],.5) and gt(v['spearman_ci95_low'],0.) and gt(gain['regret_improvement_ci95_low'],0.) and gt(primary['paired_regret']['previous_V_SAC']['regret_improvement_ci95_low'],0.) and v['pair_accuracy']>max(q['pair_accuracy'],oldv['pair_accuracy']) and v['baseline_mean_accuracy'] is not None and v['baseline_mean_accuracy']>=q['baseline_mean_accuracy'] and v['negative_selection']<=q['negative_selection'])
++ evidence=dict(passed=passed,primary=p['training']['primary'],scenarios=p['validation_scenarios'],primary_head_state_sha256=hashes[p['training']['primary']],criteria=p['acceptance'],
++  interpretation='Fresh-map ranking qualified; separate development and untouched closed-loop evidence still required before default deployment.' if passed else 'Fresh-map ranking/regret requirements failed; keep all new heads offline. No larger closed-loop or100-scene test.')
++ output=R/'ranking_evaluation.json';assert not output.exists();dump(output,dict(results=result,validation=evidence,head_hashes=hashes,scope='One fixed protocol, five frozen heads, a single new independent map set. No score-sign reversal, weight sweep or retraining after validation. Absolute ranking scores have no calibrated origin offset: report difference errors, not their meaningless absolute-return MAE.'))
++if __name__=='__main__':main()
+diff --git a/reports/candidate_ranking_20261117/finalize.py b/reports/candidate_ranking_20261117/finalize.py
+new file mode 100644
+index 0000000..06c0989
+--- /dev/null
++++ b/reports/candidate_ranking_20261117/finalize.py
+@@ -0,0 +1,44 @@
++"""Read-only source/weight/data integrity checks and reviewable new-code diff."""
++import hashlib,json,subprocess,sys
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
++import numpy as np,torch
++from planning.sac_value import file_sha256,state_sha256
++from tools.benchmark_mppi import source_fingerprint
++p=json.loads((R/'protocol.json').read_text());assert subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()==p['base_commit'];assert file_sha256(p['checkpoint'])==p['checkpoint_sha256'];assert source_fingerprint(ROOT)==p['source_snapshot_sha256']
++assert not subprocess.check_output(['git','diff','--name-only'],cwd=ROOT,text=True).strip(),'Existing tracked files unexpectedly modified.'
++assert '50 passed' in (R/'tests.txt').read_text()
++manifest=json.loads((R/'dataset_manifest.json').read_text());val=json.loads((R/'ranking_evaluation.json').read_text());coverage=json.loads((R/'data_coverage.json').read_text());search=json.loads((R/'search_diagnostics.json').read_text())
++for x in manifest['fit_sources']+manifest['stop_sources']:
++ assert file_sha256(x['path'])==x['sha256']
++for f in R.glob('data/*/*.npz'):
++ data=np.load(f)
++ if f.name!='audit.npz':assert bool(data['done'][-1]) and not data['done'][:-1].any()
++original=json.loads((Path(p['old_data'])/'protocol.json').read_text());oldhead=torch.load(Path(p['old_data'])/'models/sac_value_candidate.pt',map_location='cpu',weights_only=True);assert state_sha256(oldhead['state_dict'])=='a033460dc9d9445b173b741192204b61d6b52298c8a9ca67fa263f727aa8f433'
++for group in ['new_fit_scenarios','new_stop_scenarios','validation_scenarios']:
++ others=[s for g in ['old_fit_scenarios','old_stop_scenarios','old_development_scenarios','previously_used_validation_scenarios','new_fit_scenarios','new_stop_scenarios','validation_scenarios'] if g!=group for s in p[g]]
++ assert not set(p[group])&set(others)
++# Preserve the exact pre-existing47 test files/implementation; only additive files.
++for name in ['config.yaml','planning/local_mppi.py','planning/evaluator.py','planning/coordinator.py','planning/sac_value.py','residual_rl/networks.py','residual_rl/action_adapter.py','tests/test_residual_rl.py','tests/test_sac_continuation_value.py']:
++ path=ROOT/name;assert path.read_bytes()==subprocess.check_output(['git','show',p['base_commit']+':'+name],cwd=ROOT)
++validation_items=[]
++for scene in p['validation_scenarios']:
++ for before in p['origin_steps']:
++  folder=R/'data'/f'{scene}_{before}'
++  for b in p['branches']:
++   path=folder/(b+'.npz')
++   if path.exists():validation_items.append(dict(path=str(path),sha256=file_sha256(path)))
++(R/'validation_manifest.json').write_text(json.dumps(validation_items,indent=2))
++result=dict(base_commit=p['base_commit'],source_snapshot_sha256=p['source_snapshot_sha256'],original_checkpoint_sha256=p['checkpoint_sha256'],original_checkpoint_unchanged=True,existing_tracked_source_and_tests_unchanged=True,old_value_state_sha256=state_sha256(oldhead['state_dict']),old_window_reconstruction_max_error=json.loads((R/'data_audit.json').read_text())['reconstruction_max_error'],
++ original_training_native_branches=69,original_planned_tasks=72,original_unreachable_tasks=3,fit_scenes=coverage['fit']['scenes'],inner_stop_scenes=coverage['inner_stop']['scenes'],fresh_validation_scenes=coverage['validation']['scenes'],fit_origins=coverage['fit']['origins'],fit_candidate_branches=coverage['fit']['raw_branches'],new_value_heads=5,online_enabled=False,independent_ranking_passed=val['validation']['passed'],formal100=False,original_WM_Q_SAC_training=False,cost_weight=0.,sampling_budget=dict(samples=64,elites=8,iterations=4),tests='50 passed (original47 retained +3)',new_CEM_or_safety_mode=False,
++ new_data_native_branches=len(list((R/'data').glob('*/*_meta.json'))),new_unreachable_tasks=len(list((R/'data').glob('*/unavailable_*.json'))),new_data_generation='four reward-blind old-Q candidate definitions; no actual-return selection',validation_analysis_passes=1,all_cached_updates_valid=search['all_updates_valid'])
++(R/'verification.json').write_text(json.dumps(result,indent=2))
++subprocess.run(['git','diff','--check'],cwd=ROOT,check=True)
++# Include new executable sources and fixed protocol; binary/data artifacts remain
++# separately available with manifests rather than embedding them in the patch.
++names=['planning/candidate_value.py','tests/test_candidate_value.py']+[str(f.relative_to(ROOT)) for f in sorted(R.glob('*.py'))]+[str((R/'protocol.json').relative_to(ROOT))]
++patch=[]
++for name in names:
++ check=subprocess.run(['git','diff','--no-index','--check','--','/dev/null',name],cwd=ROOT,capture_output=True,text=True);assert not check.stdout and not check.stderr,(name,check.stdout,check.stderr)
++ diff=subprocess.run(['git','diff','--no-index','--','/dev/null',name],cwd=ROOT,capture_output=True,text=True);assert diff.returncode==1;patch.append(diff.stdout)
++(R/'code_changes.patch').write_text(''.join(patch));print(json.dumps(result,indent=2))
+diff --git a/reports/candidate_ranking_20261117/fit.py b/reports/candidate_ranking_20261117/fit.py
+new file mode 100644
+index 0000000..020f39e
+--- /dev/null
++++ b/reports/candidate_ranking_20261117/fit.py
+@@ -0,0 +1,67 @@
++"""Predeclared ablations; fit inputs/normalizers use only fit maps."""
++import copy,json,sys,time
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
++import numpy as np,torch
++from torch.nn import functional as F
++from dataset import build
++from planning.candidate_value import CandidateValue,pairwise_objective
++from planning.sac_value import SACContinuationValue,state_sha256
++
++
++def to_device(d,device):
++ return {k:v.to(device) if torch.is_tensor(v) else v for k,v in d.items()}
++
++
++def scores(head,kind,d):
++ if kind.startswith('absolute'):
++  value=head(d['terminal']);return d['prefix']+d['discount']*value,value
++ value=head(d['z0'],d['terminal'],d['actions']);return value,None
++
++
++def loss(head,kind,d,scale,tolerance):
++ score,value=scores(head,kind,d);w=d['sample_weight'];w=w/w.sum()
++ _,terms=pairwise_objective(score,d['target'],d['pairs'],weights=d['pair_weight'],tolerance=tolerance,difference_scale=scale,difference_weight=.25)
++ _,rank_terms=pairwise_objective(score,d['target'],d['pairs'],weights=d['rank_weight'],tolerance=tolerance,difference_scale=scale,difference_weight=0.)
++ terms['rank']=rank_terms['rank'];total=terms['rank']+.25*terms['difference']
++ if value is not None:
++  mask=d['complete'];vweights=w[mask]/w[mask].sum();absolute=(vweights*F.smooth_l1_loss((value[mask]-head.target_mean)/head.target_std,(d['continuation'][mask]-head.target_mean)/head.target_std,reduction='none')).sum()
++  total=absolute+(terms['difference'] if kind=='absolute_plus_difference' else 0.)
++ return total,terms,score
++
++
++def main():
++ p=json.loads((R/'protocol.json').read_text());torch.set_num_threads(1);torch.set_float32_matmul_precision('high');train=build('fit');stop=build('inner_stop');device='cuda' if torch.cuda.is_available() else 'cpu';train=to_device(train,device);stop=to_device(stop,device)
++ assert not set(train['scene'].tolist())&set(stop['scene'].tolist());assert not (set(train['scene'].tolist())|set(stop['scene'].tolist()))&set(p['validation_scenarios']);modeldir=R/'models';modeldir.mkdir(exist_ok=True)
++ tr=train['target'];pp=train['pairs'];pw=train['pair_weight'];pw=pw/pw.sum();deltas=tr[pp[:,0]]-tr[pp[:,1]];scale=max(1.,float((pw*deltas.square()).sum().sqrt()))
++ records=[]
++ for kind,options in p['models'].items():
++  torch.manual_seed(1)
++  if kind.startswith('absolute'):head=SACContinuationValue(512,options['hidden']).to(device);x=train['terminal']
++  else:head=CandidateValue(input_kind=options['input_kind'],hidden=options['hidden']).to(device);x=head.features(train['z0'],train['terminal'],train['actions'])
++  with torch.no_grad():
++   w=train['sample_weight'];w=w/w.sum();mu=(w[:,None]*x).sum(0);sd=(w[:,None]*(x-mu).square()).sum(0).sqrt().clamp_min(.001);head.input_mean.copy_(mu);head.input_std.copy_(sd)
++   if kind.startswith('absolute'):
++    mask=train['complete'];vw=w[mask]/w[mask].sum();y=train['continuation'][mask];ym=(vw*y).sum();ys=(vw*(y-ym).square()).sum().sqrt().clamp_min(1.);head.target_mean.copy_(ym);head.target_std.copy_(ys)
++   else:head.difference_scale.fill_(scale)
++  optim=torch.optim.Adam(head.parameters(),lr=p['training']['lr']);best=float('inf');best_epoch=0;stale=0;history=[];best_state=None
++  # Full grouped batch is <200 candidates; every update includes every origin.
++  # Exact scene-origin balancing avoids repeatedly sampling correlated windows.
++  for epoch in range(p['training']['epochs']):
++   head.train();objective,_,_=loss(head,kind,train,scale,p['pair_tolerance']);optim.zero_grad(set_to_none=True);objective.backward();torch.nn.utils.clip_grad_norm_(head.parameters(),5.);optim.step();head.eval()
++   with torch.no_grad():
++    tr_loss,tr_terms,tr_score=loss(head,kind,train,scale,p['pair_tolerance']);va_loss,va_terms,va_score=loss(head,kind,stop,scale,p['pair_tolerance'])
++    def accuracy(s,d):
++     pairs=d['pairs'];delta=d['target'][pairs[:,0]]-d['target'][pairs[:,1]];active=delta.abs()>p['pair_tolerance'];weights=d['rank_weight'][active];ok=((s[pairs[:,0]]-s[pairs[:,1]])[active]*delta[active]>0).float();return float((weights*ok).sum()/weights.sum()) if active.any() else None
++    record=dict(epoch=epoch+1,train_loss=float(tr_loss),inner_stop_loss=float(va_loss),train_rank_loss=float(tr_terms['rank']),stop_rank_loss=float(va_terms['rank']),train_pair_accuracy=accuracy(tr_score,train),stop_pair_accuracy=accuracy(va_score,stop));history.append(record)
++   value=float(va_loss)
++   if value<best-1e-6:best=value;best_epoch=epoch+1;stale=0;best_state={k:v.detach().cpu().clone() for k,v in head.state_dict().items()}
++   else:stale+=1
++   if stale>=p['training']['patience']:break
++  context=dict(wm_checkpoint_sha256=p['checkpoint_sha256'],policy_context_sha256=json.loads((Path(p['old_data'])/'dataset_manifest.json').read_text())['context'],horizon=10,gamma=p['gamma'],input_kind=options['input_kind'],label='native actual total discounted H-prefix + frozen SAC suffix; no unexecuted a_H',training_only_normalization=True)
++  artifact=dict(kind=kind,architecture=dict(latent_dim=512,horizon=10,action_dim=2,input_kind=options['input_kind'],hidden=options['hidden']) if not kind.startswith('absolute') else dict(latent_dim=512,hidden=options['hidden']),state_dict=best_state,context=context,validation=dict(passed=False),
++   training_scenarios=sorted(set(train['scene'].tolist()+stop['scene'].tolist())),fit_scenarios=sorted(set(train['scene'].tolist())),inner_stop_scenarios=sorted(set(stop['scene'].tolist())),training=dict(best_epoch=best_epoch,epochs=len(history),history=history,difference_scale=scale,pair_tolerance=p['pair_tolerance'],parameters=sum(x.numel() for x in head.parameters()),head_state_sha256=state_sha256(best_state),objective=options['loss']))
++  target=modeldir/(kind+'.pt');assert not target.exists();torch.save(artifact,target);record=dict(model=kind,best_epoch=best_epoch,epochs=len(history),parameters=artifact['training']['parameters'],train=history[best_epoch-1],artifact=str(target),head_state_sha256=state_sha256(best_state));records.append(record);(R/(kind+'_training.json')).write_text(json.dumps(artifact['training'],indent=2));print(kind,best_epoch,record['train'],flush=True)
++ manifest=dict(fit_sources=train['sources'],stop_sources=stop['sources'],fit_scenes=sorted(set(train['scene'].tolist())),stop_scenes=sorted(set(stop['scene'].tolist())),fit_branches=len(train['items']),stop_branches=len(stop['items']),fit_origins=len(train['groups']),stop_origins=len(stop['groups']),fit_pairs=len(train['pairs']),stop_pairs=len(stop['pairs']),effective_fit_pairs=int((deltas.abs()>p['pair_tolerance']).sum()),fit_deduplicated=train['deduplicated'],stop_deduplicated=stop['deduplicated'],unavailable=train['unavailable']+stop['unavailable'],difference_scale=scale,protocol='One sample per origin-candidate; no sliding-window multiplication. Full grouped batches with exact scene/origin balance; no stochastic minibatch sampling needed at this size.',models=records)
++ (R/'dataset_manifest.json').write_text(json.dumps(manifest,indent=2));print('Models frozen; fresh validation not used.',flush=True)
++if __name__=='__main__':main()
+diff --git a/reports/candidate_ranking_20261117/inspect_search.py b/reports/candidate_ranking_20261117/inspect_search.py
+new file mode 100644
+index 0000000..e52b035
+--- /dev/null
++++ b/reports/candidate_ranking_20261117/inspect_search.py
+@@ -0,0 +1,37 @@
++"""Cached-pool GPU batch and original elite-update checks, not online deployment."""
++import json,sys,time
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
++import numpy as np,torch
++from omegaconf import OmegaConf
++from planning.candidate_value import CandidateValue
++from planning.sac_value import SACContinuationValue
++from planning.local_mppi import LocalMPPI
++sys.path.insert(0,str(ROOT/'reports/mppi_calibration_20261116'));from probe import dump
++
++
++@torch.no_grad()
++def main():
++ p=json.loads((R/'protocol.json').read_text());validation=json.loads((R/'ranking_evaluation.json').read_text());assert validation['head_hashes'];device='cuda';torch.set_num_threads(1);torch.set_float32_matmul_precision('high');a=torch.load(R/'models/rank_context_actions.pt',map_location=device,weights_only=True);head=CandidateValue(**a['architecture']).to(device);head.load_state_dict(a['state_dict']);head.eval().requires_grad_(False)
++ a=torch.load(Path(p['old_data'])/'models/sac_value_candidate.pt',map_location=device,weights_only=True);old=SACContinuationValue(**a['architecture']).to(device);old.load_state_dict(a['state_dict']);old.freeze();cfg=OmegaConf.to_container(OmegaConf.load(ROOT/'config.yaml').mpr_mpc.mppi);planner=LocalMPPI(object(),cfg,horizon=10,action_dim=2,device=device);rows=[]
++ for s in p['validation_scenarios']:
++  for before in p['origin_steps']:
++   folder=R/'data'/f'{s}_{before}'
++   if not (folder/'audit.npz').exists():continue
++   data=np.load(folder/'audit.npz');origin=np.load(folder/'baseline.npz');z0=torch.tensor(origin['z0'],device=device).reshape(1,-1);terminal=torch.tensor(data['latents'],device=device);actions=torch.tensor(data['actions'],device=device);scores=head(z0,terminal,actions)
++   chunk=torch.cat([head(z0,terminal[i:i+65],actions[i:i+65]) for i in range(0,len(actions),65)])
++   indices=torch.topk(scores,8).indices;shifted=torch.topk(scores-scores[0],8).indices;batchindices=torch.topk(chunk,8).indices
++   rounds=[]
++   for i in range(4):
++    ids=torch.tensor([0,*range(2+64*i,2+64*(i+1))],device=device);aa=actions[ids];vv=scores[ids];mean,std,elite=planner._update_distribution(aa,vv);mean[-1]=actions[0,-1];std[-1]=0.;weights=planner._weights(elite)
++    rounds.append(dict(iteration=i,finite=bool(torch.isfinite(mean).all() and torch.isfinite(std).all()),valid_actions=bool((mean.abs()<=1).all()),std_min=float(std[:10].min()),std_max=float(std[:10].max()),effective_samples=float(weights.square().sum().reciprocal()),entropy=float(-(weights*weights.clamp_min(1e-30).log()).sum()),first_action=mean[0].cpu().tolist(),padding_fixed=bool(torch.equal(mean[-1],actions[0,-1]))))
++   times={}
++   for name,fn in [('relative_score',lambda:head(z0,terminal,actions)),('previous_terminal_V',lambda:old(terminal))]:
++    for _ in range(10):fn()
++    torch.cuda.synchronize();wall=[];cuda=[]
++    for _ in range(30):
++     start,end=torch.cuda.Event(enable_timing=True),torch.cuda.Event(enable_timing=True);now=time.perf_counter();start.record();fn();end.record();end.synchronize();wall.append(1000*(time.perf_counter()-now));cuda.append(start.elapsed_time(end))
++    times[name]=dict(batch=len(terminal),wall_p50_ms=float(np.median(wall)),wall_p95_ms=float(np.quantile(wall,.95)),cuda_p50_ms=float(np.median(cuda)),cuda_p95_ms=float(np.quantile(cuda,.95)))
++   rows.append(dict(scenario=s,before=before,top8_shift_set_equal=set(indices.cpu().tolist())==set(shifted.cpu().tolist()),top8_batch_jaccard=len(set(indices.cpu().tolist())&set(batchindices.cpu().tolist()))/len(set(indices.cpu().tolist())|set(batchindices.cpu().tolist())),batch_score_max_error=float((chunk-scores).abs().max()),score_range=[float(scores.min()),float(scores.max())],score_delta_quantiles=np.quantile((scores-scores[0]).cpu().numpy(),[0,.25,.5,.75,1]).tolist(),rounds=rounds,times=times))
++ dump(R/'search_diagnostics.json',dict(rows=rows,all_updates_valid=all(x['finite'] and x['valid_actions'] and x['padding_fixed'] for r in rows for x in r['rounds']),note='Original Q-generated cached candidate pools only: these are scoring/Top-K/update diagnostics, NOT new-score sequential search or executed driving. Same original temperature/std/rho/budget; H-only score ignores a_H. No per-trajectory safety gate. Head microtimings after collection completes are not full planning time.'))
++if __name__=='__main__':main()
+diff --git a/reports/candidate_ranking_20261117/report.py b/reports/candidate_ranking_20261117/report.py
+new file mode 100644
+index 0000000..004deaf
+--- /dev/null
++++ b/reports/candidate_ranking_20261117/report.py
+@@ -0,0 +1,57 @@
++import json,sys
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];R=Path(__file__).parent
++
++def load(name):return json.loads((R/(name+'.json')).read_text())
++def n(x,d=3):return 'NA' if x is None else f'{x:.{d}f}'
++def ci(r,key,percent=False):
++ factor=100 if percent else 1
++ def v(x):return 'NA' if x is None else n(x*factor,1 if percent else 3)
++ return f"{v(r.get(key))} [{v(r.get(key+'_ci95_low'))}, {v(r.get(key+'_ci95_high'))}]"
++
++p=load('protocol');audit=load('data_audit');cov=load('data_coverage');manifest=load('dataset_manifest');ev=load('ranking_evaluation');cf=load('counterfactual_results');search=load('search_diagnostics');verification=load('verification');primary=p['training']['primary'];passed=ev['validation']['passed'];lines=[
++'# 同起点候选排序学习：数据审计与独立验证',
++'',f"基准 `{p['base_commit']}`，开始时工作区干净。只增加离线评分器/实验与3项针对性测试；原WM/Q/SAC/Lattice、535维输入、动作映射、Reward/gamma/done、Gaussian/AR(1)、64/8/4及所有std/rho/温度均未修改。原checkpoint SHA256为 `{p['checkpoint_sha256']}`。没有commit/push/reset，没有训练原WM/SAC。",
++'', '## 数据和标签审计',
++'',f"上一轮报告中的“72条分支”应更正为：72个计划任务，**69条真实完成轨迹、3个不可达起点任务**。60566:150的原SAC在预定起点前结束；没有补造未来状态，也没有删除这些不可达记录。原数据包含12个场景、23个可达起点；8个拟合场景16个起点，48个同起点Pair。2676个拟合窗口和1017个内部早停窗口不是同等数量的独立监督样本。历史文件未覆盖，本报告修正计数。",
++'',f"所有69条轨迹、3693个已保存窗口均重新核验原始tdmpc2_reward和原gamma=.995的RTG；targets严格等于rtg[start+10]。重新用原冻结WM编码/推演，预测latent和真实后继latent最大重建误差均为{audit['reconstruction_max_error']['predicted_latent']}/{audit['reconstruction_max_error']['actual_latent']}。需要与原GPU batch大小一致；首次不同batch的浮点差异不能当标签错位。原动作前缀与采集前固定候选一致，同起点观测/车辆/交通/可记录RNG/候选完全匹配；这不是完整隐藏Bullet快照。",
++'',f"本轮预先固定近似相等范围为abs(真实总折扣收益差)<=1.0。旧拟合Pair中{cov['old_coverage']['effective_fit_pairs']}/48对超过该范围；全部69对中{audit['effective_pairs']}对有效。实际收益差逐对保存在data_audit.json；旧分支含{cov['old_coverage']['crash_branches']}条碰撞、{cov['old_coverage']['offroad_branches']}条越界，不是全安全数据。动作扰动与正负收益差、各场景有效Pair数见data_coverage.json。",
++'',f"相邻滑动窗口H10/stride5有50%前缀重叠；RTG lag-1相关中位数{n(cov['old_coverage']['lag1_rtg_correlation'].get('p50'))}，完全相同观测+H动作窗口重复{cov['old_coverage']['exact_duplicate_windows']}个。后续窗口还含执行中的反馈SAC动作，不等于在该起点事先生成的MPPI候选。本轮拟合只使用每个真实分支的最初预定起点，保留旧原始窗口用于审计，不提高滑窗密度。",
++'', '旧损失分离的证据与解释：原训练batch均值与精确场景加权早停损失的计算并不完全相同；更关键的是2676个绝对回归窗口只配48个同起点差分约束，独立地图早停误差随拟合降低而升高。这支持场景层面拟合和泛化不足，但不是标签错位证据。新训练每步用同一完整分组batch、训练和早停用相同目标，避免混用损失统计。',
++'', '## 新的候选导向数据',
++'', '新增场景和所有候选种类在protocol.json预先划定：12个拟合、4个内部早停、6个本轮新验证场景，范围62000–64999；保留旧8拟合/4早停的原始角色。之前使用过的6个验证场景、旧20场和正式测试均未用于本轮拟合、早停或新验证。验证采集可并行，但其标签不进入拟合代码；五个模型和各自epoch保存后才执行一次新验证，没有在验证后重训、反转分数或挑选输入版本。',
++'', '每场景固定step50/150起点。四条候选：SAC baseline、初始64个Gaussian中的固定第一条、原当前Q-MPPI最终加权Mean、统一共同Q参考复评的256条真实采样Best Elite。候选在实际收益产生前生成，保持原采样参数。分别在新进程严格匹配起点，执行前10步，再由原SAC直到原生终止。保存真实reward/cost/done/terminated/truncated、实际观察、当前/预测/真实latent及全部实际控制。发生H前终止的真实总收益保留，不编造H末端真实latent；绝对末端Value损失只用实际存在的末端。',
++'', '|集合|独立场景|可达起点|原始候选分支|去重后Pair|有效Pair|', '|---|---:|---:|---:|---:|---:|']
++for split in ['fit','inner_stop','validation']:
++ x=cov[split];lines.append(f"|{split}|{x['scenes']}|{x['origins']}|{x['raw_branches']}|{x['pairs']}|{x['effective_pairs']}|")
++lines += ['', '所有实际回报较好/较差、近似相等、碰撞、越界分支均保留；没有按实际Return事后筛选。精确相同H控制只合并训练权重，并核对真实回报一致；仍保留原文件和重复记录。按场景、起点和候选平衡；排序loss排除近似相等对后，会按每个起点的有效Pair数重新平衡。CI重采样整张地图，不把Pair或窗口视作独立地图。独立起点的速度、曲率、车流分布及逐场景Pair数量见data_coverage.json。',
++'', '## 评分器与训练目标',
++'', '新增planning/candidate_value.py。共享标量S(z0,imagined_zH,A[:10])保证偏好传递性，训练预测差S_i−S_j，标签为两个真实H步前缀加同一SAC延续的总折扣回报差。主输入不包含真实未来观察/奖励/Cost/实际末端latent/隐藏状态，也不包含未执行a_H。z0和动作是规划时可得量。baseline是共同常数，不额外把baseline动作送入网络；相对SAC分数通过共享S(A)−S(A_SAC)得到。',
++'', '主损失为Logistic Pairwise Ranking + 0.25×SmoothL1 Difference。Difference以仅拟合地图上平衡Pair RMS归一化，方向损失优先；近似相等对只保留差分回归。三个诊断输入：A预测zH、B当前z0+预测zH、C再加H步动作。约74k参数、两层SiLU，无Transformer。所有输入均值/方差只来自拟合数据；初始/末端latent相关性和动作尺度单独记录，不能用验证数据标准化。',
++'', '消融：A重新拟合绝对V回归；B同架构绝对V+更充分的同起点总收益差SmoothL1；C共享排序头的三种输入。旧冻结V_SAC另外作为对照，未覆盖其权重。新绝对V分数仍为预测prefix+gamma^H×V；共享排序S直接估计候选相对优劣，不再混用未执行a_H的Q。',
++'', '|模型|参数量|训练epoch|内部早停最佳epoch|最佳epoch训练loss|早停loss|训练排序率|早停排序率|', '|---|---:|---:|---:|---:|---:|---:|---:|']
++for m in manifest['models']:
++ tr=m['train'];lines.append(f"|{m['model']}|{m['parameters']}|{m['epochs']}|{m['best_epoch']}|{n(tr['train_loss'])}|{n(tr['inner_stop_loss'])}|{n(tr['train_pair_accuracy'])}|{n(tr['stop_pair_accuracy'])}|")
++lines += ['', f"Adam lr=3e-4，最多150步完整分组batch、patience20、固定seed1。差分归一化尺度{n(manifest['difference_scale'])}；rank_context_actions在看新验证前即为主模型。原始训练曲线/模型hash在*_training.json与models/。没有使用验证排名选择五个模型中的赢家。不同目标loss的绝对大小不可横向比较。", '', '五种模型均在第1步取得最低内部早停loss。主模型第21步拟合排序率已到81.7%，但早停仅40.7%；保存的是第1步权重，而不是后期过拟合权重。由完整同目标统计仍出现分离可见，上一轮的问题不只是batch损失口径不同；加入差分/排序损失和上下文没有自动解决地图泛化。', '', '## 一次新独立场景排序验证', '', '以下为场景聚类bootstrap2000次、seed1的95%CI；未做多重比较校正。主要排序准确率排除abs真实差<=1.0；all_pair_accuracy另含近似相等对。Spearman/Kendall、Top1 Regret、收益差MAE均按同起点候选池计算。共享S的跨起点偏置不可由差分监督识别，因此不报告其无意义的绝对Return MAE。', '', '|评分器|Pair准确率% [CI]|Baseline/Mean准确率% [CI]|Spearman [CI]|Kendall [CI]|Top1 Regret [CI]|收益差MAE [CI]|', '|---|---:|---:|---:|---:|---:|---:|']
++for name in ['original_Q','previous_V_SAC',*p['models']]:
++ r=ev['results']['validation'][name]['summary'];lines.append(f"|{name}|{ci(r,'pair_accuracy',True)}|{ci(r,'baseline_mean_accuracy',True)}|{ci(r,'spearman')}|{ci(r,'kendall')}|{ci(r,'top1_regret')}|{ci(r,'difference_mae')}|")
++lines += ['', '高预测增益但真实下降定义为相对baseline预测增益>1.0、真实增益<−1.0；条件比例、分母和场景CI均单独保存。真实收益差区间[0,1),[1,5),[5,20),[20,∞)、动作RMSE区间[0,.02),[.02,.05),[.05,.1),[.1,∞)，以及道路类型/曲率/车流的分层结果和逐地图结果见ranking_evaluation.json。小样本子组的CI不代表稳定泛化。原Q高预测增益候选中11/23条实际下降（6地图），旧V为7/11（4地图），主新头为4/4（仅2地图）；主头条件bootstrap区间退化为[1,1]只是有限条件样本全部为坏例，不能解释为总体概率已精确确定。',
++'',f"独立启用门槛结果：**{passed}**。主模型须Pair准确率下界>50%、Spearman下界>0，并在同一起点对原Q和旧V均显示Regret改善CI下界>0；Baseline/Mean排序与错误选择不能恶化。没有因某个次要消融点估计较好就换主模型。",
++'', '## 同起点真实反事实结果',
++'', '下面是新独立地图中已经实际执行的四种reward-blind候选，以及冻结评分器从相同候选池中选取分支的结果。**这是H10干预+原SAC延续，不是新评分MPPI全程重规划闭环。** 各分支原生终止，提前失败保留；Episode Return和Safety Cost从干预起点累计。采集期间共享GPU，记录的原Q规划耗时不能用于声称新评分提高实时性。',
++'', '|方法|Success%|Crash%|OOR%|Route%|Episode Return|实际折扣Return|平均Safety Cost|实际相对B增益|', '|---|---:|---:|---:|---:|---:|---:|---:|---:|']
++for name in ['candidate_baseline','candidate_gaussian','candidate_mean','candidate_best_elite','pool_selected_original_Q','pool_selected_previous_V_SAC','pool_selected_rank_context_actions']:
++ r=cf['summary'][name];lines.append(f"|{name}|{n(r['success']*100,1)}|{n(r['crash']*100,1)}|{n(r['out_of_road']*100,1)}|{n(r['route_completion']*100,1)}|{n(r['episode_return'],2)}|{n(r['actual_discounted_return'],2)}|{n(r['average_safety_cost'])}|{n(r['actual_return_gain'])}|")
++lines += ['', '完整逐起点真实/预测增益、事故差、路线和各项CI在counterfactual_results.json。没有把从已执行Q候选池中选得更好解释为新评分器优化后的Mean已获真实收益，更没有当作正式Success提升。若排序不通过，本轮止于这些实际分支，不做新评分完整闭环或100场。',
++'', '## 搜索一致性、耗时及Cost',
++'', f"原Top-K/Weighted Mean/Std实现未改。缓存258候选按新头GPU批量评分；平移到相对baseline后的Top8集合一致性、拆batch稳定性、每轮ESS/熵与Mean/Std检查见search_diagnostics.json，所有更新物理范围/finite/padding检查结果：{search['all_updates_valid']}。这里只重评原Q候选池，不冒充新头的在线迭代。实际采集还核验selected_action==selected_sequence[0]。", '', '|起点|新头258批GPU P50(ms)|旧V258批GPU P50(ms)|Top8拆batch Jaccard|分数拆batch最大误差|', '|---|---:|---:|---:|---:|']
++for x in search['rows']:
++ lines.append(f"|{x['scenario']}:{x['before']}|{n(x['times']['relative_score']['cuda_p50_ms'])}|{n(x['times']['previous_terminal_V']['cuda_p50_ms'])}|{n(x['top8_batch_jaccard'])}|{n(x['batch_score_max_error'],6)}|")
++lines += ['', '这些是采集结束后的头部微基准，不含WM/Lattice/SAC推演、不是完整规划延迟；模型未接在线，不能给出新头全规划耗时改善结论。正式100场未运行。',
++'', 'Cost保持weight=0，不改原Validator阈值、不训练Cost、不引入TTC/几何过滤/Recovery/Emergency/其他规划模式。上一轮低Cost MAE不是有效候选排序证据，本轮没有强行启用。',
++'', '## 结论与后续',
++'', ('排序门槛通过，但尚不能宣称在线优于B；需要新头优化轨迹的开发反事实和另外未使用地图的独立闭环证据。' if passed else '**未满足在线启用条件。保持旧在线输出，不运行更大规模或正式100场实验，不宣称优于B。**'),
++'', '证据应分开解释：标签与latent已对齐，没有发现H偏移。拟合20张地图后主头仍表现为训练排序上升、内部早停/新地图排序失败，支持数据覆盖与泛化问题；新增早停32条分支全部成功，而新增拟合/新验证分别有11/16条越界，覆盖分布仍不平衡，但没有按真实结果事后重选样本。terminal-only/context/context+actions的新地图排序率分别为41.9%/42.2%/37.8%，并没有独立证据证明增加动作上下文有效。新验证预测末端与真实编码L2误差中位2.20，而候选间预测末端L2差中位1.68，提示rollout误差可能遮盖排序信号；L2大小本身不能证明Dynamics因果失效。下一步应先增加预先划定的独立起点和搜索候选覆盖，另以完全隔离的真实末端编码对照判断：若真实latent评分可靠但预测latent失败，再聚焦Dynamics；若两者都失败，先查状态条件/表示与标签覆盖，而非直接重训WM。',
++'', '本轮不修改WM表示或Dynamics权重，也不在这6张已使用验证地图上继续挑loss、网络或翻转分数。没有满足在线启用前提，因此未接入新在线评分分支；这项集成按任务要求暂缓。采集结束后的状态JSON读取竞争只影响耗时检查调度，已修复原子写入/重读，并保留已训练模型及唯一验证结果继续完成；没有因此重训或覆盖结果。',
++'', f"相关测试：**{verification['tests']}**，全部原47项保留，新3项覆盖native H标签/提前终止、共享排序传递性/平移不变/近似相等/权重、在线可得输入与a_H排除。原checkpoint/旧Value/旧数据hash保持，旧测试未修改。完整实验清单、数据SHA、模型、训练曲线、排序/反事实JSON、verification及code_changes.patch保存在reports/candidate_ranking_20261117。"]
++(ROOT/'MPPI_RELATIVE_RANKING_REPORT_20261117.md').write_text('\n'.join(lines)+'\n')
+diff --git a/reports/candidate_ranking_20261117/run_pipeline.py b/reports/candidate_ranking_20261117/run_pipeline.py
+new file mode 100644
+index 0000000..10d59c3
+--- /dev/null
++++ b/reports/candidate_ranking_20261117/run_pipeline.py
+@@ -0,0 +1,34 @@
++"""Wait for prespecified data, fit once, unseal validation once, then report."""
++import json,os,subprocess,sys,time
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];R=Path(__file__).parent;p=json.loads((R/'protocol.json').read_text())
++
++def ready(scenes):
++ for s in scenes:
++  for before in p['origin_steps']:
++   folder=R/'data'/f'{s}_{before}'
++   for b in p['branches']:
++    if not ((folder/(b+'.npz')).exists() and (folder/(b+'_meta.json')).exists()) and not (folder/('unavailable_'+b+'.json')).exists():return False
++ return True
++
++def run(script):
++ products={'fit':'dataset_manifest.json','evaluate':'ranking_evaluation.json','coverage':'data_coverage.json','counterfactual':'counterfactual_results.json','inspect_search':'search_diagnostics.json'}
++ if (R/products[script]).exists():
++  print(script,'already complete; retained',flush=True);return
++ path=R/(script+'.log');attempt=0
++ while path.exists():
++  attempt+=1;path=R/(script+f'.retry{attempt}.log')
++ with path.open('x') as f:subprocess.run([sys.executable,'-u',str(R/(script+'.py'))],cwd=ROOT,stdout=f,stderr=subprocess.STDOUT,check=True,env=dict(os.environ,OMP_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',MKL_NUM_THREADS='1',MUJOCO_GL='egl'))
++ print(script,'complete',flush=True)
++while not ready(p['new_fit_scenarios']+p['new_stop_scenarios']):time.sleep(5)
++run('fit')
++while not ready(p['validation_scenarios']):time.sleep(5)
++run('evaluate');run('coverage');run('counterfactual')
++# Inspect timing after the collectors cease GPU work, not during shared load.
++while True:
++ try:
++  if len(json.loads((R/'collection_status.json').read_text()))>=176:break
++ except (json.JSONDecodeError,FileNotFoundError):pass
++ time.sleep(3)
++run('inspect_search')
++print('Analysis complete; inspect acceptance evidence before any closed-loop expansion.',flush=True)
+diff --git a/reports/candidate_ranking_20261117/setup.py b/reports/candidate_ranking_20261117/setup.py
+new file mode 100644
+index 0000000..9554739
+--- /dev/null
++++ b/reports/candidate_ranking_20261117/setup.py
+@@ -0,0 +1,21 @@
++import json,sys,subprocess
++from pathlib import Path
++import numpy as np
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT));R=Path(__file__).parent
++from planning.sac_value import file_sha256
++from tools.benchmark_mppi import source_fingerprint
++old=json.loads((ROOT/'reports/sac_value_20261117/protocol.json').read_text())
++scenes=np.random.default_rng(2026111702).choice(np.arange(62000,65000),22,replace=False).tolist()
++p=dict(base_commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),checkpoint=old['checkpoint'],checkpoint_sha256=old['checkpoint_sha256'],source_environment_config=old['source_environment_config'],source_snapshot_sha256=source_fingerprint(ROOT),
++ old_data=str(ROOT/'reports/sac_value_20261117'),old_fit_scenarios=old['fit_scenarios'],old_stop_scenarios=old['early_stop_scenarios'],new_fit_scenarios=scenes[:12],new_stop_scenarios=scenes[12:16],validation_scenarios=scenes[16:],
++ old_development_scenarios=old['development_scenarios'],previously_used_validation_scenarios=old['validation_scenarios'],origin_steps=[50,150],branches=['baseline','gaussian','mean','best_elite'],horizon=10,gamma=.995,seed=1,
++ pair_tolerance=1.,difference_weight=.25,difference_bands=[0,1,5,20,None],action_rmse_bands=[0,.02,.05,.1,None],bootstrap_samples=2000,bootstrap_seed=1,
++ models=dict(absolute_regression=dict(input_kind='terminal',hidden=[128,64],loss='absolute_SmoothL1'),absolute_plus_difference=dict(input_kind='terminal',hidden=[128,64],loss='absolute_SmoothL1 + 1.0 balanced total-return difference SmoothL1'),rank_terminal=dict(input_kind='terminal',hidden=[128,64],loss='logistic_rank + .25 normalized total_difference SmoothL1'),rank_context=dict(input_kind='context_terminal',hidden=[68,64],loss='logistic_rank + .25 normalized total_difference SmoothL1'),rank_context_actions=dict(input_kind='context_terminal_actions',hidden=[66,64],loss='logistic_rank + .25 normalized total_difference SmoothL1')),
++ training=dict(lr=.0003,epochs=150,patience=20,batch_origins='all_predeclared_origins',seed=1,early_stop='same model objective on predesignated inner-stop maps only',primary='rank_context_actions',normalization='fit scenes only; balanced scene then origin then candidate',sample_unit='one actual branch at the matched origin; no new sliding-window density',near_ties='abs real total discounted-return difference <=1.0; excluded only from binary rank loss, retained for difference regression; fixed before new labels'),
++ acceptance=dict(min_independent_scenes=6,pair_accuracy_ci95_low_gt=.5,spearman_ci95_low_gt=0,paired_regret_improvement_ci95_low_gt=0,baseline_mean_accuracy_not_worse=True,negative_return_selection_rate_not_worse=True),
++ cost_weight=0.,formal100=False,online_scorer_enabled=False,
++ collection='Candidates generated BEFORE observing any suffix rewards: original Q Gaussian/AR(1) MPPI baseline, first fixed Gaussian in iteration0, weighted final mean, actual global elite after common cached Q rescore. 64/8/4 and all cfg noise/std/rho unchanged. Native H=10 prefix then unchanged frozen SAC to native done. Same-origin RNG/config/observed state/candidates must match across fresh-process branches. No selection by actual return; unreachable origins explicitly retained.',
++ isolation='New 12fit+4stop+6fresh validation maps predeclared. Old 8fit/4stop reused in their original roles only. Previous6 validation and old20/official tests never used in training, selection or fresh validation. Single validation pass after all five models and epochs freeze. No larger closed-loop unless independently qualified.')
++assert p['base_commit']=='4f17fce15cca43edac7edeb253958cff979d85ba'
++assert file_sha256(p['checkpoint'])==p['checkpoint_sha256']
++path=R/'protocol.json';assert not path.exists();path.write_text(json.dumps(p,indent=2));print(scenes)
+diff --git a/reports/candidate_ranking_20261117/stop_after_validation.py b/reports/candidate_ranking_20261117/stop_after_validation.py
+new file mode 100644
+index 0000000..65250a5
+--- /dev/null
++++ b/reports/candidate_ranking_20261117/stop_after_validation.py
+@@ -0,0 +1,6 @@
++import json,os,subprocess,sys,time
++from pathlib import Path
++R=Path(__file__).parent
++while not (R/'validation_collection_status.json').exists() or len(json.loads((R/'validation_collection_status.json').read_text()))<48:time.sleep(3)
++print('Prefixed validation collection complete; spare workers collect inner-stop maps without reading sealed outcomes.',flush=True)
++with (R/'stop_collection.log').open('x') as log:subprocess.run([sys.executable,'-u',str(R/'collect_queue.py'),'--stop-only'],stdout=log,stderr=subprocess.STDOUT,check=True)
+diff --git a/reports/candidate_ranking_20261117/protocol.json b/reports/candidate_ranking_20261117/protocol.json
+new file mode 100644
+index 0000000..d9c0941
+--- /dev/null
++++ b/reports/candidate_ranking_20261117/protocol.json
+@@ -0,0 +1,175 @@
++{
++  "base_commit": "4f17fce15cca43edac7edeb253958cff979d85ba",
++  "checkpoint": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt",
++  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
++  "source_environment_config": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/benchmark/sac_refinement_BD_fixed100_20261111_152755/part1/config_B_lattice_sac_seed1.yaml",
++  "source_snapshot_sha256": "bd0aa11c038bf5fc3b2caa303d8259bef0708115619fd75940be9358f37eb2ef",
++  "old_data": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/sac_value_20261117",
++  "old_fit_scenarios": [
++    60462,
++    60112,
++    60610,
++    60086,
++    61246,
++    60124,
++    61711,
++    60830
++  ],
++  "old_stop_scenarios": [
++    60566,
++    60073,
++    60541,
++    61499
++  ],
++  "new_fit_scenarios": [
++    64377,
++    63946,
++    64391,
++    62322,
++    64281,
++    64744,
++    63530,
++    63757,
++    63621,
++    64654,
++    63063,
++    64428
++  ],
++  "new_stop_scenarios": [
++    62583,
++    63858,
++    63184,
++    62116
++  ],
++  "validation_scenarios": [
++    62922,
++    62014,
++    62203,
++    63893,
++    63147,
++    64641
++  ],
++  "old_development_scenarios": [
++    40511,
++    40377,
++    40696,
++    40298,
++    40330,
++    40507,
++    40768,
++    40394,
++    40113,
++    40684
++  ],
++  "previously_used_validation_scenarios": [
++    40614,
++    40250,
++    40765,
++    40936,
++    40058,
++    40974
++  ],
++  "origin_steps": [
++    50,
++    150
++  ],
++  "branches": [
++    "baseline",
++    "gaussian",
++    "mean",
++    "best_elite"
++  ],
++  "horizon": 10,
++  "gamma": 0.995,
++  "seed": 1,
++  "pair_tolerance": 1.0,
++  "difference_weight": 0.25,
++  "difference_bands": [
++    0,
++    1,
++    5,
++    20,
++    null
++  ],
++  "action_rmse_bands": [
++    0,
++    0.02,
++    0.05,
++    0.1,
++    null
++  ],
++  "bootstrap_samples": 2000,
++  "bootstrap_seed": 1,
++  "models": {
++    "absolute_regression": {
++      "input_kind": "terminal",
++      "hidden": [
++        128,
++        64
++      ],
++      "loss": "absolute_SmoothL1"
++    },
++    "absolute_plus_difference": {
++      "input_kind": "terminal",
++      "hidden": [
++        128,
++        64
++      ],
++      "loss": "absolute_SmoothL1 + 1.0 balanced total-return difference SmoothL1"
++    },
++    "rank_terminal": {
++      "input_kind": "terminal",
++      "hidden": [
++        128,
++        64
++      ],
++      "loss": "logistic_rank + .25 normalized total_difference SmoothL1"
++    },
++    "rank_context": {
++      "input_kind": "context_terminal",
++      "hidden": [
++        68,
++        64
++      ],
++      "loss": "logistic_rank + .25 normalized total_difference SmoothL1"
++    },
++    "rank_context_actions": {
++      "input_kind": "context_terminal_actions",
++      "hidden": [
++        66,
++        64
++      ],
++      "loss": "logistic_rank + .25 normalized total_difference SmoothL1"
++    }
++  },
++  "training": {
++    "lr": 0.0003,
++    "epochs": 150,
++    "patience": 20,
++    "batch_origins": "all_predeclared_origins",
++    "seed": 1,
++    "early_stop": "same model objective on predesignated inner-stop maps only",
++    "primary": "rank_context_actions",
++    "normalization": "fit scenes only; balanced scene then origin then candidate",
++    "sample_unit": "one actual branch at the matched origin; no new sliding-window density",
++    "near_ties": "abs real total discounted-return difference <=1.0; excluded only from binary rank loss, retained for difference regression; fixed before new labels"
++  },
++  "acceptance": {
++    "min_independent_scenes": 6,
++    "pair_accuracy_ci95_low_gt": 0.5,
++    "spearman_ci95_low_gt": 0,
++    "paired_regret_improvement_ci95_low_gt": 0,
++    "baseline_mean_accuracy_not_worse": true,
++    "negative_return_selection_rate_not_worse": true
++  },
++  "cost_weight": 0.0,
++  "formal100": false,
++  "online_scorer_enabled": false,
++  "collection": "Candidates generated BEFORE observing any suffix rewards: original Q Gaussian/AR(1) MPPI baseline, first fixed Gaussian in iteration0, weighted final mean, actual global elite after common cached Q rescore. 64/8/4 and all cfg noise/std/rho unchanged. Native H=10 prefix then unchanged frozen SAC to native done. Same-origin RNG/config/observed state/candidates must match across fresh-process branches. No selection by actual return; unreachable origins explicitly retained.",
++  "isolation": "New 12fit+4stop+6fresh validation maps predeclared. Old 8fit/4stop reused in their original roles only. Previous6 validation and old20/official tests never used in training, selection or fresh validation. Single validation pass after all five models and epochs freeze. No larger closed-loop unless independently qualified.",
++  "implementation_notes": [
++    "Full grouped batch: fewer than200 fit candidates; exact same scene-origin weights instead of minibatch noise. This implementation choice is fixed before fitting or validation.",
++    "Validation collection runs separately with labels unread by fitting/epoch-selection code. Analysis begins only after all five models are saved.",
++    "Final gate compares paired regret against both original Q and previous V_SAC. Primary input C fixed, never chosen from validation winners."
++  ]
++}
+\ No newline at end of file

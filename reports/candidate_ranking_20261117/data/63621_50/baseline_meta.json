@@ -1,0 +1,21 @@
+{
+  "scenario": 63621,
+  "before": 50,
+  "branch": "baseline",
+  "native_done": true,
+  "length": 155,
+  "prefix_complete": true,
+  "success": true,
+  "crash": false,
+  "out_of_road": false,
+  "route_completion": 0.9845531501091322,
+  "episode_return": 239.81655504373563,
+  "actual_return": 173.19280668918537,
+  "actual_continuation": 165.98341566305444,
+  "cost_sum": 0.30579451226740134,
+  "planning_time_ms": 241.80802307091653,
+  "average_speed": 14.579813143612624,
+  "policy_context_sha256": "82b2a6917b35d7107f49527636d022595aee1cc3723ddabdf1115523c0301a48",
+  "wm_checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "end_reason": "arrive_dest"
+}

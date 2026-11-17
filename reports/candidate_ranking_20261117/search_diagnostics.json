@@ -1,0 +1,1110 @@
+{
+  "rows": [
+    {
+      "scenario": 62922,
+      "before": 50,
+      "top8_shift_set_equal": true,
+      "top8_batch_jaccard": 1.0,
+      "batch_score_max_error": 0.0005819797515869141,
+      "score_range": [
+        -4.251456260681152,
+        -1.4569264650344849
+      ],
+      "score_delta_quantiles": [
+        -1.7931187152862549,
+        -0.013125479221343994,
+        0.07833302021026611,
+        0.2283492088317871,
+        1.0014110803604126
+      ],
+      "rounds": [
+        {
+          "iteration": 0,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.0217733271420002,
+          "std_max": 0.16225707530975342,
+          "effective_samples": 7.9780144691467285,
+          "entropy": 2.078096389770508,
+          "first_action": [
+            -0.011350047774612904,
+            0.36556553840637207
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 1,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.009999999776482582,
+          "std_max": 0.14864784479141235,
+          "effective_samples": 7.964772701263428,
+          "entropy": 2.077214479446411,
+          "first_action": [
+            0.00011655408889055252,
+            0.3236597180366516
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 2,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.009999999776482582,
+          "std_max": 0.07146934419870377,
+          "effective_samples": 7.95468282699585,
+          "entropy": 2.0765604972839355,
+          "first_action": [
+            0.000798685709014535,
+            0.29029110074043274
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 3,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.009999999776482582,
+          "std_max": 0.1329672783613205,
+          "effective_samples": 7.912892818450928,
+          "entropy": 2.0741395950317383,
+          "first_action": [
+            0.001878965413197875,
+            0.28532326221466064
+          ],
+          "padding_fixed": true
+        }
+      ],
+      "times": {
+        "relative_score": {
+          "batch": 258,
+          "wall_p50_ms": 0.25737995747476816,
+          "wall_p95_ms": 0.31628306605853135,
+          "cuda_p50_ms": 0.24102400243282318,
+          "cuda_p95_ms": 0.2948496028780937
+        },
+        "previous_terminal_V": {
+          "batch": 258,
+          "wall_p50_ms": 0.22064551012590528,
+          "wall_p95_ms": 0.2952467242721467,
+          "cuda_p50_ms": 0.20612800121307373,
+          "cuda_p95_ms": 0.2696528002619743
+        }
+      }
+    },
+    {
+      "scenario": 62922,
+      "before": 150,
+      "top8_shift_set_equal": true,
+      "top8_batch_jaccard": 1.0,
+      "batch_score_max_error": 0.0009340047836303711,
+      "score_range": [
+        -3.352341890335083,
+        -0.6884202361106873
+      ],
+      "score_delta_quantiles": [
+        -1.0366599559783936,
+        -0.6109911203384399,
+        -0.3499574661254883,
+        -0.029756009578704834,
+        1.6272616386413574
+      ],
+      "rounds": [
+        {
+          "iteration": 0,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.011732975952327251,
+          "std_max": 0.10545823723077774,
+          "effective_samples": 7.994716167449951,
+          "entropy": 2.0791120529174805,
+          "first_action": [
+            -0.057195812463760376,
+            0.12225829064846039
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 1,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.03328980877995491,
+          "std_max": 0.17292043566703796,
+          "effective_samples": 7.454867362976074,
+          "entropy": 2.048220157623291,
+          "first_action": [
+            -0.014111077412962914,
+            0.23454153537750244
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 2,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.028682943433523178,
+          "std_max": 0.14486552774906158,
+          "effective_samples": 7.895164966583252,
+          "entropy": 2.0728251934051514,
+          "first_action": [
+            0.10854560881853104,
+            0.30618953704833984
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 3,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.024422047659754753,
+          "std_max": 0.1417091339826584,
+          "effective_samples": 7.964754581451416,
+          "entropy": 2.0772528648376465,
+          "first_action": [
+            0.11829811334609985,
+            0.3432263433933258
+          ],
+          "padding_fixed": true
+        }
+      ],
+      "times": {
+        "relative_score": {
+          "batch": 258,
+          "wall_p50_ms": 0.2500935806892812,
+          "wall_p95_ms": 0.28452241094782943,
+          "cuda_p50_ms": 0.23631999641656876,
+          "cuda_p95_ms": 0.27023999541997906
+        },
+        "previous_terminal_V": {
+          "batch": 258,
+          "wall_p50_ms": 0.21802744595333934,
+          "wall_p95_ms": 0.26737129664979875,
+          "cuda_p50_ms": 0.20396800339221954,
+          "cuda_p95_ms": 0.2509983956813812
+        }
+      }
+    },
+    {
+      "scenario": 62014,
+      "before": 50,
+      "top8_shift_set_equal": true,
+      "top8_batch_jaccard": 1.0,
+      "batch_score_max_error": 0.00034248828887939453,
+      "score_range": [
+        -1.843063473701477,
+        -0.9266561269760132
+      ],
+      "score_delta_quantiles": [
+        -0.23738324642181396,
+        0.00020486116409301758,
+        0.0954778790473938,
+        0.24725162982940674,
+        0.6790241003036499
+      ],
+      "rounds": [
+        {
+          "iteration": 0,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.010667613707482815,
+          "std_max": 0.08405844122171402,
+          "effective_samples": 7.969749927520752,
+          "entropy": 2.0775296688079834,
+          "first_action": [
+            -0.016877934336662292,
+            0.9528812170028687
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 1,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.009999999776482582,
+          "std_max": 0.2156897336244583,
+          "effective_samples": 7.998232364654541,
+          "entropy": 2.079331398010254,
+          "first_action": [
+            -0.02918430045247078,
+            0.8584229946136475
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 2,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.009999999776482582,
+          "std_max": 0.18281029164791107,
+          "effective_samples": 7.991949558258057,
+          "entropy": 2.0789451599121094,
+          "first_action": [
+            -0.040457673370838165,
+            0.7544957399368286
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 3,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.009999999776482582,
+          "std_max": 0.12888701260089874,
+          "effective_samples": 7.981117248535156,
+          "entropy": 2.0782783031463623,
+          "first_action": [
+            -0.019001614302396774,
+            0.756009578704834
+          ],
+          "padding_fixed": true
+        }
+      ],
+      "times": {
+        "relative_score": {
+          "batch": 258,
+          "wall_p50_ms": 0.25323801673948765,
+          "wall_p95_ms": 0.30676653259433806,
+          "cuda_p50_ms": 0.23945600539445877,
+          "cuda_p95_ms": 0.2927264079451561
+        },
+        "previous_terminal_V": {
+          "batch": 258,
+          "wall_p50_ms": 0.22016349248588085,
+          "wall_p95_ms": 0.29311464168131346,
+          "cuda_p50_ms": 0.20582400262355804,
+          "cuda_p95_ms": 0.27936960309743875
+        }
+      }
+    },
+    {
+      "scenario": 62014,
+      "before": 150,
+      "top8_shift_set_equal": true,
+      "top8_batch_jaccard": 1.0,
+      "batch_score_max_error": 0.00043392181396484375,
+      "score_range": [
+        -4.618824481964111,
+        -3.7208118438720703
+      ],
+      "score_delta_quantiles": [
+        -0.4623394012451172,
+        -0.02664351463317871,
+        0.0909421443939209,
+        0.22326719760894775,
+        0.43567323684692383
+      ],
+      "rounds": [
+        {
+          "iteration": 0,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.010261552408337593,
+          "std_max": 0.11394501477479935,
+          "effective_samples": 7.999034881591797,
+          "entropy": 2.079381227493286,
+          "first_action": [
+            -0.03755499795079231,
+            0.03706563264131546
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 1,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.010652386583387852,
+          "std_max": 0.11104991286993027,
+          "effective_samples": 7.9990644454956055,
+          "entropy": 2.079383134841919,
+          "first_action": [
+            -0.032212868332862854,
+            0.018707724288105965
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 2,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.009999999776482582,
+          "std_max": 0.11260522902011871,
+          "effective_samples": 7.9931182861328125,
+          "entropy": 2.079014301300049,
+          "first_action": [
+            -0.017974726855754852,
+            -0.0003563025966286659
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 3,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.009999999776482582,
+          "std_max": 0.057154376059770584,
+          "effective_samples": 7.9988861083984375,
+          "entropy": 2.0793721675872803,
+          "first_action": [
+            -0.02020212449133396,
+            -0.016309240832924843
+          ],
+          "padding_fixed": true
+        }
+      ],
+      "times": {
+        "relative_score": {
+          "batch": 258,
+          "wall_p50_ms": 0.24962046882137656,
+          "wall_p95_ms": 0.2966622414533049,
+          "cuda_p50_ms": 0.23560000211000443,
+          "cuda_p95_ms": 0.2826240062713623
+        },
+        "previous_terminal_V": {
+          "batch": 258,
+          "wall_p50_ms": 0.21779554663226008,
+          "wall_p95_ms": 0.2707376843318343,
+          "cuda_p50_ms": 0.20377600193023682,
+          "cuda_p95_ms": 0.25154879987239837
+        }
+      }
+    },
+    {
+      "scenario": 62203,
+      "before": 50,
+      "top8_shift_set_equal": true,
+      "top8_batch_jaccard": 1.0,
+      "batch_score_max_error": 0.0005205869674682617,
+      "score_range": [
+        -2.3097708225250244,
+        -0.5000616908073425
+      ],
+      "score_delta_quantiles": [
+        -0.8711137771606445,
+        0.27311670780181885,
+        0.5609292685985565,
+        0.7174859642982483,
+        0.9385953545570374
+      ],
+      "rounds": [
+        {
+          "iteration": 0,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.021796230226755142,
+          "std_max": 0.1049048975110054,
+          "effective_samples": 7.978908061981201,
+          "entropy": 2.0781452655792236,
+          "first_action": [
+            0.009645072743296623,
+            -0.1931452602148056
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 1,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.02400849387049675,
+          "std_max": 0.0868494063615799,
+          "effective_samples": 7.992031574249268,
+          "entropy": 2.078949451446533,
+          "first_action": [
+            0.013624299317598343,
+            -0.1464187055826187
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 2,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.012044875882565975,
+          "std_max": 0.07389796525239944,
+          "effective_samples": 7.9984917640686035,
+          "entropy": 2.079347610473633,
+          "first_action": [
+            0.013142915442585945,
+            -0.10940640419721603
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 3,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.009999999776482582,
+          "std_max": 0.05326799675822258,
+          "effective_samples": 7.997899532318115,
+          "entropy": 2.079310894012451,
+          "first_action": [
+            0.012551600113511086,
+            -0.06351275742053986
+          ],
+          "padding_fixed": true
+        }
+      ],
+      "times": {
+        "relative_score": {
+          "batch": 258,
+          "wall_p50_ms": 0.250132055953145,
+          "wall_p95_ms": 0.2980510238558054,
+          "cuda_p50_ms": 0.23611199855804443,
+          "cuda_p95_ms": 0.28421120196580885
+        },
+        "previous_terminal_V": {
+          "batch": 258,
+          "wall_p50_ms": 0.21853053476661444,
+          "wall_p95_ms": 0.2707253908738494,
+          "cuda_p50_ms": 0.20446400344371796,
+          "cuda_p95_ms": 0.2547199994325638
+        }
+      }
+    },
+    {
+      "scenario": 62203,
+      "before": 150,
+      "top8_shift_set_equal": true,
+      "top8_batch_jaccard": 1.0,
+      "batch_score_max_error": 0.0007407665252685547,
+      "score_range": [
+        -3.1924197673797607,
+        -1.3345046043395996
+      ],
+      "score_delta_quantiles": [
+        -1.5808773040771484,
+        -1.1162027716636658,
+        -0.6551871299743652,
+        -0.19846385717391968,
+        0.2770378589630127
+      ],
+      "rounds": [
+        {
+          "iteration": 0,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.013927689753472805,
+          "std_max": 0.12758609652519226,
+          "effective_samples": 7.995351791381836,
+          "entropy": 2.0791544914245605,
+          "first_action": [
+            -0.28014883399009705,
+            0.08164597302675247
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 1,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.009999999776482582,
+          "std_max": 0.10247837007045746,
+          "effective_samples": 7.9982476234436035,
+          "entropy": 2.0793323516845703,
+          "first_action": [
+            -0.23945635557174683,
+            0.13254454731941223
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 2,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.018908169120550156,
+          "std_max": 0.09579125046730042,
+          "effective_samples": 7.946986198425293,
+          "entropy": 2.0760841369628906,
+          "first_action": [
+            -0.3117305636405945,
+            0.17317767441272736
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 3,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.025669345632195473,
+          "std_max": 0.10197168588638306,
+          "effective_samples": 7.708664417266846,
+          "entropy": 2.06237530708313,
+          "first_action": [
+            -0.3195949196815491,
+            0.20351490378379822
+          ],
+          "padding_fixed": true
+        }
+      ],
+      "times": {
+        "relative_score": {
+          "batch": 258,
+          "wall_p50_ms": 0.2524430165067315,
+          "wall_p95_ms": 0.2962459751870483,
+          "cuda_p50_ms": 0.23844800144433975,
+          "cuda_p95_ms": 0.28219360411167144
+        },
+        "previous_terminal_V": {
+          "batch": 258,
+          "wall_p50_ms": 0.21874700905755162,
+          "wall_p95_ms": 0.266257073963061,
+          "cuda_p50_ms": 0.20479999482631683,
+          "cuda_p95_ms": 0.2524671986699104
+        }
+      }
+    },
+    {
+      "scenario": 63893,
+      "before": 50,
+      "top8_shift_set_equal": true,
+      "top8_batch_jaccard": 1.0,
+      "batch_score_max_error": 0.000392913818359375,
+      "score_range": [
+        -2.736631393432617,
+        -1.5228990316390991
+      ],
+      "score_delta_quantiles": [
+        -0.43488645553588867,
+        -0.005340933799743652,
+        0.12502646446228027,
+        0.25985896587371826,
+        0.7788459062576294
+      ],
+      "rounds": [
+        {
+          "iteration": 0,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.013583889231085777,
+          "std_max": 0.0621769055724144,
+          "effective_samples": 7.962876796722412,
+          "entropy": 2.077136993408203,
+          "first_action": [
+            -0.011333366855978966,
+            0.9731823205947876
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 1,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.009999999776482582,
+          "std_max": 0.041528794914484024,
+          "effective_samples": 7.9842095375061035,
+          "entropy": 2.0784499645233154,
+          "first_action": [
+            0.014129112474620342,
+            0.983829915523529
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 2,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.009999999776482582,
+          "std_max": 0.04561733826994896,
+          "effective_samples": 7.997717380523682,
+          "entropy": 2.079299211502075,
+          "first_action": [
+            -0.010603561997413635,
+            0.9930476546287537
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 3,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.009999999776482582,
+          "std_max": 0.029999999329447746,
+          "effective_samples": 7.99784517288208,
+          "entropy": 2.0793066024780273,
+          "first_action": [
+            -0.02465139701962471,
+            0.9757703542709351
+          ],
+          "padding_fixed": true
+        }
+      ],
+      "times": {
+        "relative_score": {
+          "batch": 258,
+          "wall_p50_ms": 0.2509914920665324,
+          "wall_p95_ms": 0.30265761888585985,
+          "cuda_p50_ms": 0.2367520034313202,
+          "cuda_p95_ms": 0.2858816087245941
+        },
+        "previous_terminal_V": {
+          "batch": 258,
+          "wall_p50_ms": 0.21859753178432584,
+          "wall_p95_ms": 0.27120053418911994,
+          "cuda_p50_ms": 0.20524799823760986,
+          "cuda_p95_ms": 0.2571776047348976
+        }
+      }
+    },
+    {
+      "scenario": 63893,
+      "before": 150,
+      "top8_shift_set_equal": true,
+      "top8_batch_jaccard": 1.0,
+      "batch_score_max_error": 0.0008899569511413574,
+      "score_range": [
+        -2.1349308490753174,
+        1.1588218212127686
+      ],
+      "score_delta_quantiles": [
+        -0.7556462287902832,
+        0.4023559093475342,
+        1.4190252423286438,
+        1.7438110411167145,
+        2.5381064414978027
+      ],
+      "rounds": [
+        {
+          "iteration": 0,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.030085377395153046,
+          "std_max": 0.12634536623954773,
+          "effective_samples": 7.890600681304932,
+          "entropy": 2.0727221965789795,
+          "first_action": [
+            0.005025994963943958,
+            0.7418196797370911
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 1,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.016484180465340614,
+          "std_max": 0.12600654363632202,
+          "effective_samples": 7.775477409362793,
+          "entropy": 2.0656886100769043,
+          "first_action": [
+            -0.000944279134273529,
+            0.7548739910125732
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 2,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.009999999776482582,
+          "std_max": 0.11651711165904999,
+          "effective_samples": 7.9954705238342285,
+          "entropy": 2.0791587829589844,
+          "first_action": [
+            -0.08116893470287323,
+            0.697799801826477
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 3,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.009999999776482582,
+          "std_max": 0.0944972038269043,
+          "effective_samples": 7.999680519104004,
+          "entropy": 2.0794215202331543,
+          "first_action": [
+            -0.10364767163991928,
+            0.7304097414016724
+          ],
+          "padding_fixed": true
+        }
+      ],
+      "times": {
+        "relative_score": {
+          "batch": 258,
+          "wall_p50_ms": 0.2529914490878582,
+          "wall_p95_ms": 0.3021489654202014,
+          "cuda_p50_ms": 0.23846399784088135,
+          "cuda_p95_ms": 0.28787840008735655
+        },
+        "previous_terminal_V": {
+          "batch": 258,
+          "wall_p50_ms": 0.21843594731763005,
+          "wall_p95_ms": 0.2653272124007344,
+          "cuda_p50_ms": 0.20492799580097198,
+          "cuda_p95_ms": 0.25166079998016355
+        }
+      }
+    },
+    {
+      "scenario": 63147,
+      "before": 50,
+      "top8_shift_set_equal": true,
+      "top8_batch_jaccard": 1.0,
+      "batch_score_max_error": 0.0004582405090332031,
+      "score_range": [
+        -3.8652548789978027,
+        -2.3827970027923584
+      ],
+      "score_delta_quantiles": [
+        -0.7694616317749023,
+        -0.04918593168258667,
+        0.34118878841400146,
+        0.47615575790405273,
+        0.712996244430542
+      ],
+      "rounds": [
+        {
+          "iteration": 0,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.013623110018670559,
+          "std_max": 0.11156312376260757,
+          "effective_samples": 7.998109340667725,
+          "entropy": 2.0793237686157227,
+          "first_action": [
+            -0.08112414926290512,
+            0.9978659152984619
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 1,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.01641654409468174,
+          "std_max": 0.10444038361310959,
+          "effective_samples": 7.995390892028809,
+          "entropy": 2.079155921936035,
+          "first_action": [
+            -0.049707792699337006,
+            0.924551784992218
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 2,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.009999999776482582,
+          "std_max": 0.09362468123435974,
+          "effective_samples": 7.998846054077148,
+          "entropy": 2.07936954498291,
+          "first_action": [
+            0.01355321891605854,
+            0.9776071310043335
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 3,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.009999999776482582,
+          "std_max": 0.08131325244903564,
+          "effective_samples": 7.999026298522949,
+          "entropy": 2.079380989074707,
+          "first_action": [
+            0.010640442371368408,
+            0.9611226320266724
+          ],
+          "padding_fixed": true
+        }
+      ],
+      "times": {
+        "relative_score": {
+          "batch": 258,
+          "wall_p50_ms": 0.25180098600685596,
+          "wall_p95_ms": 0.3016103059053421,
+          "cuda_p50_ms": 0.23756800591945648,
+          "cuda_p95_ms": 0.2865616098046303
+        },
+        "previous_terminal_V": {
+          "batch": 258,
+          "wall_p50_ms": 0.21712103625759482,
+          "wall_p95_ms": 0.26648821658454835,
+          "cuda_p50_ms": 0.20340800285339355,
+          "cuda_p95_ms": 0.2527951911091805
+        }
+      }
+    },
+    {
+      "scenario": 63147,
+      "before": 150,
+      "top8_shift_set_equal": true,
+      "top8_batch_jaccard": 1.0,
+      "batch_score_max_error": 0.0015368461608886719,
+      "score_range": [
+        -1.2675797939300537,
+        -0.27301084995269775
+      ],
+      "score_delta_quantiles": [
+        -0.3992953896522522,
+        0.03790895640850067,
+        0.2066592574119568,
+        0.3044188916683197,
+        0.5952735543251038
+      ],
+      "rounds": [
+        {
+          "iteration": 0,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.01291588693857193,
+          "std_max": 0.13714824616909027,
+          "effective_samples": 7.991134166717529,
+          "entropy": 2.078889846801758,
+          "first_action": [
+            0.16584324836730957,
+            0.393732488155365
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 1,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.009999999776482582,
+          "std_max": 0.10758155584335327,
+          "effective_samples": 7.997396469116211,
+          "entropy": 2.079280376434326,
+          "first_action": [
+            0.15908297896385193,
+            0.3712608218193054
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 2,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.009999999776482582,
+          "std_max": 0.10633343458175659,
+          "effective_samples": 7.9942450523376465,
+          "entropy": 2.079084634780884,
+          "first_action": [
+            0.18171709775924683,
+            0.42414289712905884
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 3,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.009999999776482582,
+          "std_max": 0.04909269139170647,
+          "effective_samples": 7.991036891937256,
+          "entropy": 2.0788917541503906,
+          "first_action": [
+            0.15813754498958588,
+            0.47606706619262695
+          ],
+          "padding_fixed": true
+        }
+      ],
+      "times": {
+        "relative_score": {
+          "batch": 258,
+          "wall_p50_ms": 0.24980498710647225,
+          "wall_p95_ms": 0.3034283174201846,
+          "cuda_p50_ms": 0.2356479987502098,
+          "cuda_p95_ms": 0.28889920115470885
+        },
+        "previous_terminal_V": {
+          "batch": 258,
+          "wall_p50_ms": 0.21826749434694648,
+          "wall_p95_ms": 0.2646294713485986,
+          "cuda_p50_ms": 0.20467200130224228,
+          "cuda_p95_ms": 0.2505792073905468
+        }
+      }
+    },
+    {
+      "scenario": 64641,
+      "before": 50,
+      "top8_shift_set_equal": true,
+      "top8_batch_jaccard": 1.0,
+      "batch_score_max_error": 0.0012845993041992188,
+      "score_range": [
+        -4.070354461669922,
+        -2.1488399505615234
+      ],
+      "score_delta_quantiles": [
+        -0.9523766040802002,
+        0.115176260471344,
+        0.5647070407867432,
+        0.659075915813446,
+        0.9691379070281982
+      ],
+      "rounds": [
+        {
+          "iteration": 0,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.0194158423691988,
+          "std_max": 0.11048035323619843,
+          "effective_samples": 7.964120388031006,
+          "entropy": 2.077188014984131,
+          "first_action": [
+            -0.0030957208946347237,
+            0.9610564708709717
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 1,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.009999999776482582,
+          "std_max": 0.10349464416503906,
+          "effective_samples": 7.995963096618652,
+          "entropy": 2.0791893005371094,
+          "first_action": [
+            -0.011376400478184223,
+            0.9033095240592957
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 2,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.009999999776482582,
+          "std_max": 0.10998039692640305,
+          "effective_samples": 7.99790620803833,
+          "entropy": 2.079310894012451,
+          "first_action": [
+            -0.030962282791733742,
+            0.8669106960296631
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 3,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.009999999776482582,
+          "std_max": 0.07446900755167007,
+          "effective_samples": 7.989804744720459,
+          "entropy": 2.078817367553711,
+          "first_action": [
+            -0.03607206046581268,
+            0.7883170247077942
+          ],
+          "padding_fixed": true
+        }
+      ],
+      "times": {
+        "relative_score": {
+          "batch": 258,
+          "wall_p50_ms": 0.25465100770816207,
+          "wall_p95_ms": 0.26283779297955334,
+          "cuda_p50_ms": 0.2404799982905388,
+          "cuda_p95_ms": 0.24861440062522888
+        },
+        "previous_terminal_V": {
+          "batch": 258,
+          "wall_p50_ms": 0.22439297754317522,
+          "wall_p95_ms": 0.23962132981978357,
+          "cuda_p50_ms": 0.2099200040102005,
+          "cuda_p95_ms": 0.22361920401453972
+        }
+      }
+    },
+    {
+      "scenario": 64641,
+      "before": 150,
+      "top8_shift_set_equal": true,
+      "top8_batch_jaccard": 1.0,
+      "batch_score_max_error": 0.0004444122314453125,
+      "score_range": [
+        -4.5857768058776855,
+        -2.3067173957824707
+      ],
+      "score_delta_quantiles": [
+        -0.5518474578857422,
+        0.32246655225753784,
+        0.9815188646316528,
+        1.2744280099868774,
+        1.7272119522094727
+      ],
+      "rounds": [
+        {
+          "iteration": 0,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.016834670677781105,
+          "std_max": 0.05661875754594803,
+          "effective_samples": 7.817403793334961,
+          "entropy": 2.0681397914886475,
+          "first_action": [
+            -0.0947950929403305,
+            0.9539246559143066
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 1,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.010428521782159805,
+          "std_max": 0.05509503185749054,
+          "effective_samples": 7.99105978012085,
+          "entropy": 2.078883409500122,
+          "first_action": [
+            -0.12962304055690765,
+            0.970890462398529
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 2,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.009999999776482582,
+          "std_max": 0.04309641569852829,
+          "effective_samples": 7.9977641105651855,
+          "entropy": 2.0793023109436035,
+          "first_action": [
+            -0.15371906757354736,
+            0.9668213129043579
+          ],
+          "padding_fixed": true
+        },
+        {
+          "iteration": 3,
+          "finite": true,
+          "valid_actions": true,
+          "std_min": 0.009999999776482582,
+          "std_max": 0.04648677259683609,
+          "effective_samples": 7.9858574867248535,
+          "entropy": 2.078577995300293,
+          "first_action": [
+            -0.14529483020305634,
+            0.9807060956954956
+          ],
+          "padding_fixed": true
+        }
+      ],
+      "times": {
+        "relative_score": {
+          "batch": 258,
+          "wall_p50_ms": 0.2563545131124556,
+          "wall_p95_ms": 0.26516217621974647,
+          "cuda_p50_ms": 0.24199999868869781,
+          "cuda_p95_ms": 0.2509824112057686
+        },
+        "previous_terminal_V": {
+          "batch": 258,
+          "wall_p50_ms": 0.22370851365849376,
+          "wall_p95_ms": 0.23528556339442727,
+          "cuda_p50_ms": 0.20974399894475937,
+          "cuda_p95_ms": 0.21906559765338898
+        }
+      }
+    }
+  ],
+  "all_updates_valid": true,
+  "note": "Original Q-generated cached candidate pools only: these are scoring/Top-K/update diagnostics, NOT new-score sequential search or executed driving. Same original temperature/std/rho/budget; H-only score ignores a_H. No per-trajectory safety gate. Head microtimings after collection completes are not full planning time."
+}

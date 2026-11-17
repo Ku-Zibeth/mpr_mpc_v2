@@ -1,0 +1,175 @@
+{
+  "base_commit": "4f17fce15cca43edac7edeb253958cff979d85ba",
+  "checkpoint": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt",
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "source_environment_config": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/benchmark/sac_refinement_BD_fixed100_20261111_152755/part1/config_B_lattice_sac_seed1.yaml",
+  "source_snapshot_sha256": "bd0aa11c038bf5fc3b2caa303d8259bef0708115619fd75940be9358f37eb2ef",
+  "old_data": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/sac_value_20261117",
+  "old_fit_scenarios": [
+    60462,
+    60112,
+    60610,
+    60086,
+    61246,
+    60124,
+    61711,
+    60830
+  ],
+  "old_stop_scenarios": [
+    60566,
+    60073,
+    60541,
+    61499
+  ],
+  "new_fit_scenarios": [
+    64377,
+    63946,
+    64391,
+    62322,
+    64281,
+    64744,
+    63530,
+    63757,
+    63621,
+    64654,
+    63063,
+    64428
+  ],
+  "new_stop_scenarios": [
+    62583,
+    63858,
+    63184,
+    62116
+  ],
+  "validation_scenarios": [
+    62922,
+    62014,
+    62203,
+    63893,
+    63147,
+    64641
+  ],
+  "old_development_scenarios": [
+    40511,
+    40377,
+    40696,
+    40298,
+    40330,
+    40507,
+    40768,
+    40394,
+    40113,
+    40684
+  ],
+  "previously_used_validation_scenarios": [
+    40614,
+    40250,
+    40765,
+    40936,
+    40058,
+    40974
+  ],
+  "origin_steps": [
+    50,
+    150
+  ],
+  "branches": [
+    "baseline",
+    "gaussian",
+    "mean",
+    "best_elite"
+  ],
+  "horizon": 10,
+  "gamma": 0.995,
+  "seed": 1,
+  "pair_tolerance": 1.0,
+  "difference_weight": 0.25,
+  "difference_bands": [
+    0,
+    1,
+    5,
+    20,
+    null
+  ],
+  "action_rmse_bands": [
+    0,
+    0.02,
+    0.05,
+    0.1,
+    null
+  ],
+  "bootstrap_samples": 2000,
+  "bootstrap_seed": 1,
+  "models": {
+    "absolute_regression": {
+      "input_kind": "terminal",
+      "hidden": [
+        128,
+        64
+      ],
+      "loss": "absolute_SmoothL1"
+    },
+    "absolute_plus_difference": {
+      "input_kind": "terminal",
+      "hidden": [
+        128,
+        64
+      ],
+      "loss": "absolute_SmoothL1 + 1.0 balanced total-return difference SmoothL1"
+    },
+    "rank_terminal": {
+      "input_kind": "terminal",
+      "hidden": [
+        128,
+        64
+      ],
+      "loss": "logistic_rank + .25 normalized total_difference SmoothL1"
+    },
+    "rank_context": {
+      "input_kind": "context_terminal",
+      "hidden": [
+        68,
+        64
+      ],
+      "loss": "logistic_rank + .25 normalized total_difference SmoothL1"
+    },
+    "rank_context_actions": {
+      "input_kind": "context_terminal_actions",
+      "hidden": [
+        66,
+        64
+      ],
+      "loss": "logistic_rank + .25 normalized total_difference SmoothL1"
+    }
+  },
+  "training": {
+    "lr": 0.0003,
+    "epochs": 150,
+    "patience": 20,
+    "batch_origins": "all_predeclared_origins",
+    "seed": 1,
+    "early_stop": "same model objective on predesignated inner-stop maps only",
+    "primary": "rank_context_actions",
+    "normalization": "fit scenes only; balanced scene then origin then candidate",
+    "sample_unit": "one actual branch at the matched origin; no new sliding-window density",
+    "near_ties": "abs real total discounted-return difference <=1.0; excluded only from binary rank loss, retained for difference regression; fixed before new labels"
+  },
+  "acceptance": {
+    "min_independent_scenes": 6,
+    "pair_accuracy_ci95_low_gt": 0.5,
+    "spearman_ci95_low_gt": 0,
+    "paired_regret_improvement_ci95_low_gt": 0,
+    "baseline_mean_accuracy_not_worse": true,
+    "negative_return_selection_rate_not_worse": true
+  },
+  "cost_weight": 0.0,
+  "formal100": false,
+  "online_scorer_enabled": false,
+  "collection": "Candidates generated BEFORE observing any suffix rewards: original Q Gaussian/AR(1) MPPI baseline, first fixed Gaussian in iteration0, weighted final mean, actual global elite after common cached Q rescore. 64/8/4 and all cfg noise/std/rho unchanged. Native H=10 prefix then unchanged frozen SAC to native done. Same-origin RNG/config/observed state/candidates must match across fresh-process branches. No selection by actual return; unreachable origins explicitly retained.",
+  "isolation": "New 12fit+4stop+6fresh validation maps predeclared. Old 8fit/4stop reused in their original roles only. Previous6 validation and old20/official tests never used in training, selection or fresh validation. Single validation pass after all five models and epochs freeze. No larger closed-loop unless independently qualified.",
+  "implementation_notes": [
+    "Full grouped batch: fewer than200 fit candidates; exact same scene-origin weights instead of minibatch noise. This implementation choice is fixed before fitting or validation.",
+    "Validation collection runs separately with labels unread by fitting/epoch-selection code. Analysis begins only after all five models are saved.",
+    "Final gate compares paired regret against both original Q and previous V_SAC. Primary input C fixed, never chosen from validation winners."
+  ]
+}

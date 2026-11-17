@@ -1,0 +1,1573 @@
+{
+  "old_coverage": {
+    "native_branches": 69,
+    "unavailable_tasks": 3,
+    "origins": 23,
+    "fit_origins": 16,
+    "fit_pairs": 48,
+    "effective_fit_pairs": 38,
+    "all_pair_delta": {
+      "n": 69,
+      "p0": -62.051929622984375,
+      "p25": -4.487017639439017,
+      "p50": 0.5072574349763386,
+      "p75": 7.963247432502413,
+      "p95": 53.81799819572147,
+      "p100": 78.56004777678817
+    },
+    "abs_pair_delta": {
+      "n": 69,
+      "p0": 0.0719730745835534,
+      "p25": 1.4793103493339572,
+      "p50": 5.444512897082575,
+      "p75": 10.73410132384572,
+      "p95": 60.828326968070954,
+      "p100": 78.56004777678817
+    },
+    "positive_delta_fraction": 0.5942028985507246,
+    "near_tie_fraction": 0.2028985507246377,
+    "lag1_rtg_correlation": {
+      "n": 69,
+      "p0": -0.5962814929711507,
+      "p25": 0.992386699172573,
+      "p50": 0.997640511880312,
+      "p75": 0.9986180929868723,
+      "p95": 0.9991245845747774,
+      "p100": 0.999170791853272
+    },
+    "exact_duplicate_windows": 0,
+    "windows": 3693,
+    "action_perturbation_rmse": {
+      "n": 46,
+      "p0": 0.012674293480813503,
+      "p25": 0.05039106588810682,
+      "p50": 0.06498300284147263,
+      "p75": 0.08264906145632267,
+      "p95": 0.1541694737970829,
+      "p100": 0.16533741354942322
+    },
+    "crash_branches": 12,
+    "offroad_branches": 22
+  },
+  "fit": {
+    "scenes": 20,
+    "origins": 40,
+    "raw_branches": 144,
+    "deduplicated": [],
+    "pairs": 192,
+    "effective_pairs": 135,
+    "unavailable": [],
+    "per_scene": [
+      {
+        "scene": 60086,
+        "origins": 2,
+        "pairs": 6,
+        "effective_pairs": 4
+      },
+      {
+        "scene": 60112,
+        "origins": 2,
+        "pairs": 6,
+        "effective_pairs": 4
+      },
+      {
+        "scene": 60124,
+        "origins": 2,
+        "pairs": 6,
+        "effective_pairs": 4
+      },
+      {
+        "scene": 60462,
+        "origins": 2,
+        "pairs": 6,
+        "effective_pairs": 6
+      },
+      {
+        "scene": 60610,
+        "origins": 2,
+        "pairs": 6,
+        "effective_pairs": 6
+      },
+      {
+        "scene": 60830,
+        "origins": 2,
+        "pairs": 6,
+        "effective_pairs": 4
+      },
+      {
+        "scene": 61246,
+        "origins": 2,
+        "pairs": 6,
+        "effective_pairs": 4
+      },
+      {
+        "scene": 61711,
+        "origins": 2,
+        "pairs": 6,
+        "effective_pairs": 6
+      },
+      {
+        "scene": 62322,
+        "origins": 2,
+        "pairs": 12,
+        "effective_pairs": 8
+      },
+      {
+        "scene": 63063,
+        "origins": 2,
+        "pairs": 12,
+        "effective_pairs": 11
+      },
+      {
+        "scene": 63530,
+        "origins": 2,
+        "pairs": 12,
+        "effective_pairs": 8
+      },
+      {
+        "scene": 63621,
+        "origins": 2,
+        "pairs": 12,
+        "effective_pairs": 4
+      },
+      {
+        "scene": 63757,
+        "origins": 2,
+        "pairs": 12,
+        "effective_pairs": 10
+      },
+      {
+        "scene": 63946,
+        "origins": 2,
+        "pairs": 12,
+        "effective_pairs": 5
+      },
+      {
+        "scene": 64281,
+        "origins": 2,
+        "pairs": 12,
+        "effective_pairs": 11
+      },
+      {
+        "scene": 64377,
+        "origins": 2,
+        "pairs": 12,
+        "effective_pairs": 11
+      },
+      {
+        "scene": 64391,
+        "origins": 2,
+        "pairs": 12,
+        "effective_pairs": 9
+      },
+      {
+        "scene": 64428,
+        "origins": 2,
+        "pairs": 12,
+        "effective_pairs": 0
+      },
+      {
+        "scene": 64654,
+        "origins": 2,
+        "pairs": 12,
+        "effective_pairs": 11
+      },
+      {
+        "scene": 64744,
+        "origins": 2,
+        "pairs": 12,
+        "effective_pairs": 9
+      }
+    ],
+    "per_origin": [
+      {
+        "scene": 60086,
+        "before": 50,
+        "candidates": 3,
+        "pairs": 3,
+        "effective": 2,
+        "within_return_std": 5.119018888289207
+      },
+      {
+        "scene": 60086,
+        "before": 150,
+        "candidates": 3,
+        "pairs": 3,
+        "effective": 2,
+        "within_return_std": 0.9732102316919482
+      },
+      {
+        "scene": 60112,
+        "before": 50,
+        "candidates": 3,
+        "pairs": 3,
+        "effective": 2,
+        "within_return_std": 0.6444755010533925
+      },
+      {
+        "scene": 60112,
+        "before": 150,
+        "candidates": 3,
+        "pairs": 3,
+        "effective": 2,
+        "within_return_std": 2.605380110478498
+      },
+      {
+        "scene": 60124,
+        "before": 50,
+        "candidates": 3,
+        "pairs": 3,
+        "effective": 2,
+        "within_return_std": 1.9763075475580059
+      },
+      {
+        "scene": 60124,
+        "before": 150,
+        "candidates": 3,
+        "pairs": 3,
+        "effective": 2,
+        "within_return_std": 4.350352287397576
+      },
+      {
+        "scene": 60462,
+        "before": 50,
+        "candidates": 3,
+        "pairs": 3,
+        "effective": 3,
+        "within_return_std": 8.14662892302184
+      },
+      {
+        "scene": 60462,
+        "before": 150,
+        "candidates": 3,
+        "pairs": 3,
+        "effective": 3,
+        "within_return_std": 15.52840977666459
+      },
+      {
+        "scene": 60610,
+        "before": 50,
+        "candidates": 3,
+        "pairs": 3,
+        "effective": 3,
+        "within_return_std": 3.4575568478236516
+      },
+      {
+        "scene": 60610,
+        "before": 150,
+        "candidates": 3,
+        "pairs": 3,
+        "effective": 3,
+        "within_return_std": 3.487519532807903
+      },
+      {
+        "scene": 60830,
+        "before": 50,
+        "candidates": 3,
+        "pairs": 3,
+        "effective": 2,
+        "within_return_std": 36.97669469878423
+      },
+      {
+        "scene": 60830,
+        "before": 150,
+        "candidates": 3,
+        "pairs": 3,
+        "effective": 2,
+        "within_return_std": 0.7649180053060448
+      },
+      {
+        "scene": 61246,
+        "before": 50,
+        "candidates": 3,
+        "pairs": 3,
+        "effective": 2,
+        "within_return_std": 4.398640960683238
+      },
+      {
+        "scene": 61246,
+        "before": 150,
+        "candidates": 3,
+        "pairs": 3,
+        "effective": 2,
+        "within_return_std": 3.7046175524827545
+      },
+      {
+        "scene": 61711,
+        "before": 50,
+        "candidates": 3,
+        "pairs": 3,
+        "effective": 3,
+        "within_return_std": 33.73587532039579
+      },
+      {
+        "scene": 61711,
+        "before": 150,
+        "candidates": 3,
+        "pairs": 3,
+        "effective": 3,
+        "within_return_std": 25.65649097384338
+      },
+      {
+        "scene": 62322,
+        "before": 50,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 5,
+        "within_return_std": 3.002018499551531
+      },
+      {
+        "scene": 62322,
+        "before": 150,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 3,
+        "within_return_std": 0.6984322742939255
+      },
+      {
+        "scene": 63063,
+        "before": 50,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 6,
+        "within_return_std": 10.6362444633731
+      },
+      {
+        "scene": 63063,
+        "before": 150,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 5,
+        "within_return_std": 1.343848994317697
+      },
+      {
+        "scene": 63530,
+        "before": 50,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 5,
+        "within_return_std": 2.0361952540563104
+      },
+      {
+        "scene": 63530,
+        "before": 150,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 3,
+        "within_return_std": 0.988787825701751
+      },
+      {
+        "scene": 63621,
+        "before": 50,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 1,
+        "within_return_std": 0.40928873566058155
+      },
+      {
+        "scene": 63621,
+        "before": 150,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 3,
+        "within_return_std": 0.7752737917213263
+      },
+      {
+        "scene": 63757,
+        "before": 50,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 5,
+        "within_return_std": 3.787773482851389
+      },
+      {
+        "scene": 63757,
+        "before": 150,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 5,
+        "within_return_std": 3.389747365594625
+      },
+      {
+        "scene": 63946,
+        "before": 50,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 2,
+        "within_return_std": 0.67029668832936
+      },
+      {
+        "scene": 63946,
+        "before": 150,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 3,
+        "within_return_std": 0.9230478338537446
+      },
+      {
+        "scene": 64281,
+        "before": 50,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 5,
+        "within_return_std": 2.9218834080048506
+      },
+      {
+        "scene": 64281,
+        "before": 150,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 6,
+        "within_return_std": 5.248042499700743
+      },
+      {
+        "scene": 64377,
+        "before": 50,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 5,
+        "within_return_std": 7.340644587696983
+      },
+      {
+        "scene": 64377,
+        "before": 150,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 6,
+        "within_return_std": 7.673695998193373
+      },
+      {
+        "scene": 64391,
+        "before": 50,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 3,
+        "within_return_std": 6.798944987217092
+      },
+      {
+        "scene": 64391,
+        "before": 150,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 6,
+        "within_return_std": 29.212226828326212
+      },
+      {
+        "scene": 64428,
+        "before": 50,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 0,
+        "within_return_std": 0.25505027745149744
+      },
+      {
+        "scene": 64428,
+        "before": 150,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 0,
+        "within_return_std": 0.1312356234939271
+      },
+      {
+        "scene": 64654,
+        "before": 50,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 5,
+        "within_return_std": 7.185944974407564
+      },
+      {
+        "scene": 64654,
+        "before": 150,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 6,
+        "within_return_std": 3.3331578760111165
+      },
+      {
+        "scene": 64744,
+        "before": 50,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 5,
+        "within_return_std": 14.538838182119186
+      },
+      {
+        "scene": 64744,
+        "before": 150,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 4,
+        "within_return_std": 3.6756545608932747
+      }
+    ],
+    "all_pair_delta": {
+      "n": 192,
+      "p0": -62.051929622984375,
+      "p25": -2.9576850983133873,
+      "p50": 0.07654442935526262,
+      "p75": 2.3093093715612483,
+      "p95": 25.634723213144014,
+      "p100": 78.56004777678817
+    },
+    "abs_pair_delta": {
+      "n": 192,
+      "p0": 0.011812298427969381,
+      "p25": 0.7622526620982057,
+      "p50": 2.765284576051812,
+      "p75": 9.054594396148953,
+      "p95": 40.12133788854237,
+      "p100": 78.56004777678817
+    },
+    "candidate_vs_baseline": {
+      "n": 104,
+      "p0": -78.56004777678817,
+      "p25": -2.3093093715612483,
+      "p50": -0.2504162132150487,
+      "p75": 1.4389014968161575,
+      "p95": 14.899730199897643,
+      "p100": 48.25882166185515
+    },
+    "positive_vs_baseline_fraction": 0.3076923076923077,
+    "negative_vs_baseline_fraction": 0.3557692307692308,
+    "branch_gain_counts": {
+      "gaussian_1": {
+        "count": 16,
+        "better": 5,
+        "worse": 5,
+        "near": 6
+      },
+      "gaussian_2": {
+        "count": 16,
+        "better": 3,
+        "worse": 9,
+        "near": 4
+      },
+      "gaussian": {
+        "count": 24,
+        "better": 6,
+        "worse": 12,
+        "near": 6
+      },
+      "mean": {
+        "count": 24,
+        "better": 9,
+        "worse": 6,
+        "near": 9
+      },
+      "best_elite": {
+        "count": 24,
+        "better": 9,
+        "worse": 5,
+        "near": 10
+      }
+    },
+    "positive_delta_fraction": 0.515625,
+    "near_tie_fraction": 0.296875,
+    "action_rmse": {
+      "n": 104,
+      "p0": 0.012674293632823408,
+      "p25": 0.05346137433396099,
+      "p50": 0.08846467950950283,
+      "p75": 0.1785152881349668,
+      "p95": 0.26045378500353905,
+      "p100": 0.3138925519568208
+    },
+    "within_return_std": {
+      "n": 40,
+      "p0": 0.1312356234939271,
+      "p25": 0.9848934271993004,
+      "p50": 3.4725381903157775,
+      "p75": 7.224619877729919,
+      "p95": 29.438409252929677,
+      "p100": 36.97669469878423
+    },
+    "between_origin_return_std": 39.08466370839899,
+    "within_candidate_terminal_l2": {
+      "n": 192,
+      "p0": 0.04383845999836922,
+      "p25": 0.5511576980352402,
+      "p50": 1.0208736062049866,
+      "p75": 1.9312500059604645,
+      "p95": 2.743735146522522,
+      "p100": 3.1416845321655273
+    },
+    "imagined_vs_actual_terminal_l2": {
+      "n": 144,
+      "p0": 0.8537187576293945,
+      "p25": 1.4011343717575073,
+      "p50": 1.8379788398742676,
+      "p75": 2.2599793076515198,
+      "p95": 2.939565122127532,
+      "p100": 3.614387035369873
+    },
+    "coverage": [
+      {
+        "scene": 62322,
+        "before": 50,
+        "speed": 14.093842363374604,
+        "lane_type": "StraightLane",
+        "traffic_count": 22,
+        "lateral": -1.6703124046325684,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 62322,
+        "before": 150,
+        "speed": 13.18216529951202,
+        "lane_type": "CircularLane",
+        "traffic_count": 22,
+        "lateral": -0.6091107080746312,
+        "lane_heading_change_10m": -0.15780409210455826
+      },
+      {
+        "scene": 63063,
+        "before": 50,
+        "speed": 8.829384164652312,
+        "lane_type": "StraightLane",
+        "traffic_count": 12,
+        "lateral": 1.0235474109649658,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 63063,
+        "before": 150,
+        "speed": 4.962715858851447,
+        "lane_type": "CircularLane",
+        "traffic_count": 12,
+        "lateral": 0.6874123066379667,
+        "lane_heading_change_10m": -0.17087300471950118
+      },
+      {
+        "scene": 63530,
+        "before": 50,
+        "speed": 13.955299035788745,
+        "lane_type": "StraightLane",
+        "traffic_count": 9,
+        "lateral": 0.9753777980804443,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 63530,
+        "before": 150,
+        "speed": 11.590084042459472,
+        "lane_type": "StraightLane",
+        "traffic_count": 9,
+        "lateral": 0.7203786580256453,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 63621,
+        "before": 50,
+        "speed": 13.538653156976205,
+        "lane_type": "StraightLane",
+        "traffic_count": 5,
+        "lateral": 0.8245482444763184,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 63621,
+        "before": 150,
+        "speed": 7.771183254140547,
+        "lane_type": "CircularLane",
+        "traffic_count": 4,
+        "lateral": -0.6593275224282351,
+        "lane_heading_change_10m": 0.41666666666666663
+      },
+      {
+        "scene": 63757,
+        "before": 50,
+        "speed": 9.58688885927306,
+        "lane_type": "StraightLane",
+        "traffic_count": 16,
+        "lateral": 1.267056941986084,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 63757,
+        "before": 150,
+        "speed": 5.874969792115787,
+        "lane_type": "CircularLane",
+        "traffic_count": 16,
+        "lateral": 1.2152401601828497,
+        "lane_heading_change_10m": -0.6139644910464921
+      },
+      {
+        "scene": 63946,
+        "before": 50,
+        "speed": 9.992855108014915,
+        "lane_type": "StraightLane",
+        "traffic_count": 13,
+        "lateral": -1.143585205078125,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 63946,
+        "before": 150,
+        "speed": 11.669660189981284,
+        "lane_type": "CircularLane",
+        "traffic_count": 13,
+        "lateral": -1.1543585113853112,
+        "lane_heading_change_10m": -0.19183421046835036
+      },
+      {
+        "scene": 64281,
+        "before": 50,
+        "speed": 12.225321790889554,
+        "lane_type": "StraightLane",
+        "traffic_count": 13,
+        "lateral": -1.4753105640411377,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 64281,
+        "before": 150,
+        "speed": 5.147368131274561,
+        "lane_type": "CircularLane",
+        "traffic_count": 13,
+        "lateral": -0.246241301409178,
+        "lane_heading_change_10m": -0.21154796696661182
+      },
+      {
+        "scene": 64377,
+        "before": 50,
+        "speed": 12.28340357312096,
+        "lane_type": "StraightLane",
+        "traffic_count": 17,
+        "lateral": -1.541398525238037,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 64377,
+        "before": 150,
+        "speed": 10.645213463265387,
+        "lane_type": "StraightLane",
+        "traffic_count": 17,
+        "lateral": -0.05841636657714844,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 64391,
+        "before": 50,
+        "speed": 13.601682717489805,
+        "lane_type": "StraightLane",
+        "traffic_count": 14,
+        "lateral": 0.4783151149749756,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 64391,
+        "before": 150,
+        "speed": 6.367400010122609,
+        "lane_type": "StraightLane",
+        "traffic_count": 14,
+        "lateral": 0.5839023590087891,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 64428,
+        "before": 50,
+        "speed": 13.651151803331965,
+        "lane_type": "StraightLane",
+        "traffic_count": 5,
+        "lateral": 0.8011932373046875,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 64428,
+        "before": 150,
+        "speed": 13.716447384964813,
+        "lane_type": "StraightLane",
+        "traffic_count": 4,
+        "lateral": 1.3654632568359375,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 64654,
+        "before": 50,
+        "speed": 13.20388303928463,
+        "lane_type": "StraightLane",
+        "traffic_count": 21,
+        "lateral": 0.7702350616455078,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 64654,
+        "before": 150,
+        "speed": 7.929097267245918,
+        "lane_type": "StraightLane",
+        "traffic_count": 21,
+        "lateral": 0.9130959939535721,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 64744,
+        "before": 50,
+        "speed": 8.187158763021547,
+        "lane_type": "StraightLane",
+        "traffic_count": 15,
+        "lateral": -0.13741445541381836,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 64744,
+        "before": 150,
+        "speed": 7.033965278923369,
+        "lane_type": "StraightLane",
+        "traffic_count": 15,
+        "lateral": -1.249220371246338,
+        "lane_heading_change_10m": 0.0
+      }
+    ],
+    "new_branch_crashes": 12,
+    "new_branch_oor": 11,
+    "new_branch_success": 85,
+    "near_zero_constant_features": null,
+    "feature_scales": {
+      "z0_std": {
+        "n": 512,
+        "p0": 0.0029507214203476906,
+        "p25": 0.06515876576304436,
+        "p50": 0.09228479117155075,
+        "p75": 0.12311051599681377,
+        "p95": 0.17217350304126738,
+        "p100": 0.269668847322464
+      },
+      "terminal_std": {
+        "n": 512,
+        "p0": 0.011228689923882484,
+        "p25": 0.06638650223612785,
+        "p50": 0.08777809143066406,
+        "p75": 0.12232690304517746,
+        "p95": 0.17632727175951005,
+        "p100": 0.3419578969478607
+      },
+      "actions_std": {
+        "n": 20,
+        "p0": 0.0653013214468956,
+        "p25": 0.0779979545623064,
+        "p50": 0.35712067782878876,
+        "p75": 0.6421390026807785,
+        "p95": 0.7111042380332947,
+        "p100": 0.7306197285652161
+      },
+      "near_constant_count": 0,
+      "context_terminal_coordinate_correlation": {
+        "n": 512,
+        "p0": -0.18147655263672818,
+        "p25": 0.2527897188744306,
+        "p50": 0.4035032135159369,
+        "p75": 0.5230024766345075,
+        "p95": 0.6718138566376181,
+        "p100": 0.8742710856700845
+      },
+      "note": "Statistics/normalization are fit-only; z0 is repeated within origin. Repeated origins and correlated windows never create extra independent maps."
+    }
+  },
+  "inner_stop": {
+    "scenes": 8,
+    "origins": 15,
+    "raw_branches": 53,
+    "deduplicated": [],
+    "pairs": 69,
+    "effective_pairs": 57,
+    "unavailable": [],
+    "per_scene": [
+      {
+        "scene": 60073,
+        "origins": 2,
+        "pairs": 6,
+        "effective_pairs": 3
+      },
+      {
+        "scene": 60541,
+        "origins": 2,
+        "pairs": 6,
+        "effective_pairs": 5
+      },
+      {
+        "scene": 60566,
+        "origins": 1,
+        "pairs": 3,
+        "effective_pairs": 3
+      },
+      {
+        "scene": 61499,
+        "origins": 2,
+        "pairs": 6,
+        "effective_pairs": 6
+      },
+      {
+        "scene": 62116,
+        "origins": 2,
+        "pairs": 12,
+        "effective_pairs": 9
+      },
+      {
+        "scene": 62583,
+        "origins": 2,
+        "pairs": 12,
+        "effective_pairs": 11
+      },
+      {
+        "scene": 63184,
+        "origins": 2,
+        "pairs": 12,
+        "effective_pairs": 10
+      },
+      {
+        "scene": 63858,
+        "origins": 2,
+        "pairs": 12,
+        "effective_pairs": 10
+      }
+    ],
+    "per_origin": [
+      {
+        "scene": 60073,
+        "before": 50,
+        "candidates": 3,
+        "pairs": 3,
+        "effective": 1,
+        "within_return_std": 0.6492714278118117
+      },
+      {
+        "scene": 60073,
+        "before": 150,
+        "candidates": 3,
+        "pairs": 3,
+        "effective": 2,
+        "within_return_std": 0.7983760748921718
+      },
+      {
+        "scene": 60541,
+        "before": 50,
+        "candidates": 3,
+        "pairs": 3,
+        "effective": 2,
+        "within_return_std": 2.8752319482252777
+      },
+      {
+        "scene": 60541,
+        "before": 150,
+        "candidates": 3,
+        "pairs": 3,
+        "effective": 3,
+        "within_return_std": 3.471904540956454
+      },
+      {
+        "scene": 60566,
+        "before": 50,
+        "candidates": 3,
+        "pairs": 3,
+        "effective": 3,
+        "within_return_std": 1.5390387192094863
+      },
+      {
+        "scene": 61499,
+        "before": 50,
+        "candidates": 3,
+        "pairs": 3,
+        "effective": 3,
+        "within_return_std": 19.62992921382669
+      },
+      {
+        "scene": 61499,
+        "before": 150,
+        "candidates": 3,
+        "pairs": 3,
+        "effective": 3,
+        "within_return_std": 4.52368749562848
+      },
+      {
+        "scene": 62116,
+        "before": 50,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 4,
+        "within_return_std": 1.6023857198099682
+      },
+      {
+        "scene": 62116,
+        "before": 150,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 5,
+        "within_return_std": 6.23704477728799
+      },
+      {
+        "scene": 62583,
+        "before": 50,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 6,
+        "within_return_std": 3.66106518668235
+      },
+      {
+        "scene": 62583,
+        "before": 150,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 5,
+        "within_return_std": 2.313883827876887
+      },
+      {
+        "scene": 63184,
+        "before": 50,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 5,
+        "within_return_std": 2.9473923459186766
+      },
+      {
+        "scene": 63184,
+        "before": 150,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 5,
+        "within_return_std": 4.252229053813042
+      },
+      {
+        "scene": 63858,
+        "before": 50,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 4,
+        "within_return_std": 0.9693169499685228
+      },
+      {
+        "scene": 63858,
+        "before": 150,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 6,
+        "within_return_std": 5.522025843669125
+      }
+    ],
+    "all_pair_delta": {
+      "n": 69,
+      "p0": -34.99292418631694,
+      "p25": -3.2362288319645813,
+      "p50": 0.361787400869531,
+      "p75": 3.6523865209529163,
+      "p95": 10.05873871727853,
+      "p100": 46.05561101075256
+    },
+    "abs_pair_delta": {
+      "n": 69,
+      "p0": 0.10068236082599924,
+      "p25": 1.4227358408974453,
+      "p50": 3.5980162328341123,
+      "p75": 7.45808907816911,
+      "p95": 13.170490518026226,
+      "p100": 46.05561101075256
+    },
+    "candidate_vs_baseline": {
+      "n": 38,
+      "p0": -46.05561101075256,
+      "p25": -4.970942565506544,
+      "p50": -0.6242432540667266,
+      "p75": 2.403123837523543,
+      "p95": 8.805299327376881,
+      "p100": 13.007596690904165
+    },
+    "positive_vs_baseline_fraction": 0.34210526315789475,
+    "negative_vs_baseline_fraction": 0.4473684210526316,
+    "branch_gain_counts": {
+      "gaussian_1": {
+        "count": 7,
+        "better": 2,
+        "worse": 2,
+        "near": 3
+      },
+      "gaussian_2": {
+        "count": 7,
+        "better": 3,
+        "worse": 3,
+        "near": 1
+      },
+      "gaussian": {
+        "count": 8,
+        "better": 1,
+        "worse": 4,
+        "near": 3
+      },
+      "mean": {
+        "count": 8,
+        "better": 3,
+        "worse": 4,
+        "near": 1
+      },
+      "best_elite": {
+        "count": 8,
+        "better": 4,
+        "worse": 4,
+        "near": 0
+      }
+    },
+    "positive_delta_fraction": 0.5217391304347826,
+    "near_tie_fraction": 0.17391304347826086,
+    "action_rmse": {
+      "n": 38,
+      "p0": 0.043976751313894426,
+      "p25": 0.06947237471722088,
+      "p50": 0.09194565608711186,
+      "p75": 0.1696970573348767,
+      "p95": 0.26854420281747765,
+      "p100": 0.2971039315988169
+    },
+    "within_return_std": {
+      "n": 15,
+      "p0": 0.6492714278118117,
+      "p25": 1.5707122195097272,
+      "p50": 2.9473923459186766,
+      "p75": 4.387958274720761,
+      "p95": 10.254910108249586,
+      "p100": 19.62992921382669
+    },
+    "between_origin_return_std": 34.90839795905949,
+    "within_candidate_terminal_l2": {
+      "n": 69,
+      "p0": 0.09967821836471558,
+      "p25": 0.8421545624732971,
+      "p50": 1.4463905096054077,
+      "p75": 2.123196840286255,
+      "p95": 2.686829948425293,
+      "p100": 3.2338709831237793
+    },
+    "imagined_vs_actual_terminal_l2": {
+      "n": 53,
+      "p0": 1.1508493423461914,
+      "p25": 1.5714980363845825,
+      "p50": 1.9255954027175903,
+      "p75": 2.32890248298645,
+      "p95": 2.6290703296661375,
+      "p100": 2.9543581008911133
+    },
+    "coverage": [
+      {
+        "scene": 62116,
+        "before": 50,
+        "speed": 13.235926680673115,
+        "lane_type": "StraightLane",
+        "traffic_count": 8,
+        "lateral": -1.082700490951538,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 62116,
+        "before": 150,
+        "speed": 8.89519940083248,
+        "lane_type": "CircularLane",
+        "traffic_count": 8,
+        "lateral": 0.8197342821011588,
+        "lane_heading_change_10m": 0.2540013126831775
+      },
+      {
+        "scene": 62583,
+        "before": 50,
+        "speed": 14.42212752760119,
+        "lane_type": "StraightLane",
+        "traffic_count": 11,
+        "lateral": -1.5169165134429932,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 62583,
+        "before": 150,
+        "speed": 4.592979532513537,
+        "lane_type": "CircularLane",
+        "traffic_count": 11,
+        "lateral": 1.6971470277440588,
+        "lane_heading_change_10m": -0.18377804572199574
+      },
+      {
+        "scene": 63184,
+        "before": 50,
+        "speed": 13.8873201291873,
+        "lane_type": "StraightLane",
+        "traffic_count": 10,
+        "lateral": -0.7262482643127441,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 63184,
+        "before": 150,
+        "speed": 17.56263682396401,
+        "lane_type": "StraightLane",
+        "traffic_count": 10,
+        "lateral": 1.7180404663085938,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 63858,
+        "before": 50,
+        "speed": 8.33021792707477,
+        "lane_type": "StraightLane",
+        "traffic_count": 11,
+        "lateral": 1.5592851638793945,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 63858,
+        "before": 150,
+        "speed": 4.957349945124257,
+        "lane_type": "StraightLane",
+        "traffic_count": 11,
+        "lateral": 0.13573965553706469,
+        "lane_heading_change_10m": 0.0
+      }
+    ],
+    "new_branch_crashes": 0,
+    "new_branch_oor": 0,
+    "new_branch_success": 32,
+    "near_zero_constant_features": null
+  },
+  "validation": {
+    "scenes": 6,
+    "origins": 12,
+    "raw_branches": 48,
+    "deduplicated": [],
+    "pairs": 72,
+    "effective_pairs": 53,
+    "unavailable": [],
+    "per_scene": [
+      {
+        "scene": 62014,
+        "origins": 2,
+        "pairs": 12,
+        "effective_pairs": 8
+      },
+      {
+        "scene": 62203,
+        "origins": 2,
+        "pairs": 12,
+        "effective_pairs": 7
+      },
+      {
+        "scene": 62922,
+        "origins": 2,
+        "pairs": 12,
+        "effective_pairs": 6
+      },
+      {
+        "scene": 63147,
+        "origins": 2,
+        "pairs": 12,
+        "effective_pairs": 10
+      },
+      {
+        "scene": 63893,
+        "origins": 2,
+        "pairs": 12,
+        "effective_pairs": 11
+      },
+      {
+        "scene": 64641,
+        "origins": 2,
+        "pairs": 12,
+        "effective_pairs": 11
+      }
+    ],
+    "per_origin": [
+      {
+        "scene": 62014,
+        "before": 50,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 5,
+        "within_return_std": 7.023489011558227
+      },
+      {
+        "scene": 62014,
+        "before": 150,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 3,
+        "within_return_std": 2.873868699882894
+      },
+      {
+        "scene": 62203,
+        "before": 50,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 6,
+        "within_return_std": 45.86313546285909
+      },
+      {
+        "scene": 62203,
+        "before": 150,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 1,
+        "within_return_std": 0.42987792929576585
+      },
+      {
+        "scene": 62922,
+        "before": 50,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 3,
+        "within_return_std": 6.122504885801264
+      },
+      {
+        "scene": 62922,
+        "before": 150,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 3,
+        "within_return_std": 3.672069999345589
+      },
+      {
+        "scene": 63147,
+        "before": 50,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 5,
+        "within_return_std": 3.3912400657013677
+      },
+      {
+        "scene": 63147,
+        "before": 150,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 5,
+        "within_return_std": 4.739136739105189
+      },
+      {
+        "scene": 63893,
+        "before": 50,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 6,
+        "within_return_std": 4.365189877557015
+      },
+      {
+        "scene": 63893,
+        "before": 150,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 5,
+        "within_return_std": 7.048091604202579
+      },
+      {
+        "scene": 64641,
+        "before": 50,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 5,
+        "within_return_std": 4.208463325517203
+      },
+      {
+        "scene": 64641,
+        "before": 150,
+        "candidates": 4,
+        "pairs": 6,
+        "effective": 6,
+        "within_return_std": 14.932196853255332
+      }
+    ],
+    "all_pair_delta": {
+      "n": 72,
+      "p0": -84.5213245614155,
+      "p25": -1.280702174858682,
+      "p50": 0.7294298597393265,
+      "p75": 10.49563363500095,
+      "p95": 29.825160237322702,
+      "p100": 112.60077094330298
+    },
+    "abs_pair_delta": {
+      "n": 72,
+      "p0": 0.002226802053598931,
+      "p25": 0.9247749131476013,
+      "p50": 6.576435965411491,
+      "p75": 12.11218364766643,
+      "p95": 33.342427585570476,
+      "p100": 112.60077094330298
+    },
+    "candidate_vs_baseline": {
+      "n": 36,
+      "p0": -111.06952807012719,
+      "p25": -10.49563363500095,
+      "p50": -0.728253499671581,
+      "p75": 2.0701909383795005,
+      "p95": 8.965942600816728,
+      "p100": 13.889780364088608
+    },
+    "positive_vs_baseline_fraction": 0.3055555555555556,
+    "negative_vs_baseline_fraction": 0.4444444444444444,
+    "branch_gain_counts": {
+      "gaussian": {
+        "count": 12,
+        "better": 7,
+        "worse": 4,
+        "near": 1
+      },
+      "mean": {
+        "count": 12,
+        "better": 3,
+        "worse": 5,
+        "near": 4
+      },
+      "best_elite": {
+        "count": 12,
+        "better": 1,
+        "worse": 7,
+        "near": 4
+      }
+    },
+    "positive_delta_fraction": 0.5972222222222222,
+    "near_tie_fraction": 0.2638888888888889,
+    "action_rmse": {
+      "n": 36,
+      "p0": 0.0223858201771465,
+      "p25": 0.07485093409670945,
+      "p50": 0.10286508735313085,
+      "p75": 0.18553000197421643,
+      "p95": 0.23851337326407845,
+      "p100": 0.2560023861798077
+    },
+    "within_return_std": {
+      "n": 12,
+      "p0": 0.42987792929576585,
+      "p25": 3.601862515934534,
+      "p50": 4.552163308331101,
+      "p75": 7.029639659719315,
+      "p95": 28.851119227577,
+      "p100": 45.86313546285909
+    },
+    "between_origin_return_std": 50.17904406930043,
+    "within_candidate_terminal_l2": {
+      "n": 72,
+      "p0": 0.08061135560274124,
+      "p25": 0.9457142949104309,
+      "p50": 1.6816769242286682,
+      "p75": 2.5449318885803223,
+      "p95": 3.546859288215638,
+      "p100": 3.711268186569214
+    },
+    "imagined_vs_actual_terminal_l2": {
+      "n": 48,
+      "p0": 1.1751625537872314,
+      "p25": 1.6691451370716095,
+      "p50": 2.1974141597747803,
+      "p75": 2.5786945819854736,
+      "p95": 3.0090989589691164,
+      "p100": 3.847562789916992
+    },
+    "coverage": [
+      {
+        "scene": 62014,
+        "before": 50,
+        "speed": 14.963975003723638,
+        "lane_type": "StraightLane",
+        "traffic_count": 19,
+        "lateral": 0.5739879608154297,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 62014,
+        "before": 150,
+        "speed": 3.450936494739721,
+        "lane_type": "StraightLane",
+        "traffic_count": 19,
+        "lateral": -0.26108288764953613,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 62203,
+        "before": 50,
+        "speed": 14.744838096112952,
+        "lane_type": "StraightLane",
+        "traffic_count": 25,
+        "lateral": 0.40160369873046875,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 62203,
+        "before": 150,
+        "speed": 7.202957662562024,
+        "lane_type": "CircularLane",
+        "traffic_count": 25,
+        "lateral": 1.2291675934700272,
+        "lane_heading_change_10m": -0.2935572176753505
+      },
+      {
+        "scene": 62922,
+        "before": 50,
+        "speed": 12.707821891532182,
+        "lane_type": "StraightLane",
+        "traffic_count": 13,
+        "lateral": 1.1284620761871338,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 62922,
+        "before": 150,
+        "speed": 8.289066660027505,
+        "lane_type": "StraightLane",
+        "traffic_count": 13,
+        "lateral": -0.18343353271484375,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 63147,
+        "before": 50,
+        "speed": 10.154936694979169,
+        "lane_type": "StraightLane",
+        "traffic_count": 21,
+        "lateral": 0.42291903495788574,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 63147,
+        "before": 150,
+        "speed": 2.0374164613719774,
+        "lane_type": "StraightLane",
+        "traffic_count": 21,
+        "lateral": 0.37038886547088623,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 63893,
+        "before": 50,
+        "speed": 6.58818641489464,
+        "lane_type": "StraightLane",
+        "traffic_count": 17,
+        "lateral": 0.3601548671722412,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 63893,
+        "before": 150,
+        "speed": 12.050234810539454,
+        "lane_type": "StraightLane",
+        "traffic_count": 17,
+        "lateral": 0.7142493724822998,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 64641,
+        "before": 50,
+        "speed": 10.980853744531023,
+        "lane_type": "StraightLane",
+        "traffic_count": 22,
+        "lateral": 0.3170931339263916,
+        "lane_heading_change_10m": 0.0
+      },
+      {
+        "scene": 64641,
+        "before": 150,
+        "speed": 7.5999541608454875,
+        "lane_type": "StraightLane",
+        "traffic_count": 22,
+        "lateral": -1.150252342224121,
+        "lane_heading_change_10m": 0.0
+      }
+    ],
+    "new_branch_crashes": 6,
+    "new_branch_oor": 16,
+    "new_branch_success": 32,
+    "near_zero_constant_features": null
+  }
+}
