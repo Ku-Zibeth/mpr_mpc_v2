@@ -1,0 +1,18 @@
+{
+  "A0": {
+    "dimension": 537,
+    "feature": "current535+absolute action2",
+    "frozen": true
+  },
+  "A1": {
+    "dimension": 537,
+    "feature": "current535+action delta2"
+  },
+  "A2": {
+    "dimension": 539,
+    "feature": "current535+Baseline2+action delta2"
+  },
+  "no_future_features": true,
+  "baseline_reference": "unique actual same-origin candidate",
+  "note": "Centered linear A1/A2 cancel context and Baseline terms; do not interpret equality as lack of useful context."
+}

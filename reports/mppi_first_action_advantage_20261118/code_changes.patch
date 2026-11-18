@@ -1,0 +1,1199 @@
+diff --git a/reports/mppi_first_action_advantage_20261118/benchmark.py b/reports/mppi_first_action_advantage_20261118/benchmark.py
+new file mode 100644
+index 0000000..4c043af
+--- /dev/null
++++ b/reports/mppi_first_action_advantage_20261118/benchmark.py
+@@ -0,0 +1,66 @@
++"""Head-only CPU/GPU timings; never presented as complete MPPI latency."""
++import copy,sys,time
++from pathlib import Path
++sys.path.insert(0,str(Path(__file__).parent))
++from study_io import R,OLD,load,dump,table
++from evaluate import load_relative
++from models import features
++import numpy as np
++import torch
++from torch import nn
++from offline_model import load_model
++
++
++class A0Centered(nn.Module):
++    def __init__(self,model,baseline):
++        super().__init__();self.model=model;self.register_buffer('baseline',torch.tensor(baseline))
++    def forward(self,x):
++        b=x.clone();b[:,-2:]=self.baseline
++        return self.model(x)-self.model(b)
++
++
++@torch.no_grad()
++def main():
++    torch.set_num_threads(1);p=load(R/'protocol.json')
++    meta=load(R/'model_manifest.json');c=np.load(OLD/'origins/90115_50/catalog.npz')
++    a0,_=load_model(p['A0_checkpoint'],p['A0_context'])
++    models={'A0_frozen':A0Centered(a0,c['baseline'][0])}
++    for name in ['A1_linear','A1_mlp','A2_linear','A2_mlp','A2_knn']:
++        models[name]=load_relative(next(m for m in meta if m['name']=='full_'+name))
++    inputs={s:np.stack([features(c['state535'],c['baseline'][0],a,s) for a in c['pool'][:,0]]) for s in ['A0','A1','A2']}
++    rows=[]
++    for name,base in models.items():
++        schema=name[:2]
++        for device in ['cpu','cuda']:
++            if device=='cuda' and not torch.cuda.is_available():continue
++            before=torch.cuda.memory_allocated() if device=='cuda' else 0
++            model=copy.deepcopy(base).to(device).eval().requires_grad_(False)
++            footprint=torch.cuda.memory_allocated()-before if device=='cuda' else 0
++            for batch in p['benchmark']['batches']:
++                x=torch.tensor(inputs[schema][:batch],device=device)
++                for _ in range(p['benchmark']['warmup']):model(x)
++                if device=='cuda':torch.cuda.synchronize();torch.cuda.reset_peak_memory_stats()
++                times=[];kernel=[]
++                for _ in range(p['benchmark']['repeats']):
++                    if device=='cuda':
++                        begin,end=torch.cuda.Event(enable_timing=True),torch.cuda.Event(enable_timing=True)
++                        torch.cuda.synchronize();start=time.perf_counter();begin.record();model(x);end.record();end.synchronize()
++                        times.append((time.perf_counter()-start)*1000);kernel.append(begin.elapsed_time(end))
++                    else:
++                        start=time.perf_counter();model(x);times.append((time.perf_counter()-start)*1000)
++                peak=torch.cuda.max_memory_allocated() if device=='cuda' else 0
++                cpu=base(torch.tensor(inputs[schema][:batch])).numpy()
++                output=model(x).cpu().numpy()
++                rows.append(dict(model=name,device=device,batch=batch,parameters=sum(t.numel() for t in model.parameters()),
++                    wall_p50_ms=float(np.quantile(times,.5)),wall_p95_ms=float(np.quantile(times,.95)),wall_p99_ms=float(np.quantile(times,.99)),
++                    cuda_kernel_p50_ms=float(np.median(kernel)) if kernel else None,model_tensor_bytes=footprint,
++                    peak_process_tensor_bytes=peak,cpu_gpu_max_abs_difference=float(np.max(np.abs(cpu-output))),
++                    repeats=p['benchmark']['repeats'],scope='Head-only including centering; inputs already on device. NOT whole Lattice/SAC/MPPI time.'))
++            del model
++    table('inference_benchmark.csv',rows)
++    dump('inference_benchmark.json',dict(rows=rows,cpu_threads=1,device_name=torch.cuda.get_device_name() if torch.cuda.is_available() else None,
++        transfer_included=False,CUDA_tensor_memory_not_full_driver_process_memory=True,not_complete_planner_latency=True))
++    print('Inference benchmark complete:',len(rows),'configurations.',flush=True)
++
++
++if __name__=='__main__':main()
+diff --git a/reports/mppi_first_action_advantage_20261118/evaluate.py b/reports/mppi_first_action_advantage_20261118/evaluate.py
+new file mode 100644
+index 0000000..3143b62
+--- /dev/null
++++ b/reports/mppi_first_action_advantage_20261118/evaluate.py
+@@ -0,0 +1,179 @@
++"""True fit-map LOMO, frozen A0 reference and once-only inner-stop selection."""
++import sys
++from pathlib import Path
++sys.path.insert(0,str(Path(__file__).parent))
++from study_io import R,ROOT,OLD,PRIOR,load,dump,table,sha
++sys.path.insert(1,str(ROOT))
++sys.path.insert(2,str(OLD))
++import numpy as np
++import torch
++from models import Advantage,LocalKNN,balanced_weights
++from tools.first_action_failure import ranking,cluster_bootstrap,paired_origins
++from offline_model import load_model as load_A0
++
++METRICS=['pair_accuracy','spearman','kendall','top1_regret','model_gain','baseline_gain',
++         'selected_positive','selected_negative','oracle_gain','positive_fraction','baseline_gain_mae']
++NAMES=['A0_frozen','A1_linear','A1_mlp','A2_linear','A2_mlp','A2_knn']
++
++
++def load_relative(meta):
++    assert sha(Path(meta['checkpoint']))==meta['sha256']
++    artifact=torch.load(meta['checkpoint'],map_location='cpu',weights_only=True)
++    assert artifact['meta']['protocol_sha256']==sha(R/'protocol.json')
++    data=np.load(R/'fit_dataset.npz');ids=meta['fit_indices']
++    model=(LocalKNN(data['A2'][ids],data['delta_y'][ids],balanced_weights(data['scene'][ids],data['origin'][ids]))
++           if meta['kind']=='knn' else Advantage(meta['dimension'],meta['kind']))
++    model.load_state_dict(artifact['state_dict']);model.eval().requires_grad_(False)
++    return model
++
++
++def per_origin_predict(model,x,data,ids):
++    result=np.full(len(data['y']),np.nan,np.float32)
++    for origin in sorted(set(data['origin'][ids])):
++        ii=ids[data['origin'][ids]==origin]
++        with torch.no_grad():result[ii]=model(torch.tensor(x[ii],dtype=torch.float32)).numpy()
++    return result
++
++
++def evaluate(data,pred,stage,name):
++    rows=[]
++    for origin in sorted(set(data['origin'])):
++        ids=np.flatnonzero(data['origin']==origin)
++        assert data['baseline'][ids][0] and data['delta_y'][ids][0]==0
++        a=ranking(pred[ids],data['delta_y'][ids])
++        rows.append(dict(scene_id=int(data['scene'][ids[0]]),origin_id=str(origin),horizon=1,
++            stage=stage,model=name,A0_fit_overlap=(stage=='lomo' and name=='A0_frozen'),
++            model_gain=a['selected_gain'],baseline_gain=0.,**a))
++    return rows
++
++
++def score_tuple(summary):
++    a=summary['pair_accuracy']['mean'];r=summary['top1_regret']['mean'];g=summary['model_gain']['mean']
++    return (a if a is not None else -.5,-r,g)
++
++
++def main():
++    torch.set_num_threads(1)
++    p=load(R/'protocol.json');manifest=load(R/'model_manifest.json')
++    fit={k:v.copy() for k,v in np.load(R/'fit_dataset.npz').items()}
++    inner={k:v.copy() for k,v in np.load(R/'inner_stop_dataset.npz').items()}
++    assert set(inner['scene'])==set(p['inner_stop_maps'])
++    assert not (set(fit['scene'])|set(inner['scene']))&set(p['excluded_seen_validation'])
++    A0,_=load_A0(p['A0_checkpoint'],p['A0_context']);A0.eval().requires_grad_(False)
++    all_rows=[];predictions={};weights=[]
++    for stage,data in [('lomo',fit),('inner_stop',inner)]:
++        n=len(data['y']);preds={name:np.full(n,np.nan,np.float32) for name in NAMES}
++        raw=per_origin_predict(A0,data['A0'],data,np.arange(n))
++        for origin in sorted(set(data['origin'])):
++            ids=np.flatnonzero(data['origin']==origin);preds['A0_frozen'][ids]=raw[ids]-raw[ids[0]]
++        for scene in (p['fit_maps'] if stage=='lomo' else [None]):
++            ids=np.flatnonzero(data['scene']==scene) if scene is not None else np.arange(n)
++            prefix=f'lomo_{scene}' if stage=='lomo' else 'full'
++            for name in NAMES[1:]:
++                schema,kind=name.split('_')
++                meta=next(m for m in manifest if m['name']==f'{prefix}_{schema}_{kind}')
++                if scene is not None:assert scene not in meta['fit_maps']
++                model=load_relative(meta)
++                pred=per_origin_predict(model,data[schema],data,ids)
++                preds[name][ids]=pred[ids]
++        for name,pred in preds.items():
++            assert np.isfinite(pred).all() and np.all(pred[data['baseline']]==0)
++            all_rows.extend(evaluate(data,pred,stage,name))
++        np.savez_compressed(R/f'{stage}_predictions.npz',**preds)
++        predictions[stage]=preds
++    # Record actual hierarchical candidate weights for every fold and full-fit.
++    for meta in [m for m in manifest if m['schema']=='A2' and m['kind']=='linear']:
++        ids=np.asarray(meta['fit_indices']);s,o=fit['scene'][ids],fit['origin'][ids]
++        w=balanced_weights(s,o)
++        for i,index in enumerate(ids):
++            origin_count=len(set(o[s==s[i]]));candidate_count=int((o==o[i]).sum())
++            weights.append(dict(stage=meta['stage'],scene=int(s[i]),origin=str(o[i]),candidate=int(fit['candidate'][index]),
++                scene_weight=1/len(set(s)),origin_weight=1/len(set(s))/origin_count,candidate_weight=float(w[i]),candidate_count=candidate_count))
++    table('training_weights.csv',weights)
++    table('origin_results.csv',all_rows)
++    summaries={}
++    for stage in ['lomo','inner_stop']:
++        for name in NAMES:
++            rows=[r for r in all_rows if r['stage']==stage and r['model']==name]
++            summaries[f'{stage}/{name}']=cluster_bootstrap(rows,METRICS)
++    original_inner=load(OLD/'training_decision.json')['selected']['inner_stop']['summary']['pair_accuracy']['mean']
++    assert abs(summaries['inner_stop/A0_frozen']['pair_accuracy']['mean']-original_inner)<1e-12
++    model_rows=[]
++    for key,stat in summaries.items():
++        stage,name=key.split('/')
++        model_rows.append(dict(stage=stage,model=name,A0_fit_overlap=stage=='lomo' and name=='A0_frozen',
++            **{f'{k}_{suffix}':v for k,s in stat.items() for suffix,v in [('mean',s['mean']),('ci_low',s['ci95'][0]),('ci_high',s['ci95'][1])]}))
++    table('model_comparison.csv',model_rows)
++    table('inner_stop_results.csv',[r for r in model_rows if r['stage']=='inner_stop'])
++    lomo=[]
++    for scene in p['fit_maps']:
++        for name in NAMES:
++            rr=[r for r in all_rows if r['stage']=='lomo' and r['scene_id']==scene and r['model']==name]
++            stat=cluster_bootstrap(rr,METRICS)
++            lomo.append(dict(heldout_scene=scene,model=name,origins=len(rr),independent_lomo=name!='A0_frozen',
++                A0_note='Seen-fit reference, NOT held-out' if name=='A0_frozen' else '',
++                **{k:v['mean'] for k,v in stat.items()}))
++    table('leave_one_map_out.csv',lomo)
++    selected={}
++    for schema in ['A1','A2']:
++        names=[f'{schema}_linear',f'{schema}_mlp']
++        selected[schema]=max(names,key=lambda name:score_tuple(summaries[f'inner_stop/{name}']))
++    a2=selected['A2'];l=summaries[f'lomo/{a2}'];s=summaries[f'inner_stop/{a2}'];a0=summaries['inner_stop/A0_frozen']
++    lomo_gate=dict(accuracy_ci_lower_above_half=l['pair_accuracy']['ci95'][0] is not None and l['pair_accuracy']['ci95'][0]>.5,
++        spearman_ci_lower_positive=l['spearman']['ci95'][0] is not None and l['spearman']['ci95'][0]>0,
++        gain_ci_lower_nonnegative=l['model_gain']['ci95'][0]>=0)
++    inner_gate=dict(accuracy_above_half=s['pair_accuracy']['mean'] is not None and s['pair_accuracy']['mean']>.5,
++        spearman_positive=s['spearman']['mean'] is not None and s['spearman']['mean']>0,
++        regret_better_than_A0=s['top1_regret']['mean']<a0['top1_regret']['mean'],gain_nonnegative=s['model_gain']['mean']>=0,
++        negative_rate_no_greater=s['selected_negative']['mean']<=a0['selected_negative']['mean'])
++    proceed=all(lomo_gate.values()) and all(inner_gate.values())
++    pairing={}
++    for stage in ['lomo','inner_stop']:
++        for name in NAMES[1:]:
++            baseline=[r for r in all_rows if r['stage']==stage and r['model']=='A0_frozen']
++            candidates=[r for r in all_rows if r['stage']==stage and r['model']==name]
++            paired=paired_origins(baseline,candidates)
++            pairing[f'{stage}/{name}_vs_A0']=dict(statistics=cluster_bootstrap(paired,['pair_accuracy_improvement','regret_improvement']),
++                scope='A0fit-overlap, NOT fair heldout causalcomparison' if stage=='lomo' else '4 inner-stop maps, already used for historical A0 selection; development only')
++    oracle=[]
++    for stage,data in [('lomo',fit),('inner_stop',inner)]:
++        for origin in sorted(set(data['origin'])):
++            ids=np.flatnonzero(data['origin']==origin);y=data['delta_y'][ids]
++            meta=load(OLD/'origins'/str(origin)/'catalog.json')
++            random_idx=next(i for i,r in enumerate(meta['representatives']) if 'fixed_gaussian' in r['roles'])
++            common=dict(stage=stage,scene_id=int(data['scene'][ids[0]]),origin_id=str(origin))
++            for name in ['Baseline','Random','Oracle']+NAMES:
++                index=0 if name=='Baseline' else random_idx if name=='Random' else int(y.argmax()) if name=='Oracle' else int(predictions[stage][name][ids].argmax())
++                oracle.append(common|dict(model=name,gain=float(y[index]),oracle_gain=float(y.max()),
++                    top1_regret=float(y.max()-y[index]),selected_positive=float(y[index]>1),selected_negative=float(y[index]<-1),
++                    positive_fraction=float((y[1:]>1).mean()),any_positive=float((y[1:]>1).any()),candidate=int(data['candidate'][ids[index]])))
++    table('oracle_comparison.csv',oracle)
++    magnitude=[]
++    for stage,data in [('lomo',fit),('inner_stop',inner)]:
++        for origin in sorted(set(data['origin'])):
++            ids=np.flatnonzero(data['origin']==origin);distance=np.linalg.norm(data['A2'][ids,-2:],axis=1)
++            bands=np.searchsorted([.01,.05,.1],distance,side='right')
++            for band in sorted(set(bands)):
++                local=sorted(set([0]+np.flatnonzero(bands==band).tolist()))
++                if len(local)<2:continue
++                for name in NAMES:
++                    stat=ranking(predictions[stage][name][ids][local],data['delta_y'][ids][local])
++                    magnitude.append(dict(stage=stage,scene_id=int(data['scene'][ids[0]]),origin_id=str(origin),model=name,
++                        action_band=['<.01','.01-.05','.05-.1','>=.1'][band],baseline_in_band=bool(bands[0]==band),
++                        scope='Baseline retained as shared reference; restricted-pool Top1, not original model selection',
++                        model_gain=stat['selected_gain'],**stat))
++    table('action_magnitude_analysis.csv',magnitude)
++    kind=a2.split('_')[1];frozen=next(m for m in manifest if m['name']==f'full_A2_{kind}')
++    dump('evaluation_results.json',dict(summaries=summaries,paired_A0_comparison=pairing,selected=selected,
++        oracle={f'{stage}/{name}':cluster_bootstrap([r for r in oracle if r['stage']==stage and r['model']==name],['gain','top1_regret','selected_positive','selected_negative','positive_fraction','any_positive']) for stage in ['lomo','inner_stop'] for name in ['Baseline','Random','Oracle']+NAMES},
++        magnitude={f'{stage}/{name}/{band}':cluster_bootstrap([r for r in magnitude if r['stage']==stage and r['model']==name and r['action_band']==band],['pair_accuracy','spearman','top1_regret','model_gain']) for stage in ['lomo','inner_stop'] for name in NAMES for band in ['<.01','.01-.05','.05-.1','>=.1']},
++        A0_inner_accuracy_unchanged=True,A0_lomo_reference_is_in_sample=True,seen_validation_opened=False))
++    dump('decision.json',dict(selected_A1=selected['A1'],selected_A2=a2,frozen_A2=frozen,
++        lomo_gate=lomo_gate,inner_stop_gate=inner_gate,proceed_to_new_validation=proceed,
++        selected_using='inner-stop ONLY; pairaccuracy DESC,regret ASC,gain DESC; stable linear-first tie',
++        no_A0_retraining=True,no_old_seen_validation_used=True,new_validation_performed=False,
++        online_enabled=False,online_changes=False,reason='Both development gates passed: must preregister and finish one NEW independent validation.' if proceed else 'At least one preregistered LOMO/inner-stop gate failed. Stop; do not add validation or enlarge models.'))
++    print('SELECTED',a2,'LOMO',lomo_gate,'INNER',inner_gate,'NEW_VALIDATION',proceed,flush=True)
++
++
++if __name__=='__main__':main()
+diff --git a/reports/mppi_first_action_advantage_20261118/finalize.py b/reports/mppi_first_action_advantage_20261118/finalize.py
+new file mode 100644
+index 0000000..c5af428
+--- /dev/null
++++ b/reports/mppi_first_action_advantage_20261118/finalize.py
+@@ -0,0 +1,58 @@
++"""Clarify the evidence-ranked next step without changing any model/gate."""
++import shutil,subprocess,sys
++from pathlib import Path
++sys.path.insert(0,str(Path(__file__).parent))
++from study_io import R,ROOT,load,sha,dump
++from report import fmt
++
++
++def main():
++    archive=R/'before_decision_clarification';archive.mkdir(exist_ok=True)
++    name='MPPI_FIRST_ACTION_ADVANTAGE_REPORT_20261118.md'
++    for f in [name,'decision.json','verification.json','code_changes.patch']:
++        if not (archive/f).exists():shutil.copyfile(R/f,archive/f)
++    pairs=load(R/'paired_statistics.json')
++    signal=pairs['lomo/A2_linear_minus_A2_mlp']['model_gain_improvement']
++    assert signal['ci95'][0]>0
++    manifest=load(R/'experiment_manifest.json')
++    for record in manifest['prior_reports_read']:assert sha(Path(record['path']))==record['sha256']
++    d=load(R/'decision.json')
++    d.update(primary_observed_failure='Cross-map action-advantage generalization; nonlinear model/training has a simplification signal, not a uniquely proven capacity cause.',
++        evidence_branch='B partially supported, with context coverage still unresolved; NOT all models/Oracle devoid of signal.',
++        linear_vs_selected_mlp_lomo_gain_improvement=signal,
++        next_primary_direction='Stop larger/nonlinear heads; retain simplest Linear diagnostic as the fixed control for any separately preregistered future map/origin-coverage study. No new collection in this round.',
++        selection_changed_after_evaluation=False,new_validation_performed=False)
++    (R/'decision.json').write_text(__import__('json').dumps(d,indent=2))
++    report=R/name;text=report.read_text()
++    text=text.replace(
++        '8. **主要问题是什么？** 当前可观测瓶颈仍是action-advantage跨地图/context泛化，训练/容量有辅助迹象，不能唯一归因。开发Oracle正收益不支持立即否定candidate空间；本轮没有证据把Dynamics升级为主要原因。',
++        '8. **主要问题是什么？** 可观测失败是action-advantage跨地图泛化不足。Linear相对A2 MLP的配对Gain/Regret改善有正95%区间，因此本轮比“所有方法都失败”更支持情况B中的模型/训练简化方向；context覆盖仍是未分解因素，不能唯一指认容量。开发Oracle正收益不支持立即否定candidate空间，没有证据把Dynamics升级为主要原因。')
++    text=text.replace(
++        '唯一下一阶段方向：若继续研究，应预注册增加不同地图/道路交互条件下的origin覆盖，检验当前特征下的局部优势可辨识性；不要继续增加同类网络宽度/深度，也不要因本次结果直接重训WM或重构candidate空间。本轮按门槛停止，不自动新增采集。',
++        '唯一下一阶段方向：先停止复杂MLP扩展，保留最简单的Linear诊断作为固定control；若另行继续，应在预注册的新map/origin覆盖中检验其局部优势能否稳定泛化，而非继续堆网络。当前Linear的LOMO Accuracy区间仍跨50%，不满足本轮门槛，不能事后替换主A2去采新validation。本轮停止，不自动新增采集，不重训WM或重构candidate空间。')
++    if '## 补充：不掩盖简单Linear的积极信号' not in text:
++        text+='\n## 补充：不掩盖简单Linear的积极信号\n'
++        text+=f"\n在相同8个LOMO地图/起点上，A2 Linear相对被选中A2 MLP的Model Gain改善={fmt(signal)}，同样等于Top1 Regret改善。该95%区间下界略大于0，属于支持模型/训练简化的证据，不能把本轮总结成‘所有relative模型完全失败，所以必然只有context coverage问题’。\n"
++        text+='\n同时，Linear的Accuracy改善区间跨0，它自身LOMO Accuracy区间跨50%，数据仅8图、单一固定seed，存在多个诊断比较；这不是已经证明Linear满足新独立验证/部署要求，也不能唯一证明参数量是因果根源。KNN的inner/LOMO方向相反，进一步说明只看一个开发split不够。最终A2选型、所有训练超参数、门槛与不采新validation的决定均未改变。\n'
++    report.write_text(text)
++    sources=sorted(R.glob('*.py'))+[R/'protocol.json',R/'feature_schema.json']
++    changes=[]
++    for f in sources:
++        result=subprocess.run(['git','diff','--no-index','--','/dev/null',str(f.relative_to(ROOT))],cwd=ROOT,capture_output=True,text=True)
++        assert result.returncode==1;changes.append(result.stdout)
++    (R/'code_changes.patch').write_text(''.join(changes))
++    v=load(R/'verification.json')
++    v.update(source_sha256={str(f.relative_to(ROOT)):sha(f) for f in sources},
++        phase2_historical_reports_unchanged=True,posthoc_model_reselection=False,
++        positive_linear_signal_explicitly_preserved=True,
++        scientific_decision='Simplify rather than expand MLP; context generalization remains unresolved. Development gates failed, no validation/online changes.')
++    (R/'verification.json').write_text(__import__('json').dumps(v,indent=2))
++    dump('execution_manifest_final.json',dict(cwd=str(ROOT),binary_source=str(ROOT.parent/'mpr_mpc_v2_first_action_20261117'),
++        environment={'OMP_NUM_THREADS':'1','OPENBLAS_NUM_THREADS':'1','MKL_NUM_THREADS':'1'},
++        scripts=['prepare.py','train.py','evaluate.py','benchmark.py','test_advantage.py','report.py','finalize.py'],
++        testing='Original82 under prior worktree; new16 under main, --import-mode=importlib, each fresh process.',
++        protocol_sha256=sha(R/'protocol.json'),all_new_outputs_in_phase3_directory=True))
++    print('Final report preserves Linear signal and unchanged failed gates;98 tests.',flush=True)
++
++
++if __name__=='__main__':main()
+diff --git a/reports/mppi_first_action_advantage_20261118/models.py b/reports/mppi_first_action_advantage_20261118/models.py
+new file mode 100644
+index 0000000..935aea0
+--- /dev/null
++++ b/reports/mppi_first_action_advantage_20261118/models.py
+@@ -0,0 +1,105 @@
++"""Small, baseline-centered offline advantage models, never online imports."""
++import numpy as np
++import torch
++from torch import nn
++
++
++SCHEMAS={'A1':537,'A2':539}
++
++
++def features(state,baseline,candidate,schema):
++    s,b,a=[np.asarray(x,np.float32).reshape(-1) for x in (state,baseline,candidate)]
++    if s.shape!=(535,) or b.shape!=(2,) or a.shape!=(2,):raise ValueError('Current535 and physical commands required')
++    if not all(np.isfinite(x).all() for x in (s,b,a)):raise ValueError('Nonfinite current inputs')
++    if schema=='A0':return np.r_[s,a]
++    if schema=='A1':return np.r_[s,a-b]
++    if schema=='A2':return np.r_[s,b,a-b]
++    raise ValueError('Unknown fixed schema')
++
++
++def relative_targets(y,origin,baseline):
++    y=np.asarray(y,float);out=np.empty_like(y)
++    for o in sorted(set(origin)):
++        ids=np.flatnonzero(np.asarray(origin)==o)
++        refs=[i for i in ids if baseline[i]]
++        if len(refs)!=1:raise ValueError('Require ONE actual baseline within each origin')
++        out[ids]=y[ids]-y[refs[0]]
++    return out
++
++
++def balanced_weights(scene,origin):
++    scene,origin=np.asarray(scene),np.asarray(origin)
++    scenes=sorted(set(scene));w=np.empty(len(scene),np.float32)
++    for s in scenes:
++        os=sorted(set(origin[scene==s]))
++        for o in os:
++            ids=(scene==s)&(origin==o)
++            w[ids]=1/len(scenes)/len(os)/int(ids.sum())
++    return w
++
++
++def within_origin_pairs(scene,origin,delta_y):
++    scene,origin,y=np.asarray(scene),np.asarray(origin),np.asarray(delta_y)
++    groups=[]
++    for o in sorted(set(origin)):
++        ids=np.flatnonzero(origin==o)
++        if len(set(scene[ids]))!=1:raise ValueError('Origin cannot span maps')
++        pairs=[(i,j) for n,i in enumerate(ids) for j in ids[n+1:] if abs(y[i]-y[j])>1.]
++        if pairs:groups.append((scene[ids[0]],o,pairs))
++    maps=set(s for s,_,_ in groups);pairs=[];weights=[]
++    for s,o,ps in groups:
++        n=sum(other==s for other,_,_ in groups)
++        for i,j in ps:pairs.append((i,j));weights.append(1/len(maps)/n/len(ps))
++    return np.asarray(pairs,np.int64).reshape(-1,2),np.asarray(weights,np.float32)
++
++
++def fit_stats(x,y,weights):
++    x,y,w=map(torch.as_tensor,(x,y,weights))
++    x,y,w=x.float(),y.float(),w.float()
++    mu=(w[:,None]*x).sum(0)
++    scale=(w[:,None]*(x-mu).square()).sum(0).sqrt().clamp_min(.001)
++    # Scale only, no mean shift: true Baseline advantage must remain ZERO.
++    target_scale=(w*y.square()).sum().sqrt().clamp_min(1.)
++    return mu,scale,target_scale
++
++
++class Advantage(nn.Module):
++    def __init__(self,dimension,kind):
++        super().__init__();self.dimension=dimension;self.kind=kind
++        self.register_buffer('mu',torch.zeros(dimension));self.register_buffer('scale',torch.ones(dimension))
++        self.register_buffer('target_scale',torch.ones(()))
++        self.net=nn.Linear(dimension,1) if kind=='linear' else nn.Sequential(nn.Linear(dimension,32),nn.SiLU(),nn.Linear(32,16),nn.SiLU(),nn.Linear(16,1))
++        if kind=='linear':
++            nn.init.zeros_(self.net.weight);nn.init.zeros_(self.net.bias)
++    def raw(self,x):return self.net((x-self.mu)/self.scale).squeeze(-1)
++    def forward(self,x):
++        if x.shape[-1]!=self.dimension:raise ValueError('Fixed feature schema mismatch')
++        zero=x.clone();zero[:,-2:]=0
++        return (self.raw(x)-self.raw(zero))*self.target_scale
++
++
++class LocalKNN(nn.Module):
++    """Diagnostic A2 k=8 control; same features, no learned neural parameters."""
++    def __init__(self,x,y,w,k=8):
++        super().__init__();self.dimension=x.shape[1];self.kind='knn';self.k=min(k,len(x))
++        mu,scale,target=fit_stats(x,y,w)
++        self.register_buffer('mu',mu);self.register_buffer('scale',scale);self.register_buffer('target_scale',target)
++        self.register_buffer('block',torch.tensor([535**-.5]*535+[2**-.5]*4))
++        self.register_buffer('bank',(torch.as_tensor(x).float()-mu)/scale*self.block)
++        self.register_buffer('labels',torch.as_tensor(y).float()/target)
++        self.register_buffer('weights',torch.as_tensor(w).float())
++    def raw(self,x):
++        normalized=(x-self.mu)/self.scale*self.block
++        distance=torch.cdist(normalized,self.bank)
++        d,ids=torch.topk(distance,self.k,dim=1,largest=False,sorted=True)
++        w=self.weights[ids]/d.clamp_min(1e-6)
++        return (w*self.labels[ids]).sum(1)/w.sum(1)
++    def forward(self,x):
++        zero=x.clone();zero[:,-2:]=0
++        return (self.raw(x)-self.raw(zero))*self.target_scale
++
++
++def holdout(data,scene):
++    train=np.flatnonzero(data['scene']!=scene);test=np.flatnonzero(data['scene']==scene)
++    if not len(train) or not len(test):raise ValueError('LOMO requires train and test maps')
++    return train,test
+diff --git a/reports/mppi_first_action_advantage_20261118/prepare.py b/reports/mppi_first_action_advantage_20261118/prepare.py
+new file mode 100644
+index 0000000..69a0783
+--- /dev/null
++++ b/reports/mppi_first_action_advantage_20261118/prepare.py
+@@ -0,0 +1,128 @@
++"""Freeze Phase3 protocol BEFORE reading new fit/inner-stop advantage labels."""
++import csv
++import importlib.metadata as md
++import shutil
++import subprocess
++import sys
++from pathlib import Path
++sys.path.insert(0,str(Path(__file__).parent))
++from study_io import R,ROOT,PRIOR,OLD,PHASE2,load,sha,dump,table
++import numpy as np
++from models import features,relative_targets,balanced_weights
++
++
++def main():
++    parent='7d15cdda92ff434024bb72c5dd324d05fa3fe3d0'
++    assert subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()==parent
++    assert subprocess.check_output(['git','diff','--name-only'],cwd=ROOT,text=True).strip()==''
++    old=load(OLD/'protocol.json');chosen=load(OLD/'training_decision.json')['selected']
++    assert sha(Path(old['checkpoint']))=='4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a'
++    assert sha(PRIOR/chosen['checkpoint'])==chosen['checkpoint_sha']
++    protocol=dict(parent_commit=parent,phase2_report_commit=parent,date='2026-11-18',
++        old_report_generation_base='27f8131d95a39bfe2f4a95d101fef1774903b907',
++        checkpoint=old['checkpoint'],checkpoint_sha256=old['checkpoint_sha256'],
++        A0_checkpoint=str(PRIOR/chosen['checkpoint']),A0_sha256=chosen['checkpoint_sha'],A0_context=chosen['context'],
++        data_root=str(OLD),fit_maps=old['fit_scenes'],inner_stop_maps=old['inner_stop_scenes'],
++        excluded_seen_validation=old['validation_scenes'],horizon=1,gamma=.995,
++        reward='info.tdmpc2_reward',continuation='original frozen deterministic Lattice+SAC until native done',
++        target='actual Y(candidate)-actual Y(unique same-origin Baseline)',tolerance=1.,
++        feature_schemas={'A0':'CURRENT535 + absolute physical action2, frozen OLD control only',
++                         'A1':'CURRENT535 + candidate-minus-Baseline action2 (537)',
++                         'A2':'CURRENT535 + Baseline physical2 + action delta2 (539)'},
++        architectures=['linear','MLP32SiLU16SiLU1'],new_absolute_return_training=False,
++        output='(raw_f(x)-raw_f(same context, zero delta))*fit_target_RMS; exact Baseline0',
++        training=dict(epochs=300,seed=1,optimizer='Adam',lr=.001,linear_weight_decay=.001,mlp_weight_decay=.0001,
++            lambda_rank=.25,regression='SmoothL1 on advantage / fit-only weighted RMS',
++            ranking='softplus(-sign(normalized actual difference)*normalized predicted difference)',
++            pair_scope='same origin, exclude raw abs(delta_Y_i-delta_Y_j)<=1',
++            normalization='fit-only weighted input mean/std(min.001), label weighted RMS(min1); no label mean shift',
++            weights='each scene equal, each origin equal inside scene, each candidate equal inside origin; pair weights balance valid origins/maps',
++            LOMO='8 fixed folds, seven fit maps train, one fit map test; fixed300 epochs; no inner-stop early stopping'),
++        knn=dict(schema='A2',k=8,distance='block-normalized Euclidean of current535,baseline2,delta2; fit-only normalization',
++            weighting='fit scene/origin/candidate weight divided by distance(min1e-6)',baseline_centered=True,diagnostic_only=True),
++        A0_lomo_scope='Frozen A0 already trained on all8fit maps. Show as in-sample reference, NOT an independent LOMO model. No new absolute-return refit.',
++        selection='Once, inner-stop4: pair accuracy DESC,Top1Regret ASC,ModelGain DESC; stable tie linear before MLP; KNN not eligible. No old seen-validation data.',
++        gate=dict(lomo='For inner-stop-selected A2 kind: accuracy CI lower>.5,Spearman CI lower>0,ModelGain CI lower>=0; do NOT use leaked A0 LOMO as a held-out comparator.',
++            inner_stop='A2 accuracy point>.5,Spearman point>0, paired Top1Regret improvement vs frozen A0 point>0, ModelGain>=0, selected_negative no greater than A0.',
++            validation='Only if BOTH prior gates pass: freeze selected model SHA; preregister6 unused maps/12origins from110000..110999, seed20261118, before50/150. No scene replacement.',
++            final='Accuracy CI lower>.5,Spearman CI lower>0,Regret improvement vs A0 CI lower>0, ModelGain>=0, selected-negative increase CI upper<=0, gains not single-map-dependent; never deploy in this offline task.'),
++        bootstrap=dict(samples=2000,seed=20261118,unit='whole map; origins averaged inside map'),
++        magnitude_edges=[.01,.05,.1],benchmark=dict(warmup=20,repeats=200,batches=[1,258],not_full_planner=True),
++        new_environment_runs_before_gates=0,online_changes=False,commit=False,push=False)
++    dump('protocol.json',protocol)
++    shutil.copyfile('/home/kzb/.codex/attachments/57f96211-5de8-4730-b15e-b16c88627326/已粘贴的文本.txt',R/'task_prompt.txt')
++    required=['MPPI_FIRST_ACTION_FAILURE_REPORT_20261118.md','decision.json','verification.json',
++        'model_implementation_audit.json','oracle_candidate_report.json','state_oracle_ranking.json',
++        'dynamics_error_analysis.json','ranking_analysis.json','stratified_ranking_statistics.json','feature_shift_and_sensitivity.csv']
++    inspected=[]
++    for f in [*[PHASE2/name for name in required],*[OLD/name for name in ['train_offline.py','offline_model.py','validate_offline.py','training_results.json','training_decision.json']]]:
++        if f.suffix=='.json':content=load(f);summary=list(content)[:20] if isinstance(content,dict) else f'{len(content)} rows'
++        elif f.suffix=='.csv':content=list(csv.DictReader(f.open()));summary=f'{len(content)} rows'
++        else:content=f.read_text();summary=f'{len(content)} characters read'
++        inspected.append(dict(path=str(f),sha256=sha(f),review=summary))
++    protected=[ROOT/'config.yaml']
++    for directory in ['planning','residual_rl','lattice','mpr_mpc','vendor/tdmpc2_runtime']:
++        protected.extend((ROOT/directory).rglob('*.py'))
++    packages={n:md.version(n) for n in ['torch','numpy','metadrive-simulator']}
++    dump('experiment_manifest.json',dict(parent_commit=parent,phase2_report_commit=parent,
++        remote_main=dict(sha=parent,verified_via='GitHub connector fetch_commit(main)',date='2026-11-18'),
++        report_version_note='Phase2 report described its generation-time27f8131 base; published by later7d15cdd. Historical report not edited.',
++        checkpoint_sha256=old['checkpoint_sha256'],config_sha256=sha(Path(old['source_environment_config'])),
++        effective_default_config_sha256=sha(ROOT/'config.yaml'),A0_sha256=chosen['checkpoint_sha'],
++        binary_provenance='Git-ignored .pt/.npz remain in prior worktree. Read in place; no re-created substitute binaries.',
++        python=sys.version,packages=packages,prior_reports_read=inspected,
++        protected_source_sha256={str(f.relative_to(ROOT)):sha(f) for f in sorted(set(protected))},
++        prompt_sha256=sha(R/'task_prompt.txt'),protocol_sha256=sha(R/'protocol.json')))
++    rows=[];input_files=[]
++    for split,scenes in [('fit',protocol['fit_maps']),('inner_stop',protocol['inner_stop_maps'])]:
++        arrays={k:[] for k in ['A0','A1','A2','y','delta_y','scene','origin','candidate','baseline']}
++        for scene in scenes:
++            for before in old['before_steps']:
++                name=f'{scene}_{before}';folder=OLD/'origins'/name
++                c=np.load(folder/'catalog.npz');meta=load(folder/'catalog.json')
++                baselines=[i for i,r in enumerate(meta['representatives']) if 'baseline' in r['roles']]
++                assert len(baselines)==1 and baselines[0]==0
++                baseline=c['baseline'][0];local=[]
++                input_files.extend([folder/'catalog.npz',folder/'catalog.json'])
++                for i,rep in enumerate(meta['representatives']):
++                    f=OLD/'branches'/name/f"H1_{rep['candidate_id']}_baseline.json";rec=load(f)
++                    archive=PRIOR/rec['source'];input_files.extend([f,archive])
++                    with np.load(archive) as a:
++                        assert a['done'][-1] and not a['done'][:-1].any()
++                        assert np.array_equal(a['done'],a['terminated']|a['truncated'])
++                        total=0.
++                        for reward in a['rewards'][::-1]:total=float(reward)+.995*total
++                        assert abs(total-rec['actual_return'])<1e-8
++                        assert np.array_equal(a['actions'][0],c['actions'][i,0])
++                    assert rec['horizon']==1 and rec['takeover']=='baseline' and not rec['replay']
++                    assert np.array_equal(rec['baseline_first_action'],baseline)
++                    local.append(rec)
++                y=np.array([r['actual_return'] for r in local]);dy=y-y[0]
++                for i,(rep,rec) in enumerate(zip(meta['representatives'],local)):
++                    candidate=c['actions'][i,0]
++                    for schema in ['A0','A1','A2']:arrays[schema].append(features(c['state535'],baseline,candidate,schema))
++                    arrays['y'].append(y[i]);arrays['delta_y'].append(dy[i]);arrays['scene'].append(scene);arrays['origin'].append(name)
++                    arrays['candidate'].append(i);arrays['baseline'].append(i==0)
++                    rows.append(dict(split=split,scene=scene,origin=name,candidate=i,baseline=i==0,
++                        action=candidate.tolist(),baseline_action=baseline.tolist(),delta_action=(candidate-baseline).tolist(),
++                        Y=float(y[i]),Y_B=float(y[0]),delta_Y=float(dy[i]),first_reward=rec['actual_first_reward'],
++                        gamma=.995,native_done=rec['native_done'],source_json=str(OLD/'branches'/name/f'H1_c{i}_baseline.json'),
++                        features_source=str(folder/'catalog.npz')+'::state535,baseline,actions',features_only_current=True))
++        arrays={k:np.asarray(v) for k,v in arrays.items()}
++        assert np.array_equal(relative_targets(arrays['y'],arrays['origin'],arrays['baseline']),arrays['delta_y'])
++        w=balanced_weights(arrays['scene'],arrays['origin']);arrays['weights']=w
++        np.savez_compressed(R/f'{split}_dataset.npz',**arrays)
++        chosen_rows=[r for r in rows if r['split']==split]
++        for i,r in enumerate(chosen_rows):
++            count=int((arrays['origin']==r['origin']).sum());os=len(set(arrays['origin'][arrays['scene']==r['scene']]))
++            r.update(scene_weight=1/len(scenes),origin_weight=1/len(scenes)/os,candidate_weight=float(w[i]),candidate_count_origin=count)
++    table('advantage_dataset.csv',rows)
++    table('input_sha256.csv',[dict(path=str(f),sha256=sha(f)) for f in sorted(set(input_files))])
++    dump('feature_schema.json',dict(A0=dict(dimension=537,feature='current535+absolute action2',frozen=True),
++        A1=dict(dimension=537,feature='current535+action delta2'),A2=dict(dimension=539,feature='current535+Baseline2+action delta2'),
++        no_future_features=True,baseline_reference='unique actual same-origin candidate',
++        note='Centered linear A1/A2 cancel context and Baseline terms; do not interpret equality as lack of useful context.'))
++    print('Protocol frozen; dataset rows:',len(rows),'fit/inner only. No seen-validation branches opened.',flush=True)
++
++
++if __name__=='__main__':main()
+diff --git a/reports/mppi_first_action_advantage_20261118/report.py b/reports/mppi_first_action_advantage_20261118/report.py
+new file mode 100644
+index 0000000..968dd5f
+--- /dev/null
++++ b/reports/mppi_first_action_advantage_20261118/report.py
+@@ -0,0 +1,202 @@
++"""Evidence-based Phase3 report/plots and preservation verification."""
++import csv,json,subprocess,sys
++from pathlib import Path
++sys.path.insert(0,str(Path(__file__).parent))
++from study_io import R,ROOT,PRIOR,OLD,PHASE2,load,dump,table,sha
++sys.path.insert(1,str(ROOT))
++import numpy as np
++from tools.first_action_failure import cluster_bootstrap,paired_origins
++import matplotlib
++matplotlib.use('Agg')
++import matplotlib.pyplot as plt
++
++
++def read(name):return list(csv.DictReader((R/name).open()))
++def fmt(s,percent=False):
++    if s['mean'] is None:return 'N/A'
++    f=100 if percent else 1
++    return f"{s['mean']*f:.3f} [{s['ci95'][0]*f:.3f},{s['ci95'][1]*f:.3f}]"
++
++
++def plots(e,p,d):
++    folder=R/'figures';folder.mkdir(exist_ok=False)
++    names=['A0_frozen','A1_linear','A1_mlp','A2_linear','A2_mlp','A2_knn']
++    def save(fig,name):
++        fig.tight_layout();fig.savefig(folder/(name+'.png'),dpi=180);fig.savefig(folder/(name+'.pdf'));plt.close(fig)
++    for metric,filename in [('pair_accuracy','absolute_vs_relative_accuracy'),('top1_regret','regret_comparison')]:
++        fig,axes=plt.subplots(1,2,figsize=(12,4))
++        for ax,stage in zip(axes,['lomo','inner_stop']):
++            stats=[e['summaries'][f'{stage}/{n}'][metric] for n in names]
++            y=np.array([s['mean'] for s in stats]);ci=np.array([s['ci95'] for s in stats]);x=np.arange(len(names))
++            bars=ax.bar(x,y,color=['#aaaaaa','#87b5d7','#2878B5','#e8b08c','#C65A30','#3A8E5C'])
++            if stage=='lomo':bars[0].set_hatch('//')
++            ax.errorbar(x,y,yerr=np.maximum(0,[y-ci[:,0],ci[:,1]-y]),fmt='none',color='black',capsize=3)
++            if metric=='pair_accuracy':ax.axhline(.5,ls='--',color='gray')
++            ax.set(xticks=x,xticklabels=['A0*' if stage=='lomo' else 'A0']+[n[3:]+' '+n[:2] for n in names[1:]],ylabel=metric,
++                title='8-map LOMO (*A0 is seen-fit reference)' if stage=='lomo' else '4-map inner-stop, development ONLY')
++            ax.tick_params(axis='x',rotation=45)
++        save(fig,filename)
++    lomo=read('leave_one_map_out.csv');fig,ax=plt.subplots(figsize=(10,4));scenes=p['fit_maps']
++    for name in ['A0_frozen',d['selected_A1'],d['selected_A2'],'A2_knn']:
++        values=[float(next(r['pair_accuracy'] for r in lomo if r['model']==name and int(r['heldout_scene'])==s)) for s in scenes]
++        ax.plot(np.arange(8),values,marker='o',ls='--' if name=='A0_frozen' else '-',label=name+(' (seen fit)' if name=='A0_frozen' else ''))
++    ax.axhline(.5,color='gray',ls=':');ax.set(xticks=np.arange(8),xticklabels=scenes,ylabel='Pair accuracy',title='One withheld fit map per fold; A0 never a held-out comparator')
++    ax.legend();save(fig,'leave_one_map_out')
++    fig,axes=plt.subplots(1,2,figsize=(12,4))
++    for ax,stage in zip(axes,['lomo','inner_stop']):
++        models=['Baseline','Random','Oracle','A0_frozen',d['selected_A1'],d['selected_A2']]
++        stats=[e['oracle'][f'{stage}/{n}']['gain'] for n in models];y=np.array([s['mean'] for s in stats]);ci=np.array([s['ci95'] for s in stats])
++        ax.bar(np.arange(len(y)),y);ax.errorbar(np.arange(len(y)),y,yerr=np.maximum(0,[y-ci[:,0],ci[:,1]-y]),fmt='none',color='black',capsize=3)
++        ax.axhline(0,color='black',lw=.8);ax.set(xticks=np.arange(len(y)),xticklabels=models,title=stage+' (A0 fit reference in LOMO)',ylabel='Actual paired H1 gain')
++        ax.tick_params(axis='x',rotation=45)
++    save(fig,'oracle_vs_model_gain')
++    bands=['<.01','.01-.05','.05-.1','>=.1'];fig,axes=plt.subplots(1,2,figsize=(12,4))
++    for ax,stage in zip(axes,['lomo','inner_stop']):
++        for name in ['A0_frozen',d['selected_A1'],d['selected_A2'],'A2_knn']:
++            stats=[e['magnitude'][f'{stage}/{name}/{b}']['pair_accuracy'] for b in bands]
++            y=np.array([s['mean'] if s['mean'] is not None else np.nan for s in stats]);ci=np.array([s['ci95'] if s['mean'] is not None else [np.nan,np.nan] for s in stats])
++            ax.errorbar(np.arange(4),y,yerr=np.maximum(0,[y-ci[:,0],ci[:,1]-y]),marker='o',capsize=3,label=name)
++        ax.axhline(.5,color='gray',ls='--');ax.set(xticks=np.arange(4),xticklabels=bands,ylabel='Accuracy',xlabel='Physical command delta L2 (normalized units)',title=stage+'; Baseline retained within each subgroup');ax.legend(fontsize=8)
++    save(fig,'action_delta_accuracy')
++
++
++def main():
++    p=load(R/'protocol.json');m=load(R/'experiment_manifest.json');e=load(R/'evaluation_results.json');d=load(R/'decision.json')
++    assert not d['proceed_to_new_validation'],'Development gate passed: complete authorized NEW6-map validation before final delivery.'
++    assert '82 passed' in (R/'tests_original82.log').read_text() and '16 passed' in (R/'tests_new16.log').read_text()
++    assert sha(Path(p['checkpoint']))==p['checkpoint_sha256'] and sha(Path(p['A0_checkpoint']))==p['A0_sha256']
++    assert sha(R/'protocol.json')==m['protocol_sha256']
++    assert sha(ROOT/'config.yaml')==m['effective_default_config_sha256']
++    for path,h in m['protected_source_sha256'].items():assert sha(ROOT/path)==h,path
++    for x in read('input_sha256.csv'):assert sha(Path(x['path']))==x['sha256'],x['path']
++    old_inventory=list(csv.DictReader((PHASE2/'data_sha256.csv').open()))
++    for x in old_inventory:assert sha(Path(x['path']))==x['sha256'],x['path']
++    assert subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()==p['parent_commit']
++    assert subprocess.check_output(['git','diff','--name-only'],cwd=ROOT,text=True).strip()==''
++    manifest=load(R/'model_manifest.json')
++    assert all(sha(Path(x['checkpoint']))==x['sha256'] for x in manifest)
++    comparisons={}
++    origin=read('origin_results.csv')
++    for row in origin:
++        row['scene_id']=int(row['scene_id']);row['horizon']=int(row['horizon'])
++        for k in ['pair_accuracy','spearman','kendall','top1_regret','baseline_accuracy','positive_identification_rate','model_gain','selected_negative']:
++            row[k]=float(row[k]) if row.get(k) else None
++    for stage in ['lomo','inner_stop']:
++        for first,second in [('A1_mlp','A2_mlp'),('A2_mlp','A2_linear'),('A2_mlp','A2_knn')]:
++            a=[r for r in origin if r['stage']==stage and r['model']==first];b=[r for r in origin if r['stage']==stage and r['model']==second]
++            pairs=paired_origins(a,b)
++            for pair,x,y in zip(pairs,sorted(a,key=lambda r:r['origin_id']),sorted(b,key=lambda r:r['origin_id'])):
++                assert x['origin_id']==y['origin_id']==pair['origin_id']
++                pair['model_gain_improvement']=y['model_gain']-x['model_gain']
++                pair['negative_rate_increase']=y['selected_negative']-x['selected_negative']
++            comparisons[f'{stage}/{second}_minus_{first}']=cluster_bootstrap(pairs,['pair_accuracy_improvement','regret_improvement','model_gain_improvement','negative_rate_increase'])
++    dump('paired_statistics.json',comparisons)
++    lomo=np.load(R/'lomo_predictions.npz');inner=np.load(R/'inner_stop_predictions.npz')
++    linear_equal=np.array_equal(lomo['A1_linear'],lomo['A2_linear']) and np.array_equal(inner['A1_linear'],inner['A2_linear'])
++    assert linear_equal
++    dump('validation_status.json',dict(performed=False,reason=d['reason'],new_maps=[],new_origins=[],
++        old_seen_validation_reused=False,frozen_A2_sha256=d['frozen_A2']['sha256'],online=False))
++    plots(e,p,d)
++    model=d['selected_A2'];lo=e['summaries']['lomo/'+model];stop=e['summaries']['inner_stop/'+model]
++    a0=e['summaries']['inner_stop/A0_frozen'];bench=read('inference_benchmark.csv')
++    lines=['# MPPI First-Action Advantage — Phase 3（2026-11-18）',
++        '\n## 结论先行',
++        f"\n本轮**没有证明 Baseline-relative Advantage 恢复跨地图首动作排序**。按冻结的inner-stop选择规则选中`{model}`：LOMO准确率={fmt(lo['pair_accuracy'],True)}%，Model Gain={fmt(lo['model_gain'])}；inner-stop Regret={fmt(stop['top1_regret'])}，旧A0={fmt(a0['top1_regret'])}。预注册LOMO和inner-stop门槛未通过，按要求停止：**没有新validation、没有在线接入、没有增加网络容量或重训WM/SAC**。",
++        '\n不能简单说“所有方法都没信号”：Linear的LOMO Model Gain正区间、KNN的inner-stop排名强，均保留。但这些结果没有同时满足跨图排序、Regret及模型选择门槛，不能事后把更好看的control换成主模型。',
++        '\n## 1. 版本、历史时点和数据',
++        f"\nparent_commit=`{p['parent_commit']}`；phase2_report_commit=`{p['phase2_report_commit']}`。Phase2正文27f8131是当时生成报告的基线；该报告及代码之后由7d15cdd提交并推送，历史文字不改，本manifest明确两种时点。2026-11-18 GitHub连接器核实main为7d15cdd。",
++        f"\nCheckpoint SHA=`{p['checkpoint_sha256']}`，仍为WM200k+RL300k总500k；原535、WM/SAC/Lattice权重、Action Mapping、Reward/Cost、gamma=.995和原生done/成功条件均保留。所有强制阅读的Phase2报告/JSON/CSV与旧训练实现均已全量读取，SHA和结构摘要在experiment_manifest.json。",
++        f"\n新目录位于main工作区：`{R}`。Git忽略了旧.pt/.npz，故只读原实验worktree `{PRIOR}` 内的真实二进制，不生成替代旧数据。只打开原fit8图126条H1分支与inner-stop4图64条H1分支，共24个origin；**没有为模型训练/选型打开旧seen-validation分支**。历史报告中的已知验证结论仅作为用户指定固定前提。所有输入文件和源代码SHA均记录并在结束复核。",
++        '\n## 2. 严格的same-origin相对目标与输入',
++        '\nY取真实首Reward+.995×原冻结确定性Lattice+SAC反馈延续至native done。每个origin根据baseline角色定位唯一真实Baseline，ΔY=Y_i−Y_B，Δa=a_i−a_B；不跨origin/地图计算参考，不用预测score或Oracle作Baseline。原生提前失败与所有候选保留，完整Reward/native done向量重算核验。',
++        '\nA0是原冻结F2：current535+绝对物理action2（537），权重完全不变，仅在离线MAE/作图中减去同origin A0 Baseline预测，argmax/排名不变。A1=current535+Δa（537）；主A2=current535+a_B+Δa（539）。没有future latent/obs/Reward/Cost/crash/OOR/隐藏状态作为输入，真实结果只在label/评价侧。',
++        '\nA1/A2输出为`[f_theta(x)-f_theta(same context,Δa=0)] × fit_RMS(ΔY)`，Baseline严格为0；不是另一个绝对Return模型。Linear与32→16→1的固定SiLU MLP各训练一套；无Transformer/Ensemble/更大网络。',
++        '\n**结构限制**：线性f的状态项、Baseline项与bias被相减消去，最终只有w_delta·Δa。因此A1 Linear和A2 Linear表达类完全相同，本次全部LOMO/inner预测也逐元素相同。这不是“Baseline/context没有价值”的证据，只能在MLP控制中比较其额外信息。',
++        '\n## 3. 冻结训练协议及无泄漏LOMO',
++        '\nprotocol.json在读取新relative数据前冻结。300固定epoch、seed1、Adam lr=.001，Linear decay=.001、MLP decay=.0001。输入mean/std与label RMS仅取相应fit maps，RMS只缩放不减label均值，保证零参考不被移动。SmoothL1(normalized advantage)+.25×同origin pairwise softplus；pair预测差使用fit尺度归一化，不再raw_difference/10。原abs真实差≤1的Pair排除主排名，tie保留诊断。',
++        '\n每图总权重相同、图内每origin总权重相同、origin内候选均分；实际每图2个起点，因此origin全局权重也相同。全fit及各7图fold的scene/origin/candidate权重在training_weights.csv，Pair权重与fit-scale在advantage_pair_diagnostics.csv。没有只训练大动作或删除不利候选。',
++        '\n8折均只用7张fit图训练，固定300epoch，不用heldout图、inner-stop或旧seen-validation做早停/归一化。预测只来自未见该地图的那一折，不平均多个fold模型。全fit模型也只用8图，训练结束后一次性评价4张inner-stop；选型按Accuracy DESC、Regret ASC、Gain DESC，稳定tie优先Linear。',
++        '\n**A0公平性限制**：旧A0已训练过全部8张fit图，不能提供真实无泄漏的A0 LOMO。遵守“不重训/修改A0、不再训练绝对Return”约束，表中保留它为**seen-fit参考**并显式打标；不把A2对它的LOMO差异当因果比较，也不把泄漏A0纳入LOMO门槛。旧A0还已用inner-stop选过，故本轮inner对比也是开发诊断，不是独立验证。',
++        '\nLOMO门槛：选定A2的Accuracy CI下界>.5、Spearman CI下界>0、ModelGain CI下界≥0。inner门槛：点估计Accuracy>.5、Spearman>0、Regret优于A0、Gain≥0、selected-negative不高于A0。两者同时过才允许冻结模型并预注册新的6图/12origin验证。本轮未通过，不继续采图。',
++        '\n## 4. 结果：真正held-out地图与开发inner-stop',
++        '\n|阶段|模型|Pair Accuracy% [95%CI]|Spearman|Top1 Regret|Model Gain|Selected Negative%|\n|---|---|---:|---:|---:|---:|---:|']
++    for stage in ['lomo','inner_stop']:
++        for name in ['A0_frozen','A1_linear','A1_mlp','A2_linear','A2_mlp','A2_knn']:
++            s=e['summaries'][f'{stage}/{name}'];label=name+(' (seen-fit，非LOMO)' if stage=='lomo' and name=='A0_frozen' else '')
++            lines.append(f"|{stage}|{label}|{fmt(s['pair_accuracy'],True)}|{fmt(s['spearman'])}|{fmt(s['top1_regret'])}|{fmt(s['model_gain'])}|{fmt(s['selected_negative'],True)}|")
++    lines.extend([
++        '\n每个候选/起点/地图层级保留。先起点后图等权，整图2000次Cluster Bootstrap、seed20261118；Pair不当独立地图。8图和4图的区间较宽，单图/单origin不代表总体。Kendall、逐fold Model/Baseline Gain、selected-positive/negative、实际候选选择在对应CSV及evaluation_results.json。',
++        '\nA1按同一规则选中Linear；A2选中MLP。A2 inner Accuracy仅略高于Linear，而Regret更差，仍严格沿用已固定的字典序规则；没有看到Regret后再换一个模型来过门槛。KNN仅诊断，不因为inner结果较好就临时改成部署候选。',
++        '\n|真正LOMO比较（后者−前者）|Accuracy变化百分点|Regret改善|Gain改善|\n|---|---:|---:|---:|'])
++    for key,s in comparisons.items():
++        if key.startswith('lomo/'):
++            lines.append(f"|{key}|{fmt(s['pair_accuracy_improvement'],True)}|{fmt(s['regret_improvement'])}|{fmt(s['model_gain_improvement'])}|")
++    lines.extend([
++        '\n## 5. Oracle、动作幅度与简单controls',
++        '\nOracle是实际测量代表候选子集中的最大真实ΔY，非完整Gaussian空间或可部署policy。Random沿用旧fixed Gaussian角色，不重新抽有利样本。Baseline=0；逐origin的A0/A1/A2各variant、Random、Oracle和选正/选负都保留在oracle_comparison.csv。',
++        '\n|数据|Oracle Gain|至少含>1收益候选的origin比例%|Random Gain|\n|---|---:|---:|---:|'])
++    for stage in ['lomo','inner_stop']:
++        s=e['oracle'][f'{stage}/Oracle'];random=e['oracle'][f'{stage}/Random'];lines.append(f"|{stage}|{fmt(s['gain'])}|{fmt(s['any_positive'],True)}|{fmt(random['gain'])}|")
++    lines.extend([
++        '\n开发数据Oracle明显存在正收益，故不能把本轮主模型失败说成“整个candidate space无价值”。但Oracle事后最大化含Baseline，必然非负；既有Phase2新地图Oracle不稳定的固定前提也没有被推翻。本轮无新独立地图，不能宣称潜力已广泛泛化。',
++        '\nKNN使用与A2 Linear相同539维当前输入，fit-only标准化后按current535、Baseline2、Δa2分块等权距离，固定k8与距离倒数×训练层级权重；再减去同context零Δa的预测，Baseline仍0。没有试不同k或事后调距离。它在inner很强但LOMO失败，提示邻域/地图覆盖不稳，不能仅凭一个开发split指认MLP容量为唯一问题。',
++        '\n动作L2固定层<.01、.01–.05、.05–.1、≥.1，全部样本保留。为可比较的Gain，分层内额外保留Baseline参考；子集Top1是限制候选池的离线描述，不是原在线实际选中动作。缺乏有效Pair的层记N/A，不填0；分层Accuracy/Spearman/Regret/Gain区间见action_magnitude_analysis.csv与evaluation_results.json。',
++        '\n## 6. 计算开销（仅离线head，不是完整MPPI）',
++        '\nCPU单线程、GPU同设备输入，warmup20/repeats200；CPU/GPU均报告含两次baseline-centered推理的wall时间，GPU另列CUDA kernel时间。参数量、batch1、batch258、tensor峰值显存和CPU/GPU数值差异完整在inference_benchmark.csv。数据传输未包括，tensor显存不是驱动全部进程显存。',
++        '\n|模型|参数量|CPU batch258 P50/P95 ms|GPU batch258 wall P50/P95 ms|GPU模型tensor bytes|\n|---|---:|---:|---:|---:|'])
++    for name in ['A0_frozen','A1_linear','A1_mlp','A2_linear','A2_mlp','A2_knn']:
++        cpu=next(r for r in bench if r['model']==name and r['device']=='cpu' and r['batch']=='258')
++        gpu=next((r for r in bench if r['model']==name and r['device']=='cuda' and r['batch']=='258'),None)
++        gv=f"{float(gpu['wall_p50_ms']):.3f}/{float(gpu['wall_p95_ms']):.3f}" if gpu else 'N/A'
++        lines.append(f"|{name}|{cpu['parameters']}|{float(cpu['wall_p50_ms']):.3f}/{float(cpu['wall_p95_ms']):.3f}|{gv}|{gpu['model_tensor_bytes'] if gpu else 'N/A'}|")
++    lines.extend([
++        '\nCentered Linear虽有538/540个参数槽，纯线性context/Baseline项不可识别，实际动作表达为2个系数。KNN无神经参数但保存fit数据。小head变快不等于完整规划变快；原完整规划P95 B≈76ms、M1≈104ms、M2≈117ms、M4≈141ms仍为历史基准，本轮没有改变原采样预算或在线时间。',
++        '\n## 7. 十一个必须回答的问题与下一步',
++        '\n1. **Absolute→relative是否改善？** 没有形成同时通过LOMO与inner-stop的改善；A2 inner Regret明显较差。A0 LOMO看过fit，禁止据其直接证明目标因果优劣。',
++        '\n2. **state-value干扰是否被证实？** 未证实。主模型失败不能单独反证state-value假设；本轮同时改变相对目标、局部表示、中心化、归一化/排序loss和小网络，不能把结果唯一归因某一个因素。',
++        '\n3. **Δaction是否更易泛化？** 尚无可靠证据。相对Linear有正LOMO Gain，但Accuracy区间仍跨50%；与旧A0的不同结构/目标存在混杂，不能叫单变量结论。',
++        '\n4. **Baseline action有额外信息？** A2 vs A1 MLP差异不稳定；Linear中该项数学上必然抵消。不能从Linear相同断言Baseline信息无用。',
++        '\n5. **MLP优于Linear？** 没有；LOMO Linear Gain为正，主A2 MLP为负，配对差异上表保留，不扩网络。',
++        '\n6. **MLP优于KNN？** 依split而变。KNN inner排名强但LOMO更差，既不支持稳定部署KNN，也不足以唯一归因容量。',
++        '\n7. **LOMO是否仍失败？** 主A2未过三项预注册LOMO门槛；Linear有部分积极信号，不把“未过门槛”夸大为“所有低层动作都无用”。',
++        '\n8. **主要问题是什么？** 当前可观测瓶颈仍是action-advantage跨地图/context泛化，训练/容量有辅助迹象，不能唯一归因。开发Oracle正收益不支持立即否定candidate空间；本轮没有证据把Dynamics升级为主要原因。',
++        '\n9. **Oracle是否稳定正收益？** 本轮fit/inner开发数据有积极区间；跨新地图的稳定性未获得新证据，不能把开发Oracle冒充泛化。',
++        '\n10. **是否进入新validation？** 否，开发门槛已失败，新的6图/12origin没有采集，旧seen-validation没有复用来重新选模型。',
++        '\n11. **是否具备在线条件？** 否；所有新head保持离线，没有修改MPPI/WM/SAC/Lattice/原配置。',
++        '\n唯一下一阶段方向：若继续研究，应预注册增加不同地图/道路交互条件下的origin覆盖，检验当前特征下的局部优势可辨识性；不要继续增加同类网络宽度/深度，也不要因本次结果直接重训WM或重构candidate空间。本轮按门槛停止，不自动新增采集。',
++        '\n## 8. 测试、保留和交付',
++        '\n原82项在保有历史二进制fixture的旧worktree独立进程全部通过；新增16项在main新目录另一个进程通过，合计98项。首次把两个不同工作区放同一pytest进程触发了原有mpr_mpc导入保护，日志保留；改为独立进程，没有移除保护或放宽任何原断言。测试通过不等于算法有效。',
++        '\n新增回归覆盖Baseline Δa/优势精确0、raw差值、same-origin真实target、原gamma/Reward/done、同origin Pair与原tol、场景/origin平衡、fit-only normalization、LOMO无泄漏、Linear/KNN相同输入、无未来输入、A0 SHA/旧inner结果一致、原在线源码不变、seen-validation不选型、Linear中心化消去context。',
++        '\n结束复核：Checkpoint/A0 SHA不变，所有受保护在线源码与config逐项SHA不变，全部旧Phase2输入2631项及本轮fit/inner来源文件SHA复核；无tracked在线diff、无commit/push、无新环境回合或正式100场。所有新模型只存新目录，不覆盖旧head或WM/SAC。',
++        '\n图均另存PDF：'])
++    for name in ['absolute_vs_relative_accuracy','leave_one_map_out','oracle_vs_model_gain','action_delta_accuracy','regret_comparison']:
++        lines.append(f'\n![{name}](figures/{name}.png)')
++    (R/'MPPI_FIRST_ACTION_ADVANTAGE_REPORT_20261118.md').write_text('\n'.join(lines)+'\n')
++    sources=sorted(R.glob('*.py'))+[R/'protocol.json',R/'feature_schema.json']
++    patch=[]
++    for f in sources:
++        result=subprocess.run(['git','diff','--no-index','--','/dev/null',str(f.relative_to(ROOT))],cwd=ROOT,capture_output=True,text=True)
++        assert result.returncode==1;patch.append(result.stdout)
++    (R/'code_changes.patch').write_text(''.join(patch))
++    dump('verification.json',dict(parent_commit=p['parent_commit'],phase2_report_commit=p['phase2_report_commit'],
++        checkpoint_sha256=p['checkpoint_sha256'],A0_sha256=p['A0_sha256'],old_inputs_sha_checked=len(old_inventory),
++        protected_sources_unchanged=True,default_config_unchanged=True,old_models_unchanged=True,baseline_advantage_exact_zero=True,
++        fit_only_normalization=True,same_origin_targets=True,scene_origin_balanced=True,heldout_maps_never_fit=True,
++        A0_lomo_disclosed_as_seen_fit=True,A0_inner_accuracy_unchanged=True,linear_A1_A2_predictions_exactly_equal=linear_equal,
++        old_seen_validation_not_reselected=True,new_validation_performed=False,new_environment_runs=0,
++        relative_models_trained=36,knn_diagnostic_fits=9,absolute_models_retrained=0,
++        tests_original82='82 passed in 4.66s',tests_new16='16 passed in 1.60s',tests_total=98,
++        tests_in_independent_worktree_processes=True,first_mixed_process_attempt_preserved=True,
++        online_changes=False,formal100=False,commit=False,push=False,
++        source_sha256={str(f.relative_to(ROOT)):sha(f) for f in sources},
++        no_online_value_deployment=True,models_kept_offline=True))
++    dump('execution_manifest.json',dict(cwd=str(ROOT),binary_source=str(PRIOR),
++        environment={'OMP_NUM_THREADS':'1','OPENBLAS_NUM_THREADS':'1','MKL_NUM_THREADS':'1'},
++        scripts=['prepare.py','train.py','evaluate.py','benchmark.py','test_advantage.py','report.py'],
++        testing='Original82 under prior worktree; new16 under main, --import-mode=importlib, each fresh process.',
++        old_test_args=load(PHASE2/'test_command.json'),new_test_args=['python','-m','pytest','-q','--import-mode=importlib',str(R/'test_advantage.py')],
++        protocol_sha256=sha(R/'protocol.json'),all_outputs_exclusive_creation=True))
++    print('PHASE3 COMPLETE: development gates failed, no new validation;98 tests; original online stack untouched.',flush=True)
++
++
++if __name__=='__main__':main()
+diff --git a/reports/mppi_first_action_advantage_20261118/study_io.py b/reports/mppi_first_action_advantage_20261118/study_io.py
+new file mode 100644
+index 0000000..5bc7063
+--- /dev/null
++++ b/reports/mppi_first_action_advantage_20261118/study_io.py
+@@ -0,0 +1,34 @@
++"""Phase 3 paths/helpers; distinct from the runtime's common package."""
++import csv
++import hashlib
++import json
++from pathlib import Path
++import numpy as np
++
++R=Path(__file__).resolve().parent
++ROOT=R.parents[1]
++PRIOR=ROOT.parent/'mpr_mpc_v2_first_action_20261117'
++OLD=PRIOR/'reports/mppi_first_action_value_20261117'
++PHASE2=PRIOR/'reports/mppi_first_action_failure_20261118'
++
++
++def load(path):return json.loads(Path(path).read_text())
++def sha(path):
++    h=hashlib.sha256()
++    with Path(path).open('rb') as stream:
++        for b in iter(lambda:stream.read(1024*1024),b''):h.update(b)
++    return h.hexdigest()
++def clean(x):
++    if isinstance(x,np.ndarray):return clean(x.tolist())
++    if isinstance(x,np.generic):return clean(x.item())
++    if isinstance(x,Path):return str(x)
++    if isinstance(x,dict):return {str(k):clean(v) for k,v in x.items()}
++    if isinstance(x,(list,tuple)):return [clean(v) for v in x]
++    if isinstance(x,float) and not np.isfinite(x):return None
++    return x
++def dump(name,value):
++    with (R/name).open('x') as f:json.dump(clean(value),f,indent=2,allow_nan=False)
++def table(name,rows):
++    with (R/name).open('x',newline='') as f:
++        w=csv.DictWriter(f,fieldnames=list(dict.fromkeys(k for r in rows for k in r)))
++        w.writeheader();w.writerows(clean(rows))
+diff --git a/reports/mppi_first_action_advantage_20261118/test_advantage.py b/reports/mppi_first_action_advantage_20261118/test_advantage.py
+new file mode 100644
+index 0000000..32e0b31
+--- /dev/null
++++ b/reports/mppi_first_action_advantage_20261118/test_advantage.py
+@@ -0,0 +1,128 @@
++"""Required Phase3 regressions; all fixtures are offline/current-state only."""
++import importlib.util,json
++from pathlib import Path
++import numpy as np
++import pytest
++import torch
++
++R=Path(__file__).parent
++spec=importlib.util.spec_from_file_location('phase3_advantage_models',R/'models.py')
++models=importlib.util.module_from_spec(spec);spec.loader.exec_module(models)
++
++
++def protocol():return json.loads((R/'protocol.json').read_text())
++
++
++def test_baseline_delta_action_is_zero():
++    for s in ['A1','A2']:
++        x=models.features(np.ones(535),[.2,.7],[.2,.7],s)
++        assert np.array_equal(x[-2:],[0.,0.])
++
++
++def test_baseline_advantage_exactly_zero():
++    for kind in ['linear','mlp']:
++        model=models.Advantage(539,kind)
++        x=torch.randn(7,539);x[:,-2:]=0
++        assert torch.equal(model(x),torch.zeros(7))
++
++
++def test_candidate_advantage_is_difference_of_raw_predictions():
++    model=models.Advantage(539,'mlp');model.target_scale.fill_(2.5)
++    x=torch.randn(3,539);reference=x.clone();reference[:,-2:]=0
++    assert torch.equal(model(x),(model.raw(x)-model.raw(reference))*2.5)
++
++
++def test_targets_use_unique_actual_same_origin_baseline():
++    result=models.relative_targets([10,13,100,80],['a','a','b','b'],[True,False,True,False])
++    assert np.array_equal(result,[0,3,0,-20])
++    with pytest.raises(ValueError,match='ONE'):models.relative_targets([1,2],['a','a'],[True,True])
++
++
++def test_original_gamma_reward_done_definition_unchanged():
++    p=protocol();assert p['gamma']==.995 and p['horizon']==1 and p['reward']=='info.tdmpc2_reward'
++    assert p['continuation']=='original frozen deterministic Lattice+SAC until native done'
++    assert p['checkpoint_sha256']=='4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a'
++
++
++def test_pairs_are_within_origin_and_keep_original_tolerance():
++    scene=np.array([1,1,1,2,2]);origin=np.array(['a','a','a','b','b']);y=np.array([0.,1.,2.,100.,103.])
++    pair,w=models.within_origin_pairs(scene,origin,y)
++    assert pair.tolist()==[[0,2],[3,4]] and np.allclose(w,[.5,.5])
++    assert all(origin[i]==origin[j] for i,j in pair)
++
++
++def test_origin_balanced_candidate_weights():
++    w=models.balanced_weights([1]*5,['a']*2+['b']*3)
++    assert w[:2].sum()==pytest.approx(.5) and w[2:].sum()==pytest.approx(.5)
++
++
++def test_scene_balanced_even_with_different_origin_counts():
++    w=models.balanced_weights([1,1,1,2],['a','a','b','c'])
++    assert w[:3].sum()==pytest.approx(.5) and w[3]==pytest.approx(.5)
++
++
++def test_fit_only_normalization_excludes_heldout_values():
++    x=np.array([[1.,0.],[3.,2.],[10000.,90000.]],np.float32)
++    train,test=models.holdout({'scene':np.array([1,1,2])},2)
++    mu,scale,target=models.fit_stats(x[train],[0.,4.],[.5,.5])
++    assert np.allclose(mu.numpy(),[2.,1.]) and np.allclose(scale.numpy(),[1.,1.])
++    assert float(target)==pytest.approx(np.sqrt(8),rel=1e-6)
++
++
++def test_leave_one_map_out_never_fits_heldout_or_inner_maps():
++    p=protocol();manifest=json.loads((R/'model_manifest.json').read_text())
++    for m in manifest:
++        if m['stage'].startswith('lomo_'):
++            held=int(m['stage'].split('_')[1]);assert held not in m['fit_maps'] and len(m['fit_maps'])==7
++        assert set(m['fit_maps'])<=set(p['fit_maps'])
++        assert set(m['fit_maps']).isdisjoint(p['inner_stop_maps']+p['excluded_seen_validation'])
++
++
++def test_knn_linear_use_identical_current_A2_features():
++    x=np.stack([models.features(np.ones(535),[.2,.8],[a,.7],'A2') for a in [.1,.2,.3]])
++    y=np.array([1.,0.,-1.],np.float32);w=np.ones(3,np.float32)/3
++    knn=models.LocalKNN(x,y,w);mu,scale,target=models.fit_stats(x,y,w)
++    linear=models.Advantage(539,'linear');linear.mu.copy_(mu);linear.scale.copy_(scale)
++    assert torch.equal(knn.mu,linear.mu) and torch.equal(knn.scale,linear.scale)
++    reference=torch.tensor(x);reference[:,-2:]=0
++    assert torch.equal(knn(reference),torch.zeros(3))
++
++
++def test_feature_schema_does_not_accept_future_information():
++    state=np.arange(535,dtype=np.float32);x=models.features(state,[.1,.7],[.2,.9],'A2')
++    assert len(x)==539 and np.array_equal(x[:535],state) and np.allclose(x[535:537],[.1,.7])
++    assert np.allclose(x[-2:],[.1,.2])
++    with pytest.raises(TypeError):models.features(state,[0,0],[0,0],'A2',future_reward=10)
++
++
++def test_A0_frozen_result_is_unchanged():
++    import hashlib
++    p=protocol();assert hashlib.sha256(Path(p['A0_checkpoint']).read_bytes()).hexdigest()==p['A0_sha256']
++    r=json.loads((R/'evaluation_results.json').read_text())
++    assert r['summaries']['inner_stop/A0_frozen']['pair_accuracy']['mean']==pytest.approx(.590769019982575,abs=1e-12)
++    assert r['A0_lomo_reference_is_in_sample']
++
++
++def test_online_sources_and_default_config_are_unchanged():
++    import hashlib
++    root=R.parents[1];m=json.loads((R/'experiment_manifest.json').read_text())
++    for path,digest in m['protected_source_sha256'].items():
++        assert hashlib.sha256((root/path).read_bytes()).hexdigest()==digest,path
++
++
++def test_seen_validation_not_used_for_selection_or_training():
++    p=protocol();decision=json.loads((R/'decision.json').read_text())
++    assert decision['no_old_seen_validation_used'] and 'inner-stop ONLY' in decision['selected_using']
++    with np.load(R/'fit_dataset.npz') as fit,np.load(R/'inner_stop_dataset.npz') as inner:
++        assert set(fit['scene'])==set(p['fit_maps']) and set(inner['scene'])==set(p['inner_stop_maps'])
++        assert not (set(fit['scene'])|set(inner['scene']))&set(p['excluded_seen_validation'])
++
++
++def test_centered_linear_cancels_context_and_baseline_terms():
++    a=models.Advantage(537,'linear').double();b=models.Advantage(539,'linear').double()
++    with torch.no_grad():
++        a.net.weight.normal_();b.net.weight.normal_();a.net.weight[:,-2:]=torch.tensor([.3,-.2]);b.net.weight[:,-2:]=a.net.weight[:,-2:]
++    delta=torch.randn(5,2,dtype=torch.float64)
++    x=torch.cat([torch.randn(5,535,dtype=torch.float64),delta],1)
++    xx=torch.cat([torch.randn(5,537,dtype=torch.float64),delta],1)
++    assert torch.allclose(a(x),b(xx),atol=1e-12,rtol=1e-12)
+diff --git a/reports/mppi_first_action_advantage_20261118/train.py b/reports/mppi_first_action_advantage_20261118/train.py
+new file mode 100644
+index 0000000..f829456
+--- /dev/null
++++ b/reports/mppi_first_action_advantage_20261118/train.py
+@@ -0,0 +1,96 @@
++"""Fixed-epoch, fit-only LOMO/full training. Never opens inner-stop/validation."""
++import sys,time
++from pathlib import Path
++sys.path.insert(0,str(Path(__file__).parent))
++import numpy as np
++import torch
++from torch.nn import functional as F
++from study_io import R,load,dump,sha,table
++from models import Advantage,LocalKNN,fit_stats,balanced_weights,within_origin_pairs,holdout,SCHEMAS
++
++
++def train_one(data,ids,schema,kind,stage,p):
++    name=f'{stage}_{schema}_{kind}'
++    output=R/'models'/f'{name}.pt';info=R/'models'/f'{name}.json'
++    if output.exists():
++        saved=load(info)
++        assert saved['protocol_sha256']==sha(R/'protocol.json') and saved['sha256']==sha(output)
++        return saved
++    x=data[schema][ids].astype(np.float32);y=data['delta_y'][ids].astype(np.float32)
++    scene,origin=data['scene'][ids],data['origin'][ids]
++    weights=balanced_weights(scene,origin)
++    pair,pair_weights=within_origin_pairs(scene,origin,y)
++    torch.manual_seed(p['training']['seed'])
++    if kind=='knn':
++        model=LocalKNN(x,y,weights,p['knn']['k']);history=[];elapsed=0.
++    else:
++        model=Advantage(SCHEMAS[schema],kind)
++        mu,scale,target=fit_stats(x,y,weights)
++        model.mu.copy_(mu);model.scale.copy_(scale);model.target_scale.copy_(target)
++        opt=torch.optim.Adam(model.parameters(),lr=p['training']['lr'],
++            weight_decay=p['training'][f'{kind}_weight_decay'])
++        xx,yy,ww=torch.tensor(x),torch.tensor(y),torch.tensor(weights)
++        pp,pw=torch.tensor(pair),torch.tensor(pair_weights)
++        sign=torch.sign(yy[pp[:,0]]/target-yy[pp[:,1]]/target) if len(pp) else torch.empty(0)
++        history=[];begin=time.perf_counter()
++        for epoch in range(p['training']['epochs']):
++            normalized=model(xx)/target
++            regression=(ww*F.smooth_l1_loss(normalized,yy/target,reduction='none')).sum()
++            ranking=(pw*F.softplus(-sign*(normalized[pp[:,0]]-normalized[pp[:,1]]))).sum() if len(pp) else normalized.sum()*0
++            loss=regression+p['training']['lambda_rank']*ranking
++            opt.zero_grad();loss.backward();opt.step()
++            if epoch in [0,49,99,199,299]:history.append(dict(epoch=epoch+1,loss=float(loss),relative_huber=float(regression),ranking=float(ranking)))
++        elapsed=time.perf_counter()-begin
++    model.eval().requires_grad_(False)
++    with torch.no_grad():assert torch.equal(model(torch.tensor(x[data['baseline'][ids]])),torch.zeros(int(data['baseline'][ids].sum())))
++    fit_maps=sorted(map(int,set(scene)))
++    meta=dict(name=name,stage=stage,schema=schema,kind=kind,dimension=x.shape[1],fit_maps=fit_maps,
++        fit_origins=sorted(set(origin.tolist())),fit_rows=len(ids),fit_indices=ids.tolist(),
++        parameter_count=sum(q.numel() for q in model.parameters()),train_seconds=elapsed,history=history,
++        protocol_sha256=sha(R/'protocol.json'),dataset_sha256=sha(R/'fit_dataset.npz'),
++        gamma=p['gamma'],horizon=1,target='same-origin real Baseline-relative H1 Return',
++        checkpoint_sha256=p['checkpoint_sha256'],parent_commit=p['parent_commit'],
++        target_scale=float(model.target_scale),no_inner_stop_or_validation_normalization=True,
++        no_future_inputs=True,baseline_centered=True,online_validated=False,
++        k=model.k if kind=='knn' else None)
++    torch.save(dict(meta=meta,state_dict=model.state_dict()),output)
++    meta.update(checkpoint=str(output),sha256=sha(output))
++    dump(f'models/{name}.json',meta)
++    print('TRAIN',name,'maps',fit_maps,'rows',len(ids),'seconds',round(elapsed,2),flush=True)
++    return meta
++
++
++def main():
++    torch.set_num_threads(1)
++    p=load(R/'protocol.json')
++    data={k:v.copy() for k,v in np.load(R/'fit_dataset.npz').items()}
++    assert set(data['scene'])==set(p['fit_maps'])
++    (R/'models').mkdir(exist_ok=True)
++    reports=[];diagnostics=[];stages=[]
++    for scene in p['fit_maps']:
++        train,test=holdout(data,scene)
++        assert set(data['scene'][train]).isdisjoint(set(data['scene'][test]))
++        stages.append((f'lomo_{scene}',train))
++    stages.append(('full',np.arange(len(data['y']))))
++    for stage,ids in stages:
++        for schema in ['A1','A2']:
++            for kind in ['linear','mlp']:reports.append(train_one(data,ids,schema,kind,stage,p))
++        reports.append(train_one(data,ids,'A2','knn',stage,p))
++        y,origin,scene=data['delta_y'][ids],data['origin'][ids],data['scene'][ids]
++        pairs,pw=within_origin_pairs(scene,origin,y);lookup={(int(i),int(j)):float(w) for (i,j),w in zip(pairs,pw)}
++        scale=float(fit_stats(data['A2'][ids],y,balanced_weights(scene,origin))[2])
++        for o in sorted(set(origin)):
++            local=np.flatnonzero(origin==o)
++            for n,i in enumerate(local):
++                for j in local[n+1:]:diagnostics.append(dict(stage=stage,scene=int(scene[i]),origin=o,
++                    candidate_i=int(data['candidate'][ids[i]]),candidate_j=int(data['candidate'][ids[j]]),
++                    raw_delta_Y_i=float(y[i]),raw_delta_Y_j=float(y[j]),normalized_difference=float((y[i]-y[j])/scale),
++                    eligible=abs(y[i]-y[j])>1,pair_weight=lookup.get((int(i),int(j)),0.),fit_target_scale=scale))
++    table('advantage_pair_diagnostics.csv',diagnostics)
++    dump('model_manifest.json',reports)
++    dump('training_results.json',dict(models=reports,fixed_epochs=300,early_stop_on_heldout_map=False,
++        inner_stop_used_during_training=False,seen_validation_opened=False,absolute_return_models_retrained=0))
++    print('All8LOMO+full fits complete, ONLY original8fit maps used.',flush=True)
++
++
++if __name__=='__main__':main()
+diff --git a/reports/mppi_first_action_advantage_20261118/protocol.json b/reports/mppi_first_action_advantage_20261118/protocol.json
+new file mode 100644
+index 0000000..1416ce4
+--- /dev/null
++++ b/reports/mppi_first_action_advantage_20261118/protocol.json
+@@ -0,0 +1,117 @@
++{
++  "parent_commit": "7d15cdda92ff434024bb72c5dd324d05fa3fe3d0",
++  "phase2_report_commit": "7d15cdda92ff434024bb72c5dd324d05fa3fe3d0",
++  "date": "2026-11-18",
++  "old_report_generation_base": "27f8131d95a39bfe2f4a95d101fef1774903b907",
++  "checkpoint": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt",
++  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
++  "A0_checkpoint": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_first_action_20261117/reports/mppi_first_action_value_20261117/models/F2_mlp_huber_rank.pt",
++  "A0_sha256": "a53d2a26ef060c1b023311cda3d03ea4e946e0343a7cc585c18e838d9db717d7",
++  "A0_context": {
++    "wm_checkpoint_sha": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
++    "sac_checkpoint_sha": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
++    "training_manifest_sha": "19684c51961ec2c44222bc5f163cc0425abe428e472b08b9e39225a1a72f468c",
++    "feature_schema": "F2",
++    "gamma": 0.995,
++    "reward_definition": "info.tdmpc2_reward/native_done",
++    "baseline_policy_sha": "e402776fc0751f2a28e0bd4f25b4dd021836899576a026237e03262d904f95d8",
++    "intervention_horizon": 1,
++    "continuation_policy": "frozen_deterministic_LatticeSAC"
++  },
++  "data_root": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_first_action_20261117/reports/mppi_first_action_value_20261117",
++  "fit_maps": [
++    90115,
++    90261,
++    90125,
++    90604,
++    90443,
++    90066,
++    92165,
++    92137
++  ],
++  "inner_stop_maps": [
++    92041,
++    92923,
++    92903,
++    92704
++  ],
++  "excluded_seen_validation": [
++    94397,
++    94928,
++    94201,
++    94142,
++    94057,
++    94894
++  ],
++  "horizon": 1,
++  "gamma": 0.995,
++  "reward": "info.tdmpc2_reward",
++  "continuation": "original frozen deterministic Lattice+SAC until native done",
++  "target": "actual Y(candidate)-actual Y(unique same-origin Baseline)",
++  "tolerance": 1.0,
++  "feature_schemas": {
++    "A0": "CURRENT535 + absolute physical action2, frozen OLD control only",
++    "A1": "CURRENT535 + candidate-minus-Baseline action2 (537)",
++    "A2": "CURRENT535 + Baseline physical2 + action delta2 (539)"
++  },
++  "architectures": [
++    "linear",
++    "MLP32SiLU16SiLU1"
++  ],
++  "new_absolute_return_training": false,
++  "output": "(raw_f(x)-raw_f(same context, zero delta))*fit_target_RMS; exact Baseline0",
++  "training": {
++    "epochs": 300,
++    "seed": 1,
++    "optimizer": "Adam",
++    "lr": 0.001,
++    "linear_weight_decay": 0.001,
++    "mlp_weight_decay": 0.0001,
++    "lambda_rank": 0.25,
++    "regression": "SmoothL1 on advantage / fit-only weighted RMS",
++    "ranking": "softplus(-sign(normalized actual difference)*normalized predicted difference)",
++    "pair_scope": "same origin, exclude raw abs(delta_Y_i-delta_Y_j)<=1",
++    "normalization": "fit-only weighted input mean/std(min.001), label weighted RMS(min1); no label mean shift",
++    "weights": "each scene equal, each origin equal inside scene, each candidate equal inside origin; pair weights balance valid origins/maps",
++    "LOMO": "8 fixed folds, seven fit maps train, one fit map test; fixed300 epochs; no inner-stop early stopping"
++  },
++  "knn": {
++    "schema": "A2",
++    "k": 8,
++    "distance": "block-normalized Euclidean of current535,baseline2,delta2; fit-only normalization",
++    "weighting": "fit scene/origin/candidate weight divided by distance(min1e-6)",
++    "baseline_centered": true,
++    "diagnostic_only": true
++  },
++  "A0_lomo_scope": "Frozen A0 already trained on all8fit maps. Show as in-sample reference, NOT an independent LOMO model. No new absolute-return refit.",
++  "selection": "Once, inner-stop4: pair accuracy DESC,Top1Regret ASC,ModelGain DESC; stable tie linear before MLP; KNN not eligible. No old seen-validation data.",
++  "gate": {
++    "lomo": "For inner-stop-selected A2 kind: accuracy CI lower>.5,Spearman CI lower>0,ModelGain CI lower>=0; do NOT use leaked A0 LOMO as a held-out comparator.",
++    "inner_stop": "A2 accuracy point>.5,Spearman point>0, paired Top1Regret improvement vs frozen A0 point>0, ModelGain>=0, selected_negative no greater than A0.",
++    "validation": "Only if BOTH prior gates pass: freeze selected model SHA; preregister6 unused maps/12origins from110000..110999, seed20261118, before50/150. No scene replacement.",
++    "final": "Accuracy CI lower>.5,Spearman CI lower>0,Regret improvement vs A0 CI lower>0, ModelGain>=0, selected-negative increase CI upper<=0, gains not single-map-dependent; never deploy in this offline task."
++  },
++  "bootstrap": {
++    "samples": 2000,
++    "seed": 20261118,
++    "unit": "whole map; origins averaged inside map"
++  },
++  "magnitude_edges": [
++    0.01,
++    0.05,
++    0.1
++  ],
++  "benchmark": {
++    "warmup": 20,
++    "repeats": 200,
++    "batches": [
++      1,
++      258
++    ],
++    "not_full_planner": true
++  },
++  "new_environment_runs_before_gates": 0,
++  "online_changes": false,
++  "commit": false,
++  "push": false
++}
+\ No newline at end of file
+diff --git a/reports/mppi_first_action_advantage_20261118/feature_schema.json b/reports/mppi_first_action_advantage_20261118/feature_schema.json
+new file mode 100644
+index 0000000..5092d52
+--- /dev/null
++++ b/reports/mppi_first_action_advantage_20261118/feature_schema.json
+@@ -0,0 +1,18 @@
++{
++  "A0": {
++    "dimension": 537,
++    "feature": "current535+absolute action2",
++    "frozen": true
++  },
++  "A1": {
++    "dimension": 537,
++    "feature": "current535+action delta2"
++  },
++  "A2": {
++    "dimension": 539,
++    "feature": "current535+Baseline2+action delta2"
++  },
++  "no_future_features": true,
++  "baseline_reference": "unique actual same-origin candidate",
++  "note": "Centered linear A1/A2 cancel context and Baseline terms; do not interpret equality as lack of useful context."
++}
+\ No newline at end of file

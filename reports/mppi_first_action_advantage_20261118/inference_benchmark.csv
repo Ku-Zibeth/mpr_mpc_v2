@@ -1,0 +1,25 @@
+model,device,batch,parameters,wall_p50_ms,wall_p95_ms,wall_p99_ms,cuda_kernel_p50_ms,model_tensor_bytes,peak_process_tensor_bytes,cpu_gpu_max_abs_difference,repeats,scope
+A0_frozen,cpu,1,36545,0.14680949971079826,0.27106754714623094,0.2957923279609531,,0,0,0.0,200,Head-only including centering; inputs already on device. NOT whole Lattice/SAC/MPPI time.
+A0_frozen,cpu,258,36545,0.7071680156514049,0.8374480239581316,0.9223906567785883,,0,0,0.0,200,Head-only including centering; inputs already on device. NOT whole Lattice/SAC/MPPI time.
+A0_frozen,cuda,1,36545,0.4268614575266838,0.6797075388021767,0.7775514270178974,0.41360001266002655,154624,9732096,0.0,200,Head-only including centering; inputs already on device. NOT whole Lattice/SAC/MPPI time.
+A0_frozen,cuda,258,36545,0.43540605111047626,0.6780730851460247,0.7887441245838998,0.4209439903497696,154624,11487232,1.52587890625e-05,200,Head-only including centering; inputs already on device. NOT whole Lattice/SAC/MPPI time.
+A1_linear,cpu,1,538,0.06084947381168604,0.0715310452505946,0.08735889685340223,,0,0,0.0,200,Head-only including centering; inputs already on device. NOT whole Lattice/SAC/MPPI time.
+A1_linear,cpu,258,538,0.19353098468855023,0.2442365395836532,0.34131555701605965,,0,0,0.0,200,Head-only including centering; inputs already on device. NOT whole Lattice/SAC/MPPI time.
+A1_linear,cuda,1,538,0.23591244826093316,0.36276653991080815,0.4328271129634227,0.21798399835824966,8704,8539136,0.0,200,Head-only including centering; inputs already on device. NOT whole Lattice/SAC/MPPI time.
+A1_linear,cuda,258,538,0.21215499145910144,0.2953292394522577,0.341390256071463,0.1996000036597252,8704,10747904,0.0,200,Head-only including centering; inputs already on device. NOT whole Lattice/SAC/MPPI time.
+A1_mlp,cpu,1,17761,0.12275844346731901,0.29434287571348244,0.3159799403510988,,0,0,0.0,200,Head-only including centering; inputs already on device. NOT whole Lattice/SAC/MPPI time.
+A1_mlp,cpu,258,17761,0.4463174846023321,0.5196918733417984,0.5850284628104419,,0,0,0.0,200,Head-only including centering; inputs already on device. NOT whole Lattice/SAC/MPPI time.
+A1_mlp,cuda,1,17761,0.38212351500988007,0.5310767097398639,0.597241636132821,0.3676159977912903,78848,9656320,0.0,200,Head-only including centering; inputs already on device. NOT whole Lattice/SAC/MPPI time.
+A1_mlp,cuda,258,17761,0.38914295146241784,0.5380945920478553,0.6320297461934388,0.3758399933576584,78848,11362304,3.814697265625e-05,200,Head-only including centering; inputs already on device. NOT whole Lattice/SAC/MPPI time.
+A2_linear,cpu,1,540,0.061171536799520254,0.10434686555527138,0.12745601823553443,,0,0,0.0,200,Head-only including centering; inputs already on device. NOT whole Lattice/SAC/MPPI time.
+A2_linear,cpu,258,540,0.19813701510429382,0.26451742742210627,0.34046367160044594,,0,0,0.0,200,Head-only including centering; inputs already on device. NOT whole Lattice/SAC/MPPI time.
+A2_linear,cuda,1,540,0.21641451166942716,0.3176833561155945,0.40119093027897174,0.2035519927740097,8704,8539136,0.0,200,Head-only including centering; inputs already on device. NOT whole Lattice/SAC/MPPI time.
+A2_linear,cuda,258,540,0.21090847440063953,0.3179115825332701,0.4319080221466716,0.1985280066728592,8704,10756096,0.0,200,Head-only including centering; inputs already on device. NOT whole Lattice/SAC/MPPI time.
+A2_mlp,cpu,1,17825,0.12298405636101961,0.20918301888741547,0.3138719324488193,,0,0,0.0,200,Head-only including centering; inputs already on device. NOT whole Lattice/SAC/MPPI time.
+A2_mlp,cpu,258,17825,0.4351679817773402,0.7796378980856387,0.8571623952593653,,0,0,0.0,200,Head-only including centering; inputs already on device. NOT whole Lattice/SAC/MPPI time.
+A2_mlp,cuda,1,17825,0.37599040661007166,0.5606832448393105,0.7336641056463119,0.36180800199508667,78848,9656320,0.0,200,Head-only including centering; inputs already on device. NOT whole Lattice/SAC/MPPI time.
+A2_mlp,cuda,258,17825,0.393097463529557,0.6573456514161078,0.7320204412098972,0.3789120018482208,78848,11368448,1.3828277587890625e-05,200,Head-only including centering; inputs already on device. NOT whole Lattice/SAC/MPPI time.
+A2_knn,cpu,1,0,0.27007953030988574,0.3428624651860446,0.4303545283619314,,0,0,0.0,200,Head-only including centering; inputs already on device. NOT whole Lattice/SAC/MPPI time.
+A2_knn,cpu,258,0,1.872364489827305,2.5931258685886855,2.8458202176261693,,0,0,0.0,200,Head-only including centering; inputs already on device. NOT whole Lattice/SAC/MPPI time.
+A2_knn,cuda,1,0,0.6249609868973494,0.8069877570960671,0.8782515698112546,0.6071039736270905,281088,9085440,0.0,200,Head-only including centering; inputs already on device. NOT whole Lattice/SAC/MPPI time.
+A2_knn,cuda,258,0,0.6368915201164782,0.8442961610853671,0.9192572603933512,0.6200159788131714,281088,11591168,0.04700660705566406,200,Head-only including centering; inputs already on device. NOT whole Lattice/SAC/MPPI time.

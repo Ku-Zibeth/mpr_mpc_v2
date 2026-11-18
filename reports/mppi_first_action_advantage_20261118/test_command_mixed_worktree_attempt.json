@@ -1,0 +1,23 @@
+{
+  "cwd": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_first_action_20261117",
+  "args": [
+    "/home/kzb/anaconda3/envs/tdmpc2/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "tests/test_candidate_value.py",
+    "tests/test_first_action_study.py",
+    "tests/test_mppi_diagnosis.py",
+    "tests/test_mppi_failure_attribution.py",
+    "tests/test_mppi_final_selection.py",
+    "tests/test_mppi_value_evaluation.py",
+    "tests/test_policy_value_diagnosis.py",
+    "tests/test_residual_rl.py",
+    "tests/test_sac_centred_repair.py",
+    "tests/test_sac_continuation_value.py",
+    "tests/test_simplified_tdmpc2_mppi.py",
+    "tests/test_terminal_q_weight.py",
+    "reports/mppi_first_action_failure_20261118/test_phase2.py",
+    "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/reports/mppi_first_action_advantage_20261118/test_advantage.py"
+  ]
+}
