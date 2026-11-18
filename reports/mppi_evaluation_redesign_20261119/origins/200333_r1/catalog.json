@@ -1,0 +1,250 @@
+{
+  "scene": 200333,
+  "seed": 1,
+  "step": 50,
+  "representatives": [
+    {
+      "role": "A",
+      "source": "original SAC",
+      "action": [
+        0.09362781792879105,
+        -0.6079699397087097
+      ],
+      "pool_index": 0,
+      "raw_score": 214.86399841308594,
+      "candidate_rank": null,
+      "reward_score": 7.851700305938721,
+      "terminal_contribution": 207.01229858398438,
+      "candidate_id": "A",
+      "roles": [
+        "A"
+      ]
+    },
+    {
+      "role": "B",
+      "source": "native actual",
+      "action": [
+        0.09185926616191864,
+        0.15982206165790558
+      ],
+      "pool_index": 1,
+      "raw_score": 232.0749969482422,
+      "candidate_rank": null,
+      "reward_score": 10.256030082702637,
+      "terminal_contribution": 221.8189697265625,
+      "candidate_id": "B",
+      "roles": [
+        "B",
+        "E",
+        "F"
+      ]
+    },
+    {
+      "role": "C",
+      "source": "uniform unique nonBaseline",
+      "action": [
+        0.08202940970659256,
+        -0.4051029086112976
+      ],
+      "pool_index": 96,
+      "raw_score": 220.1290740966797,
+      "candidate_rank": null,
+      "reward_score": 8.418088912963867,
+      "terminal_contribution": 211.7109832763672,
+      "candidate_id": "C",
+      "roles": [
+        "C"
+      ]
+    },
+    {
+      "role": "D",
+      "source": "same-pool Reward-only",
+      "action": [
+        0.09802564233541489,
+        0.35121721029281616
+      ],
+      "pool_index": 210,
+      "raw_score": 231.7938995361328,
+      "candidate_rank": null,
+      "reward_score": 10.332439422607422,
+      "terminal_contribution": 221.46145629882812,
+      "candidate_id": "D",
+      "roles": [
+        "D"
+      ]
+    },
+    {
+      "role": "G",
+      "source": "supplement matched-pool RQ",
+      "action": [
+        0.10146982222795486,
+        0.01424158364534378
+      ],
+      "pool_index": 196,
+      "raw_score": 232.3962860107422,
+      "candidate_rank": null,
+      "reward_score": 10.22230052947998,
+      "terminal_contribution": 222.17398071289062,
+      "candidate_id": "G",
+      "roles": [
+        "G"
+      ]
+    }
+  ],
+  "raw_roles": [
+    {
+      "role": "A",
+      "source": "original SAC",
+      "action": [
+        0.09362781792879105,
+        -0.6079699397087097
+      ],
+      "pool_index": 0,
+      "raw_score": 214.86399841308594,
+      "candidate_rank": null,
+      "reward_score": 7.851700305938721,
+      "terminal_contribution": 207.01229858398438
+    },
+    {
+      "role": "B",
+      "source": "native actual",
+      "action": [
+        0.09185926616191864,
+        0.15982206165790558
+      ],
+      "pool_index": 1,
+      "raw_score": 232.0749969482422,
+      "candidate_rank": null,
+      "reward_score": 10.256030082702637,
+      "terminal_contribution": 221.8189697265625
+    },
+    {
+      "role": "C",
+      "source": "uniform unique nonBaseline",
+      "action": [
+        0.08202940970659256,
+        -0.4051029086112976
+      ],
+      "pool_index": 96,
+      "raw_score": 220.1290740966797,
+      "candidate_rank": null,
+      "reward_score": 8.418088912963867,
+      "terminal_contribution": 211.7109832763672
+    },
+    {
+      "role": "D",
+      "source": "same-pool Reward-only",
+      "action": [
+        0.09802564233541489,
+        0.35121721029281616
+      ],
+      "pool_index": 210,
+      "raw_score": 231.7938995361328,
+      "candidate_rank": null,
+      "reward_score": 10.332439422607422,
+      "terminal_contribution": 221.46145629882812
+    },
+    {
+      "role": "E",
+      "source": "native RQ final2 reproduction",
+      "action": [
+        0.09185926616191864,
+        0.15982206165790558
+      ],
+      "pool_index": 1,
+      "raw_score": 232.0749969482422,
+      "candidate_rank": null,
+      "reward_score": 10.256030082702637,
+      "terminal_contribution": 221.8189697265625
+    },
+    {
+      "role": "F",
+      "source": "frozen margin native mean",
+      "action": [
+        0.09185926616191864,
+        0.15982206165790558
+      ],
+      "pool_index": 1,
+      "raw_score": 232.0749969482422,
+      "candidate_rank": null,
+      "reward_score": 10.256030082702637,
+      "terminal_contribution": 221.8189697265625
+    },
+    {
+      "role": "G",
+      "source": "supplement matched-pool RQ",
+      "action": [
+        0.10146982222795486,
+        0.01424158364534378
+      ],
+      "pool_index": 196,
+      "raw_score": 232.3962860107422,
+      "candidate_rank": null,
+      "reward_score": 10.22230052947998,
+      "terminal_contribution": 222.17398071289062
+    }
+  ],
+  "aliases": {
+    "A": "A",
+    "B": "B",
+    "C": "C",
+    "D": "D",
+    "E": "B",
+    "F": "B",
+    "G": "G"
+  },
+  "selectors": {
+    "A": 0,
+    "B": 1,
+    "C": 96,
+    "D": 210,
+    "E": 1,
+    "F": 1,
+    "G": 196
+  },
+  "native_E_verified": true,
+  "final_q_pair": [
+    4,
+    1
+  ],
+  "iteration_q_pairs": [
+    [
+      2,
+      4
+    ],
+    [
+      2,
+      4
+    ],
+    [
+      1,
+      0
+    ],
+    [
+      0,
+      1
+    ]
+  ],
+  "pool_size": 258,
+  "unique_nonbaseline_controls": 257,
+  "policy_fingerprint": {
+    "latent": "0f5f13c6c7d0ac73d6d97c4a3b115636b61f2dde7c93f7fb0c4f73573bee2a5e",
+    "residual535": "f24300adfa093d9a35cc8f8b497becf428f13f66a1e57f21dd6f1c56b859a09c",
+    "coarse_actions": "8d7c4843686cbd1e3dd1124dea09d17f0084135eafb3620408aa978ed7ab6ba8",
+    "refined_actions": "1a7363d9ca2f15a0bab0109bb8808f2cd7b4a6c2b56ecc3e8b351b74eaf37312",
+    "refined_parameters": "d4a054fcc13de811d30e8de6887a78c25a80adcaa604f5c02edfc3135301bd39",
+    "requested_residual": "1a7b9d443218ade8382580c8e96fa40eae385943e04e8ac26101817b02323202",
+    "native_td_prev_mean": "97a902da7847b3ba451fdf9d6188b0a118e4aaf9b230fd2973f6c0266d756ae5",
+    "global_step": "8d6962a152aee235ba824c41758b8da2371b7077b4ea0afaaec94014e16e3bc7",
+    "pending_residual": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+    "local_generator": "3b11616043d8225a8318c90d707ee0ae470609d192a7f1b57d88503d8c355e86",
+    "episode_seed": "5077b142aac81da8c7748d9a81177b656aa0bd357fd678398053147ddf89e219",
+    "lattice": "00f6ddb264034fc64708fbbb2e8cd9bd061c946436f901f4fd7fd26dc8500325",
+    "safety_previous_action": "49ac8f893d9b4fd5428ac8180ecaa2667b39a7ac1f0865827246c982f81c421b",
+    "risk_status": "a48bb793941898838bb41a80eb8588c584da02905e4e255ae3bd64a14c01652e"
+  },
+  "candidate_generation_rng_unchanged": true,
+  "frozen_margin": 13.2349853515625,
+  "native_predicted_margin": 17.208251953125,
+  "score_semantics": "H10 + TD-Q and reward-only are descriptive selectors for H1 labels; no matched learned H1 value is asserted"
+}

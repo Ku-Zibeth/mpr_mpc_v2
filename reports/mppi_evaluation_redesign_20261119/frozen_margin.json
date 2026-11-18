@@ -1,0 +1,18 @@
+{
+  "margin": 13.2349853515625,
+  "development_choice": {
+    "margin": 13.2349853515625,
+    "replacement_rate": 0.125,
+    "selected_gain": -0.17202741684435852,
+    "negative_selection_rate": 0.0625,
+    "crash_delta": 0.0,
+    "oor_delta": 0.0,
+    "source": "old8maps development only",
+    "eligible_nontrivial": true
+  },
+  "development_lomo_gain": -0.19425456957204945,
+  "development_positive": false,
+  "rule": "Grid=0 plus predicted-score gain quartiles/90th; replacement12.5%-87.5%, prefer nonworse old safety, maximize map-mean actual gain; no new-map labels.",
+  "unsupported_if_negative": "F remains an explicitly unvalidated experimental finite margin; if new methods all fail, opt-in deployment guard denies unsupported replacements, never claims performance improvement.",
+  "no_new_map_outcomes_seen": true
+}

@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "branches_checked": 174,
+  "corrected_rows": 149,
+  "root_cause": "h1_analysis reused the last candidate loop variable for diagnostic columns only",
+  "original_table_preserved": "source_versions/new_map_candidate_results_before_action_column_fix.csv",
+  "raw_execution_labels_and_decision_unchanged": true
+}

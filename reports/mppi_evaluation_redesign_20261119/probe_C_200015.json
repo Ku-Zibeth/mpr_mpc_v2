@@ -1,0 +1,12 @@
+{
+  "initial_hashes": {
+    "observation": "398b53f62f2890e0cf0152e43732bc9333c56591f1e03df9dd38d7fc1f673255",
+    "vehicle": "5fb78aad62831addc69cf5fa4ae431afe46e835bea231cb15494f93438bf3f92",
+    "traffic": "b83b5652ebea0d53362c365db381a185fbe7854d48937cf0a5bca40596b3ca28",
+    "rng": "33b95b88061f0c34c4d9619dce3e0263035bde88a05a819c4c9ef4e5c728d22a"
+  },
+  "warmup": 5,
+  "calls": 50,
+  "executed_probe_actions": 0,
+  "scope": "isolated full agent.act and LocalMPPI; no env.step. Complete cycle measured in native episodes separately."
+}

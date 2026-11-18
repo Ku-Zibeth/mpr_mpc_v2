@@ -1,0 +1,33 @@
+{
+  "tests_passed": true,
+  "test_count": 46,
+  "real_default_parity": true,
+  "real_guard_probe": true,
+  "unchanged_native_sampling_and_update_methods": [
+    "reset",
+    "initial_mean",
+    "_candidate_batch",
+    "_update_distribution",
+    "_elite_weights",
+    "_weights"
+  ],
+  "core_files": {
+    "planning/local_mppi.py": "b572aa82544b288ce5b11a9744a3e2fac28997326deaabc954bc3f684b450946"
+  },
+  "decision": {
+    "branch": "unsupported_replacement_protection",
+    "online_options": {
+      "final_selection_policy": "baseline_guard",
+      "final_selection_margin": 13.2349853515625,
+      "replacement_supported": false
+    },
+    "reward_case_passed": false,
+    "margin_case_passed": false,
+    "margin_frozen_before_new_maps": 13.2349853515625,
+    "new_margin_tuning": false,
+    "default_config_changed": false,
+    "protection_is_not_algorithm_success": true,
+    "rationale": "Apply the predeclared branch only; unsupported scoring cannot justify replacing SAC. Full closed-loop screening still required."
+  },
+  "default_config_unchanged": true
+}

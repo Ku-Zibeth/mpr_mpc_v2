@@ -1,0 +1,30 @@
+{
+  "configuration": "B",
+  "scene": 200465,
+  "seed": 1,
+  "success": 0.0,
+  "crash": 0.0,
+  "out_of_road": 1.0,
+  "route_completion": 0.4295819611757964,
+  "timeout": 0.0,
+  "episode_return": 154.92649915200198,
+  "discounted_return": 98.67116699916444,
+  "episode_length": 196,
+  "safety_cost": 1.0345128452543917,
+  "replacement_rate": 0.9846938775510204,
+  "mean_action_deviation": 0.13919017080583476,
+  "planning_p50": 243.89617244014516,
+  "planning_p95": 259.8392190411687,
+  "cycle_p95": 266.15269551984966,
+  "initial_hashes": {
+    "observation": "ece34ad60eb04543de71788087509ee46f326085cf15b5e19bca75921df240bb",
+    "vehicle": "8bbd2ded7720adf9a42f07442cb91396e21d3dae725269a4d67f8c99b0c8bca4",
+    "traffic": "abdfcf875bf45c50319d35193b279c601867af1ebcfa48d5c5d4fc1ced12b521",
+    "rng": "68d69e4c3cafe79a16465c6d97752678a9b469b759d7e99d707cafdec1a5f839"
+  },
+  "end_reason": "out_of_road",
+  "native_done": true,
+  "weights_unchanged": true,
+  "reachable_h1_origin": null,
+  "latency_scope": "6worker shared GPU native episode, cold start retained; separate isolated probe for real-time assessment"
+}

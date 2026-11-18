@@ -1,0 +1,2160 @@
+diff --git a/planning/local_mppi.py b/planning/local_mppi.py
+index f64952f..7d02bf3 100644
+--- a/planning/local_mppi.py
++++ b/planning/local_mppi.py
+@@ -23,6 +23,8 @@ MPPI_DIAGNOSTIC_KEYS = (
+     'uses_sac_value','effective_cost_weight','cost_penalty','cost_penalty_gain','audit_terminal_candidates',
+     'mean_best_sequence_l2','mean_best_first_action_l2','mean_best_predicted_gap','elite_pairwise_l2',
+     'selection_is_elite','selected_source_code','final_elite_value','final_elite_gain',
++    'baseline_guard_enabled','baseline_guard_blocked','baseline_guard_reason_code',
++    'replacement_supported','final_selection_margin',
+ ) + tuple(f'iteration_{i}_{name}' for i in range(4) for name in ('elite_value_mean','elite_value_max','sampling_diversity','weight_entropy','effective_sample_size'))
+ MPPI_EPISODE_METRICS = {f'mppi_{k}':f'mppi/{k}' for k in (*MPPI_DIAGNOSTIC_KEYS,'total_planning_ms')}
+ 
+@@ -88,6 +90,15 @@ class LocalMPPI:
+         self.selection_mode = str(cfg.get('selection_mode','weighted_mean'))
+         self.compare_final_elite = 'selection_mode' in cfg  # exact legacy behavior when absent
+         self.record_candidates = bool(cfg.get('record_candidates',False))
++        # Opt-in admission of a predicted improvement, not a safety certificate
++        # or an estimate of H1/SAC continuation value. Legacy outputs stay exact.
++        self.final_selection_policy = str(cfg.get('final_selection_policy','legacy'))
++        self.final_selection_margin = float(cfg.get('final_selection_margin',0.))
++        self.replacement_supported = bool(cfg.get('replacement_supported',True))
++        if self.final_selection_policy not in {'legacy','baseline_guard'}:
++            raise ValueError('Unknown final selection policy.')
++        if not math.isfinite(self.final_selection_margin) or self.final_selection_margin < 0:
++            raise ValueError('Final selection margin must be finite and nonnegative.')
+         if self.selection_mode not in {'weighted_mean','best_final_elite'}:
+             raise ValueError('Unknown final MPPI selection_mode.')
+         if self.compare_final_elite and self.audit_candidates:
+@@ -177,6 +188,8 @@ class LocalMPPI:
+                           terminal_action=self.terminal_action,q_aggregation=self.q_aggregation,q_indices=q_pair,
+                           terminal_q_weight=self.terminal_q_weight,terminal_value=self.terminal_value,cost_weight=self.cost_weight,
+                           selection_mode=self.selection_mode,uniform_final_comparison=self.compare_final_elite)
++        definition.update(final_selection_policy=self.final_selection_policy,
++                          final_selection_margin=self.final_selection_margin,replacement_supported=self.replacement_supported)
+         phase,timing,history = PhaseTimings(self.device),{},[]
+         evaluated = 0
+         error = None
+@@ -190,6 +203,7 @@ class LocalMPPI:
+         selection_candidates = {}
+         final_elite_value = nan
+         selected_source = 'baseline'
++        guard_blocked, guard_reason = False, 0
+         last_result = last_candidates = last_best = None
+ 
+         def evaluate(actions, *, final=False):
+@@ -306,9 +320,18 @@ class LocalMPPI:
+                 error = error or 'non_finite_final_return'
+             elif not bool(torch.isfinite(candidate_value)):
+                 error = 'non_finite_final_elite'
+-            elif bool(candidate_value>values[0]):
+-                sequence,selected_value,selected = candidate_sequence,candidate_value,candidate_row
+-                selected_source = 'elite' if self.selection_mode == 'best_final_elite' else 'mean'
++            else:
++                native_better = bool(candidate_value>values[0])
++                accept = native_better
++                if self.final_selection_policy == 'baseline_guard':
++                    accept = self.replacement_supported and bool((candidate_value-values[0])>self.final_selection_margin)
++                    guard_blocked = native_better and not accept
++                    # 1: no supporting causal evidence; 2: frozen margin unmet.
++                    # Neither reason asserts that the original SAC action is safe.
++                    guard_reason = 1 if not self.replacement_supported else 2 if not accept else 0
++                if accept:
++                    sequence,selected_value,selected = candidate_sequence,candidate_value,candidate_row
++                    selected_source = 'elite' if self.selection_mode == 'best_final_elite' else 'mean'
+         baseline_selected = torch.equal(sequence,baseline)
+         if baseline_selected:
+             selected_value,selected = baseline_value,base
+@@ -321,6 +344,8 @@ class LocalMPPI:
+         delta = sequence[0]-baseline[0]
+         maximum = (sequence-baseline).abs().amax(0)
+         metrics = dict(timing,baseline_predicted_return=float(baseline_value),optimized_predicted_return=float(optimized_value),
++            baseline_guard_enabled=float(self.final_selection_policy == 'baseline_guard'),baseline_guard_blocked=float(guard_blocked),
++            baseline_guard_reason_code=float(guard_reason),replacement_supported=float(self.replacement_supported),final_selection_margin=self.final_selection_margin,
+             selected_predicted_return=float(selected_value),predicted_return_gain=float(optimized_value-baseline_value),
+             baseline_score=float(baseline_value),selected_score=float(selected_value),final_score=float(selected_value),
+             score_gain=float(selected_value-baseline_value),predicted_reward=float(selected['reward']),
+diff --git a/reports/mppi_evaluation_redesign_20261119/MPPI_EVALUATION_REDESIGN_REPORT.md b/reports/mppi_evaluation_redesign_20261119/MPPI_EVALUATION_REDESIGN_REPORT.md
+new file mode 100644
+index 0000000..4c6cda8
+--- /dev/null
++++ b/reports/mppi_evaluation_redesign_20261119/MPPI_EVALUATION_REDESIGN_REPORT.md
+@@ -0,0 +1,80 @@
++# MPPI评价机制重构与闭环筛选结果
++
++**结论：未达到算法验收，不建议扩大正式100场；保留Lattice+SAC。本轮实现的是默认关闭的Baseline保护，不把始终保留SAC算作MPPI成功。**
++
++## 八个问题的直接回答
++
++1. **当前评分优于随机吗？** 新12图×3规划种子H1中，Native−Random为-4.5520，95%CI [-14.1076, +0.6397]。区间包括0，未证明评分提供可靠的额外决策价值；不能仅凭负均值声称所有地图都更差。
++2. **Terminal Q导致偏差吗？** 同一258候选池、同一Q成员下，Reward-only−RQ为+1.0518，95%CI [+0.0948, +2.6846]，支持终端Q会损害这组最终选择。实际Native仅比较Baseline/Mean；Reward-only−Native为+0.4225，95%CI [-0.1874, +1.0227]，该比较还混有终选资格范围差异，不能单独用它归因Q。高Q不等于已证实训练分布外，当前没有原训练replay latent覆盖用于OOD判定。
++3. **Reward-only更适合吗？** 它相对SAC的Gain为-4.7189，95%CI [-20.3335, +4.8633]，尚未通过正收益及跨地图稳定性门槛。只比RQ少损失不等于真实优于SAC，因此没有移除默认Terminal Q，也没修改冻结WM或SAC特征中的Q。
++4. **Baseline-aware有效吗？** 开发集唯一冻结margin=13.234985，旧数据点估计仍负；新地图F为+0.9276，95%CI [+0.0000, +2.7827]，收益只在1/12图为正，剔除200333后归零，不能视为稳健提升。没有用新地图重选margin。故`replacement_supported=false`时拒绝无证据替换；这是保护，不是学会了H1价值。
++5. **候选覆盖不足吗？** 老123分支有正Oracle，证明有限候选中有价值，但不证明整个高斯空间覆盖充分。新图执行方法子集Oracle Gain为+3.3528，95%CI [+0.8443, +6.5956]，不是未执行的全部258条轨迹Oracle。没有实际证据支持调std/rho或增加样本，故采样和Elite更新完全未改。
++6. **改了哪些代码？** 生产模块仅`planning/local_mppi.py`，新增可选final_selection_policy、冻结margin、replacement_supported和数值诊断字段。旧配置保持legacy原样；保护启用后仅当有支持证据且原生预测差严格超过冻结margin时替换；否则保持原SAC。所有64/8/4计算仍执行，非安全证书、非Recovery、非新价值网络。
++7. **修改后真优于Lattice+SAC吗？** 见完整闭环表及验收条件。当前C保护无支持替换，36/36回合轨迹、观测、reward、cost和终止标志逐位等于A，不能称为驾驶性能提升。
++8. **值得正式100场吗？** 未达到算法验收，不建议扩大正式100场；保留Lattice+SAC。当前LocalMPPI没有满足同时改善成功率、事故不恶化、正配对收益和实时性的要求；不继续堆网络、样本或任意阈值。
++
++## 1. 历史评分消融：先离线，后新地图
++
++完整读取了用户指定的9份报告/CSV/JSON/补丁，另按上轮artifact manifest核验155份catalog/NPZ/真实标签。全部原123分支保留，不训练模型。
++
++从冻结WM复算r0、H2/H3/H4累计Reward、H10 Reward、Terminal Q和完整H10分数，保留原预测和真实H1标签、控制动作与相对Baseline分数。为精确复现旧预测，保持旧8角色GPU batch再去重，而非换成7行batch后忽略数值差异。初次数值复核失败日志保留，未放宽状态恢复条件。
++
++score_component_ablation.csv中的component argmax是同一有限实测池的诊断，不冒充原Native输出；另有native_actual_final2行复现固定前提−1.0457。所有Spearman/Kendall/Pairwise Accuracy都标为目标不匹配的描述性指标，正式匹配H1/SAC的模型排名仍NOT ESTIMABLE。Baseline-relative只平移分数，不改变起点内排名，更不是真实Advantage。
++
++历史候选动作分布见historical_h1_analysis.csv和figures/historical_positive_action_regions.png。Gaussian真实正收益仅在已执行的分位子集可观察，不把全256条未执行采样标为正/负。Q双成员变更会改变排名，相关诊断在q_rank_stability.csv；没有因此擅自改默认random_pair。
++
++## 2. 新地图与H1公平对照
++
++基础代码/GitHub main为`75b8a212a62f50ca76e29e37085fe1cd639ac718`。固定地图：[200618, 200015, 200465, 200972, 200777, 200723, 200081, 200583, 200901, 200160, 200391, 200333]，规划种子[1,2,3]，每图相同交通seed。排除清单扫描5743份去重历史元数据，并包含WM/SAC训练窗口10000–11999。36个固定pre50状态均可达，没有重选地图、种子或时刻；其中SAC在不同规划种子下可能重复，始终以12图聚类，不当作36张独立地图。
++
++同状态保存全部4轮Gaussian、Baseline及WeightedMean，共258序列；预注册独立随机数均匀选非Baseline的唯一首动作，不改变环境RNG。B/E严格复现原最后Baseline/Mean两个分数的选择，E与B合并同一实际分支；D按同池Reward选最大，G按同池共享Q评分选最大，额外G是为了分离评分与候选范围混杂。F只测试开发期冻结的一个margin，不扫新阈值。7方法去重后实际174条H1分支。
++
++每分支重置同场景并调用策略重建前49步历史，再注入一周期动作，随后完全原SAC直到原生done；逐位检查观测、车辆、交通、全局/引擎RNG、latent/535输入、policy历史、实际上一动作及控制映射。所有Baseline尾轨迹重现源A。原模型训练和网络输入、物理控制顺序、Reward/Cost/Done均未改。
++
++最终复核修正了新诊断工具的一处动作列对齐错误：汇总动作列曾误用最后一个候选循环变量。149行动作诊断列已按candidate_id回填，并逐条核验174条实际执行轨迹；原始表和修复前源码保留于source_versions。真实执行、回报标签、选组统计及预注册decision完全未变，详见candidate_action_columns_audit.json。
++
++| H1首动作方法（之后全为原SAC） | Gain vs SAC | 地图95%CI | 替换率 |
++|---|---:|---:|---:|
++| Native final2 | -5.1413 | [-20.3583, +4.2741] | 100.00% |
++| Uniform Random | -0.5893 | [-6.4064, +3.9376] | 100.00% |
++| Reward-only all pool | -4.7189 | [-20.3335, +4.8633] | 100.00% |
++| RQ matched all pool | -5.7706 | [-20.8808, +3.1641] | 100.00% |
++| Frozen margin | +0.9276 | [+0.0000, +2.7827] | 8.33% |
++
++
++Native的负平均高度受200465影响：剔除该图的Native Gain变为正，所有图仍完整保留，不以剔除坏图制造正收益。F的平均正收益又由单张200333驱动。所有逐图、逐seed、地图bootstrap2000次和LOMO值均保留于h1_statistics.json，不能把单图信号当成泛化。
++
++## 3. 最小代码变更与验证
++
++按预注册分支选中`unsupported_replacement_protection`，没有因为新测试不理想再调margin。默认原文件config.yaml逐字不变。新增保护只改变最后的替换资格，原Gaussian/AR1采样、8Elite与4轮Mean/Std更新、WM reward/dynamics/terminal-Q全部保留；不引入TTC、几何、Emergency或其他状态规则。
++
++46项相关测试通过。真实冻结模型默认路径的动作、Mean、Std、值及CPU/GPU/私有RNG与修改前逐位相同；AST核验采样/更新方法完全相同。实状态探针验证535输入与原SAC首动作不变、无支持时返回SAC、支持开关在零margin时确能产生替换；这两次探针输出均未执行，不能当作收益证据。无支持时也完整计算262候选评价，未跳过搜索伪造速度。
++
++新增数值日志baseline_guard_enabled/blocked/reason_code、replacement_supported和final_selection_margin。原因1是缺少支持证据、原因2是冻结margin未达到，均不宣称SAC动作安全；与原numerical fallback分开。所有模型权重、535维顺序、映射、旧实验文件和checkpoint SHA `4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a`保持不变。
++
++## 4. 真正逐步重规划的108回合
++
++H1方法字母与完整闭环A/B/C分开：闭环A=原SAC，B=原Native，C=本轮保护。每周期重新Lattice→SAC→可选MPPI，只执行首动作后env.step，直到原生终止；绝非固定10步重放。36组初始观测、车辆、交通及RNG哈希匹配。
++
++| 完整闭环（每组36回合） | Success | Crash | OOR | Route | Timeout | Discounted Return | 替换率 |
++|---|---:|---:|---:|---:|---:|---:|---:|
++| A Lattice+SAC | 75.00% | 16.67% | 25.00% | 94.28% | 0.00% | 137.660 | 0.00% |
++| B 原Native | 66.67% | 13.89% | 33.33% | 90.56% | 0.00% | 132.800 | 99.63% |
++| C 本轮保护 | 75.00% | 16.67% | 25.00% | 94.28% | 0.00% | 137.660 | 0.00% |
++
++
++C−A折扣收益：+0.0000，95%CI [+0.0000, +0.0000]；C−B：+4.8596，95%CI [+0.3391, +9.5097]。地图CI、LOMO及每个seed均见closed_statistics.json。零替换仅说明保护工作，不能宣称MPPI成功；acceptance.json明确检查非零替换与额外成功。
++
++## 5. 计算性能
++
++单LocalMPPI计时直接包围LocalMPPI.plan；完整planner包围同步agent.act；原生control_cycle=agent.act+env.step，均分开记录。闭环采集是6进程共享GPU，包含冷启动，不用它冒充单进程实时性认证。
++
++全部回合完成后，在前两张预定新图同一真实pre50状态，单进程做5暖机+50完整planner调用/方法，共300次测量；没有执行探针输出动作。独立完整planner P95：{'A': 75.34663778496906, 'B': 138.94464985933155, 'C': 138.03222731221467}ms。该探针是planner-only，不是完整物理控制周期；完整cycle的实测共享负载数据在latency.csv。无法达到100ms时明确保留瓶颈，不删预算或必要控制计算。
++
++## 6. 验收、交付与限制
++
++验收条件：{'success_positive': False, 'crash_not_higher': True, 'oor_not_higher': True, 'discounted_gain_positive': False, 'discounted_gain_ci_positive': False, 'route_not_lower': True, 'not_one_map_only': False, 'h1_beats_random': False, 'nonzero_physical_replacement': False, 'isolated_full_planner_p95_below100': False}。是否进入更大规模实验：**False**。本轮没有证明Success>Lattice+SAC。保护实验结果只说明可拒绝无支持替换，不解决缺失的H1/SAC延续价值；默认控制器未切换。
++
++新图对旧研究独立，但H1用于预注册机制分支选择，随后在同图做完整闭环属于筛选验证，不是另一个完全封存的最终验证集。没有原训练latent replay覆盖，不能仅凭乐观Q宣称OOD；没有未执行候选的真实收益，不能伪造全池正收益比例；没有同语义合格H1预测头，不声称正式H1排名准确率。
++
++交付含历史评分分量、Native/Random与Reward/Q对照、开发及冻结margin、新图候选覆盖、108原生回合、summary/latency、完整patch与figures。所有新内容在隔离工作区`/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119`，主目录未覆盖，无训练/新网络/commit/push/正式100场。原WM200k+RL300k仍为总500k，不换权重。复现步骤见RUNNING.md。
+diff --git a/reports/mppi_evaluation_redesign_20261119/RUNNING.md b/reports/mppi_evaluation_redesign_20261119/RUNNING.md
+new file mode 100644
+index 0000000..e0d2a7d
+--- /dev/null
++++ b/reports/mppi_evaluation_redesign_20261119/RUNNING.md
+@@ -0,0 +1,61 @@
++# 本轮结果与复现入口
++
++工作区：`/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119`。
++基线：`75b8a212a62f50ca76e29e37085fe1cd639ac718`。
++生产目录 `../mpr_mpc_v2` 保持原样；这里没有 commit、merge 或 push。
++
++## 查看现有结果
++
++```bash
++cd /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119
++cat reports/mppi_evaluation_redesign_20261119/MPPI_EVALUATION_REDESIGN_REPORT.md
++cat reports/mppi_evaluation_redesign_20261119/verification.json
++cat reports/mppi_evaluation_redesign_20261119/acceptance.json
++git diff -- planning/local_mppi.py
++```
++
++`summary.csv` 是完整闭环 A/B/C，各组36回合；`h1_role_results.csv` 是单步干预之后原SAC接管，字母含义见 `protocol.json`，不可混用。原始记录保存在 `baselines/`、`closed/`、`branches/` 和 `origins/`。
++
++## 核心开关
++
++仅在本工作区的 LocalMPPI 配置中显式传入：
++
++```yaml
++final_selection_policy: baseline_guard
++final_selection_margin: 13.2349853515625
++replacement_supported: false
++```
++
++当前没有证明替换SAC具有稳定收益，因此支持标记为false。这会保留SAC动作，但仍执行完整64 samples、8 elites、4 iterations搜索；它是保护机制，不是收益改进或安全保证。不能为了增加替换率自行把支持标记改为true。
++
++字段缺省时 `final_selection_policy=legacy`，旧动作选择完全保留，原 `config.yaml` 未修改。不要额外指定 `selection_mode`，因为原实现显式设置该字段会触发额外Elite复评，与本实验的旧默认 final2 接口不同。
++
++## 相关回归测试
++
++```bash
++cd /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119
++OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
++/home/kzb/anaconda3/envs/tdmpc2/bin/python -m pytest -q \
++  tests/test_simplified_tdmpc2_mppi.py \
++  tests/test_mppi_value_evaluation.py \
++  tests/test_mppi_final_selection.py \
++  tests/test_mppi_diagnosis.py \
++  tests/test_first_action_study.py \
++  reports/mppi_evaluation_redesign_20261119/test_redesign.py
++```
++
++原测试断言未删除或降低。本轮另有真实冻结模型默认路径逐位复现和独立保护探针，见 `default_before/after.npz`、日志及 `real_guard_probe.json`。
++
++## 实验执行顺序
++
++已实际执行：`setup.py`（预注册、历史排除及冻结margin）→ `historical.py` / `historical_summary.py`（只读冻结WM）→ `pipeline.py`（严格pilot、A36、候选36、H1共174分支、B36、C36）→ `finish.py`（单进程延迟探针、汇总、图表）→ `report.py`（哈希验证、报告和Diff）。
++
++`h1_analysis.py` 在所有H1标签完成后生成预注册决策；`core_ready.json` 记录对应实现与测试，C组在此之后运行。A/B从未修改的生产目录导入，C从本工作区导入。A采集时的执行器源码另存 `source_versions/closed_baseline.py`；后续仅增加LocalMPPI计时包装，不改控制或RNG。
++
++`audit_candidate_actions.py` 修正了汇总表动作列的循环变量对齐错误，核对全部174条实际首动作；原表及修复前源码保留在source_versions。此修正不改变真实执行、标签或决策。修复已完成，勿在原结果目录重复运行一次性修复脚本。
++
++实验工具使用独占创建（`open('x')` / `mkdir(exist_ok=False)`），不会覆写已有结果。不要在此非空目录重新启动pipeline；独立复现须使用新的隔离工作区和空结果目录，保留本次预注册场景、种子、checkpoint及冻结margin，记录新的完整manifest。
++
++本轮checkpoint为WM200k+RL300k、总500k的原权重，SHA256见 `protocol.json`。所有逐回合配置、初始状态哈希和原生终止记录均已保存。新图H1用于预注册机制选择，同图闭环属于筛选验证，不能再次称为完全未触碰的最终验证集。
++
++`code_changes.patch` 包含核心修改、新实验工具、报告及预注册元数据；体积较大的CSV/NPZ原始数据另以本目录和 `artifact_manifest.json` 保留，不嵌入代码补丁。
+diff --git a/reports/mppi_evaluation_redesign_20261119/audit_candidate_actions.py b/reports/mppi_evaluation_redesign_20261119/audit_candidate_actions.py
+new file mode 100644
+index 0000000..80913f6
+--- /dev/null
++++ b/reports/mppi_evaluation_redesign_20261119/audit_candidate_actions.py
+@@ -0,0 +1,32 @@
++"""Repair a proven diagnostic-column alignment bug; preserve all raw data and decisions."""
++import pandas as pd
++from study import *
++
++def main():
++    path=R/'new_map_candidate_results.csv';rows=pd.read_csv(path);before=rows.copy();changed=0
++    for i,row in rows.iterrows():
++        scene,seed,cid=int(row.scene),int(row.seed),row.candidate_id
++        catalog=load(origin_dir(scene,seed)/'catalog.json')
++        candidate=next(x for x in catalog['representatives'] if x['candidate_id']==cid)
++        action=np.asarray(candidate['action'],dtype=np.float32)
++        trace=np.load(R/'branches'/f'{scene}_r{seed}'/cid/'trace.npz')
++        assert np.array_equal(action,trace['actions'][0]),(scene,seed,cid)
++        base=np.asarray(next(x['action'] for x in catalog['raw_roles'] if x['role']=='A'),dtype=np.float32)
++        expected=[float(action[0]),float(action[1]),float(np.linalg.norm(action-base))]
++        cols=['steering','throttle_brake','first_action_l2']
++        changed+=int(not np.allclose(row[cols].to_numpy(float),expected,rtol=0,atol=1e-8))
++        rows.loc[i,cols]=expected
++    others=[x for x in rows if x not in cols]
++    assert before[others].equals(rows[others]),'Only action diagnostic columns may change'
++    archived=R/'source_versions/new_map_candidate_results_before_action_column_fix.csv'
++    path.rename(archived)
++    rows.to_csv(path,index=False,mode='x')
++    reloaded=pd.read_csv(path)
++    for _,row in reloaded.iterrows():
++        actual=np.load(R/'branches'/f'{int(row.scene)}_r{int(row.seed)}'/row.candidate_id/'trace.npz')['actions'][0]
++        assert np.allclose(actual,[row.steering,row.throttle_brake],rtol=0,atol=1e-15)
++    dump(R/'candidate_action_columns_audit.json',dict(passed=True,branches_checked=len(rows),corrected_rows=changed,
++        root_cause='h1_analysis reused the last candidate loop variable for diagnostic columns only',
++        original_table_preserved=str(archived.relative_to(R)),raw_execution_labels_and_decision_unchanged=True))
++    print('ACTION_COLUMNS_VERIFIED',len(rows),'corrected',changed,flush=True)
++if __name__=='__main__':main()
+diff --git a/reports/mppi_evaluation_redesign_20261119/closed.py b/reports/mppi_evaluation_redesign_20261119/closed.py
+new file mode 100644
+index 0000000..a6179b7
+--- /dev/null
++++ b/reports/mppi_evaluation_redesign_20261119/closed.py
+@@ -0,0 +1,63 @@
++"""Native full-episode A/B/C rolling control; A also supplies fixed pre50 H1 origins."""
++import argparse,os,sys,time
++from pathlib import Path
++ap=argparse.ArgumentParser();ap.add_argument('--group',choices=['A','B','C'],required=True);ap.add_argument('--scene',type=int,required=True);ap.add_argument('--seed',type=int,required=True);args=ap.parse_args()
++project=Path(__file__).resolve().parents[2]
++os.environ['MPR_CODE_ROOT']=str(project if args.group=='C' else project.parent/'mpr_mpc_v2')
++from study import *
++
++@torch.no_grad()
++def main():
++    p=load(R/'protocol.json');out=original_dir(args.scene,args.seed) if args.group=='A' else R/'closed'/f'{args.group}_{args.scene}_r{args.seed}'
++    out.mkdir(parents=True,exist_ok=False)
++    parsed,cfg,env,agent=make_runtime(args.scene,args.seed,{'A':'baseline','B':'native','C':'modified'}[args.group],record=False)
++    from common.seed import set_seed
++    from omegaconf import OmegaConf
++    wm=tensor_hash(agent.model);actor=tensor_hash(agent.residual_sac.actor)
++    try:
++        combined=args.scene+args.seed;set_seed(combined);agent.planner.reset(seed=combined);obs=env.reset(seed=args.scene)
++        assert env.unwrapped_metadrive.config['decision_repeat']*env.unwrapped_metadrive.config['physics_world_step_size']==.1
++        initial=snapshot(env,obs);dump(out/'initial.json',initial);OmegaConf.save(parsed,out/'config.yaml')
++        local_wall=[0.];original_local=agent.planner.local_mppi.plan
++        def local_timed(*args,**kwargs):
++            torch.cuda.synchronize();begin=time.perf_counter();result=original_local(*args,**kwargs);torch.cuda.synchronize()
++            local_wall[0]=1000*(time.perf_counter()-begin);return result
++        agent.planner.local_mppi.plan=local_timed
++        observations=[obs.cpu().numpy().copy()];actions=[];rewards=[];costs=[];dones=[];terms=[];truncs=[];physical=[];rows=[];done=crash=oor=False
++        while not done:
++            step=len(actions)+1;local_wall[0]=0.;torch.cuda.synchronize();t=time.perf_counter();action=agent.act(obs,t0=step==1,eval_mode=True);torch.cuda.synchronize();planning=1000*(time.perf_counter()-t)
++            plan=agent.last_plan;assert plan.stage.use_residual and plan.stage.use_mppi==(args.group!='A')
++            if step==p['origin_step'] and args.group=='A':
++                dump(out/'origin.json',snapshot(env,obs));dump(out/'policy.json',policy_snapshot(agent));dump(out/'environment.json',extended_environment(env))
++                np.savez_compressed(out/'origin.npz',refined_actions=plan.refined_actions.cpu().numpy(),latent=agent.planner.last_context.latent.cpu().numpy(),state535=agent.planner.last_context.residual_state.cpu().numpy())
++            assert torch.equal(action,plan.debug['selected_mppi_actions'][0])
++            first_delta=float((action.cpu()-plan.refined_actions[0].cpu()).norm())
++            env_start=time.perf_counter();obs,reward,done,info=env.step(action);env_ms=1000*(time.perf_counter()-env_start)
++            assert abs(float(reward)-float(info['tdmpc2_reward']))<1e-4
++            vehicle=env.unwrapped_metadrive.agent;received=np.array([float(vehicle.steering),float(vehicle.throttle_brake)])
++            assert np.array_equal(received,action.cpu().numpy())
++            rows.append(dict(configuration=args.group,scene=args.scene,seed=args.seed,step=step,planner_ms=planning,env_ms=env_ms,control_cycle_ms=planning+env_ms,
++                local_mppi_ms=local_wall[0],
++                action_delta=first_delta,physical_replacement=first_delta>1e-5,baseline_selected=float(plan.metrics['mpr/baseline_selected']),
++                reward=float(info['tdmpc2_reward']),cost=float(info['cost']),route_completion=float(info['route_completion']),
++                **{k:float(v) for k,v in plan.metrics.items() if k.startswith('mppi/') or k.startswith('mpr/sac_inference')},
++                selected_negative_rate=None,candidate_positive_rate=None,counterfactual_labels='Not observed per online step; use separate H1 branches'))
++            observations.append(obs.cpu().numpy().copy());actions.append(action.cpu().numpy().copy());rewards.append(float(info['tdmpc2_reward']));costs.append(float(info['cost']))
++            dones.append(bool(done));terms.append(bool(info['terminated']));truncs.append(bool(info['truncated']))
++            physical.append([*map(float,vehicle.position[:2]),float(vehicle.speed),float(vehicle.heading_theta)])
++            crash|=any(bool(info.get(k,False)) for k in ['crash','crash_vehicle','crash_object','crash_human','crash_building','crash_sidewalk']);oor|=bool(info.get('out_of_road',False))
++            assert step<=1000
++            if step%200==0:print('CLOSED_PROGRESS',args.group,args.scene,args.seed,step,round(info['route_completion'],3),flush=True)
++        assert wm==tensor_hash(agent.model) and actor==tensor_hash(agent.residual_sac.actor)
++        np.savez_compressed(out/'trace.npz',observations=observations,actions=actions,rewards=rewards,costs=costs,done=dones,terminated=terms,truncated=truncs,physical_after=physical)
++        table(out/'steps.csv',rows)
++        dump(out/'episode.json',dict(configuration=args.group,scene=args.scene,seed=args.seed,success=float(info['success']),crash=float(crash),out_of_road=float(oor),route_completion=float(info['route_completion']),
++            timeout=float(info['truncated']),episode_return=sum(rewards),discounted_return=discounted_return(rewards),episode_length=len(rewards),safety_cost=sum(costs),
++            replacement_rate=float(np.mean([x['physical_replacement'] for x in rows])),mean_action_deviation=float(np.mean([x['action_delta'] for x in rows])),
++            planning_p50=float(np.quantile([x['planner_ms'] for x in rows],.5)),planning_p95=float(np.quantile([x['planner_ms'] for x in rows],.95)),
++            cycle_p95=float(np.quantile([x['control_cycle_ms'] for x in rows],.95)),initial_hashes=initial['hashes'],end_reason=info.get('end_reason',''),
++            native_done=True,weights_unchanged=True,reachable_h1_origin=(out/'origin.json').exists() if args.group=='A' else None,
++            latency_scope='6worker shared GPU native episode, cold start retained; separate isolated probe for real-time assessment'))
++        print('CLOSED_DONE',args.group,args.scene,args.seed,'length',len(actions),'return',round(discounted_return(rewards),3),flush=True)
++    finally:env.close()
++if __name__=='__main__':main()
+diff --git a/reports/mppi_evaluation_redesign_20261119/decision.json b/reports/mppi_evaluation_redesign_20261119/decision.json
+new file mode 100644
+index 0000000..82e56b8
+--- /dev/null
++++ b/reports/mppi_evaluation_redesign_20261119/decision.json
+@@ -0,0 +1,15 @@
++{
++  "branch": "unsupported_replacement_protection",
++  "online_options": {
++    "final_selection_policy": "baseline_guard",
++    "final_selection_margin": 13.2349853515625,
++    "replacement_supported": false
++  },
++  "reward_case_passed": false,
++  "margin_case_passed": false,
++  "margin_frozen_before_new_maps": 13.2349853515625,
++  "new_margin_tuning": false,
++  "default_config_changed": false,
++  "protection_is_not_algorithm_success": true,
++  "rationale": "Apply the predeclared branch only; unsupported scoring cannot justify replacing SAC. Full closed-loop screening still required."
++}
+\ No newline at end of file
+diff --git a/reports/mppi_evaluation_redesign_20261119/default_parity.py b/reports/mppi_evaluation_redesign_20261119/default_parity.py
+new file mode 100644
+index 0000000..ae87f1f
+--- /dev/null
++++ b/reports/mppi_evaluation_redesign_20261119/default_parity.py
+@@ -0,0 +1,18 @@
++"""Real frozen-WM default-output parity fixture; no simulator and no training."""
++import argparse
++from study import *
++ap=argparse.ArgumentParser();ap.add_argument('--name',required=True);args=ap.parse_args()
++from planning.local_mppi import LocalMPPI
++from omegaconf import OmegaConf
++with torch.no_grad():
++    evaluator=load_offline_evaluator();cfg=OmegaConf.to_container(OmegaConf.load(CODE_ROOT/'config.yaml').mpr_mpc.mppi)
++    planner=LocalMPPI(evaluator,cfg,horizon=10,action_dim=2,device='cuda')
++    source=np.load(HIST/'origins/130719_50/catalog.npz');torch.manual_seed(20261119);planner.reset(1)
++    result=planner.plan(torch.tensor(source['latent'],device='cuda'),torch.tensor(source['baseline_sequence'],device='cuda'),eval_mode=True)
++    np.savez_compressed(R/f'{args.name}.npz',selected=result.selected_sequence.cpu().numpy(),mean=result.final_mean.cpu().numpy(),std=result.final_std.cpu().numpy(),
++        cpu_rng=torch.random.get_rng_state().numpy(),cuda_rng=torch.cuda.get_rng_state().cpu().numpy(),private_rng=planner.generator.get_state().cpu().numpy(),
++        selected_value=result.selected_wm_value.cpu().numpy())
++    if args.name!='default_before':
++        old=np.load(R/'default_before.npz');actual=np.load(R/f'{args.name}.npz')
++        assert all(np.array_equal(old[k],actual[k]) for k in old.files),'Default action/distribution/value/RNG changed'
++    print('FROZEN_DEFAULT_PARITY',args.name,flush=True)
+diff --git a/reports/mppi_evaluation_redesign_20261119/experiment_manifest.json b/reports/mppi_evaluation_redesign_20261119/experiment_manifest.json
+new file mode 100644
+index 0000000..530965c
+--- /dev/null
++++ b/reports/mppi_evaluation_redesign_20261119/experiment_manifest.json
+@@ -0,0 +1,396 @@
++{
++  "base_commit": "75b8a212a62f50ca76e29e37085fe1cd639ac718",
++  "remote_verified_sha": "75b8a212a62f50ca76e29e37085fe1cd639ac718",
++  "branch": "experiment/mppi-evaluation-redesign-20261119",
++  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
++  "source_config_sha256": "7d3b5db6de911c2020baa2fdc0d0daf7723fcbb887ecca6e5f483f363d0788ea",
++  "original_config_sha256": "08e04491abbc60d831ae7b656b2f14c3ecde04c020ce7b1f7e95427371d2711c",
++  "protected_sources": {
++    ".gitattributes": "4009e8f5faf67ca3607a646c9b12350d8237e344e6853c59bf9dbad697db3952",
++    ".gitignore": "d847fef4c9902f430441e64700cfe6c9cc05b7b9fd48b12f8e48a6de24d2359d",
++    "MPPI_CLOSED_LOOP_SELECTION_REPORT_20261117.md": "14ce29b18b7f19e7bdcab5661fad46713a9de73fccd6644689144edd690badd8",
++    "MPPI_FAILURE_ATTRIBUTION_REPORT_20261117.md": "1acc35e10b0d67be149a21dedc93d60d035b680d45f729ea3772a26e6b4eced3",
++    "MPPI_FIRST_ACTION_VALUE_REPORT_20261117.md": "f3a58947d906d1989434d5df74d2a3febdd12499e11ae960f8ed706b6434d9e5",
++    "MPPI_NATIVE_PARITY_REPORT_20261117.md": "1f19c14225fa0a5cf4a8e3aa21d8042a4a0ed9c8172ab201bceebc9bdf990b00",
++    "MPPI_RELATIVE_RANKING_REPORT_20261117.md": "5e0cea3ef25e1020a4f49f58e407da4f5dcd1003c82e9dd5b62bae0e6f5a5e4c",
++    "MPPI_ROOT_CAUSE_REPORT_20261117.md": "0f2ce62990adbef138e16b7c520d1886903ec4ecc980f8adfc77270b89759524",
++    "MPPI_TERMINAL_Q_CALIBRATION_REPORT.md": "fe7496a25d1a45832a59834658bd0bf42d54773c22821dc29100fa56fbb575ea",
++    "MPPI_VALUE_EVALUATION_REPORT_20261116.md": "9c86cfed1328563512eb3407a02f67d1efb633ee9a17c06524ddb35d54cf5734",
++    "NATIVE_MPPI_COST_REPORT.md": "d752c935d6377ee18e2c98a0ec3511ba3501a16adbb2ae38131a0d88607def80",
++    "README.md": "4d991e88d85b9072d6af4c4a64d42c9ebb0e04c07bb613acbbbab104370fe89f",
++    "ROUND2_TRAJECTORY_FIX_REPORT.md": "1ee51ed219815d3293ae03207413f1e6070764055c50af57fc87c3739495eb09",
++    "ROUND3_RECOVERY_SCORING_REPORT.md": "f60ee2c8fb9c32c603c1f76383556777af9a07eec00e6d786b728a6e949f3dad",
++    "ROUND3_REPORT.md": "1aa55ed99fd08385e01a023ab45a8712854f7c4dfcc7dcf5f2c603dee9031e2f",
++    "ROUND4_REPORT.md": "60c4781f0d3eb7e9918b245e81fe58a21fdcb15d15821ab1cc22dd75f7f011e3",
++    "SAC_CENTRED_REPAIR_REPORT_20261112.md": "e2d641f0f770b4b0d5265d2833465a0ecd9e85bd7aa247c08bf743eb3d225750",
++    "SAC_CONTINUATION_VALUE_REPORT.md": "fd582e1d91746fbb70370c46c0721993421c9010321a311474e1e24b97bb4bb8",
++    "SAC_DIFFUSION_MPPI_REPORT_20261112.md": "f54c1628f653f4cf2097dbbcee885194f90057c4e4c0bc04b058ef9655a5c30e",
++    "SAC_POLICY_MATCHED_VALUE_REPORT_20261117.md": "ee26d3cff7a08ac178efa10bbd770211c13c5c8879b22980110781d70705e368",
++    "SAC_REFINEMENT_REPORT.md": "cada09b548cf0e9715fc6493edfbe51405a54e5cbacf2ae07f781b8b531807c4",
++    "SIMPLIFIED_TDMPC2_MPPI_REPORT.md": "932d48a581e547a293ff110c2010ec4b7da65fb626a14cce62911366a419dd1d",
++    "THIRD_PARTY.md": "74ecfa4d040162ceead756ac7591dd780155b5574c42650e7c0ff82dcf4a16f5",
++    "TRAJECTORY_FILTER_REPORT.md": "60f8478f92a02f1695a6a74df381a11a40c0fbeba3be73d981a48f45513a7bd5",
++    "V2_IMPLEMENTATION.md": "4b7268de607a8f3ee1e364b2a1b5f18de8ce0e6365e608d74e52f26606cf80a0",
++    "V31_MPPI_REPORT.md": "f2de471259b836c7db401362bab40c8764a535c1b7c82dc3a6a5b41972aa5ab6",
++    "V321_OPTIMIZATION_REPORT.md": "39ff130e7bd461eede7ec5cb964c7990c18f0529794260344e752dfaebffe4a5",
++    "V32_MPPI_REPORT.md": "c42b489e88060b70d469a1a00675bcf3ef9b5afae9f54f65bc7c0961ce60bfb5",
++    "V3_MPPI_REPORT.md": "ac823f1d8fc76b8e71350d7ddc2c2c41642c8ee55c1cf7ad4fd67bc0966807d8",
++    "__init__.py": "b7e95f6eeb1222148722a54f6ecb7f065527a7118bd0ad0cb22dfb95b5fd7746",
++    "_bootstrap.py": "cef43a3400a99a450b363c356d72973aaf724043e97b87efc21533af61361bd8",
++    "agent.py": "83a3dd7f328de79e68bf35c785d457c2d10feb3e4f5289eeed8c9f2e4cdd09b7",
++    "checkpoint_selection.py": "44fde2835badd86601c2b703d4564e162e4d826dd6232afd00fe507f0d0630d0",
++    "config.yaml": "08e04491abbc60d831ae7b656b2f14c3ecde04c020ce7b1f7e95427371d2711c",
++    "env/__init__.py": "a0666d21b98f623765b92b55348a561945b615b468038730b4ae894a953a536d",
++    "env/env.py": "509c0209809cee4957b1d22b07df97fdce921f5c276437f9b6b2b12e16c844c4",
++    "env/risk_field.py": "2a0494b448bf7be7474060cd8d4f8c173baafa311150630211642719ef2611b1",
++    "env/risk_field_bev.py": "f59fd751d32efab478d12d0c7245d356a3ec5c4fe8b7e9f7de2612fd7eea519f",
++    "env/safe_metadrive_adapter/__init__.py": "0bdcc49d9d7b1736c1f23b9b05583e96487f0a2e9dfde1ae9bd48ba261b06c55",
++    "env/safe_metadrive_adapter/risk_field.py": "65548a039bd6467e23c8b70b06dcce0f431b33f3a8a6302d595f475c3c69f017",
++    "env/test_tdmpc2_visual.py": "5816079b78373dcd85227b9dc8ab4a2c01c4bd261cc7466d4ef4f7e8c054dbda",
++    "env/tests/__init__.py": "6dc1c41df80dcfb4385863095ef43986d80851096ff1d4f6a76e3b6778c94579",
++    "env/tests/test_env_cost.py": "500e72fb80c5b5048bde2d49e5dcbde0b4f6d042fc5008d98cdd7a2736582747",
++    "environment-lock.txt": "f90e7ece1821e56061e034eb6f6e062fb9041b3cfdcd63b0812ffdee28643d4b",
++    "environment.yml": "9e1486994f760c09287de3ce261f9edf92f8793219deeaa1b6a8684e756cb527",
++    "evaluate.py": "dc90bfcadf47e53bd69c540084b5e66781efeef2962fff8372d1de618628409c",
++    "evaluate_ablation.py": "60b72f4a53705d65c62a8fc0b8170d5cff8032653c9b7446b0f6cbca7d85593f",
++    "evaluate_frozen_stack.py": "7921ac2f579c6d9dcda85bf55a2361d22066462dc064da493d4b6f294ea366f6",
++    "evaluate_improvements.py": "9ecd5eff5a9f59dca12a4d0613a8730258ee12664fcf1064c65fe066d336753c",
++    "evaluate_model_suite.py": "69d8b14ffd40204fa3f5d065e4698666028bf7015136285dde0e64895253dc86",
++    "evaluate_paired_gif.py": "1379aa5353cb23b332224c86f83fe2973f3c9bf813dc2de84c3d08891c7b462f",
++    "evaluation_diagnostics.py": "6642d78b51a665f2276c1cc47e0a0d58fc1d5f1ec60fce5623ecd7cd50b26ac5",
++    "evaluation_statistics.py": "ced30ee19fbf6b2fd88db9a76050f29bf70f76555545b4e9795ccffaa83c7111",
++    "experiment/E0.yaml": "875d0e8be4c487d62dd8bcec249f82e50d4b8a34fcb766bab8cbb90851c40f1c",
++    "experiment/E1.yaml": "dceb4fd19f9acf16694fa672fc0960b69d9e42565702561fc8d9ffec09547454",
++    "experiment/E2.yaml": "c39b148a3389881e3be977364391bae2b8281aa3d2e68c0843b567890692923a",
++    "experiment/E3.yaml": "7f988e1852d422279f948fa050707c43984826ac053fc5744cb4f50b0330f4ef",
++    "experiment/E4.yaml": "973f0e0b546de3dadd4264e315f8b1aa678b1c5ea2563a6877693b923b6bae24",
++    "experiment/E5.yaml": "99b4baf92cef8c2f74adb9a1fdc55023cddedbde6306c4fdf714ddd760aae8b5",
++    "experiment/E5_calibrated_cost.yaml": "9ce2824cd8970f38ad2aeaad405e15004406772bd992fb6fb89e924689f373cb",
++    "lattice/__init__.py": "0442d704097f68c1ceec506363a4dd7debb99209a8a1d7486fd48a90ea0b90a5",
++    "lattice/env.py": "68774a5fc3a84e93102e4d240063397ad7b814360bfa4a86f2bfb98eaa04b288",
++    "lattice/eval_rule.py": "2cea6e64e641501ca41dd6ba0e4c2468f306051d8d68bd857629d2ec66ca882c",
++    "lattice/frenet_metadrive.py": "89e2efcf08dc0279b1b4b75f18ea31f9885b081026daf6f526613148d4c0a50c",
++    "lattice/visualization.py": "2684a94a711d83f4ec4ea5b2f207436cfcb5f6527f1567ec739dbb8f40c0b174",
++    "lattice_tdmpc2/README.md": "90df3649a52e295853190c20bf39a370bfeae8c92ee055db9a62bfc4c86189fc",
++    "lattice_tdmpc2/__init__.py": "62555a400c6f3fa6f0c46078da9ee372a8135ab65e3e1a79ca737a63e8d450f1",
++    "lattice_tdmpc2/action_adapter.py": "b1e9e55403d0e9bdad12883cf9ff0d54675d5d9bd41e999b17631a895ae851ec",
++    "lattice_tdmpc2/config.yaml": "2537ec506ad577c3ebc1cb8c081b1c71299219f58da7f59cdf61774121c58384",
++    "lattice_tdmpc2/evaluate.py": "dd34f913d2d0c83c26119534b6779952b2c33ade8ed3370b3b4e5d48eece4a44",
++    "lattice_tdmpc2/evaluate_lattice_vs_ours.py": "b14fdae841a993d31cb5a49dc77c300cbb4b01f691661cc2c4415e4c5de63f6c",
++    "lattice_tdmpc2/evaluate_lattice_vs_ours_benchmark.py": "a17de559544e60648f6d8fdec18aefb5f4a3fe3ac072403f89eedbecbbc36e65",
++    "lattice_tdmpc2/evaluate_visual.py": "1a219340ccd4da07f10f3d8b7471b23341cbba4e276bcb60afcaac9d96f3c43d",
++    "lattice_tdmpc2/evaluator.py": "034f35659881501fa243926b40afecc9d5feca289516c40695688fd4e6978346",
++    "lattice_tdmpc2/features.py": "910bbe2eda908df57ce425fa5c3efed000f57f3dde3d503f46793f22c405239d",
++    "lattice_tdmpc2/planner.py": "a2b6c32fd295e40e3b92b8bd7ae403b063c258d51f78e42ca4a982a2b2856a5d",
++    "lattice_tdmpc2/replay_adapter.py": "797b0b5ff88e8cde4be0375e7ed8d9ed8ce85bc81c3eb77b83107a885d870b0d",
++    "lattice_tdmpc2/residual_action.py": "3f902ae7f3112fa5e093818a74265386924e9aa5d02c5e554df9b9615d5ae1e5",
++    "lattice_tdmpc2/state_builder.py": "a928f6d1336aaa2a12d64dcf32388840bea1692cb21fc0409eb052c547f40c17",
++    "lattice_tdmpc2/tests/__init__.py": "d5d9aca2b3a77e6cab22133ff5a57bd77a57bfe91ca35e0c327ad19202119c39",
++    "lattice_tdmpc2/tests/test_lattice_tdmpc2.py": "9a83d1f507a6a0d1e8f32178072ee73fc35ae05a90d83b342726926adef907d3",
++    "lattice_tdmpc2/tests/test_versions.py": "ee5adc5818927c02618dca7190f0da175f9fab4b6df1cd5a8b55da5fd2c46990",
++    "lattice_tdmpc2/train.py": "20d13f614faf6654b7c2444010cbf196f8405ea98a091eaccf758cfa209586e0",
++    "lattice_tdmpc2/trainer.py": "14b8bdeca457e96a8b47d5a32415825cd0765a99df4ddb0f51cf51dbd96900d9",
++    "lattice_tdmpc2/versions/README.md": "cd903c28158fdb39e8666e43f289af1b307383b6882bfbe76725237bdbeab2a7",
++    "lattice_tdmpc2/versions/__init__.py": "b632d25fcecf2feb4057b4407f8b6694bcb27103746ac6def6d5985968f4c399",
++    "lattice_tdmpc2/versions/checkpoint_sha256.txt": "f09a9cd2d66426182b99a818f66ccd4f8065cac8377b5b8b1d20c583dcb197af",
++    "lattice_tdmpc2/versions/v1_record.yaml": "8a58652f0bc98d7ef976987330e60a660a597162186804354dab75c9811bf553",
++    "lattice_tdmpc2/versions/v2/__init__.py": "110ff5dc2150f8a804ecb6d788f76741d817895ab17ca6bb85ba0e87e7cda645",
++    "lattice_tdmpc2/versions/v2/config_v2.yaml": "6234497dcb948b8c1b1798884ac6ec7276d29477d2c3e2abf67bc357532d790a",
++    "lattice_tdmpc2/versions/v2/cost_v2.py": "f31c04dfdd299097bdf108f8677e2f8471c7fe51e7eb08c7eb26681a0935c95a",
++    "lattice_tdmpc2/versions/v2/sac_model_v2.py": "56844b9e012c4bc7d6afce474599e31b3567189ecb6876fba4a532e078905fb7",
++    "lattice_tdmpc2/versions/v2/training_v2.py": "69e80f039ce76438fb43df77c607f92934d70f8db76d832dde58b455844038fe",
++    "lattice_tdmpc2/versions/v2_record.yaml": "173789864af62c5e5eecb4662fe0fa168eafc94f007ae82bd65031ee21778344",
++    "lattice_tdmpc2/versions/v3/__init__.py": "75b2e1ab498532c2d0836716d21e7cebdc56c546f0d9efbb29a30ba126603fe0",
++    "lattice_tdmpc2/versions/v3/config_v3.yaml": "4b581cb782feac7ba010c95ff6d1415b54cf9a59ed55e6af1e1a3749b44526cc",
++    "lattice_tdmpc2/versions/v3/cost_v3.py": "ede659a6708e93a91da0b91a8be7aa7a9ea0e0f439e3eed8d0fef3008aba119c",
++    "lattice_tdmpc2/versions/v3/sac_model_v3.py": "e6677bfe1cf05b04f47698054de66399605f9732d1582b9c7bba8527451fa77a",
++    "lattice_tdmpc2/versions/v3/training_v3.py": "d847e75720104ec71ba292d2a7322a1d4aaabbc07257ad38eda322ee824c42f7",
++    "lattice_tdmpc2/versions/v3_record.yaml": "191d58879210362a68070ddd782b97ee13020b2fa8202a3147c5dbd8a21d0a48",
++    "lattice_tdmpc2/versions/v4/__init__.py": "37257f6e42ab343204e279f3fa073c59a70bd79848f69cbdb888443a33d596a9",
++    "lattice_tdmpc2/versions/v4/config_v4.yaml": "765811c077490c9733f8ae2d99d3e6d9fa04f5c78b11755373a682dc595b402c",
++    "lattice_tdmpc2/versions/v4/sac_model_v4.py": "0dd9d209520ab591512c4007fda8e90e666553341f5cfb0d59cd3ae651f625d8",
++    "lattice_tdmpc2/versions/v4/training_v4.py": "a53a62c7790fd038708d54f344912bf764e54313929bd16a14df4acef9bb9942",
++    "lattice_tdmpc2/versions/v4_record.yaml": "a5ee13fbf3b93c695266c183943f2b570968369126a0cafb6fe1a6a0e57c81c7",
++    "lattice_tdmpc2/visualization.py": "fa94e60c59472eb8fd9efa77762e34eb337ad2cf5722660d435dd9d4867064bd",
++    "logs/benchmark/mpr_mpc_v2_1.0_ablation_fixed100_20261105_110307/config.yaml": "b984c3dd9df2a55260e729239db8dc95b746471a77c6d631b44cb24ce15ae0ef",
++    "logs/benchmark/mpr_mpc_v2_1.0_ablation_fixed100_20261105_110307/config_A_lattice_seed1.yaml": "ac31fe1dc463950f33d1e4f97659a6428d0498860fee10923507a118601cf66a",
++    "logs/benchmark/mpr_mpc_v2_1.0_ablation_fixed100_20261105_110307/config_B_lattice_sac_seed1.yaml": "3ab1aa84cecb260d6b87e6d5a0e3899a0076c6b990c1116bbf677949b09bca4a",
++    "logs/benchmark/mpr_mpc_v2_1.0_ablation_fixed100_20261105_110307/config_C_lattice_mppi_seed1.yaml": "4b79d91f0671b8e3ec20809b67c65ec97cae07ca4571d4918defb699c9b107ab",
++    "logs/benchmark/mpr_mpc_v2_1.0_ablation_fixed100_20261105_110307/detailed_summary.json": "4d47335c55567d022b2f15dadb68693f486066ce126408c387c37fb9e0f2068a",
++    "logs/benchmark/mpr_mpc_v2_1.0_ablation_fixed100_20261105_110307/episodes.csv": "46cd0a3c100893f7b51f130673c79462273f09651b8515aa35137308c2adc0af",
++    "logs/benchmark/mpr_mpc_v2_1.0_ablation_fixed100_20261105_110307/episodes_A_lattice.csv": "0d72fcf046dc42244b735f96d907f7772a959b4945a70183e15d3b6451518893",
++    "logs/benchmark/mpr_mpc_v2_1.0_ablation_fixed100_20261105_110307/episodes_A_lattice_seed1.csv": "0d72fcf046dc42244b735f96d907f7772a959b4945a70183e15d3b6451518893",
++    "logs/benchmark/mpr_mpc_v2_1.0_ablation_fixed100_20261105_110307/episodes_B_lattice_sac.csv": "4cc347ef71956d86096b589c397cb3d2286555117b81968bef88ba863c21dc49",
++    "logs/benchmark/mpr_mpc_v2_1.0_ablation_fixed100_20261105_110307/episodes_B_lattice_sac_seed1.csv": "4cc347ef71956d86096b589c397cb3d2286555117b81968bef88ba863c21dc49",
++    "logs/benchmark/mpr_mpc_v2_1.0_ablation_fixed100_20261105_110307/episodes_C_lattice_mppi_seed1.csv": "1927ac5c174f57fc03c5ba7e0afdfe4b329db4513cc011255b75d5a701c93609",
++    "logs/benchmark/mpr_mpc_v2_1.0_ablation_fixed100_20261105_110307/manifest.json": "14296bcf6569a69eae5e507fdbb141bfe5e8bf67cfb28b8bce044d82f2798c7a",
++    "logs/benchmark/mpr_mpc_v2_1.0_ablation_fixed100_20261105_110307/paired_comparisons.csv": "e92ab3cb4ed943d46ba0c0740c6153eb9a4fde7818a96aa203ece5c0b6a70091",
++    "logs/benchmark/mpr_mpc_v2_1.0_ablation_fixed100_20261105_110307/scenarios.json": "a3918c24cbe47373732a5cd6cced703f5c51a14714ce87af12f0e88623d9e509",
++    "logs/benchmark/mpr_mpc_v2_1.0_ablation_fixed100_20261105_110307/seed_summary.csv": "baab84b3b9e7c23d1d95da7ace9ad3b6688a7ea4fbb80c8bee1b8740e6b17f65",
++    "logs/benchmark/mpr_mpc_v2_1.0_ablation_fixed100_20261105_110307/summary.csv": "85b4b634da4358c82a5f5291e9f8ed29bc65fc2a52d4612a41ad10e379dc3e9c",
++    "logs/benchmark/mpr_mpc_v2_1.0_ablation_fixed100_20261105_110307/summary.json": "705865ec923bf5a09efb58d54226310f184d675ccbfcf85bcfb5ce800b26019c",
++    "logs/benchmark/mpr_mpc_v2_1.0_eval_fixed100_20261105_103632/config.yaml": "e6073bb030c4ec581eba4b9a3f7755f89891a9e3410ca361b35b6c9e3b3e6614",
++    "logs/benchmark/mpr_mpc_v2_1.0_eval_fixed100_20261105_103632/episodes.csv": "8d2eef63a9536e5876590e5f523aff32ffc705e64f3c3272b350031cd397893d",
++    "logs/benchmark/mpr_mpc_v2_1.0_eval_fixed100_20261105_103632/scenarios.json": "878cb39992c5e43d0bfe8fc400d7c2116b4d5db897ef986721831eb68c865503",
++    "logs/benchmark/mpr_mpc_v2_1.0_eval_fixed100_20261105_103632/summary.json": "81fbbad62144ba3baaeb1164908100ec808ae71b4e1b3b8fe6482f79d6387d34",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_153411/config.yaml": "4fb759c2050e96f698892ed84b2da353804e9f2204707d2d37a47771f930bf1a",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_153411/config_A_lattice_seed1.yaml": "a3307502e70853cd2f6377746a6a47e2c0302b66cbc3ccf8db09d4382ddb98ed",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_153411/config_B_lattice_sac_seed1.yaml": "056b113bd1769dc99322beca95569fea847e581a4acf5e84b0c68070041edaac",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_153411/detailed_summary.json": "7756eb7f2e69ec3b72756ec27ac50ec46bc8b45dde8408ac37f5b876deb6b716",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_153411/episodes.csv": "0c3e1e4a34f764ba1fe237be5dd71242c63656f1679a27bfab5970ed27df4d3b",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_153411/episodes_A_lattice.csv": "0c3e1e4a34f764ba1fe237be5dd71242c63656f1679a27bfab5970ed27df4d3b",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_153411/episodes_A_lattice_seed1.csv": "0c3e1e4a34f764ba1fe237be5dd71242c63656f1679a27bfab5970ed27df4d3b",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_153411/episodes_B_lattice_sac_seed1.csv": "fa8cb2453ad7414629f3071553667fe132615bc16fd9f3f653e63e972cdf27bb",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_153411/manifest.json": "16f60395f791108dee6a197dbf71cc26b91922bc446b6a3f482132a55cdcce06",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_153411/scenarios.json": "a3918c24cbe47373732a5cd6cced703f5c51a14714ce87af12f0e88623d9e509",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_153411/seed_summary.csv": "875484f734d881d564aa86790a7f2f46c3a54aa5b2a28e9658fa00b5141bbf64",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_153411/summary.csv": "be27ae1bdc173bc5a032c8bceff3692a59a522a769b64125facabb0a7b0c6ce0",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_153411/summary.json": "4e4638aeaf8e8d06536383c2372a7c7d15a5b8a3af65e8b3aa93edcd201b3a65",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_164345/config.yaml": "11ac1e999a4e3f976964a98cc3112916a635223af56538d7e68fc758ed26245d",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_164345/config_A_lattice_seed1.yaml": "9245b729492022c2ada23a5a449cbf6ec28f92d59e97c6a34a89fe8ac312943a",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_164345/config_B_lattice_sac_seed1.yaml": "b3d115b1f67e5e9d39572055719a48daf324c8e7f5f6d9249e923b501aeffbf2",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_164345/config_C_lattice_mppi_seed1.yaml": "e0955bba6608c0d0c75184990edf58ad8210bf6c6905bab0a2ac6b1dd950e7c2",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_164345/config_D_lattice_sac_mppi_seed1.yaml": "d799fe916c1d623f2b06fde7886e4084e782af5f2c0679a12257e303ed96d163",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_164345/detailed_summary.json": "25796faca3019f97206dd5fd3f45b728b151b78f1e70d3e9057943aeb4bd52d4",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_164345/episodes.csv": "2e78b8b63b1ae4e5c9f29297d7c0cd251cbd79f7286c2edc44d1a105e3592603",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_164345/episodes_A_lattice.csv": "b61770220e3cfe2340436039d254a7ccb6fe06948a480b7f30bd40a2dcb9c004",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_164345/episodes_A_lattice_seed1.csv": "b61770220e3cfe2340436039d254a7ccb6fe06948a480b7f30bd40a2dcb9c004",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_164345/episodes_B_lattice_sac.csv": "c7b32a2b4f1dcb67be9ec744e6f8f51e3eb21efb50fb7582972637f2c92f565b",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_164345/episodes_B_lattice_sac_seed1.csv": "c7b32a2b4f1dcb67be9ec744e6f8f51e3eb21efb50fb7582972637f2c92f565b",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_164345/episodes_C_lattice_mppi.csv": "5909dc29aa3d9de296b29da0b128d1a83ab5157a1b74b916d3ede45b8713348b",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_164345/episodes_C_lattice_mppi_seed1.csv": "5909dc29aa3d9de296b29da0b128d1a83ab5157a1b74b916d3ede45b8713348b",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_164345/episodes_D_lattice_sac_mppi.csv": "b34ab3d4684ad65a90fa675caeac930699daf2df6a9136fde739a544f37b2cd0",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_164345/episodes_D_lattice_sac_mppi_seed1.csv": "b34ab3d4684ad65a90fa675caeac930699daf2df6a9136fde739a544f37b2cd0",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_164345/manifest.json": "16f60395f791108dee6a197dbf71cc26b91922bc446b6a3f482132a55cdcce06",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_164345/paired_comparisons.csv": "3f778c270feb94429c978f711a3b695855969a399574384272468dacbc505e06",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_164345/scenarios.json": "a3918c24cbe47373732a5cd6cced703f5c51a14714ce87af12f0e88623d9e509",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_164345/seed_summary.csv": "9359ace5fed936c0c71ec43d5e4c2a5d0e7d5eb8a3e4fc0503ff478fec646e58",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_164345/summary.csv": "634893f2ee9ca95364c39dea071d8cc7647da3cf6c12f77615a83d261a325d4c",
++    "logs/benchmark/native_mppi_ablation_fixed100_20261105_164345/summary.json": "7b2921c953f72847d1d717968a7f8f9313cbd4a591f0cfa4abab585e8177566d",
++    "logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/eval.csv": "3296dbd731ae4c1d2f8ca2275aaab22bf319dfd355c94856d8492464899b963b",
++    "logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm500k_rl500k_20261105_215414/eval.csv": "e8452390edce0b1d407fc89028cf435784775566c002883f8a413fca94029a82",
++    "mpr_mpc/__init__.py": "744f5768f045fbdedfcd2844d62dae5dfa7b36547601e62bacda6082f8c3fc2e",
++    "planning/__init__.py": "b8d5317748ed24ba557b4abbe842b8cdda9a331fd411765c30a85e6843735cf2",
++    "planning/candidate_value.py": "e28f16076f9a5f061cbddf393aa97830bbc0c72b17452c38c6a0f6cb7a332031",
++    "planning/config.py": "7ec961b75ccf9eb5c4bb170e5be3eda5a07d28c653de6e36e94dc28e52108c5f",
++    "planning/coordinator.py": "7026f7957a59481fb342d02245bf4dc53a816fd2fbca8976208288cf531370ba",
++    "planning/cost_validation.py": "0e30486e76a88397084b20267a4e2404d580214003ad32ebc80888bc40229b44",
++    "planning/evaluator.py": "bf214ddc0350e0280cb2cf7f66434138b8c50e50b08cbb866c028673ae067c44",
++    "planning/kinematic_filter.py": "b2518bb42583037d25e31dcb68cb88571bf007f49d930c74cc107c6c78939214",
++    "planning/local_mppi.py": "a0c0784d09bff0352745fffa9d7d6753b8c6eb4cf9d02124f228967936fa394c",
++    "planning/mppi_ablation.py": "ae17967d67b4a5e30e0ad050a4f367fd9b4d053667f4a14dec86b9c92d4ce358",
++    "planning/mppi_safety.py": "fd9572cf7b96f21c2ce53be1083591008c31614ee51971fec21cccac44736d39",
++    "planning/native_config.py": "21b6d2e6495dd0cb37bbf3106873a08a1c0ee31b5c77c98ea16f712dce758baf",
++    "planning/residual_prior.py": "7a7cc838a4f324430fe79d2509c379efdd9f631f6981debe82c1fd8174f687d3",
++    "planning/residual_training.py": "632dc234f5634bb7dea4deeb6812140e89b6f9a62a27f2b6d8c0cb7bbdba2abd",
++    "planning/sac_value.py": "6b75868ca8dd9f7a15ba5fd02fd3615f7485c67d416640fced972de8590c5c59",
++    "planning/safety.py": "748bb9bc1b7a417ad5e54bd46deb8745943531232a768d7ceac5a84f3fae9282",
++    "planning/structured_proposal.py": "44b00c503d98a52738904b0a137624b1f7cd7d389dc928a01a1b78ebf298acb0",
++    "planning/swept_collision.py": "95ff69b1a34a3efaaac1d8fdb178c5576011a324b03952dc04d728b361c50961",
++    "planning/time_alignment.py": "699032d505bf311a2c9f2978c1cb06b36639bae37ca181ab3515e1374bda2edd",
++    "planning/timing.py": "7261fad9e9ae6dc74a81b740a4be08e9ff89f5cd02f38518bac089f9e6807c99",
++    "planning/trajectory_adapter.py": "38d931db6f27a8a8773da056ecde17b0525224122c7b9a437a3f948be75ebcf6",
++    "planning/types.py": "3ab8ecfeb502d87e4a01af58d8262a418ea96552bb6b874284aa70d721069759",
++    "planning/visualization.py": "fddb6bf673bca61adaae3d4a76342799b604cef9fd0d9412ff81742bb597ce13",
++    "pytest.ini": "c07ba4520a8c21e7584f018d51dcaaed8e7afa235b0276c79c6a9da4d2b26a1c",
++    "requirements.txt": "ccae1643ef4ab42eed89e445d6618785e7a058f42ffe78c6ec2513f5192ca24d",
++    "residual_rl/__init__.py": "03f5a1f2fb3551520d53af572d2c520e5fe3773f4823ebf7c98829814cae804c",
++    "residual_rl/action_adapter.py": "600120cf5aa89bb607118471c5031862afefb8d916da689656772888e3408983",
++    "residual_rl/features.py": "6389c244b2b26e0de3cb5fecb3f30c73b4587155a68dd4e6a134fb99075dbd8b",
++    "residual_rl/lagrangian.py": "b0306651cd81ddae14a27b2b3a363f228434de5eb6173dde6c30d44717493eb7",
++    "residual_rl/networks.py": "31bed89fd24fd24d25a2528e667a66882ae610fe7bfcb5e106954efaa87d17bd",
++    "residual_rl/replay.py": "9e428d6508b7e304b76c8ee54db416a6ac350e2e79896f2391a5a632f7c05d09",
++    "residual_rl/sac_agent.py": "c7adb8f81fee500eac085a23d5d8955f22d019cbce08bfc10c34c2a277e7280b",
++    "residual_rl/state_builder.py": "17480dd85deed3840b573148527c4a706d2457e5fdc1cdfca3d3955dd93782de",
++    "residual_rl/types.py": "ea3bb49bc44993916f045a6aecb0d0ad0284376279b5c9ee9af57eaf5b251c96",
++    "scenarios/fixed100.json": "eb2b4167efcf162973da251168aa0ab6880eb6c3b6f651a1054b3d69e8d8853a",
++    "schedule/frozen_20k_50k.yaml": "ff15abc9a3d38bda0249cbd4e028779e99e4061b802a055b3af08dfe086a1237",
++    "schedule/frozen_500k_1m.yaml": "0239892128eaf8ce71287b4af4ede368fa375860c35f2a0030a47102f83fc153",
++    "scripts/check_environment.py": "2c2d0b29095e83c030a87142ac0010e09a50ea002f0a23cb9e34792cc60284c1",
++    "tdmpc2/__init__.py": "bcf4a61d63afb18b51dbc10385e863515a8182ff1612641f2f9d5fd570b5037f",
++    "tdmpc2/common/__init__.py": "b88bccb966658a3e5c679d0d71ff14129718e9fb3fca5b5765356a894122a428",
++    "tdmpc2/common/buffer.py": "921a21797b0cff6be31037912c0bf8eaefce5c8c205a5563455a2c5f99b87592",
++    "tdmpc2/common/layers.py": "ca8ad0c73a463a1ef006638652a0fa4f4ea1dc282c262644bebaa32e51074eb0",
++    "tdmpc2/common/logger.py": "5fc49086e248fe1b263629519bbc853cc5c9c5dd6729de1b3c1d916c9f722588",
++    "tdmpc2/common/math.py": "2e2d780aeeaa58265d9e1044331a4fa3733e60faac0ed7e0a489f7d8b1535bd2",
++    "tdmpc2/common/parser.py": "3a2d34c372cd4439e7fa3c75a181ee7fb6c0ff07be90474c9ae9dab477a29120",
++    "tdmpc2/common/seed.py": "9bf3735d4e20cd86e7d35be663b9460c3667b0215f319871cb79acb8a84fd59a",
++    "tdmpc2/common/world_model.py": "99bfa8aae31ccdc27478b87c04bce4858e52f6b9787479545843e33b536a8274",
++    "tdmpc2/core.py": "aaf5d4b5138c25042254c354a687f42d82f7ec952c5976d161f3d01eb0d2f192",
++    "tests/__init__.py": "44b16fc776217dd59faa7c3eea3a31901496cf49645d4b942de3643807bede22",
++    "tests/test_candidate_value.py": "6006aec070cdc34d7bd820347efa545f31aa5575e1b339b41a753218398bf758",
++    "tests/test_evaluation_ablation.py": "d74e52efbaacaaa3a713a1cef728f6d7f64fe846ae817a9340eec997609a9852",
++    "tests/test_first_action_study.py": "0822c42020501d34251ffe981e942a214b8f0f4fadeccfc3ff7a845c3bbbdfef",
++    "tests/test_frozen_rl_launcher.py": "041454ebabbd546cc297d2f55dda8e22dec8362d46b18dcbf3734a7a70c5426a",
++    "tests/test_grouped_encoder_and_latent_tanh.py": "bb29ba380c76b5b9b1c98441242ec5ad45c1ff21cfbd690d29220a37ae5036c9",
++    "tests/test_mppi_diagnosis.py": "d376ef33d89a10e22a66589d7de314e7c048115f478e686cc371041371fadabc",
++    "tests/test_mppi_failure_attribution.py": "17babebbaf40718e4d7358b35cf6ff177620d44c5f97a2ffeeeb4bf0870fd58f",
++    "tests/test_mppi_final_selection.py": "06d3129a82e1262ae48c299b2b548390afd936ca576349e4858f765ac8aab6ca",
++    "tests/test_mppi_v3.py": "a86e93cee192d830ad5ef052f36bcf8e02f70751e3b9ca4ffcd352fedfa4b92c",
++    "tests/test_mppi_v31.py": "0e03ac18533f3fbe639b92ff88f927e703d063d8f0718ce4fe25547dd4e1f3b4",
++    "tests/test_mppi_v32.py": "8ab7da94e10f0e889ea2b12166983250a1714987bdd8d400bf46b21da9b2b2dc",
++    "tests/test_mppi_v321.py": "30f5a9e675e0e5c185b16ddac02456d0629978da87ca4b679b11e04b68f5164f",
++    "tests/test_mppi_value_evaluation.py": "3d675455534ddea8218aed880581a3e97b82598f440ca10ab6596d6980ab541f",
++    "tests/test_mpr_mpc.py": "dcb1e1902ec3e587ab571529bd32df0a8c3964231a966bab164bcbc51663d13c",
++    "tests/test_native_mppi_cost.py": "4240812bd6c5532ef9da741f013c4095054a9ff332dd21ca7d5c4f00398fef8d",
++    "tests/test_paired_gif.py": "0fb2c25a0d5a69a004db285164a1816f86022ffb7f487f2b9307ffd652242c6b",
++    "tests/test_policy_value_diagnosis.py": "58fb289217e8280e74584580b89b025c154a364a8f1c8da1693837145d5cb5f8",
++    "tests/test_prompt_completion.py": "b752518f24ba4dfdcd3ca48c3b609f6fcc9302ddeed2e14fa88047292159d478",
++    "tests/test_residual_rl.py": "116c202933bd714098bb3a5554f2706b2f8a65ca074257e52fc393b0b78f14cb",
++    "tests/test_road_geometry.py": "ef598b32b6a7c8a180dca40f70233b95521e39506338224f219ebaf037676a26",
++    "tests/test_round3.py": "720df7c7be658b6895977e0baf9627b1aef46e19b3017e0a6ba190f120703f56",
++    "tests/test_round4.py": "8b5b51a1b43044d03f93d5feb5328c5e36a4b6068c16978655409bb37d585ea4",
++    "tests/test_sac_centred_repair.py": "5471d8ad5b2e364a4118471519a0bfad59d7f707f200acaa79550cc8bc730c7a",
++    "tests/test_sac_continuation_value.py": "82203a14affa816b6e93f2b2ab2b1c3209ef810961adb79b84f901b7eb1b011d",
++    "tests/test_sac_refinement.py": "3119933bc82691479a25aad82aa253cd40887b3045964392ecd2266d58134a2e",
++    "tests/test_self_contained_runtime.py": "8b085fd796989978757d15f1e224defd33142a7a66d8b626d053bfdf376f33dc",
++    "tests/test_simplified_tdmpc2_mppi.py": "325414cdb2e6b151b6c620c163759e6b5c6e83d2a5b15d39e5f54b6439c6b5bb",
++    "tests/test_terminal_q_weight.py": "c175324151cae827361ba9bdb0eac4465ad722e2fd5fb92876b7364f61d87dfd",
++    "tests/test_training_evaluation.py": "10384a17cda37776a22b5accf4f05a5525724a1f87a6a461cef5cc1537a2e232",
++    "tests/test_training_recovery.py": "885f0c48ff3b2f8ecd3742a2289ac3fb8129b5d2682bb38a3ecc33b3925b40c7",
++    "tests/test_trajectory_selection.py": "18bf84b9d4cab7c38aa42a3418f6fa979f7ad195968f1f02de198a6b86c5b081",
++    "tests/test_v2_cost_training.py": "ca5a42d6b8db8e9a1ba9b04917ad354e5307efa46efe50ee2ef16bfb1a23b14b",
++    "tests/test_v2_reporting.py": "7480c179f8ab3508acdf160e0d8181fe6110b23f74698538faaa2518c0853e4a",
++    "tests/test_v2_safety.py": "74fcfaf01b9b830bc770c14f61107aff8aef2cd96fd6ab29c30b1f5f6df4915c",
++    "tools/benchmark_mppi.py": "ea348ec86bdd3c47becb61b9397a72a1c920fb147c7d9c44262d0ccbaeccd1ab",
++    "tools/calibrate_mppi_braking.py": "985a306a26752e852072aab107162d2e776d8d500770c5865a19b30c711e84f4",
++    "tools/calibrate_mppi_motion.py": "b0b6b2795427f1494fa0b7504ff588cd8bc72ab1a68a4bbd3f9f5bee98e7fca2",
++    "tools/first_action_failure.py": "1bddaf8e098d081ea0a7ebeb8c7435a2c310940e86d0a319fe892415d4281c06",
++    "tools/first_action_study.py": "530a6e6756abb29e75812fe4801d13efcf3bf41b626d08f859bca47c295dd87c",
++    "tools/launch_frozen_wm500k_rl500k.sh": "78db4311f3ded6deef50823bc4177af1bda9f410bf883187b353d233cf237fc3",
++    "tools/mppi_diagnosis.py": "2a0780a21ef3a0de4ae0510c887ec7ee99f0f29622c1efbe34898cdfa5e6e1aa",
++    "tools/mppi_failure_attribution.py": "2ede01af8a69c00ba766b5c31b273f602b870867f04db3730b3995f792f7228d",
++    "tools/planning_profiler.py": "3cfc24e9a1501c27510b52d9c69c4357349727b3b9c62e99863919b522c3e80c",
++    "tools/policy_value_diagnosis.py": "b1bba04f340f98f80972d858773da9eab64ecb0c46d58cb66bab2464e31b0fc1",
++    "tools/replay_sac_centred_repair.py": "34dfc5ce12e2ce82defaab347f9ce6b316e9012629e6bed2c49079d1ac6252ab",
++    "tools/run_trajectory_pair.sh": "2522b1075fad678885098493a07ef11440bb0789ed03c96f320c32107578226e",
++    "tools/run_v3_ablation.sh": "10c058d8468a78ec1bf33b6c985fe2477dfc7a89ce28bcac5960c008c05a0af9",
++    "tools/smoke_mppi_v3.py": "ec1ee4a2bb0219500569090bb50265d2176941b032763680737465cd39d224a8",
++    "tools/smoke_v2.py": "056cf3c1c0f1d393d9e6337259ec6386bc7732f63ff91d04661c736a8e1dc7cb",
++    "tools/smoke_v32_recovery.py": "3893b4b0f6bc86bd198050e764f2cfc9d4c8822cc82656f528d51c9afcfdfaba",
++    "tools/value_calibration.py": "8e239ecc93c48f5d86c505fc0a252d2057cc1ac9b1af804a7bf2a3d314500983",
++    "train.py": "bd12da6cd834cf3926a97a545ec349ae5ca70ea37d6b0a0c7cbd4291a80805b0",
++    "trainer.py": "cef805cc5646265a7c624ea9fa81f33efe7c6fde6eb28765751be47d69c18ec6",
++    "training_schedule.py": "2f5d6412ee90f39763a8539406abf5fca16825b6712f2a3ef648ef2840f26eb5",
++    "vendor/tdmpc2_runtime/LICENSE": "440d4088a83d19c522dff58918bd92ccb9701c278a35295b92db2456373c4759",
++    "vendor/tdmpc2_runtime/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "vendor/tdmpc2_runtime/common/__init__.py": "d7714a0f5a5ed2a40542cf5cd69f9504fcd876dc8f9f5cba02e877c435c88e99",
++    "vendor/tdmpc2_runtime/common/buffer.py": "4f104005a7ff4ffa63ceb5f47e6eaebb0d608046ed5b39f9c7c7ba8b7390f243",
++    "vendor/tdmpc2_runtime/common/init.py": "3f085f2d11439312ce765bc0c4332048147d6540d7ca30cdeddacf2d70180ea4",
++    "vendor/tdmpc2_runtime/common/layers.py": "ea2de2e762bd684530df7cb8aa23b0afcee393622f902726ec27275637035f73",
++    "vendor/tdmpc2_runtime/common/logger.py": "0b0ad91e85f0608085c5948cbdd5c58860110253d7de47eb88a4f7092a45b589",
++    "vendor/tdmpc2_runtime/common/math.py": "8b25faa5ee22311e82f445e50efb4594b2e5dfa61d9efe82dc40940c668a4186",
++    "vendor/tdmpc2_runtime/common/parser.py": "3eacba933ec2945a9c4d276400c9f6f44a6adb1c3a4cf7f3dbf433aa073c30e3",
++    "vendor/tdmpc2_runtime/common/scale.py": "cf61f2c7a1ac0f13a2638f5022adcf20283d6544f8ce218581b3290d9a03d5a7",
++    "vendor/tdmpc2_runtime/common/seed.py": "f77ca34f6ae0b489d740ad25bf6a8efc217a4610e19fec4a83d5b30a995b7dbd",
++    "vendor/tdmpc2_runtime/common/world_model.py": "570fb6418efed2ab94aa7fc329f2672dd61dea098eef17cecec8070a4611fe0c",
++    "vendor/tdmpc2_runtime/config.yaml": "2693b92c04d1ee955c1a272fe76a0c4e17de8a348ff911f113eaca3c1c88529a",
++    "vendor/tdmpc2_runtime/envs/__init__.py": "ba7ff952d23e082587fdd2c329e27f3ab82040334724abf23f7c7966302a01f1",
++    "vendor/tdmpc2_runtime/envs/dmcontrol.py": "ec61b4b90b2c14f281446c4146146753b9fbd95657e205dd09f30a6ab47c85b2",
++    "vendor/tdmpc2_runtime/envs/maniskill.py": "ac6f219295c8157cda8e78048df825771c3f3b3d480f8143aad7749d991f3fc5",
++    "vendor/tdmpc2_runtime/envs/metaworld.py": "d90a0ad93dd32054c2c9a80569449680905821b7c50a6e530cf5f012f5b8f9f0",
++    "vendor/tdmpc2_runtime/envs/mujoco.py": "fa80a221f560bc7ada49e2ee38cd5f74fd2d46789a3f89184b06337e9b2307ab",
++    "vendor/tdmpc2_runtime/envs/myosuite.py": "86fa45d397b13605422890523f1c50c9c96f4f1c2d97bd078c3a99664ad5dfb1",
++    "vendor/tdmpc2_runtime/envs/tasks/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "vendor/tdmpc2_runtime/envs/tasks/ball_in_cup.py": "e7d0a29c97f2ede402cb4bf86adddc97c82483af83d8e6688bc73ab2606c537a",
++    "vendor/tdmpc2_runtime/envs/tasks/ball_in_cup.xml": "1c2cdb18db9adbe8822220662dd2281c01b5bc94d5dd6b4c2f7fca5da2ea0a06",
++    "vendor/tdmpc2_runtime/envs/tasks/cheetah.py": "98b09bff2d32d9ea94109fcbefcbe19d6691a464cfc111d3d10bbea7433cf15a",
++    "vendor/tdmpc2_runtime/envs/tasks/cheetah.xml": "e0ca07b18e50df0b4d4c65efa1a3ec45935fb05b7d3b1bb32b50b66950447465",
++    "vendor/tdmpc2_runtime/envs/tasks/fish.py": "7ded518285c364e6913999de51c26a80e94c9f056d31d710c01a338c8a34ddc3",
++    "vendor/tdmpc2_runtime/envs/tasks/fish.xml": "52eb8249718c1944d2f011e0709fb84b1cc0d20da36f86cdbf2f7e61a7814b69",
++    "vendor/tdmpc2_runtime/envs/tasks/hopper.py": "8f815b648b7aa1223b25a89b7d28bdf75e406c93b3b66469ffadca094486f066",
++    "vendor/tdmpc2_runtime/envs/tasks/hopper.xml": "6e86c37515e34af796af664c4e24e0586e4047fe5243f304de119e83769048b8",
++    "vendor/tdmpc2_runtime/envs/tasks/pendulum.py": "2ce9060621e355c1a1984925602c08b936dc46bd81a8d248b020553a3e66a0e4",
++    "vendor/tdmpc2_runtime/envs/tasks/pendulum.xml": "6ce0aceacde5bd30bf9965d08a7f4e31e61319d85b59b03c1bda523e5710a115",
++    "vendor/tdmpc2_runtime/envs/tasks/reacher.py": "3e607a8d0bbb005a3468a4a4a7bcc9ba8731e22750b6d5f35e98169f6a85b6a6",
++    "vendor/tdmpc2_runtime/envs/tasks/reacher_four_links.xml": "52caeddbd86759d11428facc620c28507cceb8c8e17ff6e9d653927de7239d48",
++    "vendor/tdmpc2_runtime/envs/tasks/reacher_three_links.xml": "385877ac308bfc4ae9b601f8300e93a02b1789634cfde8b8c8de49faf57056ce",
++    "vendor/tdmpc2_runtime/envs/tasks/walker.py": "a51df23f1fc966bbd926a3614a0efd05933d11d3036fa279fd30f2c73d1017ce",
++    "vendor/tdmpc2_runtime/envs/tasks/walker.xml": "083fe75724584a33716efe96b78f9adec333db9e31291f58a41e76e4a6782803",
++    "vendor/tdmpc2_runtime/envs/wrappers/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "vendor/tdmpc2_runtime/envs/wrappers/multitask.py": "bf1f26deb8f4f014b7dd0cdd4f68033aeba78b6fc2029a89484bcc6df6e51d08",
++    "vendor/tdmpc2_runtime/envs/wrappers/tensor.py": "8b0a3a667f2aafab3aaa4affbd56652361c0a75ad143cc8bd70dfcb1f95def6b",
++    "vendor/tdmpc2_runtime/envs/wrappers/timeout.py": "bb00d092582d82eda7c0865033f256771fe700fefb5e700cf1495f0734e3f3c3",
++    "vendor/tdmpc2_runtime/evaluate.py": "d25fc8f011c3f1ca664db81320f86c4b62fd47e9a10e4657563cab2674fffd20",
++    "vendor/tdmpc2_runtime/tdmpc2.py": "b340f68bd2f73a6aaa16e532bde9cbeb8b7ea539d66a96e8e0e97f8eeb760250",
++    "vendor/tdmpc2_runtime/train.py": "13d9672ee827298c4b86bbd3561bcb58b3009951eb9f19ef2af14845ea235be8",
++    "vendor/tdmpc2_runtime/trainer/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "vendor/tdmpc2_runtime/trainer/base.py": "5194d2cd37572b05131fa18933f1fc06288c090b50956e754e3aaf21681b278b",
++    "vendor/tdmpc2_runtime/trainer/offline_trainer.py": "9dfaf833623daa9a7ced8d1fa788716a7155d5ff2cc09c922697b62ac54f4957",
++    "vendor/tdmpc2_runtime/trainer/online_trainer.py": "23d02f79b09daa40b77eea8ce164ccb4b940158de359560e449cc514d1ff12ff"
++  },
++  "protocol_sha256": "83385aaeb277d383930701ac1bda38367a323adc9b1461b209a67cadda145211",
++  "historical_inputs": [
++    {
++      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_h1_counterfactual_20261118/reports/mppi_h1_counterfactual_20261118/FINAL_REPORT.md",
++      "sha256": "44b1d80fc864067a4adb50ab52f98cbbd2a14c057b27b7aef38045f3378a4493",
++      "bytes": 10229,
++      "rows_or_lines": 90,
++      "fully_read": true
++    },
++    {
++      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_h1_counterfactual_20261118/reports/mppi_h1_counterfactual_20261118/PROTOCOL.md",
++      "sha256": "dbe6bc8cc3d5724aaac05ed50d1cabd07c59bf9a27c1cce20aef53409803a745",
++      "bytes": 5936,
++      "rows_or_lines": 48,
++      "fully_read": true
++    },
++    {
++      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_h1_counterfactual_20261118/reports/mppi_h1_counterfactual_20261118/paired_statistics.json",
++      "sha256": "d0bf7193d0a46110756d2f352d2f7ba9459ac9a6f4430d5e8669e89587135ef6",
++      "bytes": 21238,
++      "rows_or_lines": 1,
++      "fully_read": true
++    },
++    {
++      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_h1_counterfactual_20261118/reports/mppi_h1_counterfactual_20261118/candidate_ranking.csv",
++      "sha256": "322b16f07eff96a932883c490a9f43c40da4f256003ee44ee0e2e82bb00790ff",
++      "bytes": 24576,
++      "rows_or_lines": 123,
++      "fully_read": true
++    },
++    {
++      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_h1_counterfactual_20261118/reports/mppi_h1_counterfactual_20261118/candidate_actions.csv",
++      "sha256": "ea35f48fa5917079fa43d48a6e68fc6fdfc74766dac63a78374f2ace030d196b",
++      "bytes": 27092,
++      "rows_or_lines": 123,
++      "fully_read": true
++    },
++    {
++      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_h1_counterfactual_20261118/reports/mppi_h1_counterfactual_20261118/counterfactual_episodes.csv",
++      "sha256": "c21e3d932e94f3f57666caa10190509406d2de3c6e340cf32c8d5b348d2359e2",
++      "bytes": 55121,
++      "rows_or_lines": 123,
++      "fully_read": true
++    },
++    {
++      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_h1_counterfactual_20261118/reports/mppi_h1_counterfactual_20261118/counterfactual_steps.csv",
++      "sha256": "8f5deed6e57d50609a640b172ba07352ee2ddaec4838ce3558c0b0effa3259fb",
++      "bytes": 10713659,
++      "rows_or_lines": 34270,
++      "fully_read": true
++    },
++    {
++      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_h1_counterfactual_20261118/reports/mppi_h1_counterfactual_20261118/STATE_RECONSTRUCTION_AUDIT.md",
++      "sha256": "276be8fd272fd2b799416223faa421a31102f9dbc668750e1375f158416a392c",
++      "bytes": 3408,
++      "rows_or_lines": 40,
++      "fully_read": true
++    },
++    {
++      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_h1_counterfactual_20261118/reports/mppi_h1_counterfactual_20261118/code_changes.patch",
++      "sha256": "8c13c714ac6b11fc8469a5687eba2b61ab9a5ee6a3d07467b1b3d4a56ea4a06d",
++      "bytes": 146430,
++      "rows_or_lines": 1621,
++      "fully_read": true
++    }
++  ],
++  "python": "3.11.16 | packaged by conda-forge | (main, Aug 21 2026, 22:44:51) [GCC 14.4.0]",
++  "packages": {
++    "torch": "2.7.1",
++    "numpy": "1.24.4",
++    "metadrive-simulator": "0.4.3",
++    "omegaconf": "2.3.0"
++  },
++  "no_new_map_outcomes_before_freeze": true
++}
+\ No newline at end of file
+diff --git a/reports/mppi_evaluation_redesign_20261119/figures.py b/reports/mppi_evaluation_redesign_20261119/figures.py
+new file mode 100644
+index 0000000..494e4cc
+--- /dev/null
++++ b/reports/mppi_evaluation_redesign_20261119/figures.py
+@@ -0,0 +1,48 @@
++"""Scientific export plots; H1 counterfactuals and full episodes remain separate."""
++import matplotlib
++matplotlib.use('Agg')
++import matplotlib.pyplot as plt
++import pandas as pd
++from study import *
++def save(fig,name):
++    (R/'figures').mkdir(exist_ok=True);fig.tight_layout();fig.savefig(R/'figures'/name,dpi=150);plt.close(fig)
++def main():
++    h=pd.read_csv(R/'h1_role_results.csv');closed=pd.read_csv(R/'paired_closed_loop_episodes.csv');stats=load(R/'h1_statistics.json')
++    fig,ax=plt.subplots(figsize=(8,4));names=['B','C','D','F','G'];mean=[stats['selectors'][m]['gain']['mean'] for m in names]
++    intervals=np.array([stats['selectors'][m]['gain']['ci95'] for m in names]).T
++    ax.bar(names,mean,yerr=np.vstack([np.array(mean)-intervals[0],intervals[1]-np.array(mean)]),capsize=4)
++    oracle=h[h.method=='A'].groupby('scene').oracle_gain.mean().mean();ax.axhline(oracle,color='green',label='Oracle over MEASURED method actions only')
++    ax.axhline(0,color='black',lw=.8);ax.set_xticks(range(len(names)),['Native','Random','Reward-only','Frozen margin','Same-pool RQ']);ax.set_ylabel('Actual H1 -> original SAC gain');ax.legend(fontsize=8)
++    save(fig,'native_random_measured_oracle.png')
++    fig,ax=plt.subplots(figsize=(9,4));maps=h.groupby(['scene','method']).gain.mean().unstack()
++    for method,label in [('D','Reward-only all pool'),('G','RQ matched all pool'),('B','Native final2')]:ax.plot(range(len(maps)),maps[method],'-o',label=label)
++    ax.set_xticks(range(len(maps)),maps.index,rotation=45);ax.axhline(0,color='black',lw=.6);ax.set_ylabel('Actual H1 gain');ax.legend()
++    save(fig,'reward_only_vs_reward_q.png')
++    results=pd.read_csv(R/'new_map_candidate_results.csv');xs=[];ys=[]
++    for directory in sorted((R/'origins').iterdir()):
++        if not (directory/'catalog.json').exists():continue
++        meta=load(directory/'catalog.json');base=next(x for x in meta['representatives'] if x['candidate_id']=='A')
++        for row in meta['representatives']:
++            rec=results[(results.scene==meta['scene'])&(results.seed==meta['seed'])&(results.candidate_id==row['candidate_id'])].iloc[0]
++            xs.append(row['raw_score']-base['raw_score']);ys.append(rec.actual_h1_gain)
++    fig,ax=plt.subplots(figsize=(7,5));ax.scatter(xs,ys,s=16,alpha=.6);ax.axhline(0,color='black',lw=.6);ax.axvline(0,color='black',lw=.6)
++    ax.set_xlabel('H10 + TD-Q predicted relative score');ax.set_ylabel('Actual H1 -> SAC gain');ax.set_title('DESCRIPTIVE ONLY: mismatched objectives, not formal H1 ranking')
++    save(fig,'score_vs_actual_h1_gain.png')
++    fig,axes=plt.subplots(1,2,figsize=(11,4));rates=h.groupby('method').physical_replacement.mean();axes[0].bar(rates.index,rates.values);axes[0].set_ylabel('H1 physical replacement rate')
++    rates=closed.groupby('configuration').replacement_rate.mean();axes[1].bar(rates.index,rates.values);axes[1].set_title('Full closed-loop replacement\nZero replacement is NOT an algorithm improvement');save(fig,'baseline_replacement_rate.png')
++    fig,ax=plt.subplots(figsize=(10,4))
++    for method in ['B','C','D','F','G']:ax.plot(range(len(maps)),maps[method],'-o',label=method)
++    ax.set_xticks(range(len(maps)),maps.index,rotation=45);ax.axhline(0,color='black',lw=.6);ax.set_ylabel('Actual H1 gain');ax.legend();save(fig,'selected_gain_per_map.png')
++    regrets=h.groupby(['scene','method']).regret.mean().unstack();fig,ax=plt.subplots(figsize=(10,4))
++    for method in ['B','C','D','F','G']:ax.plot(range(len(regrets)),regrets[method],'-o',label=method)
++    ax.set_xticks(range(len(regrets)),regrets.index,rotation=45);ax.set_ylabel('Regret vs measured-method oracle');ax.legend();save(fig,'top1_regret_per_map.png')
++    fig,axes=plt.subplots(1,3,figsize=(11,4));means=closed.groupby('configuration')[['success','crash','out_of_road']].mean()
++    for ax,key in zip(axes,['success','crash','out_of_road']):ax.bar(means.index,means[key]);ax.set_ylim(0,1);ax.set_title('FULL CLOSED: '+key)
++    save(fig,'closed_success_crash_oor.png')
++    timing=pd.read_csv(R/'latency.csv');probe=timing[(timing.scope=='isolated_frozen_state')&(timing.stage=='planner_ms')];fig,ax=plt.subplots(figsize=(7,4))
++    ax.bar(probe.configuration,probe.p95_ms);ax.axhline(100,color='red',ls='--',label='100ms reference');ax.set_ylabel('Full planner P95 ms, isolated fixed states');ax.legend();save(fig,'planner_latency.png')
++    old=pd.read_csv(R/'historical_h1_analysis.csv');fig,ax=plt.subplots(figsize=(7,5));positive=old.actual_h1_gain>0
++    ax.scatter(old.steering[~positive],old.throttle_brake[~positive],label='nonpositive real H1 gain',alpha=.5)
++    ax.scatter(old.steering[positive],old.throttle_brake[positive],label='positive real H1 gain',alpha=.7)
++    ax.set_xlabel('steering');ax.set_ylabel('throttle_brake');ax.set_title('Old123 measured controls; not a learned online region');ax.legend();save(fig,'historical_positive_action_regions.png')
++if __name__=='__main__':main()
+diff --git a/reports/mppi_evaluation_redesign_20261119/finish.py b/reports/mppi_evaluation_redesign_20261119/finish.py
+new file mode 100644
+index 0000000..58c43f0
+--- /dev/null
++++ b/reports/mppi_evaluation_redesign_20261119/finish.py
+@@ -0,0 +1,20 @@
++"""Collect isolated timings after108 complete episodes; then aggregate. No automatic Git operations."""
++import subprocess,time
++from study import *
++while not (R/'closed_complete.json').exists():
++    if 'Traceback' in (R/'pipeline.log').read_text():raise RuntimeError('Collection failed, keep incomplete data and inspect technical error')
++    time.sleep(2)
++p=load(R/'protocol.json');env=dict(os.environ,OMP_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',MKL_NUM_THREADS='1',MUJOCO_GL='egl')
++for scene in p['scenes'][:2]:
++    for group in ['A','B','C']:
++        with (R/f'probe_{group}_{scene}.log').open('x') as stream:
++            subprocess.run([sys.executable,'-u',str(R/'latency_probe.py'),'--group',group,'--scene',str(scene)],cwd=ROOT,env=env,stdout=stream,stderr=subprocess.STDOUT,check=True)
++        print('ISOLATED',group,scene,flush=True)
++for scene in p['scenes'][:2]:
++    states=[load(R/f'probe_{g}_{scene}.json')['initial_hashes'] for g in ['A','B','C']]
++    assert states[0]==states[1]==states[2]
++dump(R/'probe_complete.json',dict(calls=300,warmup=30,single_worker=True,same_state=True))
++for name in ['summarize.py','figures.py']:
++    with (R/(name.removesuffix('.py')+'.log')).open('x') as stream:
++        subprocess.run([sys.executable,'-u',str(R/name)],cwd=ROOT,env=env,stdout=stream,stderr=subprocess.STDOUT,check=True)
++    print('FINISHED',name,flush=True)
+diff --git a/reports/mppi_evaluation_redesign_20261119/guard_probe.py b/reports/mppi_evaluation_redesign_20261119/guard_probe.py
+new file mode 100644
+index 0000000..531b626
+--- /dev/null
++++ b/reports/mppi_evaluation_redesign_20261119/guard_probe.py
+@@ -0,0 +1,33 @@
++"""Real frozen-model flag wiring at one reconstructed state; probe outputs never executed."""
++import os
++from pathlib import Path
++os.environ['MPR_CODE_ROOT']=str(Path(__file__).resolve().parents[2])
++from study import *
++
++@torch.no_grad()
++def main():
++    p=load(R/'protocol.json');scene=p['scenes'][0];seed=1
++    parsed,cfg,env,agent=make_runtime(scene,seed,'modified',record=False)
++    try:
++        local=agent.planner.local_mppi
++        assert local.final_selection_policy=='baseline_guard' and not local.replacement_supported
++        agent.planner.allow_mppi=False
++        obs,baseline,_,before,policy,_=restore_origin(env,agent,scene,seed)
++        agent.planner.allow_mppi=True;rng=get_rng();private=local.generator.get_state().clone()
++        protected=agent.act(obs,t0=False,eval_mode=True);plan=agent.last_plan
++        assert torch.equal(protected.cpu(),baseline.cpu())
++        assert int(plan.metrics['mppi/iterations_completed'])==4 and int(plan.metrics['mppi/wm_evaluated_candidates'])==262
++        assert digest(agent.planner.last_context.residual_state)==policy['hashes']['residual535']
++        assert plan.metrics['mppi/replacement_supported']==0
++        set_rng(rng);local.generator.set_state(private);local.replacement_supported=True;local.final_selection_margin=0.
++        permissive=agent.act(obs,t0=False,eval_mode=True)
++        assert not torch.equal(permissive,protected),'Selected test state must exercise an actual proposed replacement'
++        assert snapshot(env,obs)['hashes']['vehicle']==before['hashes']['vehicle']
++        dump(R/'real_guard_probe.json',dict(passed=True,scene=scene,seed=seed,origin_step=50,
++            frozen_options_reached_controller=True,unsupported_returns_original_sac=True,coarse535_unchanged=True,
++            full_search_kept=[64,8,4],evaluated_candidates=262,
++            supported_zero_margin_action_delta=float((permissive-protected).norm()),probe_actions_executed=0,
++            note='Positive-support switch is exercised only in this isolated no-execution test. Experimental decision remains unsupported.'))
++        print('REAL_GUARD_PROBE_PASSED',flush=True)
++    finally:env.close()
++if __name__=='__main__':main()
+diff --git a/reports/mppi_evaluation_redesign_20261119/h1.py b/reports/mppi_evaluation_redesign_20261119/h1.py
+new file mode 100644
+index 0000000..12f93af
+--- /dev/null
++++ b/reports/mppi_evaluation_redesign_20261119/h1.py
+@@ -0,0 +1,88 @@
++"""Exactly one physical control intervention, then frozen original Lattice+SAC until native done."""
++import argparse,time
++from study import *
++
++@torch.no_grad()
++def main():
++    ap=argparse.ArgumentParser();ap.add_argument('--scene',type=int,required=True);ap.add_argument('--seed',type=int,required=True);ap.add_argument('--candidate',required=True);a=ap.parse_args();a.step=50
++    directory=origin_dir(a.scene,a.seed);catalog=load(directory/'catalog.json')
++    candidate=next(x for x in catalog['representatives'] if x['candidate_id']==a.candidate)
++    commands=np.asarray(candidate['action'],np.float32)
++    out=R/'branches'/f'{a.scene}_r{a.seed}'/a.candidate;out.mkdir(parents=True,exist_ok=False)
++    parsed,cfg,env,agent=make_runtime(a.scene,a.seed)
++    before_wm=tensor_hash(agent.model);before_actor=tensor_hash(agent.residual_sac.actor)
++    try:
++        obs,baseline,source,state,policy,_=restore_origin(env,agent,a.scene,a.seed)
++        assert state['hashes']==load(directory/'origin.json')['hashes']
++        assert policy['hashes']==catalog['policy_fingerprint'],('policy history mismatch',a.scene,a.step)
++        environment=extended_environment(env);assert environment['hash']==load(directory/'environment.json')['hash']
++        assert agent._pending_residual is None
++        dump(out/'origin_verification.json',dict(physical_rng_hashes=state['hashes'],policy_hashes=policy['hashes'],
++            extended_environment_hash=environment['hash'],all_exact=True,previous_recorded_controls=a.step-1))
++        vehicle=env.unwrapped_metadrive.agent
++        initial_position=np.asarray(vehicle.position[:2]).copy();initial_speed=float(vehicle.speed);initial_heading=float(vehicle.heading_theta)
++        first_immediate=None;steps=[];observations=[obs.cpu().numpy().copy()];controls=[];rewards=[];costs=[];dones=[];terms=[];truncs=[];physical=[]
++        done=crash=offroad=False;feedback=0;previous=None;baseline_match_count=0
++        def forbidden_mppi(*args,**kwargs):raise AssertionError('MPPI must never run inside a continuation branch')
++        agent.planner.local_mppi.plan=forbidden_mppi
++        native_prev_mean=agent.tdmpc_agent._prev_mean.clone()
++        while not done:
++            k=len(controls);before=time.perf_counter()
++            if k==0:
++                planned=baseline.cpu().numpy();action=commands.copy();takeover=False
++            else:
++                planned=agent.act(obs,t0=False,eval_mode=True).cpu().numpy();action=planned.copy();takeover=True;feedback+=1
++                assert agent.last_plan.stage.use_residual and not agent.last_plan.stage.use_mppi
++                assert agent._pending_residual is None
++                ctx=agent.planner.last_context
++                if ctx.safety_context is not None:
++                    assert np.array_equal(ctx.safety_context.previous_action,previous),'Previous actual action not reflected in safety/SAC feature context'
++                if k==1:
++                    assert torch.equal(ctx.latent,agent.planner.evaluator.encode(obs).detach())
++                    assert torch.equal(ctx.residual_state[:512],ctx.latent.reshape(-1))
++            planning=1000*(time.perf_counter()-before)
++            assert np.isfinite(action).all() and np.max(np.abs(action))<=1
++            obs,reward,done,info=env.step(action)
++            assert abs(float(reward)-float(info['tdmpc2_reward']))<1e-4
++            vehicle=env.unwrapped_metadrive.agent;received=np.array([float(vehicle.steering),float(vehicle.throttle_brake)])
++            assert np.array_equal(received,action),'Submitted and actual MetaDrive control differ'
++            previous=action.copy();position=np.asarray(vehicle.position[:2]).copy();speed=float(vehicle.speed);heading=float(vehicle.heading_theta)
++            body=np.r_[position,speed,heading]
++            if a.candidate=='A':
++                original=a.step-1+k
++                assert np.array_equal(action,source['actions'][original]),('Baseline action mismatch',original)
++                assert np.array_equal(obs.cpu().numpy(),source['observations'][original+1]),('Baseline observation mismatch',original)
++                assert np.array_equal(body,source['physical_after'][original]),('Baseline physical mismatch',original)
++                assert abs(float(info['tdmpc2_reward'])-float(source['rewards'][original]))<1e-8
++                assert bool(done)==bool(source['done'][original]) and bool(info['terminated'])==bool(source['terminated'][original]) and bool(info['truncated'])==bool(source['truncated'][original])
++                baseline_match_count+=1
++            if k==0:first_immediate=dict(reward=float(info['tdmpc2_reward']),cost=float(info['cost']),speed_change=speed-initial_speed,
++                heading_change=float((heading-initial_heading+np.pi)%(2*np.pi)-np.pi),position_change=float(np.linalg.norm(position-initial_position)))
++            steps.append(dict(scene=a.scene,seed=a.seed,origin_step=a.step,candidate_id=a.candidate,branch_step=k,absolute_step=a.step+k,
++                executed_steering=float(action[0]),executed_throttle_brake=float(action[1]),received_steering=float(received[0]),received_throttle_brake=float(received[1]),
++                planner_steering=float(planned[0]),planner_throttle_brake=float(planned[1]),sac_takeover=takeover,
++                intervention=k==0,previous_action_context_verified=k>0,reward=float(info['tdmpc2_reward']),safety_cost=float(info['cost']),
++                x=float(position[0]),y=float(position[1]),speed=speed,heading=heading,
++                route_completion=float(info['route_completion']),crash=bool(info.get('crash',False)),out_of_road=bool(info.get('out_of_road',False)),
++                terminated=bool(info['terminated']),truncated=bool(info['truncated']),done=bool(done),planner_ms=planning))
++            observations.append(obs.cpu().numpy().copy());controls.append(action);rewards.append(float(info['tdmpc2_reward']));costs.append(float(info['cost']))
++            dones.append(bool(done));terms.append(bool(info['terminated']));truncs.append(bool(info['truncated']));physical.append(body)
++            crash|=any(bool(info.get(key,False)) for key in ['crash','crash_vehicle','crash_object','crash_human','crash_building','crash_sidewalk'])
++            offroad|=bool(info.get('out_of_road',False));assert a.step+k<=1000
++            if k and k%200==0:print('PROGRESS',a.scene,a.step,a.candidate,k,round(info['route_completion'],3),flush=True)
++        assert feedback==len(controls)-1 and sum(x['intervention'] for x in steps)==1
++        assert torch.equal(native_prev_mean,agent.tdmpc_agent._prev_mean)
++        assert before_wm==tensor_hash(agent.model) and before_actor==tensor_hash(agent.residual_sac.actor)
++        if a.candidate=='A':assert baseline_match_count==len(source['actions'])-a.step+1
++        np.savez_compressed(out/'trace.npz',observations=observations,actions=controls,rewards=rewards,costs=costs,
++            done=dones,terminated=terms,truncated=truncs,physical_after=physical)
++        table(out/'steps.csv',steps)
++        row=dict(scene=a.scene,seed=a.seed,origin_step=a.step,candidate_id=a.candidate,roles=candidate['roles'],normalized_action=commands,
++            success=float(info['success']),crash=float(crash),out_of_road=float(offroad),route_completion=float(info['route_completion']),
++            timeout=float(info['truncated']),safety_cost=sum(costs),episode_length=len(rewards),episode_return=sum(rewards),discounted_return=discounted_return(rewards),
++            immediate=first_immediate,end_reason=info.get('end_reason',''),native_terminated=terms[-1],native_truncated=truncs[-1],native_done=dones[-1],
++            baseline_full_tail_matched=baseline_match_count if a.candidate=='A' else None,feedback_steps=feedback,intervention_steps=1,
++            exact_origin=True,exact_policy_history=True,extended_environment_exact=True,weights_unchanged=True,continuation_mppi_calls=0)
++        dump(out/'episode.json',row);print('DONE',a.scene,a.step,a.candidate,round(row['discounted_return'],4),row['success'],flush=True)
++    finally:env.close()
++if __name__=='__main__':main()
+diff --git a/reports/mppi_evaluation_redesign_20261119/h1_analysis.py b/reports/mppi_evaluation_redesign_20261119/h1_analysis.py
+new file mode 100644
+index 0000000..8dbe7b6
+--- /dev/null
++++ b/reports/mppi_evaluation_redesign_20261119/h1_analysis.py
+@@ -0,0 +1,91 @@
++"""Paired new-map H1 selectors; selects only the predeclared mechanism branch, never retunes margin."""
++import pandas as pd
++from study import *
++
++def clustered(frame,columns):
++    maps=frame.groupby('scene')[columns].mean();rng=np.random.default_rng(20261119)
++    indices=rng.integers(len(maps),size=(2000,len(maps)));result={}
++    for key in columns:
++        v=maps[key].to_numpy(float)
++        result[key]=dict(mean=float(v.mean()),ci95=np.quantile(v[indices].mean(1),[.025,.975]),
++            maps={int(s):float(x) for s,x in maps[key].items()},positive_maps=int((v>0).sum()),
++            lomo={int(s):float(np.delete(v,i).mean()) for i,s in enumerate(maps.index)})
++    return result
++
++def main():
++    done=load(R/'h1_complete.json');p=load(R/'protocol.json');results=[];comparisons=[];rqrows=[];coverage=[];roles=[]
++    metrics=['discounted_return','success','crash','out_of_road','route_completion','safety_cost','timeout','episode_length','episode_return']
++    for scene in p['scenes']:
++        for seed in p['seeds']:
++            directory=origin_dir(scene,seed)
++            if (directory/'unreachable.json').exists():continue
++            meta=load(directory/'catalog.json');z=np.load(directory/'pool.npz');byid={}
++            assert meta['native_E_verified'] and meta['aliases']['B']==meta['aliases']['E']
++            for candidate in meta['representatives']:
++                cid=candidate['candidate_id'];out=R/'branches'/f'{scene}_r{seed}'/cid;row=load(out/'episode.json');origin=load(out/'origin_verification.json')
++                assert row['exact_origin'] and row['exact_policy_history'] and row['extended_environment_exact'] and row['continuation_mppi_calls']==0 and row['intervention_steps']==1
++                assert origin['physical_rng_hashes']==load(directory/'origin.json')['hashes'] and origin['policy_hashes']==meta['policy_fingerprint']
++                raw=np.load(out/'trace.npz');assert discounted_return(raw['rewards'])==row['discounted_return']
++                byid[cid]=row
++            base=byid[meta['aliases']['A']];best=max(x['discounted_return'] for x in byid.values())
++            for cid,row in byid.items():
++                candidate=next(x for x in meta['representatives'] if x['candidate_id']==cid)
++                results.append(dict(scene=scene,seed=seed,candidate_id=cid,roles=json.dumps(row['roles']),**{k:row[k] for k in metrics},
++                    steering=candidate['action'][0],throttle_brake=candidate['action'][1],
++                    first_action_l2=float(np.linalg.norm(np.asarray(candidate['action'])-np.asarray(meta['raw_roles'][0]['action']))),
++                    actual_h1_gain=row['discounted_return']-base['discounted_return'],intervention_steps=1,continuation='original frozen SAC',
++                    oracle_scope='max over measured METHOD first-actions only, not all258 unexecuted candidates'))
++            rc={role:byid[cid] for role,cid in meta['aliases'].items()}
++            for role,row in rc.items():
++                rawrole=next(x for x in meta['raw_roles'] if x['role']==role)
++                action=np.asarray(rawrole['action']);baseline_action=np.asarray(meta['raw_roles'][0]['action'])
++                roles.append(dict(scene=scene,seed=seed,method=role,representative=meta['aliases'][role],
++                    gain=row['discounted_return']-base['discounted_return'],regret=best-row['discounted_return'],
++                    physical_replacement=float(np.linalg.norm(action-baseline_action)>1e-5),negative_selected=float(row['discounted_return']-base['discounted_return']<-1),
++                    **{k:row[k] for k in metrics},oracle_gain=best-base['discounted_return']))
++            def difference(left,right):return {k:rc[left][k]-rc[right][k] for k in metrics}
++            c=dict(scene=scene,seed=seed,**difference('B','C'));comparisons.append(c)
++            rqrows.append(dict(scene=scene,seed=seed,comparison='D_reward_vs_G_same_pool_RQ',**difference('D','G')))
++            rqrows.append(dict(scene=scene,seed=seed,comparison='D_reward_vs_B_native_final2',**difference('D','B')))
++            for iteration,batch in enumerate(z['iteration_actions']):
++                controls=batch[1:,0];delta=controls-batch[0,0]
++                coverage.append(dict(scene=scene,seed=seed,iteration=iteration,unique_first_ratio=len(np.unique(controls,axis=0))/64,
++                    first_l2_mean=float(np.linalg.norm(delta,axis=1).mean()),steering_std=float(controls[:,0].std()),throttle_std=float(controls[:,1].std()),
++                    pool_size=258,measured_method_actions=len(byid),measured_positive_ratio=float(np.mean([x['discounted_return']>base['discounted_return'] for cid,x in byid.items() if cid!='A'])),
++                    full_pool_actual_positive_ratio=None,unobserved_actual_candidates='Do not invent actual labels for the unexecuted pool'))
++    table(R/'new_map_candidate_results.csv',results);table(R/'h1_role_results.csv',roles)
++    table(R/'random_vs_native.csv',comparisons);table(R/'reward_only_vs_reward_q.csv',rqrows);table(R/'candidate_coverage.csv',coverage)
++    frame=pd.DataFrame(roles);statistics={};paired={}
++    for role,group in frame.groupby('method'):
++        statistics[role]=clustered(group,['gain','regret','physical_replacement','negative_selected','oracle_gain',*metrics])
++    for left,right in [('B','C'),('D','G'),('D','B'),('F','A'),('G','C')]:
++        l=frame[frame.method==left].set_index(['scene','seed']);r=frame[frame.method==right].set_index(['scene','seed'])
++        diff=(l[['gain','regret','crash','out_of_road','success']]-r[['gain','regret','crash','out_of_road','success']]).reset_index()
++        paired[left+'-'+right]=clustered(diff,['gain','regret','crash','out_of_road','success'])
++    dump(R/'h1_statistics.json',dict(maps=int(frame.scene.nunique()),cases=int(len(frame[frame.method=='A'])),branches=done['branches'],
++        selectors=statistics,paired=paired,bootstrap_unit='complete map, all3seeds together',bootstrap_samples=2000,
++        formal_h1_model_ranking='NOT ESTIMABLE; selector consequences are directly measured, H10 score correlations remain descriptive',
++        finite_oracle='Measured METHOD actions, not whole258pool'))
++    # Retain development table verbatim; append ONE frozen-margin independent screen.
++    dev=R/'baseline_margin_analysis.csv';dev.rename(R/'baseline_margin_development.csv')
++    old=pd.read_csv(R/'baseline_margin_development.csv').to_dict('records');f=statistics['F']
++    old.append(dict(margin=p['margin'],replacement_rate=f['physical_replacement']['mean'],selected_gain=f['gain']['mean'],
++        negative_selection_rate=f['negative_selected']['mean'],source='new12maps3seeds ONE frozen margin; no retuning',eligible_nontrivial=f['physical_replacement']['mean']>0))
++    table(dev,old)
++    reward_ok=(statistics['D']['gain']['ci95'][0]>0 and paired['D-G']['gain']['ci95'][0]>0 and paired['D-B']['gain']['ci95'][0]>0
++        and statistics['D']['gain']['positive_maps']>=8 and paired['D-G']['crash']['mean']<=0 and paired['D-G']['out_of_road']['mean']<=0
++        and statistics['D']['crash']['mean']<=statistics['A']['crash']['mean'] and statistics['D']['out_of_road']['mean']<=statistics['A']['out_of_road']['mean'])
++    margin_ok=(f['gain']['ci95'][0]>0 and f['physical_replacement']['mean']>0 and paired['F-A']['crash']['mean']<=0 and paired['F-A']['out_of_road']['mean']<=0)
++    if reward_ok:
++        branch='reward_only';options=dict(final_selection_policy='reward_pool',final_selection_margin=0.,replacement_supported=True)
++    elif margin_ok:
++        branch='validated_margin';options=dict(final_selection_policy='baseline_guard',final_selection_margin=p['margin'],replacement_supported=True)
++    else:
++        branch='unsupported_replacement_protection';options=dict(final_selection_policy='baseline_guard',final_selection_margin=p['margin'],replacement_supported=False)
++    dump(R/'decision.json',dict(branch=branch,online_options=options,reward_case_passed=bool(reward_ok),margin_case_passed=bool(margin_ok),
++        margin_frozen_before_new_maps=p['margin'],new_margin_tuning=False,default_config_changed=False,
++        protection_is_not_algorithm_success=not(reward_ok or margin_ok),
++        rationale='Apply the predeclared branch only; unsupported scoring cannot justify replacing SAC. Full closed-loop screening still required.'))
++    print('H1_DECISION',branch,options,flush=True)
++    for role in ['B','C','D','F','G']:print(role,statistics[role]['gain'],flush=True)
++if __name__=='__main__':main()
+diff --git a/reports/mppi_evaluation_redesign_20261119/historical.py b/reports/mppi_evaluation_redesign_20261119/historical.py
+new file mode 100644
+index 0000000..af3b450
+--- /dev/null
++++ b/reports/mppi_evaluation_redesign_20261119/historical.py
+@@ -0,0 +1,119 @@
++"""Full old123 H1 score-component audit, frozen WM only, NO environment construction or learning."""
++import itertools
++import pandas as pd
++from scipy.stats import spearmanr,kendalltau
++from study import *
++
++def annotate_native_scope():
++    file=R/'score_component_ablation.csv';data=pd.read_csv(file)
++    data['selector_scope']='diagnostic argmax over measured historical canonical pool, NOT native online final2'
++    added=[]
++    for directory in sorted((HIST/'origins').iterdir()):
++        meta=load(directory/'catalog.json');records={x['candidate_id']:load(HIST/'branches'/directory.name/x['candidate_id']/'episode.json') for x in meta['representatives']}
++        base=records[meta['aliases']['A0']]['discounted_return'];selected=records[meta['aliases']['A1']]['discounted_return']
++        z=np.load(directory/'catalog.npz')
++        added.append(dict(scene=meta['scene'],step=meta['step'],method='native_actual_final2',selector_scope='EXACT actual native Baseline/WeightedMean output',
++            selected_gain=selected-base,top1_regret=max(x['discounted_return'] for x in records.values())-selected,
++            negative_selection_rate=float(selected-base<-1),score_margin=meta['C']['score']-float(z['C_final_values'][0]),
++            interpretation='Actual executed H1 consequence, not a matched H1 model ranking metric'))
++    file.rename(R/'score_component_pool_only.csv')
++    table(file,data.to_dict('records')+added)
++
++def ranking(y,s,base):
++    y=np.asarray(y);s=np.asarray(s);i,j=np.triu_indices(len(y),1);dy=y[i]-y[j];ds=s[i]-s[j];eligible=np.abs(dy)>1.
++    chosen=int(s.argmax());positive=y-y[base]>1.;predpositive=s-s[base]>0
++    return dict(spearman=float(spearmanr(s,y).statistic) if np.ptp(y)>0 and np.ptp(s)>0 else None,
++        kendall=float(kendalltau(s,y).statistic) if np.ptp(y)>0 and np.ptp(s)>0 else None,
++        descriptive_pair_accuracy=float(np.mean((np.sign(ds[eligible])*np.sign(dy[eligible])+1)/2)) if eligible.any() else None,
++        effective_pairs=int(eligible.sum()),top1_regret=float(y.max()-y[chosen]),selected_gain=float(y[chosen]-y[base]),
++        positive_candidate_recall=float(predpositive[positive].mean()) if positive.any() else None,
++        negative_selection_rate=float(y[chosen]-y[base]<-1),score_margin=float(s[chosen]-s[base]),chosen=chosen,
++        interpretation='DESCRIPTIVE: model target differs from H1 + original SAC continuation')
++
++@torch.no_grad()
++def main():
++    required=['FINAL_REPORT.md','PROTOCOL.md','paired_statistics.json','candidate_ranking.csv','candidate_actions.csv','counterfactual_episodes.csv','counterfactual_steps.csv','STATE_RECONSTRUCTION_AUDIT.md','code_changes.patch']
++    read=[]
++    for name in required:
++        file=HIST/name;data=file.read_bytes()
++        if file.suffix=='.csv':count=len(pd.read_csv(file))
++        elif file.suffix=='.json':json.loads(data);count=1
++        else:data.decode();count=data.count(b'\n')
++        read.append(dict(path=str(file),sha256=file_sha(file),bytes=len(data),rows_or_lines=count,fully_read=True))
++    if (R/'historical_inputs_read.json').exists():assert load(R/'historical_inputs_read.json')==read
++    else:dump(R/'historical_inputs_read.json',read)
++    evaluator=load_offline_evaluator();model=evaluator.agent.model
++    from common import math as td_math
++    rows=[];metrics=[];native=[];stability=[]
++    for directory in sorted((HIST/'origins').iterdir()):
++        meta=load(directory/'catalog.json');z=np.load(directory/'catalog.npz');scene=meta['scene'];step=meta['step']
++        sequences=[];ys=[]
++        # Preserve the original all8-role GPU batch BEFORE deduplication.
++        for raw in meta['raw_roles']:
++            cid=raw['role']
++            seq=z['baseline_sequence'] if cid=='A0' else z['C_selected'] if cid=='A1' else z['D_selected'] if cid=='A2' else z['C_iteration_actions'][-1,raw['original_row']]
++            sequences.append(seq)
++        indices=[next(i for i,x in enumerate(meta['raw_roles']) if x['role']==rep['candidate_id']) for rep in meta['representatives']]
++        for rep in meta['representatives']:ys.append(load(HIST/'branches'/directory.name/rep['candidate_id']/'episode.json')['discounted_return'])
++        actions=torch.tensor(np.stack(sequences),device=evaluator.agent.device);latent=torch.tensor(z['latent'],device=actions.device)
++        pair=tuple(meta['C']['final_pair']);out=evaluator.evaluate_mppi_candidates(latent,actions,compute_cost=False,q_aggregation='fixed_pair',q_indices=pair,capture_ensemble=True)
++        zz=latent.expand(len(actions),-1);alive=torch.ones(len(actions),device=actions.device);prefix=torch.zeros_like(alive);shorts={}
++        for t in range(10):
++            reward=td_math.two_hot_inv(model.reward(zz,actions[:,t],None),evaluator.agent.cfg).reshape(-1)
++            prefix+=.995**t*alive*reward
++            if t<4:shorts[t+1]=prefix.clone()
++            zz=model.next(zz,actions[:,t],None)
++            if evaluator.agent.cfg.episodic:alive*=~(model.termination(zz,None).reshape(-1)>.5)
++        assert torch.allclose(prefix,out.discounted_reward,atol=1e-3,rtol=1e-5)
++        scores=dict(native_h10=out.total_value.cpu().numpy()[indices],immediate=shorts[1].cpu().numpy()[indices],
++            short_h2=shorts[2].cpu().numpy()[indices],short_h3=shorts[3].cpu().numpy()[indices],short_h4=shorts[4].cpu().numpy()[indices],
++            reward_h10=out.discounted_reward.cpu().numpy()[indices],terminal_contribution=(out.total_value-out.discounted_reward).cpu().numpy()[indices])
++        original=np.array([r['common_h10_score'] for r in meta['representatives']]);assert np.allclose(scores['native_h10'],original,atol=.01,rtol=0)
++        ids=[r['candidate_id'] for r in meta['representatives']];ys=np.array(ys);base=ids.index(meta['aliases']['A0']);sel=ids.index(meta['aliases']['A1'])
++        raw_gain=meta['C']['score']-float(z['C_final_values'][0]);native.append(dict(scene=scene,step=step,predicted_gain=raw_gain,actual_gain=ys[sel]-ys[base],
++            crash_delta=load(HIST/'branches'/directory.name/ids[sel]/'episode.json')['crash']-load(HIST/'branches'/directory.name/'A0'/'episode.json')['crash'],
++            oor_delta=load(HIST/'branches'/directory.name/ids[sel]/'episode.json')['out_of_road']-load(HIST/'branches'/directory.name/'A0'/'episode.json')['out_of_road']))
++        for k,s in scores.items():metrics.append(dict(scene=scene,step=step,method=k,**ranking(ys,s,base)))
++        for j,rep in enumerate(meta['representatives']):
++            actual_row=indices[j]
++            rows.append(dict(scene=scene,step=step,candidate_id=ids[j],actual_h1_return=ys[j],actual_h1_gain=ys[j]-ys[base],
++                steering=float(actions[actual_row,0,0]),throttle_brake=float(actions[actual_row,0,1]),
++                first_action_l2=float((actions[actual_row,0]-actions[indices[base],0]).norm()),
++                native_selected_first_distance=float((actions[actual_row,0]-actions[indices[sel],0]).norm()),
++                original_stored_h10_score=float(original[j]),**{k:float(s[j]) for k,s in scores.items()},
++                **{f'delta_{k}':float(s[j]-s[base]) for k,s in scores.items()},
++                q_ensemble_std=float(out.terminal_q_std[actual_row]),formal_h1_rank='NOT ESTIMABLE'))
++        # Candidate ranking changes under Q pairs, without any environment execution.
++        qs=out.q_member_values.cpu().numpy();qs=qs if qs.shape[0]==5 else qs.T;qs=qs[:,indices]
++        for members in itertools.combinations(range(5),2):
++            value=scores['reward_h10']+out.terminal_discount.cpu().numpy()[indices]*qs[list(members)].mean(0)
++            stability.append(dict(scene=scene,step=step,q_pair=list(members),top1=ids[int(value.argmax())],
++                selected_gain=float(ys[int(value.argmax())]-ys[base]),score_span=float(np.ptp(value))))
++    table(R/'historical_h1_analysis.csv',rows);table(R/'score_component_ablation.csv',metrics);table(R/'q_rank_stability.csv',stability)
++    df=pd.DataFrame(native);grid=np.unique(np.r_[0,np.quantile(df.predicted_gain,[.25,.5,.75,.9])]);margin_rows=[]
++    for threshold in grid:
++        replace=df.predicted_gain>threshold;g=df.actual_gain*replace
++        margin_rows.append(dict(margin=float(threshold),replacement_rate=float(replace.mean()),selected_gain=float(g.groupby(df.scene).mean().mean()),
++            negative_selection_rate=float(((df.actual_gain<-1)&replace).mean()),
++            crash_delta=float((df.crash_delta*replace).mean()),oor_delta=float((df.oor_delta*replace).mean()),
++            source='old8maps development only',eligible_nontrivial=bool(.125<=replace.mean()<=.875)))
++    feasible=[x for x in margin_rows if x['eligible_nontrivial'] and x['crash_delta']<=0 and x['oor_delta']<=0]
++    eligible=feasible or [x for x in margin_rows if x['eligible_nontrivial']]
++    choice=max(eligible,key=lambda x:(x['selected_gain'],-x['margin']))
++    cv=[]
++    for scene in sorted(df.scene.unique()):
++        train=df[df.scene!=scene];test=df[df.scene==scene];options=[]
++        for threshold in grid:
++            mask=train.predicted_gain>threshold
++            if .125<=mask.mean()<=.875:options.append((float((train.actual_gain*mask).groupby(train.scene).mean().mean()),-float(threshold)))
++        threshold=-max(options)[1]
++        cv.append(dict(scene=int(scene),margin=threshold,gain=float((test.actual_gain*(test.predicted_gain>threshold)).mean())))
++    table(R/'baseline_margin_analysis.csv',margin_rows);table(R/'development_margin_lomo.csv',cv)
++    dump(R/'frozen_margin.json',dict(margin=choice['margin'],development_choice=choice,development_lomo_gain=float(np.mean([x['gain'] for x in cv])),
++        development_positive=bool(choice['selected_gain']>0 and np.mean([x['gain'] for x in cv])>0),
++        rule='Grid=0 plus predicted-score gain quartiles/90th; replacement12.5%-87.5%, prefer nonworse old safety, maximize map-mean actual gain; no new-map labels.',
++        unsupported_if_negative='F remains an explicitly unvalidated experimental finite margin; if new methods all fail, opt-in deployment guard denies unsupported replacements, never claims performance improvement.',
++        no_new_map_outcomes_seen=True))
++    annotate_native_scope()
++    print('OLD123_READ',len(rows),'MARGIN',choice,'LOMO',cv,flush=True)
++if __name__=='__main__':main()
+diff --git a/reports/mppi_evaluation_redesign_20261119/historical_summary.py b/reports/mppi_evaluation_redesign_20261119/historical_summary.py
+new file mode 100644
+index 0000000..1ee1253
+--- /dev/null
++++ b/reports/mppi_evaluation_redesign_20261119/historical_summary.py
+@@ -0,0 +1,19 @@
++"""Map-level CIs for descriptive old component scores; no simulation, fitting or new threshold choice."""
++import pandas as pd
++from study import *
++frame=pd.read_csv(R/'score_component_ablation.csv');answer={}
++for method,group in frame.groupby('method'):
++    values={}
++    for key in ['selected_gain','top1_regret','spearman','kendall','descriptive_pair_accuracy','positive_candidate_recall','negative_selection_rate','score_margin']:
++        maps=group.groupby('scene')[key].mean().dropna();v=maps.to_numpy(float)
++        if len(v):
++            rng=np.random.default_rng(20261119);boot=v[rng.integers(len(v),size=(2000,len(v)))].mean(1)
++            values[key]=dict(mean=float(v.mean()),ci95=np.quantile(boot,[.025,.975]),effective_maps=len(maps),maps=maps.to_dict())
++        else:values[key]=dict(mean=None,ci95=None,effective_maps=0)
++    answer[method]=values
++raw=pd.read_csv(R/'historical_h1_analysis.csv');nonbase=raw[raw.candidate_id!='A0'];stability=pd.read_csv(R/'q_rank_stability.csv')
++dump(R/'historical_statistics.json',dict(methods=answer,interpretation='ALL model-vs-H1 ranking diagnostics are target-mismatched, not formal H1 validation',
++    unique_true_actions=len(raw),nonbaseline_true_actions=len(nonbase),positive_fraction_all_nonbaseline=float((nonbase.actual_h1_gain>0).mean()),
++    mean_unique_Q_top1_choices_per_origin=float(stability.groupby(['scene','step']).top1.nunique().mean()),
++    training_latent_support_available=False,OOD_claim='Not identifiable from high Q alone; no training replay latent coverage supplied',
++    baseline_relativization='Subtracting same baseline score cannot change within-origin ordering, not a learned or verified H1 Advantage'))
+diff --git a/reports/mppi_evaluation_redesign_20261119/latency_probe.py b/reports/mppi_evaluation_redesign_20261119/latency_probe.py
+new file mode 100644
+index 0000000..849d73e
+--- /dev/null
++++ b/reports/mppi_evaluation_redesign_20261119/latency_probe.py
+@@ -0,0 +1,29 @@
++"""Isolated FULL planner and LocalMPPI timings at identical source B physical states."""
++import argparse,os,time
++from pathlib import Path
++ap=argparse.ArgumentParser();ap.add_argument('--group',choices=['A','B','C'],required=True);ap.add_argument('--scene',type=int,required=True);a=ap.parse_args()
++root=Path(__file__).resolve().parents[2];os.environ['MPR_CODE_ROOT']=str(root if a.group=='C' else root.parent/'mpr_mpc_v2')
++from study import *
++@torch.no_grad()
++def main():
++    parsed,cfg,env,agent=make_runtime(a.scene,1,'modified' if a.group=='C' else 'baseline',record=False)
++    try:
++        agent.planner.allow_mppi=False
++        obs,_,_,state,_,_=restore_origin(env,agent,a.scene,1)
++        agent.planner.allow_mppi=a.group!='A';local=[0.];old=agent.planner.local_mppi.plan
++        def measured(*args,**kwargs):
++            torch.cuda.synchronize();t=time.perf_counter();result=old(*args,**kwargs);torch.cuda.synchronize();local[0]=1000*(time.perf_counter()-t);return result
++        agent.planner.local_mppi.plan=measured;rows=[]
++        for i in range(55):
++            local[0]=0.;torch.cuda.synchronize();t=time.perf_counter();agent.act(obs,t0=False,eval_mode=True);torch.cuda.synchronize();total=1000*(time.perf_counter()-t)
++            if i>=5:rows.append(dict(configuration=a.group,scene=a.scene,seed=1,call=i-5,planner_ms=total,local_mppi_ms=local[0],
++                **{k:float(v) for k,v in agent.last_plan.metrics.items() if k.endswith('_ms')}))
++        end=snapshot(env,obs)
++        assert all(end['hashes'][k]==state['hashes'][k] for k in ['observation','vehicle','traffic'])
++        assert all(end['rng_component_hashes'][k]==state['rng_component_hashes'][k] for k in ['engine','traffic_manager'])
++        table(R/f'probe_{a.group}_{a.scene}.csv',rows)
++        dump(R/f'probe_{a.group}_{a.scene}.json',dict(initial_hashes=state['hashes'],warmup=5,calls=50,executed_probe_actions=0,
++            scope='isolated full agent.act and LocalMPPI; no env.step. Complete cycle measured in native episodes separately.'))
++        print('ISOLATED_PROBE_DONE',a.group,a.scene,flush=True)
++    finally:env.close()
++if __name__=='__main__':main()
+diff --git a/reports/mppi_evaluation_redesign_20261119/pipeline.py b/reports/mppi_evaluation_redesign_20261119/pipeline.py
+new file mode 100644
+index 0000000..287421a
+--- /dev/null
++++ b/reports/mppi_evaluation_redesign_20261119/pipeline.py
+@@ -0,0 +1,56 @@
++"""Frozen36-case screen, strict pilot, same-state H1 and complete native closed-loop phases."""
++import subprocess,time
++from study import *
++
++def run(jobs,label):
++    active=[];queue=list(jobs);done=[];(R/'logs').mkdir(exist_ok=True)
++    env=dict(os.environ,OMP_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',MKL_NUM_THREADS='1',MUJOCO_GL='egl')
++    try:
++        while queue or active:
++            while queue and len(active)<load(R/'protocol.json')['worker_limit']:
++                name,argv=queue.pop(0)
++                stream=(R/'logs'/f'{name}.log').open('x');child=subprocess.Popen([sys.executable,'-u',*map(str,argv)],cwd=ROOT,env=env,stdout=stream,stderr=subprocess.STDOUT)
++                active.append((name,child,stream))
++            for name,child,stream in active[:]:
++                status=child.poll()
++                if status is None:continue
++                active.remove((name,child,stream));stream.close();assert status==0,(label,name,status)
++                done.append(name);print(label,name,len(done),'/',len(jobs),flush=True)
++            if active:time.sleep(1)
++    finally:
++        for _,child,stream in active:
++            if child.poll() is None:child.terminate()
++            child.wait();stream.close()
++
++def closed(s,seed,g):return f'closed_{g}_{s}_r{seed}',[R/'closed.py','--group',g,'--scene',s,'--seed',seed]
++def pool(s,seed):return f'pool_{s}_r{seed}',[R/'pool.py','--scene',s,'--seed',seed]
++def h1(s,seed,cid):return f'h1_{s}_r{seed}_{cid}',[R/'h1.py','--scene',s,'--seed',seed,'--candidate',cid]
++
++def main():
++    p=load(R/'protocol.json');cases=[(s,seed) for s in p['scenes'] for seed in p['seeds']];first=cases[0]
++    run([closed(*first,'A')],'PILOT_BASELINE');run([pool(*first)],'PILOT_POOL')
++    meta=load(origin_dir(*first)/'catalog.json')
++    run([h1(*first,'A')],'PILOT_H1_A')
++    run([h1(*first,x['candidate_id']) for x in meta['representatives'] if x['candidate_id']!='A'],'PILOT_H1_OTHERS')
++    dump(R/'pilot_passed.json',dict(case=first,baseline_tail_exact=True,origin_and_policy_exact=True,only_one_intervention=True,continuation_mppi_calls=0))
++    run([closed(s,seed,'A') for s,seed in cases[1:]],'BASELINES')
++    run([pool(s,seed) for s,seed in cases[1:]],'POOLS')
++    h1jobs=[];unreachable=[]
++    for s,seed in cases:
++        directory=origin_dir(s,seed)
++        if (directory/'unreachable.json').exists():unreachable.append(load(directory/'unreachable.json'));continue
++        for x in load(directory/'catalog.json')['representatives']:
++            cid=x['candidate_id']
++            if not (R/'branches'/f'{s}_r{seed}'/cid/'episode.json').exists():h1jobs.append(h1(s,seed,cid))
++    dump(R/'h1_expected.json',dict(cases=cases,unreachable=unreachable,remaining=len(h1jobs),pool_fixed=True))
++    # Complete all H1 labels before decision; Native full episodes use only clean MAIN.
++    run(h1jobs,'H1')
++    dump(R/'h1_complete.json',dict(branches=len(list((R/'branches').glob('*/*/episode.json'))),unreachable=unreachable,cases=36))
++    run([closed(s,seed,'B') for s,seed in cases],'NATIVE_CLOSED')
++    dump(R/'native_closed_complete.json',dict(episodes=36))
++    while not (R/'core_ready.json').exists():time.sleep(2)
++    assert load(R/'core_ready.json')['tests_passed']
++    run([closed(s,seed,'C') for s,seed in cases],'MODIFIED_CLOSED')
++    dump(R/'closed_complete.json',dict(episodes=108,cases=36,maps=12,seeds=[1,2,3]))
++    print('ALL_CLOSED108_COMPLETE',flush=True)
++if __name__=='__main__':main()
+diff --git a/reports/mppi_evaluation_redesign_20261119/pool.py b/reports/mppi_evaluation_redesign_20261119/pool.py
+new file mode 100644
+index 0000000..c137dfc
+--- /dev/null
++++ b/reports/mppi_evaluation_redesign_20261119/pool.py
+@@ -0,0 +1,57 @@
++"""Single unchanged native search at the common B state, then outcome-free same-pool selectors."""
++import argparse
++from study import *
++
++@torch.no_grad()
++def main():
++    ap=argparse.ArgumentParser();ap.add_argument('--scene',type=int,required=True);ap.add_argument('--seed',type=int,required=True);a=ap.parse_args()
++    out=origin_dir(a.scene,a.seed);out.mkdir(parents=True,exist_ok=False)
++    base=load(original_dir(a.scene,a.seed)/'episode.json')
++    if not base['reachable_h1_origin']:
++        dump(out/'unreachable.json',dict(scene=a.scene,seed=a.seed,reason='Original baseline terminated before preregistered50',length=base['episode_length']));return
++    parsed,cfg,env,agent=make_runtime(a.scene,a.seed)
++    try:
++        obs,baseline,trace,state,policy,pre_rng=restore_origin(env,agent,a.scene,a.seed);post_rng=get_rng();extended=extended_environment(env)
++        assert policy['hashes']==load(original_dir(a.scene,a.seed)/'policy.json')['hashes']
++        assert extended['hash']==load(original_dir(a.scene,a.seed)/'environment.json')['hash']
++        dump(out/'origin.json',state);dump(out/'policy.json',policy);dump(out/'environment.json',extended)
++        calls=[];original=agent.planner.evaluator.evaluate_mppi_candidates
++        def capture(*args,**kwargs):
++            result=original(*args,**kwargs);calls.append((args[1].clone(),result));return result
++        agent.planner.evaluator.evaluate_mppi_candidates=capture;agent.planner.allow_mppi=True;set_rng(pre_rng)
++        selected=agent.act(obs,t0=False,eval_mode=True);plan=agent.last_plan
++        assert len(calls)==5 and all(x[0].shape==(65,11,2) for x in calls[:4]) and calls[-1][0].shape==(2,11,2)
++        final_actions,final=calls[-1];native=0 if bool(final.total_value[0]>=final.total_value[1]) else 1
++        assert torch.equal(selected.cpu(),final_actions[native,0].cpu()),'B/E native final selection must reproduce'
++        assert torch.equal(final_actions[0,0].cpu(),baseline.cpu())
++        evaluator=agent.planner.evaluator;evaluator.evaluate_mppi_candidates=original
++        cached=[(final,slice(None)),*[(x[1],slice(1,None)) for x in calls[:4]]]
++        pool=torch.cat([final_actions,*[x[0][1:] for x in calls[:4]]])
++        same=evaluator.rescore_cached_candidates(cached,q_aggregation='fixed_pair',q_indices=tuple(final.q_member_indices),cost_weight=0.)
++        assert pool.shape==(258,11,2)
++        controls=pool[:,0].cpu().numpy();unique=[]
++        for i in range(1,len(pool)):
++            if np.linalg.norm(controls[i]-controls[0])<=1e-5:continue
++            if not any(np.linalg.norm(controls[i]-controls[j])<=1e-5 for j in unique):unique.append(i)
++        assert unique
++        random_id=int(np.random.default_rng(20261119+a.scene*31+a.seed).choice(unique))
++        reward_id=int(same.discounted_reward.argmax());rq_id=int(same.total_value.argmax())
++        margin=load(R/'frozen_margin.json')['margin'];gain=float(final.total_value[1]-final.total_value[0])
++        selectors=dict(A=0,B=native,C=random_id,D=reward_id,E=native,F=1 if gain>margin else 0,G=rq_id)
++        raw=[dict(role=role,source={'A':'original SAC','B':'native actual','C':'uniform unique nonBaseline','D':'same-pool Reward-only','E':'native RQ final2 reproduction','F':'frozen margin native mean','G':'supplement matched-pool RQ'}[role],
++            action=controls[i],pool_index=i,raw_score=float(same.total_value[i]),candidate_rank=None,
++            reward_score=float(same.discounted_reward[i]),terminal_contribution=float(same.total_value[i]-same.discounted_reward[i])) for role,i in selectors.items()]
++        representatives,aliases=representative_roles(raw,1e-5)
++        set_rng(post_rng);assert snapshot(env,obs)['hashes']==state['hashes'] and extended_environment(env)['hash']==extended['hash']
++        np.savez_compressed(out/'pool.npz',pool=pool.cpu().numpy(),scores=same.total_value.cpu().numpy(),reward=same.discounted_reward.cpu().numpy(),
++            terminal_q=same.terminal_q.cpu().numpy(),terminal_discount=same.terminal_discount.cpu().numpy(),terminal_latents=same.terminal_latent.cpu().numpy(),
++            iteration_actions=torch.stack([x[0] for x in calls[:4]]).cpu().numpy(),iteration_values=torch.stack([x[1].total_value for x in calls[:4]]).cpu().numpy(),
++            final_values=final.total_value.cpu().numpy(),latent=agent.planner.last_context.latent.cpu().numpy())
++        dump(out/'catalog.json',dict(scene=a.scene,seed=a.seed,step=50,representatives=representatives,raw_roles=raw,aliases=aliases,selectors=selectors,
++            native_E_verified=True,final_q_pair=list(final.q_member_indices),iteration_q_pairs=[list(x[1].q_member_indices) for x in calls[:4]],
++            pool_size=258,unique_nonbaseline_controls=len(unique),policy_fingerprint=policy['hashes'],candidate_generation_rng_unchanged=True,
++            frozen_margin=margin,native_predicted_margin=gain,
++            score_semantics='H10 + TD-Q and reward-only are descriptive selectors for H1 labels; no matched learned H1 value is asserted'))
++        print('POOL_DONE',a.scene,a.seed,'unique method actions',len(representatives),selectors,flush=True)
++    finally:env.close()
++if __name__=='__main__':main()
+diff --git a/reports/mppi_evaluation_redesign_20261119/protocol.json b/reports/mppi_evaluation_redesign_20261119/protocol.json
+new file mode 100644
+index 0000000..7251516
+--- /dev/null
++++ b/reports/mppi_evaluation_redesign_20261119/protocol.json
+@@ -0,0 +1,62 @@
++{
++  "base_commit": "75b8a212a62f50ca76e29e37085fe1cd639ac718",
++  "checkpoint": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt",
++  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
++  "source_environment_config": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/benchmark/sac_refinement_BD_fixed100_20261111_152755/part1/config_B_lattice_sac_seed1.yaml",
++  "scenes": [
++    200618,
++    200015,
++    200465,
++    200972,
++    200777,
++    200723,
++    200081,
++    200583,
++    200901,
++    200160,
++    200391,
++    200333
++  ],
++  "seeds": [
++    1,
++    2,
++    3
++  ],
++  "origin_step": 50,
++  "gamma": 0.995,
++  "control_dt": 0.1,
++  "worker_limit": 6,
++  "bootstrap_samples": 2000,
++  "bootstrap_seed": 20261119,
++  "candidate_pool": "Baseline, final WeightedMean, every actual Gaussian from all4iterations =258 sequences; preserve source and aliases; uniform unique nonBaseline FIRST controls L2>1e-5",
++  "methods": {
++    "A": "Original Lattice+SAC",
++    "B": "Exact native Baseline/Mean final selection",
++    "C": "Uniform random actual nonBaseline first control",
++    "D": "Reward-only argmax over the entire SAME captured pool",
++    "E": "Independent native RQ final2 replication, MUST equal B",
++    "F": "Native proposed Mean protected by development-only frozen finite margin",
++    "G": "Supplement: same-pool RQ argmax, paired with D to isolate terminal-Q from pool eligibility"
++  },
++  "margin": 13.2349853515625,
++  "margin_development_supported": false,
++  "random_seed_rule": "Independent default_rng(20261119 + scene*31 + seed), never global environment RNG",
++  "dedup_l2": 1e-05,
++  "pair_tie_return": 1.0,
++  "h1": "Exactly one action, then original B feedback to native done",
++  "closed": "Whole episode, replan and execute first action every period; A originalSAC,B originalNative,C evidence-selected opt-in change",
++  "unreachable": "If original episode ends before fixed50, retain full episode, mark origin unreachable, no map/origin replacement",
++  "decision_rules": {
++    "reward_case": "D must beat Native B and matched-pool G in paired95%CI, no crash/OOR mean increase,positive gain on >=8/12maps; reward gain vsA CI lower>0",
++    "margin_case": "F-vsA paired gain CI lower>0, no crash/OOR mean increase,nonzero physical replacement; frozen margin never retuned",
++    "unsupported": "Otherwise implement opt-in baseline guard with replacement_supported=false; deny unsupported replacement, explicitly protection not performance success",
++    "no_gaussian_change": "Positive finite old oracle already proves some coverage; no evidence supporting new samples/std/rho/iterations",
++    "screening_note": "New maps independent of all older studies. H1 informs a predeclared mechanism branch; same-map subsequent closed-loop is SCREENING, not untouched final validation"
++  },
++  "latency_probe": "After all jobs: isolated first2maps seed1 pre50,5warmup+50full calls/method, no probe controls executed; closed shared-load timings separately",
++  "acceptance": "Success>A,crash/OOR not higher,positive map-paired discounted gain and route not lower,beyond one map/seed,H1gain better thanrandom,physicalreplacement>0;targetfullcycleP95<=100ms",
++  "formal100": false,
++  "training": 0,
++  "commit": false,
++  "push": false
++}
+\ No newline at end of file
+diff --git a/reports/mppi_evaluation_redesign_20261119/report.py b/reports/mppi_evaluation_redesign_20261119/report.py
+new file mode 100644
+index 0000000..b4058a2
+--- /dev/null
++++ b/reports/mppi_evaluation_redesign_20261119/report.py
+@@ -0,0 +1,126 @@
++"""Final evidence report, provenance and complete source diff. No publishing or model saving."""
++import subprocess
++import pandas as pd
++from study import *
++
++def patch():
++    text=subprocess.check_output(['git','diff','--binary'],cwd=ROOT,text=True)
++    files=sorted(f for f in R.rglob('*') if f.is_file() and '__pycache__' not in str(f) and (f.suffix in ['.py','.md'] or f.name in ['protocol.json','decision.json','experiment_manifest.json']))
++    for file in files:
++        result=subprocess.run(['git','diff','--no-index','--','/dev/null',str(file.relative_to(ROOT))],cwd=ROOT,text=True,capture_output=True)
++        assert result.returncode==1;text+=result.stdout
++    (R/'code_changes.patch').write_text(text)
++    subprocess.run(['git','apply','--reverse','--check',str(R/'code_changes.patch')],cwd=ROOT,check=True)
++
++def main():
++    p=load(R/'protocol.json');m=load(R/'experiment_manifest.json');h=load(R/'h1_statistics.json');d=load(R/'decision.json');a=load(R/'acceptance.json');closed=load(R/'closed_statistics.json')
++    assert load(R/'closed_complete.json')['episodes']==108
++    assert '46 passed' in (R/'tests.log').read_text() and load(R/'real_guard_probe.json')['passed']
++    assert 'FROZEN_DEFAULT_PARITY default_after' in (R/'default_after.log').read_text()
++    assert load(R/'candidate_action_columns_audit.json')['passed']
++    changed={name:dict(before=value,after=file_sha(ROOT/name)) for name,value in m['protected_sources'].items() if file_sha(ROOT/name)!=value}
++    assert set(changed)=={'planning/local_mppi.py'}
++    assert file_sha(ROOT/'config.yaml')==m['original_config_sha256'] and file_sha(Path(p['checkpoint']))==p['checkpoint_sha256']
++    assert file_sha(ROOT/'planning/local_mppi.py')==load(R/'core_ready.json')['core_files']['planning/local_mppi.py']
++    sources=m['historical_inputs']+load(R/'historical_binary_and_labels_verified.json')
++    assert all(file_sha(Path(x['path']))==x['sha256'] for x in sources)
++    main_status=subprocess.check_output(['git','status','--porcelain'],cwd=MAIN,text=True);assert not main_status,main_status
++    initial_pairs=0;exact_abstention=0
++    for scene in p['scenes']:
++        for seed in p['seeds']:
++            paths=[original_dir(scene,seed),R/'closed'/f'B_{scene}_r{seed}',R/'closed'/f'C_{scene}_r{seed}']
++            states=[load(x/'initial.json')['hashes'] for x in paths];assert states[0]==states[1]==states[2];initial_pairs+=1
++            if not d['online_options']['replacement_supported']:
++                aa=np.load(paths[0]/'trace.npz');cc=np.load(paths[2]/'trace.npz')
++                assert all(np.array_equal(aa[k],cc[k]) for k in ['actions','observations','rewards','costs','done','terminated','truncated']);exact_abstention+=1
++    dump(R/'verification.json',dict(base_commit=p['base_commit'],remote_main_verified=m['remote_verified_sha'],checkpoint_sha256=p['checkpoint_sha256'],
++        protected_core_changes=changed,original_config_unchanged=True,WM_SAC_Lattice_mapping_unchanged=True,checkpoint_unchanged=True,
++        historical_sources_rehashed=len(sources),historical_data_unchanged=True,tests_passed=46,new_tests=10,default_action_mean_std_value_rng_bitwise_parity=True,
++        sampling_and_update_ast_unchanged=load(R/'core_ready.json')['unchanged_native_sampling_and_update_methods'],real_model_guard_probe=True,
++        new_maps=12,seeds=[1,2,3],h1_cases=36,h1_branches=h['branches'],full_closed_episodes=108,native_terminated_episodes_total=108+h['branches'],
++        initial_conditions_paired=initial_pairs,B_E_action_and_return_identical=True,unsupported_C_exact_baseline_episodes=exact_abstention,
++        margin_frozen=p['margin'],new_map_margin_retuning=False,candidate_action_columns_verified=174,main_status_end=main_status,training=0,new_networks=0,formal100=False,commit=False,push=False))
++    def c(metric):return f"{metric['mean']:+.4f}，95%CI [{metric['ci95'][0]:+.4f}, {metric['ci95'][1]:+.4f}]"
++    htable='| H1首动作方法（之后全为原SAC） | Gain vs SAC | 地图95%CI | 替换率 |\n|---|---:|---:|---:|\n'
++    for role,label in [('B','Native final2'),('C','Uniform Random'),('D','Reward-only all pool'),('G','RQ matched all pool'),('F','Frozen margin')]:
++        v=h['selectors'][role];g=v['gain'];htable+=f"| {label} | {g['mean']:+.4f} | [{g['ci95'][0]:+.4f}, {g['ci95'][1]:+.4f}] | {v['physical_replacement']['mean']:.2%} |\n"
++    episodes=pd.read_csv(R/'paired_closed_loop_episodes.csv');means=episodes.groupby('configuration').mean(numeric_only=True)
++    ctable='| 完整闭环（每组36回合） | Success | Crash | OOR | Route | Timeout | Discounted Return | 替换率 |\n|---|---:|---:|---:|---:|---:|---:|---:|\n'
++    for role,label in [('A','A Lattice+SAC'),('B','B 原Native'),('C','C 本轮保护')]:
++        v=means.loc[role];ctable+=f"| {label} | {v.success:.2%} | {v.crash:.2%} | {v.out_of_road:.2%} | {v.route_completion:.2%} | {v.timeout:.2%} | {v.discounted_return:.3f} | {v.replacement_rate:.2%} |\n"
++    hist=load(R/'historical_statistics.json');f=h['selectors']['F']['gain'];nvr=h['paired']['B-C']['gain'];rq=h['paired']['D-G']['gain'];rnative=h['paired']['D-B']['gain']
++    concluded='通过筛选验收，可考虑下一轮真正独立验证' if a['accepted_for_larger_experiment'] else '未达到算法验收，不建议扩大正式100场；保留Lattice+SAC'
++    report=f'''# MPPI评价机制重构与闭环筛选结果
++
++**结论：{concluded}。本轮实现的是默认关闭的Baseline保护，不把始终保留SAC算作MPPI成功。**
++
++## 八个问题的直接回答
++
++1. **当前评分优于随机吗？** 新12图×3规划种子H1中，Native−Random为{c(nvr)}。区间包括0，未证明评分提供可靠的额外决策价值；不能仅凭负均值声称所有地图都更差。
++2. **Terminal Q导致偏差吗？** 同一258候选池、同一Q成员下，Reward-only−RQ为{c(rq)}，支持终端Q会损害这组最终选择。实际Native仅比较Baseline/Mean；Reward-only−Native为{c(rnative)}，该比较还混有终选资格范围差异，不能单独用它归因Q。高Q不等于已证实训练分布外，当前没有原训练replay latent覆盖用于OOD判定。
++3. **Reward-only更适合吗？** 它相对SAC的Gain为{c(h['selectors']['D']['gain'])}，尚未通过正收益及跨地图稳定性门槛。只比RQ少损失不等于真实优于SAC，因此没有移除默认Terminal Q，也没修改冻结WM或SAC特征中的Q。
++4. **Baseline-aware有效吗？** 开发集唯一冻结margin={p['margin']:.6f}，旧数据点估计仍负；新地图F为{c(f)}，收益只在{f['positive_maps']}/12图为正，剔除200333后归零，不能视为稳健提升。没有用新地图重选margin。故`replacement_supported=false`时拒绝无证据替换；这是保护，不是学会了H1价值。
++5. **候选覆盖不足吗？** 老123分支有正Oracle，证明有限候选中有价值，但不证明整个高斯空间覆盖充分。新图执行方法子集Oracle Gain为{c(h['selectors']['A']['oracle_gain'])}，不是未执行的全部258条轨迹Oracle。没有实际证据支持调std/rho或增加样本，故采样和Elite更新完全未改。
++6. **改了哪些代码？** 生产模块仅`planning/local_mppi.py`，新增可选final_selection_policy、冻结margin、replacement_supported和数值诊断字段。旧配置保持legacy原样；保护启用后仅当有支持证据且原生预测差严格超过冻结margin时替换；否则保持原SAC。所有64/8/4计算仍执行，非安全证书、非Recovery、非新价值网络。
++7. **修改后真优于Lattice+SAC吗？** 见完整闭环表及验收条件。当前C保护无支持替换，{exact_abstention}/36回合轨迹、观测、reward、cost和终止标志逐位等于A，不能称为驾驶性能提升。
++8. **值得正式100场吗？** {concluded}。当前LocalMPPI没有满足同时改善成功率、事故不恶化、正配对收益和实时性的要求；不继续堆网络、样本或任意阈值。
++
++## 1. 历史评分消融：先离线，后新地图
++
++完整读取了用户指定的9份报告/CSV/JSON/补丁，另按上轮artifact manifest核验155份catalog/NPZ/真实标签。全部原123分支保留，不训练模型。
++
++从冻结WM复算r0、H2/H3/H4累计Reward、H10 Reward、Terminal Q和完整H10分数，保留原预测和真实H1标签、控制动作与相对Baseline分数。为精确复现旧预测，保持旧8角色GPU batch再去重，而非换成7行batch后忽略数值差异。初次数值复核失败日志保留，未放宽状态恢复条件。
++
++score_component_ablation.csv中的component argmax是同一有限实测池的诊断，不冒充原Native输出；另有native_actual_final2行复现固定前提−1.0457。所有Spearman/Kendall/Pairwise Accuracy都标为目标不匹配的描述性指标，正式匹配H1/SAC的模型排名仍NOT ESTIMABLE。Baseline-relative只平移分数，不改变起点内排名，更不是真实Advantage。
++
++历史候选动作分布见historical_h1_analysis.csv和figures/historical_positive_action_regions.png。Gaussian真实正收益仅在已执行的分位子集可观察，不把全256条未执行采样标为正/负。Q双成员变更会改变排名，相关诊断在q_rank_stability.csv；没有因此擅自改默认random_pair。
++
++## 2. 新地图与H1公平对照
++
++基础代码/GitHub main为`{p['base_commit']}`。固定地图：{p['scenes']}，规划种子[1,2,3]，每图相同交通seed。排除清单扫描5743份去重历史元数据，并包含WM/SAC训练窗口10000–11999。36个固定pre50状态均可达，没有重选地图、种子或时刻；其中SAC在不同规划种子下可能重复，始终以12图聚类，不当作36张独立地图。
++
++同状态保存全部4轮Gaussian、Baseline及WeightedMean，共258序列；预注册独立随机数均匀选非Baseline的唯一首动作，不改变环境RNG。B/E严格复现原最后Baseline/Mean两个分数的选择，E与B合并同一实际分支；D按同池Reward选最大，G按同池共享Q评分选最大，额外G是为了分离评分与候选范围混杂。F只测试开发期冻结的一个margin，不扫新阈值。7方法去重后实际{h['branches']}条H1分支。
++
++每分支重置同场景并调用策略重建前49步历史，再注入一周期动作，随后完全原SAC直到原生done；逐位检查观测、车辆、交通、全局/引擎RNG、latent/535输入、policy历史、实际上一动作及控制映射。所有Baseline尾轨迹重现源A。原模型训练和网络输入、物理控制顺序、Reward/Cost/Done均未改。
++
++最终复核修正了新诊断工具的一处动作列对齐错误：汇总动作列曾误用最后一个候选循环变量。149行动作诊断列已按candidate_id回填，并逐条核验174条实际执行轨迹；原始表和修复前源码保留于source_versions。真实执行、回报标签、选组统计及预注册decision完全未变，详见candidate_action_columns_audit.json。
++
++{htable}
++
++Native的负平均高度受200465影响：剔除该图的Native Gain变为正，所有图仍完整保留，不以剔除坏图制造正收益。F的平均正收益又由单张200333驱动。所有逐图、逐seed、地图bootstrap2000次和LOMO值均保留于h1_statistics.json，不能把单图信号当成泛化。
++
++## 3. 最小代码变更与验证
++
++按预注册分支选中`{d['branch']}`，没有因为新测试不理想再调margin。默认原文件config.yaml逐字不变。新增保护只改变最后的替换资格，原Gaussian/AR1采样、8Elite与4轮Mean/Std更新、WM reward/dynamics/terminal-Q全部保留；不引入TTC、几何、Emergency或其他状态规则。
++
++46项相关测试通过。真实冻结模型默认路径的动作、Mean、Std、值及CPU/GPU/私有RNG与修改前逐位相同；AST核验采样/更新方法完全相同。实状态探针验证535输入与原SAC首动作不变、无支持时返回SAC、支持开关在零margin时确能产生替换；这两次探针输出均未执行，不能当作收益证据。无支持时也完整计算262候选评价，未跳过搜索伪造速度。
++
++新增数值日志baseline_guard_enabled/blocked/reason_code、replacement_supported和final_selection_margin。原因1是缺少支持证据、原因2是冻结margin未达到，均不宣称SAC动作安全；与原numerical fallback分开。所有模型权重、535维顺序、映射、旧实验文件和checkpoint SHA `{p['checkpoint_sha256']}`保持不变。
++
++## 4. 真正逐步重规划的108回合
++
++H1方法字母与完整闭环A/B/C分开：闭环A=原SAC，B=原Native，C=本轮保护。每周期重新Lattice→SAC→可选MPPI，只执行首动作后env.step，直到原生终止；绝非固定10步重放。36组初始观测、车辆、交通及RNG哈希匹配。
++
++{ctable}
++
++C−A折扣收益：{c(closed['comparisons']['C-A']['discounted_return'])}；C−B：{c(closed['comparisons']['C-B']['discounted_return'])}。地图CI、LOMO及每个seed均见closed_statistics.json。零替换仅说明保护工作，不能宣称MPPI成功；acceptance.json明确检查非零替换与额外成功。
++
++## 5. 计算性能
++
++单LocalMPPI计时直接包围LocalMPPI.plan；完整planner包围同步agent.act；原生control_cycle=agent.act+env.step，均分开记录。闭环采集是6进程共享GPU，包含冷启动，不用它冒充单进程实时性认证。
++
++全部回合完成后，在前两张预定新图同一真实pre50状态，单进程做5暖机+50完整planner调用/方法，共300次测量；没有执行探针输出动作。独立完整planner P95：{a['isolated_planner_p95_ms']}ms。该探针是planner-only，不是完整物理控制周期；完整cycle的实测共享负载数据在latency.csv。无法达到100ms时明确保留瓶颈，不删预算或必要控制计算。
++
++## 6. 验收、交付与限制
++
++验收条件：{a['conditions']}。是否进入更大规模实验：**{a['accepted_for_larger_experiment']}**。本轮没有证明Success>Lattice+SAC。保护实验结果只说明可拒绝无支持替换，不解决缺失的H1/SAC延续价值；默认控制器未切换。
++
++新图对旧研究独立，但H1用于预注册机制分支选择，随后在同图做完整闭环属于筛选验证，不是另一个完全封存的最终验证集。没有原训练latent replay覆盖，不能仅凭乐观Q宣称OOD；没有未执行候选的真实收益，不能伪造全池正收益比例；没有同语义合格H1预测头，不声称正式H1排名准确率。
++
++交付含历史评分分量、Native/Random与Reward/Q对照、开发及冻结margin、新图候选覆盖、108原生回合、summary/latency、完整patch与figures。所有新内容在隔离工作区`{ROOT}`，主目录未覆盖，无训练/新网络/commit/push/正式100场。原WM200k+RL300k仍为总500k，不换权重。复现步骤见RUNNING.md。
++'''
++    with (R/'MPPI_EVALUATION_REDESIGN_REPORT.md').open('x') as f:f.write(report)
++    patch()
++    dump(R/'artifact_manifest.json',{str(f.relative_to(R)):dict(sha256=file_sha(f),bytes=f.stat().st_size) for f in sorted(R.rglob('*')) if f.is_file() and '__pycache__' not in str(f)})
++    print('COMPLETE_REPORT_AND_DIFF',concluded,flush=True)
++if __name__=='__main__':main()
+diff --git a/reports/mppi_evaluation_redesign_20261119/setup.py b/reports/mppi_evaluation_redesign_20261119/setup.py
+new file mode 100644
+index 0000000..f9dc9fd
+--- /dev/null
++++ b/reports/mppi_evaluation_redesign_20261119/setup.py
+@@ -0,0 +1,83 @@
++"""Freeze new maps/seeds, margin and decision gates BEFORE any new-map execution."""
++import re,subprocess,sys,importlib.metadata as md
++from study import *
++
++def main():
++    assert load(R/'frozen_margin.json')['no_new_map_outcomes_seen']
++    base=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip();assert base=='75b8a212a62f50ca76e29e37085fe1cd639ac718'
++    seen=set();intervals=set();files=[];digests=set()
++    def visit(value,key=''):
++        if isinstance(value,dict):
++            if isinstance(value.get('start_seed'),int) and isinstance(value.get('num_scenarios'),int):intervals.add((value['start_seed'],value['start_seed']+value['num_scenarios']))
++            for k,v in value.items():visit(v,k)
++        elif isinstance(value,list):
++            if any(k in key.lower() for k in ['scene','scenario','maps','origin']):
++                for x in value:
++                    if isinstance(x,int) and not isinstance(x,bool):seen.add(x)
++                    elif isinstance(x,list) and x and isinstance(x[0],int):seen.add(x[0])
++            for x in value:
++                if isinstance(x,dict):visit(x)
++        elif isinstance(value,int) and key.lower() in ['scene','scenario','scene_id','scenario_id','map_id']:seen.add(value)
++    roots=[MAIN,ROOT.parent/'mpr_mpc_v2_first_action_20261117',ROOT.parent/'mpr_mpc_v2_root_cause_20261118',ROOT.parent/'mpr_mpc_v2_h1_counterfactual_20261118']
++    for root in roots:
++        bases=[root/'reports']+([root/'logs'] if root==MAIN else [])
++        for folder in bases:
++            for file in folder.rglob('*'):
++                if file.suffix not in ['.json','.csv','.yaml','.yml','.log']:continue
++                data=file.read_bytes();digest=hashlib.sha256(data).hexdigest()
++                if digest in digests:continue
++                digests.add(digest);files.append(dict(path=str(file),sha256=digest))
++                if file.suffix=='.json':
++                    try:visit(json.loads(data))
++                    except json.JSONDecodeError:pass
++                elif file.suffix in ['.yaml','.yml']:
++                    from omegaconf import OmegaConf
++                    try:visit(OmegaConf.to_container(OmegaConf.load(file),resolve=False))
++                    except Exception:pass
++                elif file.suffix=='.csv':
++                    reader=csv.DictReader(io.StringIO(data.decode(errors='replace')))
++                    keys=[k for k in (reader.fieldnames or []) if k.lower() in ['scene','scenario','scene_id','scenario_id','map_id']]
++                    if keys:
++                        for row in reader:
++                            for key in keys:
++                                if row.get(key,'').isdigit():seen.add(int(row[key]))
++                else:
++                    text=data.decode(errors='replace')
++                    seen.update(int(x) for x in re.findall(r'(?:scene|scenario|seed)[_ :=-]+(\d+)',text,re.I))
++                    for line in text.splitlines():
++                        if 'scenarios:' in line.lower():seen.update(int(x) for x in re.findall(r'\b\d+\b',line))
++    # Explicit original WM/SAC training window, irrespective of metadata duplication.
++    intervals.add((10000,12000))
++    options=np.random.default_rng(20261119).permutation(np.arange(200000,201000)).tolist()
++    scenes=[s for s in options if s not in seen and not any(lo<=s<hi for lo,hi in intervals)][:12];assert len(scenes)==12
++    old=load(HIST/'protocol.json');margin=load(R/'frozen_margin.json')
++    protocol=dict(base_commit=base,checkpoint=old['checkpoint'],checkpoint_sha256=old['checkpoint_sha256'],source_environment_config=old['source_environment_config'],
++        scenes=scenes,seeds=[1,2,3],origin_step=50,gamma=.995,control_dt=.1,worker_limit=6,bootstrap_samples=2000,bootstrap_seed=20261119,
++        candidate_pool='Baseline, final WeightedMean, every actual Gaussian from all4iterations =258 sequences; preserve source and aliases; uniform unique nonBaseline FIRST controls L2>1e-5',
++        methods=dict(A='Original Lattice+SAC',B='Exact native Baseline/Mean final selection',C='Uniform random actual nonBaseline first control',
++            D='Reward-only argmax over the entire SAME captured pool',E='Independent native RQ final2 replication, MUST equal B',
++            F='Native proposed Mean protected by development-only frozen finite margin',G='Supplement: same-pool RQ argmax, paired with D to isolate terminal-Q from pool eligibility'),
++        margin=margin['margin'],margin_development_supported=margin['development_positive'],
++        random_seed_rule='Independent default_rng(20261119 + scene*31 + seed), never global environment RNG',
++        dedup_l2=1e-5,pair_tie_return=1.,h1='Exactly one action, then original B feedback to native done',
++        closed='Whole episode, replan and execute first action every period; A originalSAC,B originalNative,C evidence-selected opt-in change',
++        unreachable='If original episode ends before fixed50, retain full episode, mark origin unreachable, no map/origin replacement',
++        decision_rules=dict(reward_case='D must beat Native B and matched-pool G in paired95%CI, no crash/OOR mean increase,positive gain on >=8/12maps; reward gain vsA CI lower>0',
++            margin_case='F-vsA paired gain CI lower>0, no crash/OOR mean increase,nonzero physical replacement; frozen margin never retuned',
++            unsupported='Otherwise implement opt-in baseline guard with replacement_supported=false; deny unsupported replacement, explicitly protection not performance success',
++            no_gaussian_change='Positive finite old oracle already proves some coverage; no evidence supporting new samples/std/rho/iterations',
++            screening_note='New maps independent of all older studies. H1 informs a predeclared mechanism branch; same-map subsequent closed-loop is SCREENING, not untouched final validation'),
++        latency_probe='After all jobs: isolated first2maps seed1 pre50,5warmup+50full calls/method, no probe controls executed; closed shared-load timings separately',
++        acceptance='Success>A,crash/OOR not higher,positive map-paired discounted gain and route not lower,beyond one map/seed,H1gain better thanrandom,physicalreplacement>0;targetfullcycleP95<=100ms',
++        formal100=False,training=0,commit=False,push=False)
++    dump(R/'exclusions.json',dict(scene_ids=sorted(seen),intervals=sorted(intervals),unique_metadata_files=files,selection_seed=20261119))
++    dump(R/'protocol.json',protocol)
++    protected={n:file_sha(ROOT/n) for n in subprocess.check_output(['git','ls-files','-z'],cwd=ROOT).decode().split('\0') if n and not n.startswith('reports/') and (ROOT/n).is_file()}
++    dump(R/'experiment_manifest.json',dict(base_commit=base,remote_verified_sha=base,branch='experiment/mppi-evaluation-redesign-20261119',
++        checkpoint_sha256=file_sha(Path(old['checkpoint'])),source_config_sha256=file_sha(Path(old['source_environment_config'])),
++        original_config_sha256=file_sha(ROOT/'config.yaml'),protected_sources=protected,protocol_sha256=file_sha(R/'protocol.json'),
++        historical_inputs=load(R/'historical_inputs_read.json'),python=sys.version,packages={k:md.version(k) for k in ['torch','numpy','metadrive-simulator','omegaconf']},
++        no_new_map_outcomes_before_freeze=True))
++    assert protocol['checkpoint_sha256']==file_sha(Path(protocol['checkpoint']))
++    print('NEW_MAPS_FROZEN',scenes,'seeds',[1,2,3],'metadata_files',len(files),flush=True)
++if __name__=='__main__':main()
+diff --git a/reports/mppi_evaluation_redesign_20261119/source_versions/closed_baseline.py b/reports/mppi_evaluation_redesign_20261119/source_versions/closed_baseline.py
+new file mode 100644
+index 0000000..1c5797b
+--- /dev/null
++++ b/reports/mppi_evaluation_redesign_20261119/source_versions/closed_baseline.py
+@@ -0,0 +1,57 @@
++"""Native full-episode A/B/C rolling control; A also supplies fixed pre50 H1 origins."""
++import argparse,os,sys,time
++from pathlib import Path
++ap=argparse.ArgumentParser();ap.add_argument('--group',choices=['A','B','C'],required=True);ap.add_argument('--scene',type=int,required=True);ap.add_argument('--seed',type=int,required=True);args=ap.parse_args()
++project=Path(__file__).resolve().parents[2]
++os.environ['MPR_CODE_ROOT']=str(project if args.group=='C' else project.parent/'mpr_mpc_v2')
++from study import *
++
++@torch.no_grad()
++def main():
++    p=load(R/'protocol.json');out=original_dir(args.scene,args.seed) if args.group=='A' else R/'closed'/f'{args.group}_{args.scene}_r{args.seed}'
++    out.mkdir(parents=True,exist_ok=False)
++    parsed,cfg,env,agent=make_runtime(args.scene,args.seed,{'A':'baseline','B':'native','C':'modified'}[args.group],record=False)
++    from common.seed import set_seed
++    from omegaconf import OmegaConf
++    wm=tensor_hash(agent.model);actor=tensor_hash(agent.residual_sac.actor)
++    try:
++        combined=args.scene+args.seed;set_seed(combined);agent.planner.reset(seed=combined);obs=env.reset(seed=args.scene)
++        assert env.unwrapped_metadrive.config['decision_repeat']*env.unwrapped_metadrive.config['physics_world_step_size']==.1
++        initial=snapshot(env,obs);dump(out/'initial.json',initial);OmegaConf.save(parsed,out/'config.yaml')
++        observations=[obs.cpu().numpy().copy()];actions=[];rewards=[];costs=[];dones=[];terms=[];truncs=[];physical=[];rows=[];done=crash=oor=False
++        while not done:
++            step=len(actions)+1;torch.cuda.synchronize();t=time.perf_counter();action=agent.act(obs,t0=step==1,eval_mode=True);torch.cuda.synchronize();planning=1000*(time.perf_counter()-t)
++            plan=agent.last_plan;assert plan.stage.use_residual and plan.stage.use_mppi==(args.group!='A')
++            if step==p['origin_step'] and args.group=='A':
++                dump(out/'origin.json',snapshot(env,obs));dump(out/'policy.json',policy_snapshot(agent));dump(out/'environment.json',extended_environment(env))
++                np.savez_compressed(out/'origin.npz',refined_actions=plan.refined_actions.cpu().numpy(),latent=agent.planner.last_context.latent.cpu().numpy(),state535=agent.planner.last_context.residual_state.cpu().numpy())
++            assert torch.equal(action,plan.debug['selected_mppi_actions'][0])
++            first_delta=float((action.cpu()-plan.refined_actions[0].cpu()).norm())
++            env_start=time.perf_counter();obs,reward,done,info=env.step(action);env_ms=1000*(time.perf_counter()-env_start)
++            assert abs(float(reward)-float(info['tdmpc2_reward']))<1e-4
++            vehicle=env.unwrapped_metadrive.agent;received=np.array([float(vehicle.steering),float(vehicle.throttle_brake)])
++            assert np.array_equal(received,action.cpu().numpy())
++            rows.append(dict(configuration=args.group,scene=args.scene,seed=args.seed,step=step,planner_ms=planning,env_ms=env_ms,control_cycle_ms=planning+env_ms,
++                action_delta=first_delta,physical_replacement=first_delta>1e-5,baseline_selected=float(plan.metrics['mpr/baseline_selected']),
++                reward=float(info['tdmpc2_reward']),cost=float(info['cost']),route_completion=float(info['route_completion']),
++                **{k:float(v) for k,v in plan.metrics.items() if k.startswith('mppi/') or k.startswith('mpr/sac_inference')},
++                selected_negative_rate=None,candidate_positive_rate=None,counterfactual_labels='Not observed per online step; use separate H1 branches'))
++            observations.append(obs.cpu().numpy().copy());actions.append(action.cpu().numpy().copy());rewards.append(float(info['tdmpc2_reward']));costs.append(float(info['cost']))
++            dones.append(bool(done));terms.append(bool(info['terminated']));truncs.append(bool(info['truncated']))
++            physical.append([*map(float,vehicle.position[:2]),float(vehicle.speed),float(vehicle.heading_theta)])
++            crash|=any(bool(info.get(k,False)) for k in ['crash','crash_vehicle','crash_object','crash_human','crash_building','crash_sidewalk']);oor|=bool(info.get('out_of_road',False))
++            assert step<=1000
++            if step%200==0:print('CLOSED_PROGRESS',args.group,args.scene,args.seed,step,round(info['route_completion'],3),flush=True)
++        assert wm==tensor_hash(agent.model) and actor==tensor_hash(agent.residual_sac.actor)
++        np.savez_compressed(out/'trace.npz',observations=observations,actions=actions,rewards=rewards,costs=costs,done=dones,terminated=terms,truncated=truncs,physical_after=physical)
++        table(out/'steps.csv',rows)
++        dump(out/'episode.json',dict(configuration=args.group,scene=args.scene,seed=args.seed,success=float(info['success']),crash=float(crash),out_of_road=float(oor),route_completion=float(info['route_completion']),
++            timeout=float(info['truncated']),episode_return=sum(rewards),discounted_return=discounted_return(rewards),episode_length=len(rewards),safety_cost=sum(costs),
++            replacement_rate=float(np.mean([x['physical_replacement'] for x in rows])),mean_action_deviation=float(np.mean([x['action_delta'] for x in rows])),
++            planning_p50=float(np.quantile([x['planner_ms'] for x in rows],.5)),planning_p95=float(np.quantile([x['planner_ms'] for x in rows],.95)),
++            cycle_p95=float(np.quantile([x['control_cycle_ms'] for x in rows],.95)),initial_hashes=initial['hashes'],end_reason=info.get('end_reason',''),
++            native_done=True,weights_unchanged=True,reachable_h1_origin=(out/'origin.json').exists() if args.group=='A' else None,
++            latency_scope='6worker shared GPU native episode, cold start retained; separate isolated probe for real-time assessment'))
++        print('CLOSED_DONE',args.group,args.scene,args.seed,'length',len(actions),'return',round(discounted_return(rewards),3),flush=True)
++    finally:env.close()
++if __name__=='__main__':main()
+diff --git a/reports/mppi_evaluation_redesign_20261119/source_versions/h1_analysis_before_action_column_fix.py b/reports/mppi_evaluation_redesign_20261119/source_versions/h1_analysis_before_action_column_fix.py
+new file mode 100644
+index 0000000..21689f7
+--- /dev/null
++++ b/reports/mppi_evaluation_redesign_20261119/source_versions/h1_analysis_before_action_column_fix.py
+@@ -0,0 +1,90 @@
++"""Paired new-map H1 selectors; selects only the predeclared mechanism branch, never retunes margin."""
++import pandas as pd
++from study import *
++
++def clustered(frame,columns):
++    maps=frame.groupby('scene')[columns].mean();rng=np.random.default_rng(20261119)
++    indices=rng.integers(len(maps),size=(2000,len(maps)));result={}
++    for key in columns:
++        v=maps[key].to_numpy(float)
++        result[key]=dict(mean=float(v.mean()),ci95=np.quantile(v[indices].mean(1),[.025,.975]),
++            maps={int(s):float(x) for s,x in maps[key].items()},positive_maps=int((v>0).sum()),
++            lomo={int(s):float(np.delete(v,i).mean()) for i,s in enumerate(maps.index)})
++    return result
++
++def main():
++    done=load(R/'h1_complete.json');p=load(R/'protocol.json');results=[];comparisons=[];rqrows=[];coverage=[];roles=[]
++    metrics=['discounted_return','success','crash','out_of_road','route_completion','safety_cost','timeout','episode_length','episode_return']
++    for scene in p['scenes']:
++        for seed in p['seeds']:
++            directory=origin_dir(scene,seed)
++            if (directory/'unreachable.json').exists():continue
++            meta=load(directory/'catalog.json');z=np.load(directory/'pool.npz');byid={}
++            assert meta['native_E_verified'] and meta['aliases']['B']==meta['aliases']['E']
++            for candidate in meta['representatives']:
++                cid=candidate['candidate_id'];out=R/'branches'/f'{scene}_r{seed}'/cid;row=load(out/'episode.json');origin=load(out/'origin_verification.json')
++                assert row['exact_origin'] and row['exact_policy_history'] and row['extended_environment_exact'] and row['continuation_mppi_calls']==0 and row['intervention_steps']==1
++                assert origin['physical_rng_hashes']==load(directory/'origin.json')['hashes'] and origin['policy_hashes']==meta['policy_fingerprint']
++                raw=np.load(out/'trace.npz');assert discounted_return(raw['rewards'])==row['discounted_return']
++                byid[cid]=row
++            base=byid[meta['aliases']['A']];best=max(x['discounted_return'] for x in byid.values())
++            for cid,row in byid.items():
++                results.append(dict(scene=scene,seed=seed,candidate_id=cid,roles=json.dumps(row['roles']),**{k:row[k] for k in metrics},
++                    steering=candidate['action'][0],throttle_brake=candidate['action'][1],
++                    first_action_l2=float(np.linalg.norm(np.asarray(candidate['action'])-np.asarray(meta['raw_roles'][0]['action']))),
++                    actual_h1_gain=row['discounted_return']-base['discounted_return'],intervention_steps=1,continuation='original frozen SAC',
++                    oracle_scope='max over measured METHOD first-actions only, not all258 unexecuted candidates'))
++            rc={role:byid[cid] for role,cid in meta['aliases'].items()}
++            for role,row in rc.items():
++                rawrole=next(x for x in meta['raw_roles'] if x['role']==role)
++                action=np.asarray(rawrole['action']);baseline_action=np.asarray(meta['raw_roles'][0]['action'])
++                roles.append(dict(scene=scene,seed=seed,method=role,representative=meta['aliases'][role],
++                    gain=row['discounted_return']-base['discounted_return'],regret=best-row['discounted_return'],
++                    physical_replacement=float(np.linalg.norm(action-baseline_action)>1e-5),negative_selected=float(row['discounted_return']-base['discounted_return']<-1),
++                    **{k:row[k] for k in metrics},oracle_gain=best-base['discounted_return']))
++            def difference(left,right):return {k:rc[left][k]-rc[right][k] for k in metrics}
++            c=dict(scene=scene,seed=seed,**difference('B','C'));comparisons.append(c)
++            rqrows.append(dict(scene=scene,seed=seed,comparison='D_reward_vs_G_same_pool_RQ',**difference('D','G')))
++            rqrows.append(dict(scene=scene,seed=seed,comparison='D_reward_vs_B_native_final2',**difference('D','B')))
++            for iteration,batch in enumerate(z['iteration_actions']):
++                controls=batch[1:,0];delta=controls-batch[0,0]
++                coverage.append(dict(scene=scene,seed=seed,iteration=iteration,unique_first_ratio=len(np.unique(controls,axis=0))/64,
++                    first_l2_mean=float(np.linalg.norm(delta,axis=1).mean()),steering_std=float(controls[:,0].std()),throttle_std=float(controls[:,1].std()),
++                    pool_size=258,measured_method_actions=len(byid),measured_positive_ratio=float(np.mean([x['discounted_return']>base['discounted_return'] for cid,x in byid.items() if cid!='A'])),
++                    full_pool_actual_positive_ratio=None,unobserved_actual_candidates='Do not invent actual labels for the unexecuted pool'))
++    table(R/'new_map_candidate_results.csv',results);table(R/'h1_role_results.csv',roles)
++    table(R/'random_vs_native.csv',comparisons);table(R/'reward_only_vs_reward_q.csv',rqrows);table(R/'candidate_coverage.csv',coverage)
++    frame=pd.DataFrame(roles);statistics={};paired={}
++    for role,group in frame.groupby('method'):
++        statistics[role]=clustered(group,['gain','regret','physical_replacement','negative_selected','oracle_gain',*metrics])
++    for left,right in [('B','C'),('D','G'),('D','B'),('F','A'),('G','C')]:
++        l=frame[frame.method==left].set_index(['scene','seed']);r=frame[frame.method==right].set_index(['scene','seed'])
++        diff=(l[['gain','regret','crash','out_of_road','success']]-r[['gain','regret','crash','out_of_road','success']]).reset_index()
++        paired[left+'-'+right]=clustered(diff,['gain','regret','crash','out_of_road','success'])
++    dump(R/'h1_statistics.json',dict(maps=int(frame.scene.nunique()),cases=int(len(frame[frame.method=='A'])),branches=done['branches'],
++        selectors=statistics,paired=paired,bootstrap_unit='complete map, all3seeds together',bootstrap_samples=2000,
++        formal_h1_model_ranking='NOT ESTIMABLE; selector consequences are directly measured, H10 score correlations remain descriptive',
++        finite_oracle='Measured METHOD actions, not whole258pool'))
++    # Retain development table verbatim; append ONE frozen-margin independent screen.
++    dev=R/'baseline_margin_analysis.csv';dev.rename(R/'baseline_margin_development.csv')
++    old=pd.read_csv(R/'baseline_margin_development.csv').to_dict('records');f=statistics['F']
++    old.append(dict(margin=p['margin'],replacement_rate=f['physical_replacement']['mean'],selected_gain=f['gain']['mean'],
++        negative_selection_rate=f['negative_selected']['mean'],source='new12maps3seeds ONE frozen margin; no retuning',eligible_nontrivial=f['physical_replacement']['mean']>0))
++    table(dev,old)
++    reward_ok=(statistics['D']['gain']['ci95'][0]>0 and paired['D-G']['gain']['ci95'][0]>0 and paired['D-B']['gain']['ci95'][0]>0
++        and statistics['D']['gain']['positive_maps']>=8 and paired['D-G']['crash']['mean']<=0 and paired['D-G']['out_of_road']['mean']<=0
++        and statistics['D']['crash']['mean']<=statistics['A']['crash']['mean'] and statistics['D']['out_of_road']['mean']<=statistics['A']['out_of_road']['mean'])
++    margin_ok=(f['gain']['ci95'][0]>0 and f['physical_replacement']['mean']>0 and paired['F-A']['crash']['mean']<=0 and paired['F-A']['out_of_road']['mean']<=0)
++    if reward_ok:
++        branch='reward_only';options=dict(final_selection_policy='reward_pool',final_selection_margin=0.,replacement_supported=True)
++    elif margin_ok:
++        branch='validated_margin';options=dict(final_selection_policy='baseline_guard',final_selection_margin=p['margin'],replacement_supported=True)
++    else:
++        branch='unsupported_replacement_protection';options=dict(final_selection_policy='baseline_guard',final_selection_margin=p['margin'],replacement_supported=False)
++    dump(R/'decision.json',dict(branch=branch,online_options=options,reward_case_passed=bool(reward_ok),margin_case_passed=bool(margin_ok),
++        margin_frozen_before_new_maps=p['margin'],new_margin_tuning=False,default_config_changed=False,
++        protection_is_not_algorithm_success=not(reward_ok or margin_ok),
++        rationale='Apply the predeclared branch only; unsupported scoring cannot justify replacing SAC. Full closed-loop screening still required.'))
++    print('H1_DECISION',branch,options,flush=True)
++    for role in ['B','C','D','F','G']:print(role,statistics[role]['gain'],flush=True)
++if __name__=='__main__':main()
+diff --git a/reports/mppi_evaluation_redesign_20261119/study.py b/reports/mppi_evaluation_redesign_20261119/study.py
+new file mode 100644
+index 0000000..b89934a
+--- /dev/null
++++ b/reports/mppi_evaluation_redesign_20261119/study.py
+@@ -0,0 +1,165 @@
++"""H1-only experiment utilities. Never imported by an online controller."""
++import contextlib,copy,csv,hashlib,io,json,random,sys,os
++from pathlib import Path
++import numpy as np
++import torch
++R=Path(__file__).resolve().parent
++ROOT=R.parents[1]
++MAIN=ROOT.parent/'mpr_mpc_v2'
++HIST=ROOT.parent/'mpr_mpc_v2_h1_counterfactual_20261118'/'reports/mppi_h1_counterfactual_20261118'
++SOURCE=R
++CODE_ROOT=Path(os.environ.get('MPR_CODE_ROOT',str(MAIN)))
++sys.path.insert(0,str(CODE_ROOT))
++from tools.first_action_study import clean,digest,snapshot,tensor_hash,file_sha,rng_state
++
++def load(p):return json.loads(Path(p).read_text())
++def dump(p,x):
++    p=Path(p);p.parent.mkdir(parents=True,exist_ok=True)
++    with p.open('x') as f:json.dump(clean(x),f,indent=2,allow_nan=False)
++def table(p,rows):
++    with Path(p).open('x',newline='') as f:
++        w=csv.DictWriter(f,fieldnames=list(dict.fromkeys(k for r in rows for k in r)));w.writeheader();w.writerows(clean(rows))
++def origin_dir(scene,seed):return R/'origins'/f'{scene}_r{seed}'
++def original_dir(scene,seed):return R/'baselines'/f'{scene}_r{seed}'
++
++def numeric_state(obj,depth=1):
++    """Capture scalar/array/PID history, excluding engine/object references and process addresses."""
++    result={}
++    for name,value in vars(obj).items():
++        if isinstance(value,(str,bool,int,float,np.generic,np.ndarray)) or value is None:result[name]=clean(value)
++        elif isinstance(value,(list,tuple)) and all(isinstance(x,(str,bool,int,float,np.generic,np.ndarray)) or x is None for x in value):result[name]=clean(value)
++        elif depth and 'pid' in name.lower() and hasattr(value,'__dict__'):result[name]=numeric_state(value,depth-1)
++    return result
++
++def extended_environment(env):
++    sim=env.unwrapped_metadrive;engine=sim.engine
++    managers={name:rng_state(value) for name,value in engine.managers.items()}
++    objects=[]
++    for obj in engine.get_objects().values():
++        if not hasattr(obj,'position'):continue
++        value=dict(type=type(obj).__name__,position=clean(obj.position),rng=rng_state(obj))
++        for name in ['velocity','heading_theta','angular_velocity','steering','throttle_brake','current_action','crash_vehicle','crash_object','out_of_road']:
++            if hasattr(obj,name):value[name]=clean(getattr(obj,name))
++        policy=engine.get_policy(obj.id)
++        if policy is not None:value['policy']=dict(type=type(policy).__name__,rng=rng_state(policy),history=numeric_state(policy))
++        objects.append(value)
++    # Object IDs can be UUIDs; canonicalize by physical identity, not process addresses.
++    objects.sort(key=lambda x:(x['type'],str(x['position'])))
++    # Gymnasium's np_random getter CREATES an entropy-seeded generator when
++    # _np_random is None. Observing an uninitialized, unused RNG must not create it.
++    gym_rng=getattr(sim,'_np_random',None)
++    env_rng=None if gym_rng is None else clean(gym_rng.get_state() if hasattr(gym_rng,'get_state') else gym_rng.bit_generator.state)
++    values=dict(environment_rng=env_rng,environment_rng_initialized=gym_rng is not None,
++        managers=managers,objects=objects,episode_step=int(sim.episode_step))
++    return dict(values=values,hash=digest(values))
++
++def get_rng():
++    return dict(python=random.getstate(),numpy=np.random.get_state(),cpu=torch.random.get_rng_state().clone(),cuda=torch.cuda.get_rng_state().clone())
++def set_rng(state):
++    random.setstate(state['python']);np.random.set_state(state['numpy']);torch.random.set_rng_state(state['cpu']);torch.cuda.set_rng_state(state['cuda'])
++
++def make_runtime(scene,seed=1,mode='baseline',record=True):
++    from mpr_mpc._bootstrap import bootstrap
++    bootstrap()
++    from omegaconf import OmegaConf
++    from common.seed import set_seed
++    from env import make_env
++    import evaluate_model_suite as suite
++    p=load(R/'protocol.json');ck=Path(p['checkpoint'])
++    raw=OmegaConf.load(p['source_environment_config']);raw.mpr_mpc.mppi=OmegaConf.load(CODE_ROOT/'config.yaml').mpr_mpc.mppi
++    raw.mpr_mpc.mppi.record_candidates=bool(record)
++    if mode=='modified':
++        choice=load(R/'decision.json')['online_options']
++        for k,v in choice.items():raw.mpr_mpc.mppi[k]=v
++    raw.restore_checkpoint_runtime=True;raw.restore_mppi_runtime=False
++    raw.enable_wandb=raw.save_agent=raw.save_video=False;raw.residual_rl.buffer_size=8;raw.seed=seed
++    parsed,cfg=suite._make_cfg(raw,ck.parent.parent.name,ck,[scene])
++    torch.set_num_threads(1);torch.set_float32_matmul_precision('high');set_seed(1)
++    env=make_env(cfg)
++    with contextlib.redirect_stdout(io.StringIO()):
++        agent=suite._make_agent(cfg,env);state=agent.load(ck)
++    agent.eval();suite._apply_evaluation_stack(agent.planner,'world_model_residual_rl' if mode=='baseline' else 'full_mpr_mpc',state)
++    agent.set_global_step(max(agent.global_env_step,agent.planner.mppi_start_step))
++    assert agent.planner.residual_state_dim==535 and agent.planner.allow_mppi==(mode!='baseline')
++    assert float(agent.tdmpc_agent.discount)==.995 and agent.planner.control_dt==.1
++    assert agent.planner.local_mppi.num_samples==64 and agent.planner.local_mppi.num_elites==8 and agent.planner.local_mppi.iterations==4
++    assert not agent.planner.local_mppi.compare_final_elite and agent.planner.local_mppi.cost_weight==0
++    return parsed,cfg,env,agent
++
++def policy_snapshot(agent):
++    p=agent.planner;c=p.last_context;result=agent.last_plan;l=p.structured.planner
++    values=dict(latent=c.latent,residual535=c.residual_state,coarse_actions=c.coarse_actions,
++        refined_actions=result.refined_actions,refined_parameters=result.refined_parameters,
++        requested_residual=result.requested_normalized_residual,
++        native_td_prev_mean=agent.tdmpc_agent._prev_mean,
++        global_step=agent.global_env_step,pending_residual=agent._pending_residual,
++        local_generator=p.local_mppi.generator.get_state(),episode_seed=p._episode_seed,
++        lattice=dict(reference=l.last_reference_points,f_state=l.last_f_state,lane_width=l.last_lane_width,
++            lateral_bounds=l.last_lateral_bounds,lane_centers=l.last_lane_centers,selected_index=l.last_selected_index,
++            candidates=[dict(xy=x.xy,t=x.t,s_d=x.s_d,d=x.target_d,v=x.target_speed,h=x.horizon) for x in l.last_candidates]),
++        safety_previous_action=c.safety_context.previous_action if c.safety_context is not None else None,
++        risk_status=p.residual_state_builder.last_risk_status)
++    assert agent._pending_residual is None
++    return dict(values=clean(values),hashes={k:digest(v) for k,v in values.items()},
++        semantics='Feed-forward encoder and SAC; native TD previous mean dormant. Last plan diagnostics overwritten, not action history input.')
++
++@torch.no_grad()
++def restore_origin(env,agent,scene,seed):
++    """Replay exactly step-1 recorded controls, rebuilding policy on every prior tick."""
++    from common.seed import set_seed
++    old=original_dir(scene,seed);trace=np.load(old/'trace.npz');step=load(R/'protocol.json')['origin_step']
++    assert len(trace['actions'])>=step
++    combined=scene+seed;set_seed(combined);agent.planner.reset(seed=combined);obs=env.reset(seed=scene)
++    assert np.array_equal(obs.cpu().numpy(),trace['observations'][0])
++    for i in range(step-1):
++        actual=agent.act(obs,t0=i==0,eval_mode=True).cpu().numpy()
++        assert np.array_equal(actual,trace['actions'][i]),('prefix action',scene,step,i)
++        obs,reward,done,info=env.step(trace['actions'][i])
++        assert not done and abs(float(info['tdmpc2_reward'])-float(trace['rewards'][i]))<1e-8
++        assert np.array_equal(obs.cpu().numpy(),trace['observations'][i+1]),('prefix observation',scene,step,i)
++    # Historical snapshots were captured AFTER decision computation but BEFORE env.step.
++    before_decision_rng=get_rng()
++    action=agent.act(obs,t0=False,eval_mode=True)
++    assert np.array_equal(action.cpu().numpy(),trace['actions'][step-1])
++    current=snapshot(env,obs);expected=load(old/'origin.json')
++    assert current['hashes']==expected['hashes'],('origin',scene,step,{k:(current['hashes'][k],expected['hashes'][k]) for k in current['hashes'] if current['hashes'][k]!=expected['hashes'][k]})
++    with np.load(old/'origin.npz') as saved:
++        assert np.array_equal(agent.last_plan.refined_actions.cpu().numpy(),saved['refined_actions'])
++    policy=policy_snapshot(agent)
++    return obs,action,trace,current,policy,before_decision_rng
++
++def representative_roles(records,epsilon):
++    """Keep first occurrence, preserve aliases; no outcome-dependent deduplication."""
++    kept=[];aliases={}
++    for record in records:
++        action=np.asarray(record['action'],np.float32)
++        assert action.shape==(2,) and np.isfinite(action).all() and np.max(np.abs(action))<=1
++        match=next((x for x in kept if np.linalg.norm(action-np.asarray(x['action']))<=epsilon),None)
++        if match is None:
++            match=copy.deepcopy(record);match['candidate_id']=record['role'];match['roles']=[record['role']];kept.append(match)
++        else:match['roles'].append(record['role'])
++        aliases[record['role']]=match['candidate_id']
++    return kept,aliases
++
++def discounted_return(rewards,gamma=.995):
++    result=0.
++    for reward in reversed(rewards):result=float(reward)+gamma*result
++    return result
++
++def load_offline_evaluator():
++    from types import SimpleNamespace
++    from mpr_mpc._bootstrap import bootstrap
++    bootstrap()
++    from common.world_model import WorldModel
++    from tdmpc2 import TDMPC2
++    from planning.evaluator import TrajectoryWorldModelEvaluator
++    from omegaconf import OmegaConf
++    import evaluate_model_suite as suite
++    p=load(HIST/'protocol.json');ck=Path(p['checkpoint'])
++    raw=OmegaConf.load(p['source_environment_config']);raw.restore_checkpoint_runtime=True;raw.restore_mppi_runtime=False
++    _,cfg=suite._make_cfg(raw,ck.parent.parent.name,ck,[1]);cfg.obs_shape={'state':(259,)};cfg.action_dim=2;cfg.episode_length=1000
++    torch.set_num_threads(1);torch.set_float32_matmul_precision('high');device=torch.device('cuda')
++    model=WorldModel(cfg).to(device).eval().requires_grad_(False)
++    agent=SimpleNamespace(model=model,cfg=cfg,device=device,discount=.995)
++    TDMPC2.load(agent,{'model':torch.load(ck,map_location='cpu',weights_only=False)['model']})
++    return TrajectoryWorldModelEvaluator(agent,10)
+diff --git a/reports/mppi_evaluation_redesign_20261119/summarize.py b/reports/mppi_evaluation_redesign_20261119/summarize.py
+new file mode 100644
+index 0000000..5226b3f
+--- /dev/null
++++ b/reports/mppi_evaluation_redesign_20261119/summarize.py
+@@ -0,0 +1,64 @@
++"""Actual108 native closed-loop screening, paired by map+seed. No inferred counterfactual labels online."""
++import pandas as pd
++from h1_analysis import clustered
++from study import *
++
++def main():
++    assert (R/'probe_complete.json').exists();p=load(R/'protocol.json');decision=load(R/'decision.json');episodes=[];frames=[];data={}
++    keys=['success','crash','out_of_road','route_completion','timeout','episode_return','discounted_return','episode_length','safety_cost','replacement_rate','mean_action_deviation']
++    for group in ['A','B','C']:
++        for scene in p['scenes']:
++            for seed in p['seeds']:
++                out=original_dir(scene,seed) if group=='A' else R/'closed'/f'{group}_{scene}_r{seed}'
++                row=load(out/'episode.json');assert row['native_done'] and row['weights_unchanged']
++                data[group,scene,seed]=row
++                episodes.append({k:v for k,v in row.items() if k!='initial_hashes'})
++                f=pd.read_csv(out/'steps.csv')
++                if 'local_mppi_ms' not in f:f['local_mppi_ms']=0. # A has zero MPPI invocations by construction.
++                frames.append(f)
++                trace=np.load(out/'trace.npz');assert discounted_return(trace['rewards'])==row['discounted_return']
++    for scene in p['scenes']:
++        for seed in p['seeds']:
++            assert data['A',scene,seed]['initial_hashes']==data['B',scene,seed]['initial_hashes']==data['C',scene,seed]['initial_hashes']
++            if not decision['online_options']['replacement_supported']:
++                a=np.load(original_dir(scene,seed)/'trace.npz');c=np.load(R/'closed'/f'C_{scene}_r{seed}'/'trace.npz')
++                assert np.array_equal(a['actions'],c['actions']) and np.array_equal(a['observations'],c['observations']), 'Unsupported guard must preserve exact original SAC trajectory'
++    table(R/'paired_closed_loop_episodes.csv',episodes)
++    e=pd.DataFrame(episodes);steps=pd.concat(frames,ignore_index=True);steps.to_csv(R/'closed_loop_steps.csv',index=False,mode='x')
++    summary=[];statistics={}
++    for group in ['A','B','C']:
++        rows=e[e.configuration==group];s=steps[steps.configuration==group]
++        summary.append(dict(experiment='full_native_closed_loop',configuration=group,comparison='absolute mean',maps=12,cases=36,
++            **{k:float(rows[k].mean()) for k in keys},planner_p50_ms=float(s.planner_ms.quantile(.5)),planner_p95_ms=float(s.planner_ms.quantile(.95)),
++            control_cycle_p95_ms=float(s.control_cycle_ms.quantile(.95)),timing_scope='6worker shared load, includes cold start'))
++    for left,right in [('B','A'),('C','A'),('C','B')]:
++        l=e[e.configuration==left].set_index(['scene','seed']);r=e[e.configuration==right].set_index(['scene','seed']);diff=(l[keys]-r[keys]).reset_index()
++        stats=clustered(diff,keys);stats['per_seed_gain']=diff.groupby('seed').discounted_return.mean().to_dict();statistics[left+'-'+right]=stats
++        summary.append(dict(experiment='full_native_closed_loop',configuration=left,comparison=f'paired difference vs {right}',maps=12,cases=36,
++            **{k:v['mean'] for k,v in stats.items() if k in keys}))
++    table(R/'summary.csv',summary);dump(R/'closed_statistics.json',dict(comparisons=statistics,maps=12,seeds=3,episodes=108,unit='12 map clusters, all3paired seeds'))
++    timing=[]
++    probes=pd.concat([pd.read_csv(f) for f in R.glob('probe_*.csv')],ignore_index=True)
++    probes.to_csv(R/'isolated_planner_samples.csv',index=False,mode='x')
++    for scope,frame in [('shared_native_all',steps),('isolated_frozen_state',probes)]:
++        for group,rows in frame.groupby('configuration'):
++            for key in [x for x in rows.columns if x.endswith('_ms')]:
++                v=pd.to_numeric(rows[key],errors='coerce').dropna()
++                if len(v):timing.append(dict(configuration=group,scope=scope,stage=key,samples=len(v),mean_ms=float(v.mean()),p50_ms=float(v.quantile(.5)),p95_ms=float(v.quantile(.95)),p99_ms=float(v.quantile(.99)),maximum_ms=float(v.max())))
++    table(R/'latency.csv',timing)
++    isolated={g:float(probes[probes.configuration==g].planner_ms.quantile(.95)) for g in ['A','B','C']}
++    ca=statistics['C-A'];replacement=float(e[e.configuration=='C'].replacement_rate.mean())
++    h1=load(R/'h1_statistics.json');role='D' if decision['branch']=='reward_only' else 'F' if decision['branch']=='validated_margin' else 'A'
++    hr=pd.read_csv(R/'h1_role_results.csv');mod=hr[hr.method==role].set_index(['scene','seed']);rnd=hr[hr.method=='C'].set_index(['scene','seed'])
++    hd=(mod[['gain']]-rnd[['gain']]).reset_index();h1diff=clustered(hd,['gain'])['gain']
++    conditions=dict(success_positive=ca['success']['mean']>0,crash_not_higher=ca['crash']['mean']<=0,oor_not_higher=ca['out_of_road']['mean']<=0,
++        discounted_gain_positive=ca['discounted_return']['mean']>0,discounted_gain_ci_positive=ca['discounted_return']['ci95'][0]>0,
++        route_not_lower=ca['route_completion']['mean']>=0,not_one_map_only=ca['discounted_return']['positive_maps']>=8,
++        h1_beats_random=h1diff['ci95'][0]>0,nonzero_physical_replacement=replacement>0,
++        isolated_full_planner_p95_below100=isolated['C']<=100)
++    dump(R/'acceptance.json',dict(conditions=conditions,accepted_for_larger_experiment=all(conditions.values()),
++        modified_h1_role=role,modified_h1_minus_random=h1diff,replacement_rate=replacement,isolated_planner_p95_ms=isolated,
++        protection_not_performance_success=not decision['online_options']['replacement_supported'],
++        full_cycle_timing_note='Native cycle=full agent.act + env.step under shared load; isolated probe is planner-only, not full-cycle certificate.'))
++    print(pd.DataFrame(summary).to_string(index=False),flush=True)
++if __name__=='__main__':main()
+diff --git a/reports/mppi_evaluation_redesign_20261119/test_redesign.py b/reports/mppi_evaluation_redesign_20261119/test_redesign.py
+new file mode 100644
+index 0000000..fb0265d
+--- /dev/null
++++ b/reports/mppi_evaluation_redesign_20261119/test_redesign.py
+@@ -0,0 +1,58 @@
++"""Regression tests for opt-in evidence-aware final selection; sampling remains native."""
++from types import SimpleNamespace
++import numpy as np
++import pytest
++import torch
++from mpr_mpc.planning.local_mppi import LocalMPPI
++
++class Evaluator:
++    def __init__(self):self.calls=[]
++    def evaluate_mppi_candidates(self,z,actions,**kwargs):
++        self.calls.append(len(actions));v=4*actions[:,0,0]+actions[:,0,1]
++        return SimpleNamespace(total_value=v,discounted_reward=v,terminal_q=v*0,reward_sequence=v[:,None].expand(-1,10),timings={})
++
++def solve(**options):
++    evaluator=Evaluator();cfg=dict(num_samples=64,num_elites=8,iterations=4,initial_std=[.04,.12],min_std=[.01,.03],max_std=[.08,.25],**options)
++    planner=LocalMPPI(evaluator,cfg,horizon=10,action_dim=2,device='cpu');planner.reset(17)
++    result=planner.plan(torch.zeros(1,512),torch.zeros(11,2),eval_mode=True)
++    return planner,evaluator,result
++
++def test_unsupported_guard_preserves_baseline_but_does_not_skip_search():
++    _,e,r=solve(final_selection_policy='baseline_guard',replacement_supported=False,final_selection_margin=13.235)
++    assert torch.equal(r.selected_sequence,torch.zeros(11,2))
++    assert e.calls==[65,65,65,65,2] and r.numerical_error is None
++    assert r.metrics['replacement_supported']==0 and r.metrics['baseline_guard_blocked']==1
++
++def test_zero_margin_supported_guard_matches_native_actions_and_rng():
++    a,_,before=solve();b,_,after=solve(final_selection_policy='baseline_guard',replacement_supported=True,final_selection_margin=0.)
++    assert torch.equal(before.selected_sequence,after.selected_sequence)
++    assert torch.equal(a.generator.get_state(),b.generator.get_state())
++    assert not after.baseline_selected
++
++def test_positive_margin_can_preserve_baseline_without_claiming_numerical_failure():
++    _,_,result=solve(final_selection_policy='baseline_guard',replacement_supported=True,final_selection_margin=100.)
++    assert result.baseline_selected and result.numerical_error is None and result.metrics['baseline_guard_blocked']==1
++
++def test_margin_boundary_is_strict_and_matches_frozen_h1_delta_definition():
++    _,_,legacy=solve();delta=float(legacy.optimized_wm_value-legacy.baseline_wm_value)
++    _,_,result=solve(final_selection_policy='baseline_guard',replacement_supported=True,final_selection_margin=delta)
++    assert result.baseline_selected
++
++@pytest.mark.parametrize('margin',[-1.,float('nan'),float('inf')])
++def test_invalid_margin_rejected(margin):
++    with pytest.raises(ValueError):solve(final_selection_policy='baseline_guard',final_selection_margin=margin)
++
++def test_unknown_policy_rejected():
++    with pytest.raises(ValueError):solve(final_selection_policy='misspelled')
++
++def test_original_defaults_remain_native():
++    p,_,r=solve();assert p.final_selection_policy=='legacy' and not r.baseline_selected
++
++def test_map_bootstrap_does_not_treat_repeated_seeds_as_independent_maps():
++    import sys
++    from pathlib import Path
++    sys.path.insert(0,str(Path(__file__).parent))
++    from h1_analysis import clustered
++    import pandas as pd
++    result=clustered(pd.DataFrame(dict(scene=[1,2,2,2],gain=[10.,0.,0.,0.])),['gain'])['gain']
++    assert result['mean']==5 and np.array_equal(result['ci95'],[0.,10.]) and result['lomo']=={1:0.,2:10.}

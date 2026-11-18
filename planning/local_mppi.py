@@ -23,6 +23,8 @@ MPPI_DIAGNOSTIC_KEYS = (
     'uses_sac_value','effective_cost_weight','cost_penalty','cost_penalty_gain','audit_terminal_candidates',
     'mean_best_sequence_l2','mean_best_first_action_l2','mean_best_predicted_gap','elite_pairwise_l2',
     'selection_is_elite','selected_source_code','final_elite_value','final_elite_gain',
+    'baseline_guard_enabled','baseline_guard_blocked','baseline_guard_reason_code',
+    'replacement_supported','final_selection_margin',
 ) + tuple(f'iteration_{i}_{name}' for i in range(4) for name in ('elite_value_mean','elite_value_max','sampling_diversity','weight_entropy','effective_sample_size'))
 MPPI_EPISODE_METRICS = {f'mppi_{k}':f'mppi/{k}' for k in (*MPPI_DIAGNOSTIC_KEYS,'total_planning_ms')}
 
@@ -88,6 +90,15 @@ class LocalMPPI:
         self.selection_mode = str(cfg.get('selection_mode','weighted_mean'))
         self.compare_final_elite = 'selection_mode' in cfg  # exact legacy behavior when absent
         self.record_candidates = bool(cfg.get('record_candidates',False))
+        # Opt-in admission of a predicted improvement, not a safety certificate
+        # or an estimate of H1/SAC continuation value. Legacy outputs stay exact.
+        self.final_selection_policy = str(cfg.get('final_selection_policy','legacy'))
+        self.final_selection_margin = float(cfg.get('final_selection_margin',0.))
+        self.replacement_supported = bool(cfg.get('replacement_supported',True))
+        if self.final_selection_policy not in {'legacy','baseline_guard'}:
+            raise ValueError('Unknown final selection policy.')
+        if not math.isfinite(self.final_selection_margin) or self.final_selection_margin < 0:
+            raise ValueError('Final selection margin must be finite and nonnegative.')
         if self.selection_mode not in {'weighted_mean','best_final_elite'}:
             raise ValueError('Unknown final MPPI selection_mode.')
         if self.compare_final_elite and self.audit_candidates:
@@ -177,6 +188,8 @@ class LocalMPPI:
                           terminal_action=self.terminal_action,q_aggregation=self.q_aggregation,q_indices=q_pair,
                           terminal_q_weight=self.terminal_q_weight,terminal_value=self.terminal_value,cost_weight=self.cost_weight,
                           selection_mode=self.selection_mode,uniform_final_comparison=self.compare_final_elite)
+        definition.update(final_selection_policy=self.final_selection_policy,
+                          final_selection_margin=self.final_selection_margin,replacement_supported=self.replacement_supported)
         phase,timing,history = PhaseTimings(self.device),{},[]
         evaluated = 0
         error = None
@@ -190,6 +203,7 @@ class LocalMPPI:
         selection_candidates = {}
         final_elite_value = nan
         selected_source = 'baseline'
+        guard_blocked, guard_reason = False, 0
         last_result = last_candidates = last_best = None
 
         def evaluate(actions, *, final=False):
@@ -306,9 +320,18 @@ class LocalMPPI:
                 error = error or 'non_finite_final_return'
             elif not bool(torch.isfinite(candidate_value)):
                 error = 'non_finite_final_elite'
-            elif bool(candidate_value>values[0]):
-                sequence,selected_value,selected = candidate_sequence,candidate_value,candidate_row
-                selected_source = 'elite' if self.selection_mode == 'best_final_elite' else 'mean'
+            else:
+                native_better = bool(candidate_value>values[0])
+                accept = native_better
+                if self.final_selection_policy == 'baseline_guard':
+                    accept = self.replacement_supported and bool((candidate_value-values[0])>self.final_selection_margin)
+                    guard_blocked = native_better and not accept
+                    # 1: no supporting causal evidence; 2: frozen margin unmet.
+                    # Neither reason asserts that the original SAC action is safe.
+                    guard_reason = 1 if not self.replacement_supported else 2 if not accept else 0
+                if accept:
+                    sequence,selected_value,selected = candidate_sequence,candidate_value,candidate_row
+                    selected_source = 'elite' if self.selection_mode == 'best_final_elite' else 'mean'
         baseline_selected = torch.equal(sequence,baseline)
         if baseline_selected:
             selected_value,selected = baseline_value,base
@@ -321,6 +344,8 @@ class LocalMPPI:
         delta = sequence[0]-baseline[0]
         maximum = (sequence-baseline).abs().amax(0)
         metrics = dict(timing,baseline_predicted_return=float(baseline_value),optimized_predicted_return=float(optimized_value),
+            baseline_guard_enabled=float(self.final_selection_policy == 'baseline_guard'),baseline_guard_blocked=float(guard_blocked),
+            baseline_guard_reason_code=float(guard_reason),replacement_supported=float(self.replacement_supported),final_selection_margin=self.final_selection_margin,
             selected_predicted_return=float(selected_value),predicted_return_gain=float(optimized_value-baseline_value),
             baseline_score=float(baseline_value),selected_score=float(selected_value),final_score=float(selected_value),
             score_gain=float(selected_value-baseline_value),predicted_reward=float(selected['reward']),

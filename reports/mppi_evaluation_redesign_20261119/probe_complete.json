@@ -1,0 +1,6 @@
+{
+  "calls": 300,
+  "warmup": 30,
+  "single_worker": true,
+  "same_state": true
+}

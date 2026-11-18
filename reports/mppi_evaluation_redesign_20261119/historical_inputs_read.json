@@ -1,0 +1,65 @@
+[
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_h1_counterfactual_20261118/reports/mppi_h1_counterfactual_20261118/FINAL_REPORT.md",
+    "sha256": "44b1d80fc864067a4adb50ab52f98cbbd2a14c057b27b7aef38045f3378a4493",
+    "bytes": 10229,
+    "rows_or_lines": 90,
+    "fully_read": true
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_h1_counterfactual_20261118/reports/mppi_h1_counterfactual_20261118/PROTOCOL.md",
+    "sha256": "dbe6bc8cc3d5724aaac05ed50d1cabd07c59bf9a27c1cce20aef53409803a745",
+    "bytes": 5936,
+    "rows_or_lines": 48,
+    "fully_read": true
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_h1_counterfactual_20261118/reports/mppi_h1_counterfactual_20261118/paired_statistics.json",
+    "sha256": "d0bf7193d0a46110756d2f352d2f7ba9459ac9a6f4430d5e8669e89587135ef6",
+    "bytes": 21238,
+    "rows_or_lines": 1,
+    "fully_read": true
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_h1_counterfactual_20261118/reports/mppi_h1_counterfactual_20261118/candidate_ranking.csv",
+    "sha256": "322b16f07eff96a932883c490a9f43c40da4f256003ee44ee0e2e82bb00790ff",
+    "bytes": 24576,
+    "rows_or_lines": 123,
+    "fully_read": true
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_h1_counterfactual_20261118/reports/mppi_h1_counterfactual_20261118/candidate_actions.csv",
+    "sha256": "ea35f48fa5917079fa43d48a6e68fc6fdfc74766dac63a78374f2ace030d196b",
+    "bytes": 27092,
+    "rows_or_lines": 123,
+    "fully_read": true
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_h1_counterfactual_20261118/reports/mppi_h1_counterfactual_20261118/counterfactual_episodes.csv",
+    "sha256": "c21e3d932e94f3f57666caa10190509406d2de3c6e340cf32c8d5b348d2359e2",
+    "bytes": 55121,
+    "rows_or_lines": 123,
+    "fully_read": true
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_h1_counterfactual_20261118/reports/mppi_h1_counterfactual_20261118/counterfactual_steps.csv",
+    "sha256": "8f5deed6e57d50609a640b172ba07352ee2ddaec4838ce3558c0b0effa3259fb",
+    "bytes": 10713659,
+    "rows_or_lines": 34270,
+    "fully_read": true
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_h1_counterfactual_20261118/reports/mppi_h1_counterfactual_20261118/STATE_RECONSTRUCTION_AUDIT.md",
+    "sha256": "276be8fd272fd2b799416223faa421a31102f9dbc668750e1375f158416a392c",
+    "bytes": 3408,
+    "rows_or_lines": 40,
+    "fully_read": true
+  },
+  {
+    "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_h1_counterfactual_20261118/reports/mppi_h1_counterfactual_20261118/code_changes.patch",
+    "sha256": "8c13c714ac6b11fc8469a5687eba2b61ab9a5ee6a3d07467b1b3d4a56ea4a06d",
+    "bytes": 146430,
+    "rows_or_lines": 1621,
+    "fully_read": true
+  }
+]
