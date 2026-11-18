@@ -1,0 +1,17 @@
+scene,step,prefix_controls,baseline_tail_exact,exact_observation_vehicle_traffic_rng,exact_latent_residual535_policy,all_extended_environment_hashes_equal,unique_executed_branches,formal_h1_ranking
+130719,50,49,281,True,True,True,8,NOT ESTIMABLE
+130719,150,149,181,True,True,True,7,NOT ESTIMABLE
+130132,50,49,406,True,True,True,8,NOT ESTIMABLE
+130132,150,149,306,True,True,True,8,NOT ESTIMABLE
+130620,50,49,385,True,True,True,7,NOT ESTIMABLE
+130620,150,149,285,True,True,True,8,NOT ESTIMABLE
+130467,50,49,292,True,True,True,8,NOT ESTIMABLE
+130467,150,149,192,True,True,True,8,NOT ESTIMABLE
+130806,50,49,155,True,True,True,7,NOT ESTIMABLE
+130806,150,149,55,True,True,True,8,NOT ESTIMABLE
+130343,50,49,176,True,True,True,8,NOT ESTIMABLE
+130343,150,149,76,True,True,True,7,NOT ESTIMABLE
+130605,50,49,559,True,True,True,8,NOT ESTIMABLE
+130605,150,149,459,True,True,True,8,NOT ESTIMABLE
+130018,50,49,343,True,True,True,7,NOT ESTIMABLE
+130018,150,149,243,True,True,True,8,NOT ESTIMABLE

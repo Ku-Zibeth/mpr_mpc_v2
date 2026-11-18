@@ -1,0 +1,27 @@
+{
+  "physical_rng_hashes": {
+    "observation": "056492f40d2369dcf35e4d4943cae352938e5406d37afb8ce4d5cc41201ea310",
+    "vehicle": "cda1d32e1980e5159a5de36399c393ae024284d6b8a7562131ea4abf031fff11",
+    "traffic": "c0fa3f24a0496e11278e46dc62e0ec8eacf7e33df55fca6d6c0426fb766cad7e",
+    "rng": "6b7b8c7a47402ee7223febd4b9fef9d23ca519e9564a4b593e59989c26c801c3"
+  },
+  "policy_hashes": {
+    "latent": "e6edea23ed3a5c96c0176a90278d33746964006c4e1436bc11e550d7657d3363",
+    "residual535": "786c01166f6d19d7dbfeec0b7df65e42fba40141245392bb111c5d08afc6fbbc",
+    "coarse_actions": "9a07a0c81c5ecbc9f3907707ad5c9c91ab10d040f47659e311a6caa556d10f92",
+    "refined_actions": "51a8edb174630ff7df2732472f636d11924b593dbc65e8cfafbeb0195493b37c",
+    "refined_parameters": "3489a6789bb986602551bfae3df0144e4f5fc020f0d317812b6b8ac1ea2e6b10",
+    "requested_residual": "8ac3e8519e6938bf6606160b6189260e50a460cf365a59ada44b9921d59579e1",
+    "native_td_prev_mean": "97a902da7847b3ba451fdf9d6188b0a118e4aaf9b230fd2973f6c0266d756ae5",
+    "global_step": "8d6962a152aee235ba824c41758b8da2371b7077b4ea0afaaec94014e16e3bc7",
+    "pending_residual": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+    "local_generator": "a9d0afa41bf8c65c5c3f3122bdfe6c051120d93cd39eb1c7be3e6dea3481b670",
+    "episode_seed": "f6f99402650c99f233b48f2e28110aea186f810cc1a6b8fc87883fead88c9530",
+    "lattice": "c46750ab7837d906c0be34e82c17d86ad23f50e08b8ca7cfac947349f7220cfb",
+    "safety_previous_action": "32ff7c1b12767fb6609287359fed68ce1450e72354d5ec8f1a6640b9f65f5b7f",
+    "risk_status": "a48bb793941898838bb41a80eb8588c584da02905e4e255ae3bd64a14c01652e"
+  },
+  "extended_environment_hash": "3a5a7157a291d650128cfbf360ebd2ccfb45e698acbef7b5b6d8fc0af4ab370e",
+  "all_exact": true,
+  "previous_recorded_controls": 49
+}

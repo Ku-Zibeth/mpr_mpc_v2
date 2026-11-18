@@ -1,0 +1,13 @@
+{
+  "pilot": [
+    130719,
+    50
+  ],
+  "branches": [
+    "branch_130719_50_A1",
+    "branch_130719_50_A3",
+    "branch_130719_50_A5",
+    "branch_130719_50_A4"
+  ],
+  "all_checks_passed": true
+}

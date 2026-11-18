@@ -1,0 +1,383 @@
+{
+  "scene": 130719,
+  "step": 150,
+  "representatives": [
+    {
+      "role": "A0",
+      "source": "SAC baseline",
+      "action": [
+        0.0007011317065916955,
+        1.0
+      ],
+      "raw_score": 212.6691131591797,
+      "q_pair": [
+        2,
+        0
+      ],
+      "candidate_rank": null,
+      "candidate_id": "A0",
+      "roles": [
+        "A0"
+      ],
+      "common_h10_score": 212.68695068359375,
+      "predicted_first_reward": 0.7430789470672607
+    },
+    {
+      "role": "A1",
+      "source": "C actual selected output",
+      "action": [
+        0.0748676210641861,
+        0.990139365196228
+      ],
+      "raw_score": 225.3848419189453,
+      "q_pair": [
+        2,
+        0
+      ],
+      "candidate_rank": null,
+      "candidate_id": "A1",
+      "roles": [
+        "A1",
+        "A2"
+      ],
+      "common_h10_score": 225.38546752929688,
+      "predicted_first_reward": 0.744441032409668
+    },
+    {
+      "role": "A3",
+      "source": "C iteration3 actual Gaussian q1.0",
+      "action": [
+        0.07617561519145966,
+        1.0
+      ],
+      "raw_score": 225.26724243164062,
+      "q_pair": [
+        3,
+        2
+      ],
+      "candidate_rank": 1,
+      "original_row": 59,
+      "candidate_id": "A3",
+      "roles": [
+        "A3"
+      ],
+      "common_h10_score": 225.44801330566406,
+      "predicted_first_reward": 0.7423981428146362
+    },
+    {
+      "role": "A4",
+      "source": "C iteration3 actual Gaussian q0.75",
+      "action": [
+        0.06509767472743988,
+        1.0
+      ],
+      "raw_score": 225.09262084960938,
+      "q_pair": [
+        3,
+        2
+      ],
+      "candidate_rank": 17,
+      "original_row": 13,
+      "candidate_id": "A4",
+      "roles": [
+        "A4"
+      ],
+      "common_h10_score": 225.05899047851562,
+      "predicted_first_reward": 0.7428584098815918
+    },
+    {
+      "role": "A5",
+      "source": "C iteration3 actual Gaussian q0.5",
+      "action": [
+        0.05805015191435814,
+        0.9943758845329285
+      ],
+      "raw_score": 225.01126098632812,
+      "q_pair": [
+        3,
+        2
+      ],
+      "candidate_rank": 32,
+      "original_row": 23,
+      "candidate_id": "A5",
+      "roles": [
+        "A5"
+      ],
+      "common_h10_score": 224.7346649169922,
+      "predicted_first_reward": 0.7442367076873779
+    },
+    {
+      "role": "A6",
+      "source": "C iteration3 actual Gaussian q0.25",
+      "action": [
+        0.07287019491195679,
+        0.9641435742378235
+      ],
+      "raw_score": 224.9026641845703,
+      "q_pair": [
+        3,
+        2
+      ],
+      "candidate_rank": 48,
+      "original_row": 4,
+      "candidate_id": "A6",
+      "roles": [
+        "A6"
+      ],
+      "common_h10_score": 225.04977416992188,
+      "predicted_first_reward": 0.7499065399169922
+    },
+    {
+      "role": "A7",
+      "source": "C iteration3 actual Gaussian q0.0",
+      "action": [
+        0.07339978963136673,
+        0.9216106534004211
+      ],
+      "raw_score": 224.5857696533203,
+      "q_pair": [
+        3,
+        2
+      ],
+      "candidate_rank": 64,
+      "original_row": 8,
+      "candidate_id": "A7",
+      "roles": [
+        "A7"
+      ],
+      "common_h10_score": 224.6041717529297,
+      "predicted_first_reward": 0.758638858795166
+    }
+  ],
+  "raw_roles": [
+    {
+      "role": "A0",
+      "source": "SAC baseline",
+      "action": [
+        0.0007011317065916955,
+        1.0
+      ],
+      "raw_score": 212.6691131591797,
+      "q_pair": [
+        2,
+        0
+      ],
+      "candidate_rank": null,
+      "common_h10_score": 212.68695068359375,
+      "predicted_first_reward": 0.7430789470672607
+    },
+    {
+      "role": "A1",
+      "source": "C actual selected output",
+      "action": [
+        0.0748676210641861,
+        0.990139365196228
+      ],
+      "raw_score": 225.3848419189453,
+      "q_pair": [
+        2,
+        0
+      ],
+      "candidate_rank": null,
+      "common_h10_score": 225.38546752929688,
+      "predicted_first_reward": 0.744441032409668
+    },
+    {
+      "role": "A2",
+      "source": "D actual selected output",
+      "action": [
+        0.0748676210641861,
+        0.990139365196228
+      ],
+      "raw_score": 225.3848419189453,
+      "q_pair": [
+        2,
+        0
+      ],
+      "candidate_rank": null,
+      "common_h10_score": 225.38546752929688,
+      "predicted_first_reward": 0.744441032409668
+    },
+    {
+      "role": "A3",
+      "source": "C iteration3 actual Gaussian q1.0",
+      "action": [
+        0.07617561519145966,
+        1.0
+      ],
+      "raw_score": 225.26724243164062,
+      "q_pair": [
+        3,
+        2
+      ],
+      "candidate_rank": 1,
+      "original_row": 59,
+      "common_h10_score": 225.44801330566406,
+      "predicted_first_reward": 0.7423981428146362
+    },
+    {
+      "role": "A4",
+      "source": "C iteration3 actual Gaussian q0.75",
+      "action": [
+        0.06509767472743988,
+        1.0
+      ],
+      "raw_score": 225.09262084960938,
+      "q_pair": [
+        3,
+        2
+      ],
+      "candidate_rank": 17,
+      "original_row": 13,
+      "common_h10_score": 225.05899047851562,
+      "predicted_first_reward": 0.7428584098815918
+    },
+    {
+      "role": "A5",
+      "source": "C iteration3 actual Gaussian q0.5",
+      "action": [
+        0.05805015191435814,
+        0.9943758845329285
+      ],
+      "raw_score": 225.01126098632812,
+      "q_pair": [
+        3,
+        2
+      ],
+      "candidate_rank": 32,
+      "original_row": 23,
+      "common_h10_score": 224.7346649169922,
+      "predicted_first_reward": 0.7442367076873779
+    },
+    {
+      "role": "A6",
+      "source": "C iteration3 actual Gaussian q0.25",
+      "action": [
+        0.07287019491195679,
+        0.9641435742378235
+      ],
+      "raw_score": 224.9026641845703,
+      "q_pair": [
+        3,
+        2
+      ],
+      "candidate_rank": 48,
+      "original_row": 4,
+      "common_h10_score": 225.04977416992188,
+      "predicted_first_reward": 0.7499065399169922
+    },
+    {
+      "role": "A7",
+      "source": "C iteration3 actual Gaussian q0.0",
+      "action": [
+        0.07339978963136673,
+        0.9216106534004211
+      ],
+      "raw_score": 224.5857696533203,
+      "q_pair": [
+        3,
+        2
+      ],
+      "candidate_rank": 64,
+      "original_row": 8,
+      "common_h10_score": 224.6041717529297,
+      "predicted_first_reward": 0.758638858795166
+    }
+  ],
+  "aliases": {
+    "A0": "A0",
+    "A1": "A1",
+    "A2": "A1",
+    "A3": "A3",
+    "A4": "A4",
+    "A5": "A5",
+    "A6": "A6",
+    "A7": "A7"
+  },
+  "C": {
+    "action": [
+      0.0748676210641861,
+      0.990139365196228
+    ],
+    "selected_source": 1,
+    "score": 225.3848419189453,
+    "final_pair": [
+      2,
+      0
+    ],
+    "iteration_pairs": [
+      [
+        3,
+        0
+      ],
+      [
+        4,
+        2
+      ],
+      [
+        4,
+        2
+      ],
+      [
+        3,
+        2
+      ]
+    ],
+    "planning_ms": 250.1699790591374,
+    "baseline_same_first": true,
+    "coarse535_bit_exact": true
+  },
+  "D": {
+    "action": [
+      0.0748676210641861,
+      0.990139365196228
+    ],
+    "selected_source": 1,
+    "score": 225.3848419189453,
+    "final_pair": [
+      2,
+      0
+    ],
+    "iteration_pairs": [
+      [
+        3,
+        0
+      ],
+      [
+        4,
+        2
+      ],
+      [
+        4,
+        2
+      ],
+      [
+        3,
+        2
+      ]
+    ],
+    "planning_ms": 170.68167496472597,
+    "baseline_same_first": true,
+    "coarse535_bit_exact": true
+  },
+  "formal_H1_ranking": "NOT ESTIMABLE",
+  "candidate_generation_env_rng_unchanged": true,
+  "candidate_executor_process_isolation": true,
+  "origin_prefix_verified": true,
+  "policy_fingerprint": {
+    "latent": "580d6445048110e55d3c7b553a4bba500e93312d4626942982288d12bb7428e2",
+    "residual535": "040ba3f316cf2dc25e1a52da92578a2eb2726dbba4b36447d883d562b97dcfe1",
+    "coarse_actions": "c4154193171b09228f1a303e76fb396094f0f5fb452eae055576d829d46d6d85",
+    "refined_actions": "3473ca48431f0a440c4dd2c27f743103b932bbef3d70225d31c2b7547875de84",
+    "refined_parameters": "71e92bdd8a22ded35e8b01524724ea585520aa8ecc44b52ee45e4e82ab01b267",
+    "requested_residual": "9c3482b4648c6de1774624663ba9ec625946517d7e621a32a9939a4785c654be",
+    "native_td_prev_mean": "97a902da7847b3ba451fdf9d6188b0a118e4aaf9b230fd2973f6c0266d756ae5",
+    "global_step": "8d6962a152aee235ba824c41758b8da2371b7077b4ea0afaaec94014e16e3bc7",
+    "pending_residual": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+    "local_generator": "56b9e246a4eeb4a77ddfe58c7b08be6b3446a14556dde366bdd23e06a40b2434",
+    "episode_seed": "46e332465a34c44c3bc8de1a271cbd47f607ef965b2b66e50d7c2844246abd56",
+    "lattice": "6c4d20d46d746f522bc7ea280f0f69722c00adc7bac6587788db572fdc914b23",
+    "safety_previous_action": "2d444d3ebe30780689406c85b049b07690a550d48ec44e617d1b6348f583fc19",
+    "risk_status": "a48bb793941898838bb41a80eb8588c584da02905e4e255ae3bd64a14c01652e"
+  }
+}

@@ -1,0 +1,338 @@
+{
+  "origins": [
+    {
+      "scene": 130719,
+      "step": 50,
+      "candidate_shape_verified": true,
+      "iteration3_is_final": true,
+      "row0_baseline_verified": true,
+      "raw_gaussian_roles_and_values_exact": true,
+      "final_selected_output_exact": true,
+      "unique_executed": [
+        "A0",
+        "A1",
+        "A2",
+        "A3",
+        "A4",
+        "A5",
+        "A6",
+        "A7"
+      ],
+      "origin_and_policy_checks_all_exact": true,
+      "first_action_only": true
+    },
+    {
+      "scene": 130719,
+      "step": 150,
+      "candidate_shape_verified": true,
+      "iteration3_is_final": true,
+      "row0_baseline_verified": true,
+      "raw_gaussian_roles_and_values_exact": true,
+      "final_selected_output_exact": true,
+      "unique_executed": [
+        "A0",
+        "A1",
+        "A3",
+        "A4",
+        "A5",
+        "A6",
+        "A7"
+      ],
+      "origin_and_policy_checks_all_exact": true,
+      "first_action_only": true
+    },
+    {
+      "scene": 130132,
+      "step": 50,
+      "candidate_shape_verified": true,
+      "iteration3_is_final": true,
+      "row0_baseline_verified": true,
+      "raw_gaussian_roles_and_values_exact": true,
+      "final_selected_output_exact": true,
+      "unique_executed": [
+        "A0",
+        "A1",
+        "A2",
+        "A3",
+        "A4",
+        "A5",
+        "A6",
+        "A7"
+      ],
+      "origin_and_policy_checks_all_exact": true,
+      "first_action_only": true
+    },
+    {
+      "scene": 130132,
+      "step": 150,
+      "candidate_shape_verified": true,
+      "iteration3_is_final": true,
+      "row0_baseline_verified": true,
+      "raw_gaussian_roles_and_values_exact": true,
+      "final_selected_output_exact": true,
+      "unique_executed": [
+        "A0",
+        "A1",
+        "A2",
+        "A3",
+        "A4",
+        "A5",
+        "A6",
+        "A7"
+      ],
+      "origin_and_policy_checks_all_exact": true,
+      "first_action_only": true
+    },
+    {
+      "scene": 130620,
+      "step": 50,
+      "candidate_shape_verified": true,
+      "iteration3_is_final": true,
+      "row0_baseline_verified": true,
+      "raw_gaussian_roles_and_values_exact": true,
+      "final_selected_output_exact": true,
+      "unique_executed": [
+        "A0",
+        "A1",
+        "A3",
+        "A4",
+        "A5",
+        "A6",
+        "A7"
+      ],
+      "origin_and_policy_checks_all_exact": true,
+      "first_action_only": true
+    },
+    {
+      "scene": 130620,
+      "step": 150,
+      "candidate_shape_verified": true,
+      "iteration3_is_final": true,
+      "row0_baseline_verified": true,
+      "raw_gaussian_roles_and_values_exact": true,
+      "final_selected_output_exact": true,
+      "unique_executed": [
+        "A0",
+        "A1",
+        "A2",
+        "A3",
+        "A4",
+        "A5",
+        "A6",
+        "A7"
+      ],
+      "origin_and_policy_checks_all_exact": true,
+      "first_action_only": true
+    },
+    {
+      "scene": 130467,
+      "step": 50,
+      "candidate_shape_verified": true,
+      "iteration3_is_final": true,
+      "row0_baseline_verified": true,
+      "raw_gaussian_roles_and_values_exact": true,
+      "final_selected_output_exact": true,
+      "unique_executed": [
+        "A0",
+        "A1",
+        "A2",
+        "A3",
+        "A4",
+        "A5",
+        "A6",
+        "A7"
+      ],
+      "origin_and_policy_checks_all_exact": true,
+      "first_action_only": true
+    },
+    {
+      "scene": 130467,
+      "step": 150,
+      "candidate_shape_verified": true,
+      "iteration3_is_final": true,
+      "row0_baseline_verified": true,
+      "raw_gaussian_roles_and_values_exact": true,
+      "final_selected_output_exact": true,
+      "unique_executed": [
+        "A0",
+        "A1",
+        "A2",
+        "A3",
+        "A4",
+        "A5",
+        "A6",
+        "A7"
+      ],
+      "origin_and_policy_checks_all_exact": true,
+      "first_action_only": true
+    },
+    {
+      "scene": 130806,
+      "step": 50,
+      "candidate_shape_verified": true,
+      "iteration3_is_final": true,
+      "row0_baseline_verified": true,
+      "raw_gaussian_roles_and_values_exact": true,
+      "final_selected_output_exact": true,
+      "unique_executed": [
+        "A0",
+        "A1",
+        "A3",
+        "A4",
+        "A5",
+        "A6",
+        "A7"
+      ],
+      "origin_and_policy_checks_all_exact": true,
+      "first_action_only": true
+    },
+    {
+      "scene": 130806,
+      "step": 150,
+      "candidate_shape_verified": true,
+      "iteration3_is_final": true,
+      "row0_baseline_verified": true,
+      "raw_gaussian_roles_and_values_exact": true,
+      "final_selected_output_exact": true,
+      "unique_executed": [
+        "A0",
+        "A1",
+        "A2",
+        "A3",
+        "A4",
+        "A5",
+        "A6",
+        "A7"
+      ],
+      "origin_and_policy_checks_all_exact": true,
+      "first_action_only": true
+    },
+    {
+      "scene": 130343,
+      "step": 50,
+      "candidate_shape_verified": true,
+      "iteration3_is_final": true,
+      "row0_baseline_verified": true,
+      "raw_gaussian_roles_and_values_exact": true,
+      "final_selected_output_exact": true,
+      "unique_executed": [
+        "A0",
+        "A1",
+        "A2",
+        "A3",
+        "A4",
+        "A5",
+        "A6",
+        "A7"
+      ],
+      "origin_and_policy_checks_all_exact": true,
+      "first_action_only": true
+    },
+    {
+      "scene": 130343,
+      "step": 150,
+      "candidate_shape_verified": true,
+      "iteration3_is_final": true,
+      "row0_baseline_verified": true,
+      "raw_gaussian_roles_and_values_exact": true,
+      "final_selected_output_exact": true,
+      "unique_executed": [
+        "A0",
+        "A1",
+        "A3",
+        "A4",
+        "A5",
+        "A6",
+        "A7"
+      ],
+      "origin_and_policy_checks_all_exact": true,
+      "first_action_only": true
+    },
+    {
+      "scene": 130605,
+      "step": 50,
+      "candidate_shape_verified": true,
+      "iteration3_is_final": true,
+      "row0_baseline_verified": true,
+      "raw_gaussian_roles_and_values_exact": true,
+      "final_selected_output_exact": true,
+      "unique_executed": [
+        "A0",
+        "A1",
+        "A2",
+        "A3",
+        "A4",
+        "A5",
+        "A6",
+        "A7"
+      ],
+      "origin_and_policy_checks_all_exact": true,
+      "first_action_only": true
+    },
+    {
+      "scene": 130605,
+      "step": 150,
+      "candidate_shape_verified": true,
+      "iteration3_is_final": true,
+      "row0_baseline_verified": true,
+      "raw_gaussian_roles_and_values_exact": true,
+      "final_selected_output_exact": true,
+      "unique_executed": [
+        "A0",
+        "A1",
+        "A2",
+        "A3",
+        "A4",
+        "A5",
+        "A6",
+        "A7"
+      ],
+      "origin_and_policy_checks_all_exact": true,
+      "first_action_only": true
+    },
+    {
+      "scene": 130018,
+      "step": 50,
+      "candidate_shape_verified": true,
+      "iteration3_is_final": true,
+      "row0_baseline_verified": true,
+      "raw_gaussian_roles_and_values_exact": true,
+      "final_selected_output_exact": true,
+      "unique_executed": [
+        "A0",
+        "A1",
+        "A3",
+        "A4",
+        "A5",
+        "A6",
+        "A7"
+      ],
+      "origin_and_policy_checks_all_exact": true,
+      "first_action_only": true
+    },
+    {
+      "scene": 130018,
+      "step": 150,
+      "candidate_shape_verified": true,
+      "iteration3_is_final": true,
+      "row0_baseline_verified": true,
+      "raw_gaussian_roles_and_values_exact": true,
+      "final_selected_output_exact": true,
+      "unique_executed": [
+        "A0",
+        "A1",
+        "A2",
+        "A3",
+        "A4",
+        "A5",
+        "A6",
+        "A7"
+      ],
+      "origin_and_policy_checks_all_exact": true,
+      "first_action_only": true
+    }
+  ],
+  "all_passed": true,
+  "formal_h1_ranking": "NOT ESTIMABLE",
+  "provenance": "Runtime evaluator calls capture the exact candidate tensors used by LocalMPPI; final batch is separate Baseline/Mean, not iteration4."
+}

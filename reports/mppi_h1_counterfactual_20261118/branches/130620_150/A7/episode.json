@@ -1,0 +1,40 @@
+{
+  "scene": 130620,
+  "origin_step": 150,
+  "candidate_id": "A7",
+  "roles": [
+    "A7"
+  ],
+  "normalized_action": [
+    -0.19879014790058136,
+    0.763329029083252
+  ],
+  "success": 1.0,
+  "crash": 1.0,
+  "out_of_road": 0.0,
+  "route_completion": 0.9882574004388134,
+  "timeout": 0.0,
+  "safety_cost": 7.067908545983933,
+  "episode_length": 289,
+  "episode_return": 60.097505455069786,
+  "discounted_return": 36.03431562081885,
+  "immediate": {
+    "reward": 1.312250580030863,
+    "cost": 2.589599453797954e-05,
+    "speed_change": 0.09576972619390034,
+    "heading_change": -0.011953998026983825,
+    "position_change": 1.2498290885863692
+  },
+  "end_reason": "arrive_dest",
+  "native_terminated": true,
+  "native_truncated": false,
+  "native_done": true,
+  "baseline_full_tail_matched": null,
+  "feedback_steps": 288,
+  "intervention_steps": 1,
+  "exact_origin": true,
+  "exact_policy_history": true,
+  "extended_environment_exact": true,
+  "weights_unchanged": true,
+  "continuation_mppi_calls": 0
+}
