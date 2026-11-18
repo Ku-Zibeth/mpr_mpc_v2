@@ -1,0 +1,64 @@
+{
+  "original_A_first100_actions_and101_observations_bitwise_exact": true,
+  "scenes": [
+    200618,
+    200015
+  ],
+  "configs_retuned": false,
+  "smoke_results": [
+    {
+      "scene": 200618,
+      "group": "A",
+      "comfort_index": 0.6711896108703841,
+      "steering_rate": 0.20999003946781158,
+      "planner_p95_ms": 121.59172064275482,
+      "local_p95_ms": 0.0,
+      "route": 0.1651172416899687
+    },
+    {
+      "scene": 200618,
+      "group": "B",
+      "comfort_index": 0.6863181178734278,
+      "steering_rate": 0.1852250099182129,
+      "planner_p95_ms": 118.32230849540791,
+      "local_p95_ms": 0.0,
+      "route": 0.164159220307651
+    },
+    {
+      "scene": 200618,
+      "group": "C",
+      "comfort_index": 0.7353425883645333,
+      "steering_rate": 0.20439103245735168,
+      "planner_p95_ms": 155.47267271322198,
+      "local_p95_ms": 55.042482574936,
+      "route": 0.15650335556977638
+    },
+    {
+      "scene": 200015,
+      "group": "A",
+      "comfort_index": 0.5309841409520639,
+      "steering_rate": 0.18844343721866608,
+      "planner_p95_ms": 114.78136034565978,
+      "local_p95_ms": 0.0,
+      "route": 0.383311155946662
+    },
+    {
+      "scene": 200015,
+      "group": "B",
+      "comfort_index": 0.48828275243926733,
+      "steering_rate": 0.17021341621875763,
+      "planner_p95_ms": 114.87718158750793,
+      "local_p95_ms": 0.0,
+      "route": 0.3829965909893235
+    },
+    {
+      "scene": 200015,
+      "group": "C",
+      "comfort_index": 0.5140168250560966,
+      "steering_rate": 0.17832015454769135,
+      "planner_p95_ms": 143.44170098775066,
+      "local_p95_ms": 55.81920481636189,
+      "route": 0.3815057558031339
+    }
+  ]
+}

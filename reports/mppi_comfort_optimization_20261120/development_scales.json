@@ -1,0 +1,162 @@
+{
+  "comfort_index": {
+    "steering_rate_rms_raw": 0.2872399836778641,
+    "longitudinal_jerk_rms_filtered": 25.99700837971382,
+    "lateral_jerk_rms_filtered": 2.9234008779361034,
+    "lateral_acceleration_rms_filtered": 1.203055170920313
+  },
+  "hard_braking_threshold_mps2": 11.335930697148124,
+  "steering_rate_scale": 0.6062948703765869,
+  "steering_jerk_scale": 8.519899368286133,
+  "units": {
+    "steering": "front-wheel mapping radians; old logs did not measure Bullet wheel angle",
+    "speed": "m/s",
+    "jerk": "m/s^3"
+  },
+  "sources": [
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200618_r1/trace.npz",
+      "sha256": "bbcd7b3cdca60065fac4ee8c66da11dcd740f2b23d484af2e47859ef5dd68404"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200618_r2/trace.npz",
+      "sha256": "bbcd7b3cdca60065fac4ee8c66da11dcd740f2b23d484af2e47859ef5dd68404"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200618_r3/trace.npz",
+      "sha256": "bbcd7b3cdca60065fac4ee8c66da11dcd740f2b23d484af2e47859ef5dd68404"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200015_r1/trace.npz",
+      "sha256": "344af93c45a95e56b0e5b6a76b9d52c7a31c767cf15be69e24dfd11bcdd96ee9"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200015_r2/trace.npz",
+      "sha256": "344af93c45a95e56b0e5b6a76b9d52c7a31c767cf15be69e24dfd11bcdd96ee9"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200015_r3/trace.npz",
+      "sha256": "344af93c45a95e56b0e5b6a76b9d52c7a31c767cf15be69e24dfd11bcdd96ee9"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200465_r1/trace.npz",
+      "sha256": "623c7850fc487fca0370cc6d944e4ddb5f03bc091cad61ddc83ebdb85996af31"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200465_r2/trace.npz",
+      "sha256": "623c7850fc487fca0370cc6d944e4ddb5f03bc091cad61ddc83ebdb85996af31"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200465_r3/trace.npz",
+      "sha256": "623c7850fc487fca0370cc6d944e4ddb5f03bc091cad61ddc83ebdb85996af31"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200972_r1/trace.npz",
+      "sha256": "0a7fac0319ab1cb705d0168520ac90c4fce4b74ec308e0c69bec8f2b15306d90"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200972_r2/trace.npz",
+      "sha256": "0a7fac0319ab1cb705d0168520ac90c4fce4b74ec308e0c69bec8f2b15306d90"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200972_r3/trace.npz",
+      "sha256": "0a7fac0319ab1cb705d0168520ac90c4fce4b74ec308e0c69bec8f2b15306d90"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200777_r1/trace.npz",
+      "sha256": "54f5a677859401353c78559c50130298e683c1043eb92a663b18a60fa106800e"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200777_r2/trace.npz",
+      "sha256": "54f5a677859401353c78559c50130298e683c1043eb92a663b18a60fa106800e"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200777_r3/trace.npz",
+      "sha256": "54f5a677859401353c78559c50130298e683c1043eb92a663b18a60fa106800e"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200723_r1/trace.npz",
+      "sha256": "c28ccad9c5a4f57f24614e2b426e6ff22b5621b3225cc4e8dd96651ffcb62655"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200723_r2/trace.npz",
+      "sha256": "c28ccad9c5a4f57f24614e2b426e6ff22b5621b3225cc4e8dd96651ffcb62655"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200723_r3/trace.npz",
+      "sha256": "c28ccad9c5a4f57f24614e2b426e6ff22b5621b3225cc4e8dd96651ffcb62655"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200081_r1/trace.npz",
+      "sha256": "f815397cd56ed08cb2b5c960bf267bf0f60d22c0b1e8cdd58c557d98003141d5"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200081_r2/trace.npz",
+      "sha256": "f815397cd56ed08cb2b5c960bf267bf0f60d22c0b1e8cdd58c557d98003141d5"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200081_r3/trace.npz",
+      "sha256": "f815397cd56ed08cb2b5c960bf267bf0f60d22c0b1e8cdd58c557d98003141d5"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200583_r1/trace.npz",
+      "sha256": "2290ff85c1c29bfa2082be35ab7f0de9e3d6f507acb4f71e2e9e48e01f1a5f9a"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200583_r2/trace.npz",
+      "sha256": "2290ff85c1c29bfa2082be35ab7f0de9e3d6f507acb4f71e2e9e48e01f1a5f9a"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200583_r3/trace.npz",
+      "sha256": "2290ff85c1c29bfa2082be35ab7f0de9e3d6f507acb4f71e2e9e48e01f1a5f9a"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200901_r1/trace.npz",
+      "sha256": "a468cfdc65d77f96e82c2e4f473f72e71a33e53d7253c551a240d0d893bc8934"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200901_r2/trace.npz",
+      "sha256": "a468cfdc65d77f96e82c2e4f473f72e71a33e53d7253c551a240d0d893bc8934"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200901_r3/trace.npz",
+      "sha256": "a468cfdc65d77f96e82c2e4f473f72e71a33e53d7253c551a240d0d893bc8934"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200160_r1/trace.npz",
+      "sha256": "11aaa2c959e34444ab047c087db6b5b7ea490228995294bb4b4993832a590e9d"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200160_r2/trace.npz",
+      "sha256": "11aaa2c959e34444ab047c087db6b5b7ea490228995294bb4b4993832a590e9d"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200160_r3/trace.npz",
+      "sha256": "11aaa2c959e34444ab047c087db6b5b7ea490228995294bb4b4993832a590e9d"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200391_r1/trace.npz",
+      "sha256": "a97089e02300a9f0bbc999bc4e9bc509cd627a6ae3f4404288d8bf899b59e193"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200391_r2/trace.npz",
+      "sha256": "a97089e02300a9f0bbc999bc4e9bc509cd627a6ae3f4404288d8bf899b59e193"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200391_r3/trace.npz",
+      "sha256": "a97089e02300a9f0bbc999bc4e9bc509cd627a6ae3f4404288d8bf899b59e193"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200333_r1/trace.npz",
+      "sha256": "6cec46cfc8555508956e8ce396c6ce6a11fdbb4df75bf157c649989c1f5994be"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200333_r2/trace.npz",
+      "sha256": "6cec46cfc8555508956e8ce396c6ce6a11fdbb4df75bf157c649989c1f5994be"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200333_r3/trace.npz",
+      "sha256": "6cec46cfc8555508956e8ce396c6ce6a11fdbb4df75bf157c649989c1f5994be"
+    }
+  ]
+}

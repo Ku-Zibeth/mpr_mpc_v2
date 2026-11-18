@@ -1,0 +1,8 @@
+{
+  "groups": 3,
+  "maps": 2,
+  "warmup": 5,
+  "calls_per_case": 100,
+  "actual_env_steps": true,
+  "latency_rollouts_not_extra_driving_samples": true
+}

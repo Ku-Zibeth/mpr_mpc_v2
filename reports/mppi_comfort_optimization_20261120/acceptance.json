@@ -1,0 +1,38 @@
+{
+  "engineering_point_conditions": {
+    "comfort_at_least10": true,
+    "success_noninferior": true,
+    "crash_noninferior": true,
+    "oor_noninferior": true,
+    "route_noninferior": true,
+    "return_noninferior": true
+  },
+  "map95_conditions": {
+    "comfort_at_least10": true,
+    "steering_better": true,
+    "longitudinal_jerk_not_worse": false,
+    "lateral_jerk_not_worse": true,
+    "lateral_oscillation_not_worse": false,
+    "success_noninferior": true,
+    "crash_noninferior": false,
+    "oor_noninferior": true,
+    "route_noninferior": false,
+    "return_noninferior": false,
+    "beats_simple_filter_comfort_or_task": false,
+    "across_maps": true,
+    "nonzero_replacement": true,
+    "isolated_planner_under100": true,
+    "isolated_planner_not_materially_above_A": true
+  },
+  "accepted": false,
+  "isolated_planner_p95_ms": {
+    "A": 86.49982772767544,
+    "B": 86.36049545020796,
+    "C": 95.91307504451835
+  },
+  "conclusion": "insufficient evidence or failed constraints; do not deploy",
+  "initial_pairings": 36,
+  "map_geometry_unique": true,
+  "real_comfort_vs_predicted_cost": "Actual environment metrics only; comfort scores not driving returns",
+  "finite_map_uncertainty": "12clusters; 36planner seeds are not36 independent maps"
+}

@@ -94,6 +94,11 @@ class MPRMPCPlanner:
             action_dim=self.action_dim,
             device=self.device,
         )
+        self.comfort_evaluator = None
+        if self.local_mppi.objective_mode == 'comfort':
+            from .comfort_evaluator import ComfortTrajectoryEvaluator
+            self.comfort_evaluator = ComfortTrajectoryEvaluator(
+                mapping(mppi_cfg.get('comfort')),control_dt=self.control_dt,device=self.device)
         # Existing E5 policies consume these three geometric state features.
         # Preserve their input semantics once for the coarse SAC state only;
         # no MPPI candidate passes through this legacy feature extractor.
@@ -141,7 +146,7 @@ class MPRMPCPlanner:
             f"samples={int(mppi_cfg.get('num_samples', 64))} "
             f"elites={int(mppi_cfg.get('num_elites', 8))} "
             f"iterations={int(mppi_cfg.get('iterations', 4))}\n"
-            "single_gaussian=True AR1=True objective=reward+official_avg_Q output=mean_vs_SAC\n"
+            f"single_gaussian=True AR1=True objective={self.local_mppi.objective_mode} output=mean_vs_SAC\n"
             f"legacy_SAC_geometry_features={self.safety is not None} (never candidate scoring)"
         )
 
@@ -158,6 +163,8 @@ class MPRMPCPlanner:
             self._episode_seed = int(seed) % 2**32
         self.structured.reset()
         self.local_mppi.reset(seed=getattr(self, "_episode_seed", None))
+        if self.comfort_evaluator is not None:
+            self.comfort_evaluator.reset()
         if self.safety is not None:
             self.safety.reset()
         self.last_context = None
@@ -397,7 +404,13 @@ class MPRMPCPlanner:
         if stage.use_mppi:
             if context.latent is None:
                 raise RuntimeError("Stage B/C MPPI requires an encoded current observation.")
-            mppi = self.local_mppi.plan(context.latent, refined_actions, eval_mode=eval_mode)
+            comfort_options = {}
+            if self.comfort_evaluator is not None:
+                width,wheelbase,steering = self._vehicle_geometry(vehicle)
+                comfort_context = self.comfort_evaluator.context(vehicle,refined.xy,
+                    width=width,wheelbase=wheelbase,max_steering=steering)
+                comfort_options = dict(comfort_evaluator=self.comfort_evaluator,comfort_context=comfort_context)
+            mppi = self.local_mppi.plan(context.latent, refined_actions, eval_mode=eval_mode,**comfort_options)
             self.mppi_call_count += 1
             self.baseline_selected_count += int(mppi.baseline_selected)
             action = mppi.action
@@ -478,8 +491,13 @@ class MPRMPCPlanner:
         if stage.use_mppi and self.safety is not None and context.safety_context is not None:
             # Display only: reuse the frozen SAC geometry service, never filter
             # or rank candidates, and never feed this back into the 535-D state.
-            positions, _, _ = self.safety.rollout(selected_actions[None], context.safety_context)
-            final_mppi_xy = positions[0, ::self.safety.substeps].detach().cpu().numpy()
+            if self.comfort_evaluator is not None:
+                short = torch.cat((selected_actions[:1],selected_actions[-1:]),0)
+                positions,_,_ = self.comfort_evaluator.motion.rollout(short[None],comfort_context.motion)
+                final_mppi_xy = positions[0,::self.comfort_evaluator.motion.substeps].detach().cpu().numpy()
+            else:
+                positions, _, _ = self.safety.rollout(selected_actions[None], context.safety_context)
+                final_mppi_xy = positions[0, ::self.safety.substeps].detach().cpu().numpy()
 
         paths = list(context.selection.candidates)
         if not any(path is refined for path in paths):

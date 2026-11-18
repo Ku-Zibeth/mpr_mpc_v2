@@ -1,0 +1,2 @@
+name, memory.total [MiB], memory.used [MiB], utilization.gpu [%]
+NVIDIA GeForce RTX 3070, 8192 MiB, 597 MiB, 1 %

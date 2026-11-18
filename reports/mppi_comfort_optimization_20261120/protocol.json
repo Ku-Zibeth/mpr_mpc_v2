@@ -1,0 +1,104 @@
+{
+  "base_commit": "a9e84b55f4d373cad11979e70eceed149db59a6d",
+  "checkpoint": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt",
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "source_environment_config": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/benchmark/sac_refinement_BD_fixed100_20261111_152755/part1/config_B_lattice_sac_seed1.yaml",
+  "development_scenes": [
+    200618,
+    200015,
+    200465,
+    200972,
+    200777,
+    200723,
+    200081,
+    200583,
+    200901,
+    200160,
+    200391,
+    200333
+  ],
+  "scenes": [
+    300910,
+    300881,
+    300853,
+    300588,
+    300200,
+    300832,
+    300410,
+    300794,
+    300751,
+    300883,
+    300497,
+    300776
+  ],
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "seed_semantics": "planner/global seed=scene+seed; environment reset seed=scene, same paired traffic",
+  "bootstrap_samples": 2000,
+  "bootstrap_seed": 20261120,
+  "control_dt": 0.1,
+  "gamma": 0.995,
+  "worker_limit": 6,
+  "methods": {
+    "A": "Original Lattice+SAC",
+    "B": "Causal steering low-pass, exact original throttle",
+    "C": "Comfort-aware Local MPPI, exact original throttle"
+  },
+  "lowpass": {
+    "tau_seconds": 0.07116221027602929,
+    "alpha": 0.5842411116258217,
+    "steering_delta_bound": 0.04342267151626219,
+    "formula": "alpha*u_SAC+(1-alpha)*actual_previous, clipped around current SAC; throttle unchanged"
+  },
+  "objective": "two directly measurable action terms only: equally normalized steering rate and steering second difference; no unvalidated physical jerk or TerminalQ",
+  "physics_horizon": 1,
+  "kinematic_prediction_not_safety_guarantee": true,
+  "samples": 64,
+  "elites": 8,
+  "iterations": 4,
+  "comfort_index": {
+    "scales": {
+      "steering_rate_rms_raw": 0.2872399836778641,
+      "longitudinal_jerk_rms_filtered": 25.99700837971382,
+      "lateral_jerk_rms_filtered": 2.9234008779361034,
+      "lateral_acceleration_rms_filtered": 1.203055170920313
+    },
+    "definition": "mean of raw steering_rate_RMS and SG-filtered actual longitudinal_jerk_RMS/lateral_jerk_RMS/lateral_accel_RMS normalized by map-level development medians"
+  },
+  "offline_filter": "5point Savitzky-Golay poly2 at dt0.1, identical allgroups; raw metrics retained; never used online",
+  "hard_braking_threshold_mps2": 11.335930697148124,
+  "hard_braking_definition": "data-derived P95 of development actual negative acceleration; episode event starts, not a universal emergency threshold",
+  "acceptance": {
+    "comfort_index_reduction": 0.1,
+    "success_noninferiority": -0.03,
+    "crash_noninferiority": 0.02,
+    "oor_noninferiority": 0.02,
+    "route_noninferiority": -0.01,
+    "discounted_return_relative_noninferiority": -0.02,
+    "planner_p95_ms": 100,
+    "planner_ratio_to_A": 1.2,
+    "comfort_C_vs_B": "paired improvement or comparable comfort with credible task benefit; no baseline-only success claim",
+    "interval_rule": "map bootstrap95% must support conditions; wide intervals=insufficient evidence"
+  },
+  "development_smoke": {
+    "scenes": [
+      200618,
+      200015
+    ],
+    "seed": 1,
+    "steps": 100,
+    "groups": [
+      "A",
+      "B",
+      "C"
+    ],
+    "no_weight_search": true
+  },
+  "no_new_test_outcomes_at_freeze": true,
+  "training": false,
+  "commit": false,
+  "push": false
+}

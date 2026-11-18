@@ -1,0 +1,53 @@
+{
+  "base_commit": "a9e84b55f4d373cad11979e70eceed149db59a6d",
+  "current_main_commit": "a9e84b55f4d373cad11979e70eceed149db59a6d",
+  "actual_completion_time": "2026-11-18T23:48:35.122865+08:00",
+  "date_in_folder_is_task_identifier": true,
+  "core_frozen_hashes": {
+    "planning/local_mppi.py": "0764300b8fd67092e39133c453dc9974030ef5cd1b85cbc7e4533242fd5cbd76",
+    "planning/coordinator.py": "0a018495119b4c124e36518c91ee0df337594a03bbf9cef0161fbb115683ea54",
+    "planning/comfort_evaluator.py": "05df2b3cdb75b04f20741b90a40a2670abd83e39e1349f702ca7b4932660e142"
+  },
+  "original_config_unchanged": true,
+  "original_checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "checkpoint_unchanged": true,
+  "WM_SAC535_action_mapping_Lattice_reward_cost_done_unchanged": true,
+  "legacy_real_model_bitwise_parity": true,
+  "prior_required_files_and36_baseline_traces_rehashed": true,
+  "tests_passed": 59,
+  "development_smoke_episodes": 6,
+  "independent_closed_episodes": 108,
+  "independent_maps": 12,
+  "paired_planning_seeds": [
+    1,
+    2,
+    3
+  ],
+  "same_traffic_within_map": true,
+  "initial_pairings": 36,
+  "road_geometries_unique": true,
+  "sampling_budget": [
+    64,
+    8,
+    4
+  ],
+  "comfort_candidate_WM_Q_calls": 0,
+  "executed_throttle_equals_SAC": true,
+  "no_test_retuning": true,
+  "native_sampling_update_methods_AST_unchanged": [
+    "reset",
+    "initial_mean",
+    "_candidate_batch",
+    "_weights",
+    "_elite_weights",
+    "_update_distribution"
+  ],
+  "actual_Bullet_wheel_angle_mapping_verified": true,
+  "model_physical_prediction_horizon": 1,
+  "unvalidated_longitudinal_lateral_jerk_objective_disabled": true,
+  "protection_not_comfort_gain": "Comfort scores are predictions; all reported improvements use actual closed-loop states",
+  "networks_trained": 0,
+  "commit": false,
+  "push": false,
+  "default_controller_changed": false
+}

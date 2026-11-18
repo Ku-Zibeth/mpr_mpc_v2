@@ -25,6 +25,11 @@ MPPI_DIAGNOSTIC_KEYS = (
     'selection_is_elite','selected_source_code','final_elite_value','final_elite_gain',
     'baseline_guard_enabled','baseline_guard_blocked','baseline_guard_reason_code',
     'replacement_supported','final_selection_margin',
+    'comfort_enabled','comfort_baseline_cost','comfort_selected_cost','comfort_gain',
+    'comfort_feasible_ratio','comfort_mean_feasible','comfort_used_elite','comfort_wm_rollout_calls','comfort_evaluation_ms',
+    'comfort_enabled','comfort_baseline_cost','comfort_selected_cost','comfort_gain',
+    'comfort_feasible_ratio','comfort_mean_feasible','comfort_used_elite',
+    'comfort_evaluation_ms','comfort_wm_rollout_calls',
 ) + tuple(f'iteration_{i}_{name}' for i in range(4) for name in ('elite_value_mean','elite_value_max','sampling_diversity','weight_entropy','effective_sample_size'))
 MPPI_EPISODE_METRICS = {f'mppi_{k}':f'mppi/{k}' for k in (*MPPI_DIAGNOSTIC_KEYS,'total_planning_ms')}
 
@@ -90,6 +95,9 @@ class LocalMPPI:
         self.selection_mode = str(cfg.get('selection_mode','weighted_mean'))
         self.compare_final_elite = 'selection_mode' in cfg  # exact legacy behavior when absent
         self.record_candidates = bool(cfg.get('record_candidates',False))
+        self.objective_mode = str(cfg.get('objective_mode','legacy'))
+        if self.objective_mode not in {'legacy','comfort'}:
+            raise ValueError('Unknown MPPI objective_mode.')
         # Opt-in admission of a predicted improvement, not a safety certificate
         # or an estimate of H1/SAC continuation value. Legacy outputs stay exact.
         self.final_selection_policy = str(cfg.get('final_selection_policy','legacy'))
@@ -160,11 +168,15 @@ class LocalMPPI:
         return mean,std,elite
 
     @torch.no_grad()
-    def plan(self,z_t,baseline,*,eval_mode,task=None):
+    def plan(self,z_t,baseline,*,eval_mode,task=None,comfort_evaluator=None,comfort_context=None):
         baseline = baseline.to(self.device)
         if (baseline.shape!=(self.horizon+1,self.action_dim) or not torch.isfinite(baseline).all()
                 or (baseline.abs()>1).any()):
             raise ValueError('SAC baseline must be finite, in [-1,1], and [H+1,action_dim].')
+        if self.objective_mode == 'comfort':
+            if comfort_evaluator is None or comfort_context is None:
+                raise ValueError('Comfort mode requires an explicit calibrated evaluator and live context.')
+            return self._plan_comfort(baseline,comfort_evaluator,comfort_context)
         mean = self.initial_mean(baseline)
         std = self.initial_std_vector.expand_as(mean).clone()
         active = self.horizon if self.terminal_action == 'policy_prior' or self.terminal_value == 'sac_value' else self.horizon+1
@@ -405,6 +417,60 @@ class LocalMPPI:
             baseline_consequence=base,selected_consequence=selected,candidate_audit=audit,
             selection_candidates=selection_candidates,candidate_trace=trace,
             planning_mode='baseline' if baseline_selected else 'normal')
+
+    @torch.no_grad()
+    def _plan_comfort(self,baseline,evaluator,context):
+        """Same Gaussian/AR1 and weighted Elite updates; no candidate WM calls."""
+        import time
+        started=time.perf_counter();phase=PhaseTimings(self.device)
+        mean=self.initial_mean(baseline);std=self.initial_std_vector.expand_as(mean).clone();std[-1]=0.
+        initial_mean,initial_std=mean.clone(),std.clone()
+        base=evaluator.evaluate(baseline[None],baseline,context);base_value=base['score'][0]
+        best,best_value=baseline,base_value;elite=base_value[None];history=[];ratios=[];traces=[];error=None
+        for i in range(self.iterations):
+            with phase.measure('mppi_sampling'):
+                candidates=evaluator.project(self._candidate_batch(mean,std,baseline),baseline)
+            with phase.measure('comfort_evaluation'):
+                result=evaluator.evaluate(candidates,baseline,context)
+                values=result['score'].masked_fill(~result['feasible'],-torch.inf)
+                # Exact SAC is always an explicitly retained task reference.
+                values[0]=base_value
+            if not bool(torch.isfinite(result['score']).all()):error='non_finite_comfort_score';break
+            idx=int(values.argmax())
+            if bool(values[idx]>best_value):best,best_value=candidates[idx].clone(),values[idx]
+            with phase.measure('elite_update'):
+                mean,std,elite=self._update_distribution(candidates,values)
+                mean=evaluator.project(mean[None],baseline)[0];std[-1]=0.
+            ratios.append(result['feasible'].float().mean())
+            history.append(dict(iteration=i,candidate_count=len(candidates),elite_count=self.num_elites,
+                best_comfort_score=float(values[idx]),feasible_ratio=float(ratios[-1])))
+            if self.record_candidates:traces.append(dict(actions=candidates.clone(),scores=result['score'].clone(),feasible=result['feasible'].clone()))
+        with phase.measure('final_value_evaluation'):
+            final=evaluator.evaluate(torch.stack((baseline,mean,best)),baseline,context)
+        selected=0
+        if error is None:
+            # Mean remains first choice; sampled feasible Elite is only the fallback.
+            if bool(final['feasible'][1]) and bool(final['score'][1]>base_value):selected=1
+            elif bool(final['feasible'][2]) and bool(final['score'][2]>base_value):selected=2
+        sequence=torch.stack((baseline,mean,best))[selected];baseline_selected=selected==0
+        score=final['score'][selected];delta=sequence[0]-baseline[0]
+        timing=phase.finish();metrics=dict(timing,comfort_enabled=1.,comfort_baseline_cost=float(-base_value),
+            comfort_selected_cost=float(-score),comfort_gain=float(score-base_value),
+            comfort_feasible_ratio=float(torch.stack(ratios).mean()) if ratios else 0.,
+            comfort_mean_feasible=float(final['feasible'][1]),comfort_used_elite=float(selected==2),comfort_wm_rollout_calls=0.,
+            baseline_selected=float(baseline_selected),invalid_prediction=float(error is not None),iterations_completed=float(len(history)),
+            wm_evaluated_candidates=0.,first_action_delta_norm=float(delta.norm()),first_steer_delta=float(delta[0]),first_throttle_delta=float(delta[1]),
+            selected_source_code=float(selected),planning_time_ms=1000*(time.perf_counter()-started))
+        nan=baseline.new_tensor(float('nan'))
+        # Keep WM-specific aliases unavailable rather than mislabel comfort as Return.
+        consequence=dict(value=nan,reward=nan,terminal_q=nan,cost=nan,validated=False)
+        return LocalMPPIResult(action=sequence[0],selected_sequence=sequence,initial_mean=initial_mean,final_mean=mean,
+            initial_std=initial_std,final_std=std,baseline_wm_value=nan,optimized_wm_value=nan,selected_wm_value=nan,wm_value_gain=nan,
+            elite_values=elite,baseline_selected=baseline_selected,max_action_delta=(sequence-baseline).abs().amax(0),
+            metrics=metrics,iterations=history,numerical_error=error,baseline_consequence=consequence,selected_consequence=consequence,
+            evaluation=dict(objective_mode='comfort',terminal_q_used=False,physical_horizon=1,throttle='exact SAC',safety_guarantee=False),
+            candidate_trace=dict(iterations=traces),planning_mode='baseline' if baseline_selected else 'comfort',
+            selection_candidates=dict(baseline=baseline,mean=mean,best_elite=best))
 
 
 __all__ = ['LocalMPPI','LocalMPPIResult','_action_vector','MPPI_DIAGNOSTIC_KEYS','MPPI_EPISODE_METRICS']
