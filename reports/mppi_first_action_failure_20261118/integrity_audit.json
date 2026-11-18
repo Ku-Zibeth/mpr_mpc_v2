@@ -1,0 +1,46 @@
+{
+  "branches": 576,
+  "branch_counts": {
+    "H10/baseline": 95,
+    "H1/baseline": 287,
+    "H2/baseline": 95,
+    "H4/baseline": 95,
+    "H1/td_actor": 2,
+    "H1/td_mpc": 2
+  },
+  "origins": 36,
+  "maps": 18,
+  "unique_without_exact_replays": 575,
+  "replay_branches": 1,
+  "failed_branches": [],
+  "missing_prior_deliverables": [],
+  "prior_source_hash_matches": {
+    "tools/first_action_study.py": true,
+    "tests/test_first_action_study.py": true,
+    "reports/mppi_first_action_value_20261117/analyze.py": true,
+    "reports/mppi_first_action_value_20261117/batch.py": true,
+    "reports/mppi_first_action_value_20261117/collect.py": true,
+    "reports/mppi_first_action_value_20261117/enrich.py": true,
+    "reports/mppi_first_action_value_20261117/finalize_study.py": true,
+    "reports/mppi_first_action_value_20261117/finish_after_pipeline.py": true,
+    "reports/mppi_first_action_value_20261117/native_parity.py": true,
+    "reports/mppi_first_action_value_20261117/native_report.py": true,
+    "reports/mppi_first_action_value_20261117/offline_model.py": true,
+    "reports/mppi_first_action_value_20261117/pipeline.py": true,
+    "reports/mppi_first_action_value_20261117/prepare.py": true,
+    "reports/mppi_first_action_value_20261117/setup.py": true,
+    "reports/mppi_first_action_value_20261117/train_offline.py": true,
+    "reports/mppi_first_action_value_20261117/validate_offline.py": true
+  },
+  "all_checked_records_passed": true,
+  "independently_validated_new_model": false,
+  "limitations": [
+    "Actual post-clipping wheel angle/force and per-step ego physical states were not recorded; SI action mapping cannot be certified from normalized commands alone.",
+    "Per-step collision/offroad/success flags were not archived; first accident time cannot be reconstructed from episode-level flags.",
+    "No independent traffic-stream repeats; replay seed is not a new independent map.",
+    "H2/H4/H10 exist only for six pilot maps. H1 has twelve development and six previously exposed validation maps.",
+    "The prior validation maps are now seen data for attribution, never a fresh independent validation set.",
+    "actual_continuation_return in old branch JSON means RTG after the first step, including remaining forced actions when H>1; the index distinguishes both continuation definitions.",
+    "The user prompt is truncated at section4.3. No unseen later experimental design or acceptance thresholds are assumed."
+  ]
+}

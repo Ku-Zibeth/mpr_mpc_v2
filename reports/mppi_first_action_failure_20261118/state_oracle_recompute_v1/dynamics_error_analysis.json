@@ -1,0 +1,351 @@
+{
+  "by_requested_horizon": {
+    "H1": {
+      "latent_mse": {
+        "mean": 0.0010572094828502385,
+        "ci95": [
+          0.0007600955353988562,
+          0.0015344438462348655
+        ],
+        "maps": 18,
+        "effective_maps": 18,
+        "undefined_resamples": 0
+      },
+      "latent_l2": {
+        "mean": 0.674266410917635,
+        "ci95": [
+          0.6048560240365092,
+          0.7614153967656578
+        ],
+        "maps": 18,
+        "effective_maps": 18,
+        "undefined_resamples": 0
+      },
+      "latent_cosine": {
+        "mean": 0.984067882987715,
+        "ci95": [
+          0.9769763520135292,
+          0.9883963159255921
+        ],
+        "maps": 18,
+        "effective_maps": 18,
+        "undefined_resamples": 0
+      },
+      "prefix_reward_error": {
+        "mean": -0.08584871531921283,
+        "ci95": [
+          -0.13730444455349589,
+          -0.04164305393135326
+        ],
+        "maps": 18,
+        "effective_maps": 18,
+        "undefined_resamples": 0
+      },
+      "rollout_reward_mae": {
+        "mean": 0.1257482988516225,
+        "ci95": [
+          0.07841179974159537,
+          0.17669345754504276
+        ],
+        "maps": 18,
+        "effective_maps": 18,
+        "undefined_resamples": 0
+      },
+      "teacher_forced_reward_mae": {
+        "mean": 0.12573652048893585,
+        "ci95": [
+          0.0784115378950795,
+          0.1766906089648588
+        ],
+        "maps": 18,
+        "effective_maps": 18,
+        "undefined_resamples": 0
+      }
+    },
+    "H2": {
+      "latent_mse": {
+        "mean": 0.0028313468497972714,
+        "ci95": [
+          0.0017226200622341519,
+          0.004145255048743344
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      },
+      "latent_l2": {
+        "mean": 1.0946627637105328,
+        "ci95": [
+          0.9354215160943569,
+          1.2720316004030228
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      },
+      "latent_cosine": {
+        "mean": 0.9574824915755363,
+        "ci95": [
+          0.9380239681717719,
+          0.9745156603865325
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      },
+      "prefix_reward_error": {
+        "mean": -0.1364523925609068,
+        "ci95": [
+          -0.34767859751668084,
+          0.06757122912807058
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      },
+      "rollout_reward_mae": {
+        "mean": 0.1775531252104745,
+        "ci95": [
+          0.07587963709909962,
+          0.2884368775680766
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      },
+      "teacher_forced_reward_mae": {
+        "mean": 0.17599774808390287,
+        "ci95": [
+          0.0770483948476093,
+          0.2798662883726817
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      }
+    },
+    "H4": {
+      "latent_mse": {
+        "mean": 0.004915093273060241,
+        "ci95": [
+          0.0036071756956516767,
+          0.006761731413765422
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      },
+      "latent_l2": {
+        "mean": 1.479033612601814,
+        "ci95": [
+          1.3405495441208284,
+          1.658664483133526
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      },
+      "latent_cosine": {
+        "mean": 0.9276984685233661,
+        "ci95": [
+          0.8993151564860628,
+          0.9482276452084383
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      },
+      "prefix_reward_error": {
+        "mean": -0.27548021472876544,
+        "ci95": [
+          -0.7070637963964765,
+          0.1424047674200967
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      },
+      "rollout_reward_mae": {
+        "mean": 0.1953201308417302,
+        "ci95": [
+          0.0959230426049697,
+          0.3078393707008435
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      },
+      "teacher_forced_reward_mae": {
+        "mean": 0.19266383588607475,
+        "ci95": [
+          0.08890612266138549,
+          0.29991939451274524
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      }
+    },
+    "H10": {
+      "latent_mse": {
+        "mean": 0.01214271539991762,
+        "ci95": [
+          0.01040793248264688,
+          0.014392076413926024
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      },
+      "latent_l2": {
+        "mean": 2.4014079145022804,
+        "ci95": [
+          2.247914689282576,
+          2.6092231970812594
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      },
+      "latent_cosine": {
+        "mean": 0.8238809955794187,
+        "ci95": [
+          0.7901588680133934,
+          0.850530881434679
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      },
+      "prefix_reward_error": {
+        "mean": 1.6863547955210139,
+        "ci95": [
+          -0.07717096415237874,
+          4.042960534718552
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      },
+      "rollout_reward_mae": {
+        "mean": 0.4352534609155207,
+        "ci95": [
+          0.18734148077098636,
+          0.7739555342949768
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      },
+      "teacher_forced_reward_mae": {
+        "mean": 0.3973982504207034,
+        "ci95": [
+          0.14366807730373218,
+          0.7358914078810351
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      }
+    }
+  },
+  "within_origin_pair_associations": {
+    "H1": {
+      "error_vs_rank_error_spearman": {
+        "mean": 0.04900168990207643,
+        "ci95": [
+          -0.06194344078728522,
+          0.14231612252990136
+        ],
+        "maps": 18,
+        "effective_maps": 16,
+        "undefined_resamples": 0
+      },
+      "error_vs_return_gap_spearman": {
+        "mean": 0.14227545378173237,
+        "ci95": [
+          -0.02790976181772621,
+          0.32100828159241007
+        ],
+        "maps": 18,
+        "effective_maps": 18,
+        "undefined_resamples": 0
+      }
+    },
+    "H2": {
+      "error_vs_rank_error_spearman": {
+        "mean": -0.18628281902074492,
+        "ci95": [
+          -0.3216952270004509,
+          -0.01135077077035169
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      },
+      "error_vs_return_gap_spearman": {
+        "mean": -0.03205269120318951,
+        "ci95": [
+          -0.16623784747913864,
+          0.062199456699291306
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      }
+    },
+    "H4": {
+      "error_vs_rank_error_spearman": {
+        "mean": 0.007343242379192714,
+        "ci95": [
+          -0.1709815876886316,
+          0.188015607385171
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      },
+      "error_vs_return_gap_spearman": {
+        "mean": 0.16101731563755392,
+        "ci95": [
+          -0.10463774361986179,
+          0.43998334511492404
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      }
+    },
+    "H10": {
+      "error_vs_rank_error_spearman": {
+        "mean": -0.1165093328212254,
+        "ci95": [
+          -0.20692998721338182,
+          -0.03508925218121612
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      },
+      "error_vs_return_gap_spearman": {
+        "mean": 0.21931172043892,
+        "ci95": [
+          0.0028020668583282338,
+          0.409804109184169
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      }
+    }
+  },
+  "initial_encoder_max_abs_difference": 8.344650268554688e-07,
+  "cached_h10_recomputed_score_max_abs_difference": 0.15543976097021073,
+  "endpoint_missing": 9,
+  "weights_unchanged": true,
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "device": "cuda",
+  "physical_state_prediction": "No WM XY decoder or per-step physical state trace in these branches; do not interpret latent distance as meters.",
+  "future_535_hybrids_created": false,
+  "no_future_input_in_online_or_training": true
+}

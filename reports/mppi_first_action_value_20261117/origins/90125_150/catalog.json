@@ -1,0 +1,230 @@
+{
+  "scene": 90125,
+  "before": 150,
+  "representatives": [
+    {
+      "candidate_id": "c0",
+      "pool_index": 0,
+      "roles": [
+        "baseline"
+      ]
+    },
+    {
+      "candidate_id": "c1",
+      "pool_index": 1,
+      "roles": [
+        "mppi_selected"
+      ]
+    },
+    {
+      "candidate_id": "c2",
+      "pool_index": 177,
+      "roles": [
+        "best_nonbaseline"
+      ]
+    },
+    {
+      "candidate_id": "c3",
+      "pool_index": 137,
+      "roles": [
+        "q75"
+      ]
+    },
+    {
+      "candidate_id": "c4",
+      "pool_index": 127,
+      "roles": [
+        "q50"
+      ]
+    },
+    {
+      "candidate_id": "c5",
+      "pool_index": 11,
+      "roles": [
+        "q25"
+      ]
+    },
+    {
+      "candidate_id": "c6",
+      "pool_index": 59,
+      "roles": [
+        "worst_nonbaseline"
+      ]
+    },
+    {
+      "candidate_id": "c7",
+      "pool_index": 20,
+      "roles": [
+        "fixed_gaussian"
+      ]
+    }
+  ],
+  "aliases": [],
+  "unique": 8,
+  "roles_before_dedup": 8,
+  "pool_size": 258,
+  "selected_pool_index": 1,
+  "actual_final_pair": [
+    0,
+    3
+  ],
+  "iteration_q_pairs": [
+    [
+      4,
+      3
+    ],
+    [
+      0,
+      3
+    ],
+    [
+      4,
+      2
+    ],
+    [
+      2,
+      1
+    ]
+  ],
+  "selection_mode": "weighted_mean",
+  "legacy_default_preserved": true,
+  "planning_ms": 138.0547119770199,
+  "features_available_before_any_candidate_environment_action": true,
+  "feature_dimensions": {
+    "F1": 514,
+    "F2": 537,
+    "F3": 542
+  },
+  "refined_actual_not_coarse": true,
+  "residual_valid": true,
+  "baseline_metrics": {
+    "mpr/sac_state_cumulative_cost_valid": 0.0,
+    "mpr/sac_state_cumulative_cost_mask_reason": 1.0,
+    "mpr/sac_state_min_ttc_valid": 1.0,
+    "mpr/sac_state_min_ttc_mask_reason": 0.0,
+    "mpr/sac_state_min_clearance_valid": 1.0,
+    "mpr/sac_state_min_clearance_mask_reason": 0.0,
+    "mpr/sac_state_boundary_margin_valid": 1.0,
+    "mpr/sac_state_boundary_margin_mask_reason": 0.0,
+    "mpr/lattice_predicted_cost": 0.007469529286026955,
+    "mpr/lattice_value": 205.0868377685547,
+    "mpr/sac_predicted_cost": 0.025444336235523224,
+    "mpr/sac_value": 208.72149658203125,
+    "mpr/mppi_predicted_cost": 0.025444336235523224,
+    "mpr/mppi_value": 208.72149658203125,
+    "mpr/risk_reduction_sac": -0.01797480694949627,
+    "mpr/risk_reduction_mppi": 0.0,
+    "mpr/sac_risk_valid": 0.0,
+    "mpr/sac_trajectory_is_fallback": 0.0,
+    "mpr/mppi_correction_magnitude": 0.0,
+    "mpr/coarse_target_speed_mps": 5.890000000000001,
+    "mpr/refined_target_speed_mps": 4.324352741241455,
+    "mpr/actual_speed_mps": 5.729953923047499,
+    "mpr/sac_inference_cpu_wall_ms": 0.645978027023375,
+    "mpr/sac_inference_ms": 0.6642879843711853,
+    "mpr/world_model_rollout_ms": 19.6628475189209,
+    "mpr/cost_prediction_ms": 0.7642880082130432,
+    "mpr/stage": 2.0,
+    "mpr/candidate_count": 54.0,
+    "mpr/feasible_count": 46.0,
+    "mpr/feasible_ratio": 0.8518518518518519,
+    "mpr/used_lattice_fallback": 0.0,
+    "mpr/selected_index": 29.0,
+    "mpr/coarse_value": 205.0868377685547,
+    "mpr/baseline_wm_value": 208.72149658203125,
+    "mpr/selected_wm_value": 208.72149658203125,
+    "mpr/wm_value_gain": 0.0,
+    "mpr/baseline_score": 208.72149658203125,
+    "mpr/selected_score": 208.72149658203125,
+    "mpr/planner_score_gain": 0.0,
+    "mpr/baseline_value": 208.72149658203125,
+    "mpr/final_value": 208.72149658203125,
+    "mpr/planner_gain": 0.0,
+    "mpr/residual_d": 2.120441436767578,
+    "mpr/residual_v": -1.5656471252441406,
+    "mpr/requested_residual_d": 2.120441436767578,
+    "mpr/requested_residual_v": -1.5656471252441406,
+    "residual_rl/action_d": 0.5859115123748779,
+    "residual_rl/action_v": -0.22419039905071259,
+    "residual_rl/warmup_action": 0.0,
+    "mpr/residual_bound_d": 3.5,
+    "mpr/residual_bound_v": 2.944999933242798,
+    "mpr/residual_valid": 1.0,
+    "mpr/residual_invalid_count": 57788.0,
+    "mpr/residual_invalid_rate": 0.1095058705819039,
+    "mpr/initial_std_steer": 0.0,
+    "mpr/initial_std_throttle": 0.0,
+    "mpr/final_std_steer": 0.0,
+    "mpr/final_std_throttle": 0.0,
+    "mpr/max_delta_steer": 0.0,
+    "mpr/max_delta_throttle": 0.0,
+    "mpr/baseline_selected": 1.0,
+    "mpr/baseline_selected_rate": 0.0,
+    "mpr/planning_ms": 86.99251990765333,
+    "mpr/total_planning_ms": 86.99251990765333,
+    "total_planning_ms": 86.99251990765333
+  },
+  "native_config": {
+    "mpc": true,
+    "horizon": 10,
+    "num_samples": 512,
+    "num_elites": 64,
+    "iterations": 6,
+    "temperature": 0.5,
+    "min_std": 0.05,
+    "max_std": 2.0
+  },
+  "simulator": {
+    "use_render": false,
+    "image_observation": false,
+    "manual_control": false,
+    "discrete_action": false,
+    "action_check": false,
+    "start_seed": 90125,
+    "num_scenarios": 2000,
+    "map": 3,
+    "traffic_density": 0.1,
+    "random_traffic": false,
+    "accident_prob": 0.8,
+    "remove_crashed_traffic_vehicle": false,
+    "horizon": 1000,
+    "truncate_as_terminate": false,
+    "physics_world_step_size": 0.02,
+    "decision_repeat": 5,
+    "out_of_road_done": true,
+    "crash_vehicle_done": false,
+    "crash_object_done": false,
+    "cost_to_reward": false,
+    "success_reward": 10.0,
+    "out_of_road_penalty": 8.0,
+    "crash_vehicle_penalty": 1.0,
+    "crash_object_penalty": 1.0,
+    "crash_vehicle_cost": 1.0,
+    "crash_object_cost": 1.0,
+    "out_of_road_cost": 1.0,
+    "driving_reward": 1.0,
+    "speed_reward": 0.12,
+    "use_risk_field_reward": true,
+    "risk_field_reward_scale": 25.0,
+    "enable_idm_lane_change": true,
+    "disable_idm_deceleration": false,
+    "out_of_road_mode": "legacy",
+    "out_of_road_warning_limit": 5,
+    "out_of_road_warning_penalty": 1.0,
+    "out_of_road_warning_cost": 1.0,
+    "out_of_road_recovery_steps": 15,
+    "out_of_road_terminate_after_budget": true,
+    "log_level": 50,
+    "vehicle_config": {
+      "enable_reverse": false,
+      "lidar": {
+        "num_lasers": 240,
+        "distance": 50,
+        "num_others": 0,
+        "gaussian_noise": 0.0,
+        "dropout_prob": 0.0,
+        "add_others_navi": false
+      }
+    }
+  }
+}

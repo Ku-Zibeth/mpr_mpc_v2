@@ -1,0 +1,101 @@
+{
+  "base_commit": "27f8131d95a39bfe2f4a95d101fef1774903b907",
+  "branch": "experiment/mppi-first-action-20261117",
+  "checkpoint": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt",
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "source_environment_config": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/benchmark/sac_refinement_BD_fixed100_20261111_152755/part1/config_B_lattice_sac_seed1.yaml",
+  "source_root": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2",
+  "pilot_scenes": [
+    90115,
+    90261,
+    90125,
+    90604,
+    90443,
+    90066
+  ],
+  "extra_development_scenes": [
+    92165,
+    92137,
+    92041,
+    92923,
+    92903,
+    92704
+  ],
+  "validation_scenes": [
+    94397,
+    94928,
+    94201,
+    94142,
+    94057,
+    94894
+  ],
+  "before_steps": [
+    50,
+    150
+  ],
+  "horizons": [
+    1,
+    2,
+    4,
+    10
+  ],
+  "gamma": 0.995,
+  "fit_scenes": [
+    90115,
+    90261,
+    90125,
+    90604,
+    90443,
+    90066,
+    92165,
+    92137
+  ],
+  "inner_stop_scenes": [
+    92041,
+    92923,
+    92903,
+    92704
+  ],
+  "sealed_previous_scenes": [
+    73423,
+    73936,
+    73260,
+    73125,
+    73388,
+    73348
+  ],
+  "candidate_roles": [
+    "baseline",
+    "mppi_selected",
+    "best_nonbaseline",
+    "q75",
+    "q50",
+    "q25",
+    "worst_nonbaseline",
+    "fixed_gaussian"
+  ],
+  "candidate_selection": "One original64x4 Gaussian/AR1 plan perorigin; no actualreturn selection. Common capturedfinalQpair rescore for quantiles. Deduplicate exact firstaction bytes, preservefullpool/droppedroles.",
+  "std": "unchanged .04/.12, min .01/.03, max .08/.25",
+  "rho": [
+    0.8,
+    0.8
+  ],
+  "samples": 64,
+  "elites": 8,
+  "iterations": 4,
+  "temperature": 0.5,
+  "baseline": "Original deterministic Lattice+SAC, residualON, MPPIOFF everypost-prefix control tick; no second action mapping",
+  "pilot_gate": "Expand development collection if ANY measuredH1candidate gain>1 (fixed tolerance), as requested. Stable positivecoverage statistics are a separate training gate, not an extra collectionapproval.",
+  "training_gate": "Only train if H1measuredoracleGain sceneCI95lower>0 and positive>1 gain at >=half reachabledevelopmentmaps AND no existing scorer has reliable positive selectedgain. No validationlabels read beforeONE model fixed.",
+  "value_gate": "Independentnew6map accuracyCI95lower>.5,SpearmanCI95lower>0,pairedRegretimprovementCI95lower>0; multipleorigins/maps; allmustpass. Otherwise NO onlinecode.",
+  "model_plan": "F1/F2/F3, independentridge vs two-hiddenlayerMLP[64,32]; scene-balancedHuber+pairwise. Fixedseeds, onepredeclaredregularization, no hyperparametersearch. Pairtolerance1. LabelsH1ONLY. Priorheadsneverloaded.",
+  "primary_q": "actual capturedfinalpair forH10score; currentstateQ andallreducers evaluatedoffline; native sampledterminal onefixed draw (plus100Qpair draws separately)",
+  "native_takeover": "first2pilotmaps atbefore50; commonfirstBaselinephysicalaction, then originalTDActor orFULLTD-MPC2act(mpcTrue), comparecachedH1SAC. Actor andMPC keptseparate. Native512/64/6 budget unchanged, notLocalMPPI64/8/4.",
+  "rng": "All6global/engine/traffic RNGrecorded+strictoriginhashes. Independentprocessperbranch. No irrelevantseedreplications. Oneexactduplicate verifiesdeterministicB; randomtraffic=false kept unchanged.",
+  "return_tolerance": 1.0,
+  "bootstrap_samples": 2000,
+  "bootstrap_seed": 1,
+  "validation_opened": false,
+  "formal100": false,
+  "default_online_changes": false
+}

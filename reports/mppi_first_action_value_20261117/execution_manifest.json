@@ -1,0 +1,43 @@
+{
+  "python": "/home/kzb/anaconda3/envs/tdmpc2/bin/python",
+  "cwd": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_first_action_20261117",
+  "environment": {
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1",
+    "MUJOCO_GL": "egl"
+  },
+  "tests_command": [
+    "/home/kzb/anaconda3/envs/tdmpc2/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "tests/test_candidate_value.py",
+    "tests/test_first_action_study.py",
+    "tests/test_mppi_diagnosis.py",
+    "tests/test_mppi_failure_attribution.py",
+    "tests/test_mppi_final_selection.py",
+    "tests/test_mppi_value_evaluation.py",
+    "tests/test_policy_value_diagnosis.py",
+    "tests/test_residual_rl.py",
+    "tests/test_sac_centred_repair.py",
+    "tests/test_sac_continuation_value.py",
+    "tests/test_simplified_tdmpc2_mppi.py",
+    "tests/test_terminal_q_weight.py"
+  ],
+  "tests_original": 62,
+  "tests_added": 9,
+  "completed_collection_order": [
+    "setup.py (once; protocol frozen before labels)",
+    "batch.py prepare_pilot",
+    "batch.py pilot_h1",
+    "enrich.py",
+    "analyze.py pilot",
+    "native_parity.py",
+    "pipeline.py (remaining evidence-gated stages)",
+    "native_report.py",
+    "finish_after_pipeline.py (waits for all gates)"
+  ],
+  "replay_warning": "Existing completed JSON/NPZ and model directories are preserved. Setup/train/finalization use existence guards. Do not rerun setup or training into this completed output. Native takeover and all H branches require fresh processes, not same-process reset.",
+  "online_changes": "None before ALL independent gates pass."
+}

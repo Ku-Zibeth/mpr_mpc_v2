@@ -1,0 +1,390 @@
+{
+  "normalization_reconstructed_from_fit_only": true,
+  "fit_rows": 126,
+  "distinct_fit_origins": 16,
+  "fit_maps": 8,
+  "input_mean_max_abs_error": 0.0,
+  "input_scale_max_abs_error": 0.0,
+  "label_mean": 112.90653228759766,
+  "label_scale": 51.519081115722656,
+  "final_fit_normalized_huber": 0.10840480774641037,
+  "final_fit_rank_loss": {
+    "mean_rank_logit": {
+      "mean": 0.012441637228696775,
+      "ci95": [
+        0.003558953900476952,
+        0.023703172824976648
+      ],
+      "maps": 8,
+      "effective_maps": 8,
+      "undefined_resamples": 0
+    },
+    "pair_probability": {
+      "mean": 0.5031097935325732,
+      "ci95": [
+        0.5008896582481501,
+        0.5059244972895142
+      ],
+      "maps": 8,
+      "effective_maps": 8,
+      "undefined_resamples": 0
+    },
+    "ranking_loss": {
+      "mean": 0.687017866533145,
+      "ci95": [
+        0.6814565329776489,
+        0.6913944392593976
+      ],
+      "maps": 8,
+      "effective_maps": 8,
+      "undefined_resamples": 0
+    }
+  },
+  "rank_loss_coefficient": 0.1,
+  "rank_logit_divisor": 10.0,
+  "signal_scale_by_split": {
+    "fit": {
+      "pair_accuracy": {
+        "mean": 0.6866220238095238,
+        "ci95": [
+          0.5704646577380951,
+          0.8134151785714284
+        ],
+        "maps": 8,
+        "effective_maps": 8,
+        "undefined_resamples": 0
+      },
+      "predicted_range": {
+        "mean": 0.33594441413879395,
+        "ci95": [
+          0.23732255697250365,
+          0.4533802330493925
+        ],
+        "maps": 8,
+        "effective_maps": 8,
+        "undefined_resamples": 0
+      },
+      "actual_range": {
+        "mean": 15.796442100564164,
+        "ci95": [
+          6.958515821439575,
+          24.847572502814472
+        ],
+        "maps": 8,
+        "effective_maps": 8,
+        "undefined_resamples": 0
+      },
+      "baseline_gain_mae": {
+        "mean": 6.045245310347554,
+        "ci95": [
+          2.6533675657196167,
+          9.632943226021327
+        ],
+        "maps": 8,
+        "effective_maps": 8,
+        "undefined_resamples": 0
+      },
+      "selected_gain": {
+        "mean": 2.0123163687895342,
+        "ci95": [
+          -0.8565582887888852,
+          6.515655644156463
+        ],
+        "maps": 8,
+        "effective_maps": 8,
+        "undefined_resamples": 0
+      }
+    },
+    "inner_stop": {
+      "pair_accuracy": {
+        "mean": 0.590769019982575,
+        "ci95": [
+          0.427650290885585,
+          0.7997408026755854
+        ],
+        "maps": 4,
+        "effective_maps": 4,
+        "undefined_resamples": 0
+      },
+      "predicted_range": {
+        "mean": 0.4052705764770508,
+        "ci95": [
+          0.22834300994873047,
+          0.6397266387939453
+        ],
+        "maps": 4,
+        "effective_maps": 4,
+        "undefined_resamples": 0
+      },
+      "actual_range": {
+        "mean": 19.137553778112462,
+        "ci95": [
+          5.158026302275694,
+          43.20166569347176
+        ],
+        "maps": 4,
+        "effective_maps": 4,
+        "undefined_resamples": 0
+      },
+      "baseline_gain_mae": {
+        "mean": 14.715956055843836,
+        "ci95": [
+          2.12114965041963,
+          36.88698650992573
+        ],
+        "maps": 4,
+        "effective_maps": 4,
+        "undefined_resamples": 0
+      },
+      "selected_gain": {
+        "mean": 16.697011389057728,
+        "ci95": [
+          3.7977583275305236,
+          37.78497948052407
+        ],
+        "maps": 4,
+        "effective_maps": 4,
+        "undefined_resamples": 0
+      }
+    },
+    "seen_validation": {
+      "pair_accuracy": {
+        "mean": 0.3563751607869255,
+        "ci95": [
+          0.14230769230769233,
+          0.5369907869907871
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      },
+      "predicted_range": {
+        "mean": 0.462399164835612,
+        "ci95": [
+          0.32006200154622394,
+          0.5920178572336825
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      },
+      "actual_range": {
+        "mean": 4.9157946126181535,
+        "ci95": [
+          1.6272745823182468,
+          10.472513628790956
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      },
+      "baseline_gain_mae": {
+        "mean": 1.8600492165791804,
+        "ci95": [
+          0.7281707133858938,
+          3.7817060882469455
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      },
+      "selected_gain": {
+        "mean": 2.13534996908534,
+        "ci95": [
+          -0.5855313013078565,
+          7.156988405252992
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      }
+    }
+  },
+  "context_shift_by_split": {
+    "fit": {
+      "nearest_fit_context_standardized_rms": {
+        "mean": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "maps": 8,
+        "effective_maps": 8,
+        "undefined_resamples": 0
+      },
+      "context_fraction_beyond_fit3sigma": {
+        "mean": 0.01296728971962617,
+        "ci95": [
+          0.009228971962616822,
+          0.01659170560747662
+        ],
+        "maps": 8,
+        "effective_maps": 8,
+        "undefined_resamples": 0
+      }
+    },
+    "inner_stop": {
+      "nearest_fit_context_standardized_rms": {
+        "mean": 1.266366794705391,
+        "ci95": [
+          1.0698826238512993,
+          1.421984200924632
+        ],
+        "maps": 4,
+        "effective_maps": 4,
+        "undefined_resamples": 0
+      },
+      "context_fraction_beyond_fit3sigma": {
+        "mean": 0.0294392523364486,
+        "ci95": [
+          0.02593457943925234,
+          0.03247663551401869
+        ],
+        "maps": 4,
+        "effective_maps": 4,
+        "undefined_resamples": 0
+      }
+    },
+    "seen_validation": {
+      "nearest_fit_context_standardized_rms": {
+        "mean": 1.1590150396029155,
+        "ci95": [
+          0.9940437643478314,
+          1.3745161154617858
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      },
+      "context_fraction_beyond_fit3sigma": {
+        "mean": 0.025233644859813085,
+        "ci95": [
+          0.017912772585669784,
+          0.03302180685358256
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      }
+    }
+  },
+  "reverse_paired_comparison": {
+    "fit": {
+      "pair_accuracy_improvement": {
+        "mean": -0.3732440476190476,
+        "ci95": [
+          -0.6268303571428572,
+          -0.1409293154761906
+        ],
+        "maps": 8,
+        "effective_maps": 8,
+        "undefined_resamples": 0
+      },
+      "regret_improvement": {
+        "mean": -0.5206853544398693,
+        "ci95": [
+          -5.783365679764856,
+          3.386311526772794
+        ],
+        "maps": 8,
+        "effective_maps": 8,
+        "undefined_resamples": 0
+      }
+    },
+    "inner_stop": {
+      "pair_accuracy_improvement": {
+        "mean": -0.18153803996514994,
+        "ci95": [
+          -0.5994816053511706,
+          0.14469941822883
+        ],
+        "maps": 4,
+        "effective_maps": 4,
+        "undefined_resamples": 0
+      },
+      "regret_improvement": {
+        "mean": -2.7433720817015272,
+        "ci95": [
+          -5.084140970134003,
+          -0.4126736138684226
+        ],
+        "maps": 4,
+        "effective_maps": 4,
+        "undefined_resamples": 0
+      }
+    },
+    "seen_validation": {
+      "pair_accuracy_improvement": {
+        "mean": 0.28724967842614907,
+        "ci95": [
+          -0.073981573981574,
+          0.7153846153846154
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      },
+      "regret_improvement": {
+        "mean": -1.0974140834748873,
+        "ci95": [
+          -3.7950177105727754,
+          0.9815117663812648
+        ],
+        "maps": 6,
+        "effective_maps": 6,
+        "undefined_resamples": 0
+      }
+    }
+  },
+  "pair_counts_and_micro_vs_macro": {
+    "fit/H1": {
+      "raw": 434,
+      "effective": 241,
+      "ties": 193,
+      "pooled_pair_accuracy": 0.6099585062240664,
+      "macro_accuracy": 0.6866220238095238,
+      "note": "Pooled count is descriptive, never used as independent-map accuracy or binomial CI."
+    },
+    "fit/H2": {
+      "raw": 329,
+      "effective": 219,
+      "ties": 110,
+      "pooled_pair_accuracy": 0.4383561643835616,
+      "macro_accuracy": 0.4653297517699692,
+      "note": "Pooled count is descriptive, never used as independent-map accuracy or binomial CI."
+    },
+    "fit/H4": {
+      "raw": 329,
+      "effective": 235,
+      "ties": 94,
+      "pooled_pair_accuracy": 0.5276595744680851,
+      "macro_accuracy": 0.49693535128317734,
+      "note": "Pooled count is descriptive, never used as independent-map accuracy or binomial CI."
+    },
+    "fit/H10": {
+      "raw": 329,
+      "effective": 274,
+      "ties": 55,
+      "pooled_pair_accuracy": 0.5620437956204379,
+      "macro_accuracy": 0.5333505799085508,
+      "note": "Pooled count is descriptive, never used as independent-map accuracy or binomial CI."
+    },
+    "inner_stop/H1": {
+      "raw": 224,
+      "effective": 154,
+      "ties": 70,
+      "pooled_pair_accuracy": 0.6103896103896104,
+      "macro_accuracy": 0.590769019982575,
+      "note": "Pooled count is descriptive, never used as independent-map accuracy or binomial CI."
+    },
+    "seen_validation/H1": {
+      "raw": 336,
+      "effective": 140,
+      "ties": 196,
+      "pooled_pair_accuracy": 0.45357142857142857,
+      "macro_accuracy": 0.3563751607869255,
+      "note": "Pooled count is descriptive, never used as independent-map accuracy or binomial CI."
+    }
+  },
+  "interpretation": "Same-origin action score ranges are compressed relative to actual returns. This is observed weak action discrimination, not proof that context, objective, or capacity is uniquely causal."
+}

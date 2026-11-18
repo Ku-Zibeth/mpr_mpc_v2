@@ -1,0 +1,47 @@
+{
+  "scenario_id": 90115,
+  "scenario": 90115,
+  "origin_id": "90115_150",
+  "episode_seed": 90115,
+  "policy_seed": 90116,
+  "candidate_id": "c3",
+  "horizon": 4,
+  "takeover": "baseline",
+  "replay": false,
+  "origin_observation_hash": "a2d4d2be5d50e97c3fbd7344e9747fda586d07177c3653b451f2f19b049d4bc3",
+  "origin_vehicle_state_hash": "02d9e427652bf0afff7e24ec0c7fc95c7bf7bd38a14aa01cb3fdd44ddb53520b",
+  "origin_traffic_state_hash": "c438ddb98141249065f9f5459964385f48b6f5288d4da9f7071a3911f3cdfbac",
+  "origin_rng_state_hash": "0f3a8db36aef1047b89b48495bb2d270980edee3385e928c3fdd8cf110e9019c",
+  "candidate_first_action": [
+    -0.040858931839466095,
+    -0.6719176173210144
+  ],
+  "baseline_first_action": [
+    -0.088492251932621,
+    -1.0
+  ],
+  "actual_first_reward": 0.5878768085556584,
+  "actual_continuation_return": 54.77057677301632,
+  "actual_return": 55.0846006977069,
+  "episode_return": 78.45012402272458,
+  "success": 1.0,
+  "crash": 0.0,
+  "out_of_road": 0.0,
+  "route_completion": 0.9860637037735465,
+  "safety_cost": 1.9211840722022056,
+  "invalid_residual_count": 0,
+  "episode_length": 143,
+  "termination_reason": "arrive_dest",
+  "native_terminated": true,
+  "native_truncated": false,
+  "native_done": true,
+  "feedback_lattice_sac_steps": 139,
+  "first_postprefix_sac_action": [
+    -0.06195896491408348,
+    1.0
+  ],
+  "physical_action_mapping_count": 0,
+  "weights_unchanged": true,
+  "protocol": "H-prefixthenfeedbackcontinuation",
+  "source": "reports/mppi_first_action_value_20261117/branches/90115_150/H4_c3_baseline.npz"
+}

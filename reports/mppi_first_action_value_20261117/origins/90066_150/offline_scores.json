@@ -1,0 +1,13 @@
+{
+  "sac_actor_residual": [
+    [
+      -0.8186525702476501,
+      0.9812352061271667
+    ]
+  ],
+  "sac_q1": 25.931509017944336,
+  "sac_q2": 23.370887756347656,
+  "critic_candidate_applicability": "ONLY baselineparameteraction known; arbitraryphysicalGaussian actions have nouniqueinverse residual. Do NOT feed physicalcontrol directly into residualcritic.",
+  "candidate_critic_values": null,
+  "full_ensemble_independent_of_random_pair_default": true
+}

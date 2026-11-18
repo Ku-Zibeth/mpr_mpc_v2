@@ -1,0 +1,48 @@
+{
+  "date": "2026-11-18",
+  "analysis_only": true,
+  "new_environment_runs": 0,
+  "new_training": 0,
+  "bootstrap_samples": 2000,
+  "bootstrap_seed": 20261118,
+  "return_tolerance": 1.0,
+  "previously_exposed_validation": [
+    94397,
+    94928,
+    94201,
+    94142,
+    94057,
+    94894
+  ],
+  "new_independent_scenes": [],
+  "selected_model": "reports/mppi_first_action_value_20261117/models/F2_mlp_huber_rank.pt",
+  "checkpoint_sha": "a53d2a26ef060c1b023311cda3d03ea4e946e0343a7cc585c18e838d9db717d7",
+  "scorer_direction": "larger raw Q_B predicts larger H1 total raw discounted return",
+  "current_qb_input": "current535 + candidate physical command2; no future latent or WM next()",
+  "horizon_transfer": "The same H1-trained Q_B is evaluated against H2/4/10 labels only as an out-of-target diagnostic.",
+  "comparisons": "All-map H1; same six pilot-map origins for paired H1/2/4/10. No data-driven scene selection.",
+  "strata": {
+    "action_pair_max_l2_edges": [
+      0.01,
+      0.05,
+      0.1
+    ],
+    "actual_pair_gap_edges": [
+      1.0,
+      5.0,
+      20.0
+    ],
+    "initial_speed_edges": [
+      3.0,
+      8.0,
+      15.0
+    ],
+    "coarse_path_curvature_proxy_edges": [
+      0.02,
+      0.1
+    ],
+    "traffic_density": "fixed .1; do not invent variable density",
+    "outcomes": "episode-level crash/OOR, not accident timing"
+  },
+  "state_oracle": "Pure terminal-latent swap applies to original TD terminal Q, NOT to current-state Q_B; early-terminal missing z_H remains missing."
+}

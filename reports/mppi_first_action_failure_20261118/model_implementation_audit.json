@@ -1,0 +1,22 @@
+{
+  "selected_checkpoint": "reports/mppi_first_action_value_20261117/models/F2_mlp_huber_rank.pt",
+  "checkpoint_sha": "a53d2a26ef060c1b023311cda3d03ea4e946e0343a7cc585c18e838d9db717d7",
+  "input_dimension": 537,
+  "input": "original CURRENT535 + candidate physical steer/throttle2; no predicted future latent",
+  "output": "scalar raw H1 total return; positive stored target_scale",
+  "target_scale": 51.519081115722656,
+  "input_scales_positive": true,
+  "label": "true r0 + .995 original deterministic LatticeSAC continuation to native done",
+  "loss_sign": "softplus(-sign(y_i-y_j)*(pred_i-pred_j)/10): minimizing rewards matching directions",
+  "online_selection": "not deployed; offline argmax(score), larger is better",
+  "reverse_only_diagnostic": true,
+  "training_input": "only present-state features, normalization buffers fit-only",
+  "input_buffer_sha": "a53d2a26ef060c1b023311cda3d03ea4e946e0343a7cc585c18e838d9db717d7",
+  "source_code": {
+    "reports/mppi_first_action_value_20261117/train_offline.py": "06c2c956a805f9faa6c34432e1c1f72fa9c1f57491c9126724a5c276c0bf88c3",
+    "reports/mppi_first_action_value_20261117/offline_model.py": "619d020bf59aaa2471b9bc6225a9a550937f4a79a04077bcbb406e28d028e9d1",
+    "reports/mppi_first_action_value_20261117/validate_offline.py": "e7c1194c3dd51077ca52b202ea7567b15909bd8b13ad81dd8d46a469b005b7c6"
+  },
+  "future_dynamics_direct_path_to_QB": false,
+  "no_future_535_hybrid_constructed": true
+}

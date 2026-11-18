@@ -1,0 +1,310 @@
+{
+  "branch_counts": {
+    "H10/baseline": 95,
+    "H1/baseline": 287,
+    "H2/baseline": 95,
+    "H4/baseline": 95,
+    "H1/td_actor": 2,
+    "H1/td_mpc": 2
+  },
+  "actual_native_branches": 576,
+  "origins": [
+    {
+      "origin": "90066_150",
+      "scenario": 90066,
+      "split": "pilot_development",
+      "unique": 8,
+      "catalog_sha": "afb9cee63f00fbe537488b8733a36401cfe9619b2a1ed4f74a25c6499c451f5f"
+    },
+    {
+      "origin": "90066_50",
+      "scenario": 90066,
+      "split": "pilot_development",
+      "unique": 8,
+      "catalog_sha": "720faf06c529cb996d4e1011dbbc3478cac74a88471cb4504c593214a27c05b1"
+    },
+    {
+      "origin": "90115_150",
+      "scenario": 90115,
+      "split": "pilot_development",
+      "unique": 8,
+      "catalog_sha": "c2df793e211d8f109a11ff7c62fe24e03ec299cfdf4595c1c4cd6434568a5f6b"
+    },
+    {
+      "origin": "90115_50",
+      "scenario": 90115,
+      "split": "pilot_development",
+      "unique": 8,
+      "catalog_sha": "44f131e5500e556f48dcffb65cc4b5666a9f170ead8351e1fd322a97037882a7"
+    },
+    {
+      "origin": "90125_150",
+      "scenario": 90125,
+      "split": "pilot_development",
+      "unique": 8,
+      "catalog_sha": "1c34428a98317aff35893ab5760dacee07ccb9b9506e2538c1809d15c40594ff"
+    },
+    {
+      "origin": "90125_50",
+      "scenario": 90125,
+      "split": "pilot_development",
+      "unique": 8,
+      "catalog_sha": "6974b530a72e6cb099f3a735f6d3263f63328be5adb648c3c900e2489093e392"
+    },
+    {
+      "origin": "90261_150",
+      "scenario": 90261,
+      "split": "pilot_development",
+      "unique": 8,
+      "catalog_sha": "7e84496cf215ea754c025ef0bc9965ebd57d45773ada8127ca6e91895c2a069b"
+    },
+    {
+      "origin": "90261_50",
+      "scenario": 90261,
+      "split": "pilot_development",
+      "unique": 8,
+      "catalog_sha": "444de9384ddf136ff68b9ef1205a50017859084dcd292aefc85c2abbef1fb925"
+    },
+    {
+      "origin": "90443_150",
+      "scenario": 90443,
+      "split": "pilot_development",
+      "unique": 8,
+      "catalog_sha": "ca2b30b7f4a0b171b0314f75c0f468c5c2f703ef6a7302d822f7ef2b54e5227b"
+    },
+    {
+      "origin": "90443_50",
+      "scenario": 90443,
+      "split": "pilot_development",
+      "unique": 8,
+      "catalog_sha": "276fa1f1dab330a44ad6689ad3dd8269ca1c61ea95054245855058e1830c5319"
+    },
+    {
+      "origin": "90604_150",
+      "scenario": 90604,
+      "split": "pilot_development",
+      "unique": 8,
+      "catalog_sha": "5715920de2dba7a65b23557de6fd945f4922aea4dd8a26a8a86cdcd5a25451f0"
+    },
+    {
+      "origin": "90604_50",
+      "scenario": 90604,
+      "split": "pilot_development",
+      "unique": 7,
+      "catalog_sha": "abfedf57b59c46b59b34d9247b0a01fcd98b5f785af5ba2bc77fcbc460a2cec3"
+    },
+    {
+      "origin": "92041_150",
+      "scenario": 92041,
+      "split": "extra_development",
+      "unique": 8,
+      "catalog_sha": "a6d81848ff7e55717e432e132cbd81f22492d6b229494153358e26bfce2de7ac"
+    },
+    {
+      "origin": "92041_50",
+      "scenario": 92041,
+      "split": "extra_development",
+      "unique": 8,
+      "catalog_sha": "e0a625ca26563e87e30ffbd05ef46886b2928f869852acbd21fd01030e8a55a4"
+    },
+    {
+      "origin": "92137_150",
+      "scenario": 92137,
+      "split": "extra_development",
+      "unique": 7,
+      "catalog_sha": "ef99ea58b8b45700297a95f3ce770404d5caa47dab6a2c196f03234e80ff8d6b"
+    },
+    {
+      "origin": "92137_50",
+      "scenario": 92137,
+      "split": "extra_development",
+      "unique": 8,
+      "catalog_sha": "05d3426cc16124ca2932aba82f9d91ef9efc459c07429bfd1939dafde0d8febf"
+    },
+    {
+      "origin": "92165_150",
+      "scenario": 92165,
+      "split": "extra_development",
+      "unique": 8,
+      "catalog_sha": "f4b05d56b0abdc3ba9bcd6280cf3f941684eb1b541a81532c2beff1b31f618b2"
+    },
+    {
+      "origin": "92165_50",
+      "scenario": 92165,
+      "split": "extra_development",
+      "unique": 8,
+      "catalog_sha": "447a51e39a601829b1810d45120edc4a2528cf68b6ddd816579020a82b6bd522"
+    },
+    {
+      "origin": "92704_150",
+      "scenario": 92704,
+      "split": "extra_development",
+      "unique": 8,
+      "catalog_sha": "49e66c948fb8c2ab6c0d2abc133a56b9c2199dd8478e23dc3d6ed98d31e119ab"
+    },
+    {
+      "origin": "92704_50",
+      "scenario": 92704,
+      "split": "extra_development",
+      "unique": 8,
+      "catalog_sha": "fb1c95b57be133e774af9c6df2278fc5859368a37d3aae1b542a9cda54fb9749"
+    },
+    {
+      "origin": "92903_150",
+      "scenario": 92903,
+      "split": "extra_development",
+      "unique": 8,
+      "catalog_sha": "30f7de112e5be974b59566729b2e9580601fda6d7ea71f1315680b29d396e7cb"
+    },
+    {
+      "origin": "92903_50",
+      "scenario": 92903,
+      "split": "extra_development",
+      "unique": 8,
+      "catalog_sha": "767f5a57ed03be77408338749b85f620f4d010d648edb595fb6f2bfb4257ee69"
+    },
+    {
+      "origin": "92923_150",
+      "scenario": 92923,
+      "split": "extra_development",
+      "unique": 8,
+      "catalog_sha": "346a9c0c1d4aa5da0498fa2d24bb32d22cb964b7e3e4e49d9de0426711d64c37"
+    },
+    {
+      "origin": "92923_50",
+      "scenario": 92923,
+      "split": "extra_development",
+      "unique": 8,
+      "catalog_sha": "996c949ff95f00fac97c5f5b4718e002de5c9778ae97c6ccda9df6b5c7e34fa0"
+    },
+    {
+      "origin": "94057_150",
+      "scenario": 94057,
+      "split": "new_independent_validation",
+      "unique": 8,
+      "catalog_sha": "d80d79def6901ea2db909aade621716200eb7a5de4f50df40a61a6815acf1cce"
+    },
+    {
+      "origin": "94057_50",
+      "scenario": 94057,
+      "split": "new_independent_validation",
+      "unique": 8,
+      "catalog_sha": "e2d63907bd9462aa9521f17097304043ca63f213a4575b398c2630f12db2cfb2"
+    },
+    {
+      "origin": "94142_150",
+      "scenario": 94142,
+      "split": "new_independent_validation",
+      "unique": 8,
+      "catalog_sha": "8a1ea8c46b8210dd46d68fc966aaa3e8887503f2efc962f3bc8a3b1ffc39a228"
+    },
+    {
+      "origin": "94142_50",
+      "scenario": 94142,
+      "split": "new_independent_validation",
+      "unique": 8,
+      "catalog_sha": "ba092981e79c22984f87a175a0cc5e99a0bbc41e76a51cc7765fa0f97cde5420"
+    },
+    {
+      "origin": "94201_150",
+      "scenario": 94201,
+      "split": "new_independent_validation",
+      "unique": 8,
+      "catalog_sha": "e718ffd28086889865d506a229551a8c617deea21f8c27142ada061746bc0d36"
+    },
+    {
+      "origin": "94201_50",
+      "scenario": 94201,
+      "split": "new_independent_validation",
+      "unique": 8,
+      "catalog_sha": "4b4c1d0ec4510a684a556692d8bb33684f7776ebaa315f55bb216a7b9c37d542"
+    },
+    {
+      "origin": "94397_150",
+      "scenario": 94397,
+      "split": "new_independent_validation",
+      "unique": 8,
+      "catalog_sha": "3ec15c56563aa9e17b0e450461439d6ae2aa9745f0ff27fa297bcb3d991e37a2"
+    },
+    {
+      "origin": "94397_50",
+      "scenario": 94397,
+      "split": "new_independent_validation",
+      "unique": 8,
+      "catalog_sha": "ab7ee4c920cd517b54c349686799ed5211b585b334570e5b21e634cf363a04da"
+    },
+    {
+      "origin": "94894_150",
+      "scenario": 94894,
+      "split": "new_independent_validation",
+      "unique": 8,
+      "catalog_sha": "d0516232883f3132bfea1dd2630faa26089fbdb6afce03cb5788ef05008831f6"
+    },
+    {
+      "origin": "94894_50",
+      "scenario": 94894,
+      "split": "new_independent_validation",
+      "unique": 8,
+      "catalog_sha": "11bd6a99e1afb462c1126c5e2577153be0a76a5ef64c943075717a6af191a497"
+    },
+    {
+      "origin": "94928_150",
+      "scenario": 94928,
+      "split": "new_independent_validation",
+      "unique": 8,
+      "catalog_sha": "e7b3e8023b71f0f7f4b691d0fe2d66ad5124c2fd14612fcb6300a8090d255b90"
+    },
+    {
+      "origin": "94928_50",
+      "scenario": 94928,
+      "split": "new_independent_validation",
+      "unique": 8,
+      "catalog_sha": "51ed5efbd368c434c4a8838996f901175e6dcc45c8fa0a0492eddeb7bcc71e25"
+    }
+  ],
+  "unreachable": [],
+  "pilot_scenes": [
+    90115,
+    90261,
+    90125,
+    90604,
+    90443,
+    90066
+  ],
+  "extra_development_scenes": [
+    92165,
+    92137,
+    92041,
+    92923,
+    92903,
+    92704
+  ],
+  "new_validation_scenes": [
+    94397,
+    94928,
+    94201,
+    94142,
+    94057,
+    94894
+  ],
+  "old_sealed_scenes": [
+    73423,
+    73936,
+    73260,
+    73125,
+    73388,
+    73348
+  ],
+  "candidate_label_coverage": "At most8representativefirstactionsfrom258storedpool; not fullGaussianoracle.",
+  "labels": "Y1ONLY=firstphysicalactionthenoriginalfeedbackSAC; H2/4/10separatecontrols",
+  "features_current_available": [
+    "latent512",
+    "original535",
+    "actualpostSACrefinedparameters3",
+    "baselinephysicalfirst2",
+    "candidatephysicalfirst2"
+  ],
+  "no_future_model_inputs": true,
+  "excluded_training_data": "ALLpreviousFit/InnerStop/H10labels/Phase1Pilot/newvalidation",
+  "formal100": false
+}

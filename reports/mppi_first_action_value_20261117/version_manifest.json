@@ -1,0 +1,51 @@
+{
+  "head": "27f8131d95a39bfe2f4a95d101fef1774903b907",
+  "origin_main": "27f8131d95a39bfe2f4a95d101fef1774903b907",
+  "branch": "experiment/mppi-first-action-20261117",
+  "worktree": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_first_action_20261117",
+  "original_main": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2",
+  "github_main_verified_via_connector": "27f8131d95a39bfe2f4a95d101fef1774903b907",
+  "fetch": "Requested gitfetch SSH stalled; terminatedownfetch; HTTPSdirect andlocal7897proxy timedout35s. GitHubconnector fetch_commit(main) independently confirms27f8131; no newerremote claimed.",
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "runtime_fingerprint": "c2847749dab39a9c2c0d477d2932fd4d33570fd2fe2f50529b915fe1baa8f501",
+  "log8": [
+    "27f8131 Update MPR-MPC project",
+    "4d3e796 Update MPR-MPC project",
+    "45073e1 Update MPR-MPC project",
+    "ced7688 Update MPR-MPC project",
+    "bfe035d Update MPR-MPC project",
+    "4f17fce Update MPR-MPC project",
+    "430e8ab Update MPR-MPC project",
+    "fae10f3 Update MPR-MPC project"
+  ],
+  "divergence_stat": "",
+  "previous_split_audit": {
+    "fit_inner_stop": "historical28map roots, not independent",
+    "phase1_independent_pilot": [
+      83964,
+      83060,
+      83571,
+      83797
+    ],
+    "sealed": [
+      73423,
+      73936,
+      73260,
+      73125,
+      73388,
+      73348
+    ]
+  },
+  "historical_inputs": {
+    "MPPI_FAILURE_ATTRIBUTION_REPORT_20261117.md": "1acc35e10b0d67be149a21dedc93d60d035b680d45f729ea3772a26e6b4eced3",
+    "SAC_POLICY_MATCHED_VALUE_REPORT_20261117.md": "ee26d3cff7a08ac178efa10bbd770211c13c5c8879b22980110781d70705e368",
+    "reports/mppi_failure_attribution_20261117/paired_statistics.json": "4bba919d08e6bbc7223badcd1bcd31753602c49dfe36952e31dd57057c952404",
+    "reports/mppi_failure_attribution_20261117/reward_continuation_error_decomposition.csv": "bb9979654c340cc72175906c9692f773771f76b9d5d2b481c478c835bd076841",
+    "reports/mppi_failure_attribution_20261117/real_latent_q_vs_sac_continuation.csv": "c697acf8916928fa06060bbaab14569a04da051ab29d6eeb515a5ab13abafa63",
+    "reports/mppi_failure_attribution_20261117/q_ensemble_rank_stability.csv": "b4bc42a759abae02db1a8c1512e7e3e63238a1eda96ac99aa104a406c0b17bf5",
+    "reports/sac_policy_matched_value_20261117/td_actor_value_consistency.csv": "ff1e62f149b1d59a0579d608146e0f79db3b167a6722d0ef0bb513d879747bfe",
+    "reports/sac_policy_matched_value_20261117/paired_rollout_results.csv": "9dd030fa48a3e5c567f54c72c5d6eb5effdb6feeea544f586b0ca6d2eac48fad",
+    "reports/sac_policy_matched_value_20261117/ranking_metrics.json": "9f7ac92aad08e7c31fa6637c8778e98fd4b2607030903fe2a4adfcd8f28eea2f",
+    "reports/sac_policy_matched_value_20261117/decision.json": "1bdc506d869d9b5c028fa99f134f54a4b31ac5e10c86ca5a36f95309212411ea"
+  }
+}
