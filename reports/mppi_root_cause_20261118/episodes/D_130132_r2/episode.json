@@ -1,0 +1,34 @@
+{
+  "configuration": "D",
+  "scene": 130132,
+  "repeat_seed": 2,
+  "success": 1.0,
+  "crash": 0.0,
+  "out_of_road": 0.0,
+  "route_completion": 0.9900237573156683,
+  "timeout": 0.0,
+  "episode_return": 373.30578531848033,
+  "discounted_return": 131.62967859182487,
+  "episode_length": 527,
+  "safety_cost": 3.9055794220953532,
+  "planning_p50_ms": 156.68393997475505,
+  "planning_p95_ms": 168.9795130980201,
+  "planning_max_ms": 483.69340505450964,
+  "baseline_selected_rate": 0.003795066413662239,
+  "first_action_delta": 0.1598168299657132,
+  "end_reason": "arrive_dest",
+  "native_done": true,
+  "weights_unchanged": true,
+  "counts": {
+    "prepare": 527,
+    "mppi": 527
+  },
+  "initial_hashes": {
+    "observation": "f3aef5eccec652f70679c25554a6eea28225ad043d2215e14b754101db6a2942",
+    "vehicle": "39a0c4da52099756deae35035c6a33a9ca1dbdcf2b28a4b71a1c65823a747e81",
+    "traffic": "772e038c858549f697fcb2af974980c5c241d52fb3722fda4df93682f5e3f87e",
+    "rng": "3fd122ff900377492e00e0e9281350a36a229539c2765ad20142c333a45bd3c2"
+  },
+  "latency_scope": "two-worker shared GPU synchronized full agent.act; observational recording included; post-act diagnostics separate",
+  "runtime_code_root": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118"
+}

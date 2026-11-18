@@ -1,0 +1,1941 @@
+diff --git a/planning/coordinator.py b/planning/coordinator.py
+index d4580d2..6d60c41 100644
+--- a/planning/coordinator.py
++++ b/planning/coordinator.py
+@@ -388,6 +388,10 @@ class MPRMPCPlanner:
+             required_steps=self.horizon + 1,
+             control_dt=self.control_dt,
+             device=self.device,
++            # Experimental correction ONLY after the frozen SAC state/action.
++            # prepare() retains the trained coarse535 feature semantics.
++            **({"cartesian_virtual_speed": True} if stage.use_mppi and
++               self.mppi_cfg.get("cartesian_virtual_speed", False) else {}),
+         )
+ 
+         if stage.use_mppi:
+diff --git a/planning/time_alignment.py b/planning/time_alignment.py
+index e885158..3d7e935 100644
+--- a/planning/time_alignment.py
++++ b/planning/time_alignment.py
+@@ -19,7 +19,8 @@ def _interp_angle(query: np.ndarray, source: np.ndarray, angles: np.ndarray) ->
+     return np.interp(query, source, np.unwrap(angles))
+ 
+ 
+-def align_frenet_path(path, *, required_steps: int, control_dt: float) -> AlignedTrajectory:
++def align_frenet_path(path, *, required_steps: int, control_dt: float,
++                      cartesian_speed: bool = False) -> AlignedTrajectory:
+     if required_steps <= 0:
+         raise ValueError("required_steps must be positive.")
+     if control_dt <= 0:
+@@ -43,6 +44,20 @@ def align_frenet_path(path, *, required_steps: int, control_dt: float) -> Aligne
+     )
+     headings = _interp_angle(clipped_times, source_times, point_yaws)
+     aligned_speeds = np.interp(clipped_times, source_times, speeds)
++    if cartesian_speed:
++        # s_d is longitudinal Frenet speed, while the tracker consumes the
++        # magnitude of world velocity. Derive that magnitude from the SAME
++        # position/time trajectory; keep legacy interpolation as the default.
++        edge_order = 2 if len(points) > 2 else 1
++        velocity = np.column_stack([
++            np.gradient(points[:, axis], source_times, edge_order=edge_order)
++            for axis in range(2)
++        ])
++        ground_speed = np.linalg.norm(velocity, axis=1)
++        aligned_speeds = np.interp(clipped_times, source_times, ground_speed)
++        # Beyond the endpoint the existing position policy holds position.
++        # Its velocity is zero, not the last nonzero longitudinal speed.
++        aligned_speeds[query_times > source_times[-1]] = 0.0
+     return AlignedTrajectory(query_times, positions, headings, aligned_speeds)
+ 
+ 
+diff --git a/planning/trajectory_adapter.py b/planning/trajectory_adapter.py
+index 2d502d8..3514823 100644
+--- a/planning/trajectory_adapter.py
++++ b/planning/trajectory_adapter.py
+@@ -39,6 +39,7 @@ class LatticeActionAdapter:
+         control_dt: float,
+         device: torch.device | str,
+         dtype: torch.dtype = torch.float32,
++        cartesian_virtual_speed: bool = False,
+     ) -> torch.Tensor:
+         """Return ``[required_steps,2]``; ``horizon`` is a legacy alias."""
+         if required_steps is None:
+@@ -47,9 +48,9 @@ class LatticeActionAdapter:
+             required_steps = int(horizon)
+         if horizon is not None and int(horizon) != int(required_steps):
+             raise ValueError("required_steps and horizon disagree.")
+-        aligned = align_frenet_path(
+-            path, required_steps=int(required_steps), control_dt=float(control_dt)
+-        )
++        alignment_options = {"cartesian_speed": True} if cartesian_virtual_speed else {}
++        aligned = align_frenet_path(path, required_steps=int(required_steps),
++                                    control_dt=float(control_dt), **alignment_options)
+         actions = []
+         for step in range(int(required_steps)):
+             state = vehicle if step == 0 else SimpleNamespace(
+diff --git a/reports/mppi_root_cause_20261118/DATA_FLOW_AUDIT.md b/reports/mppi_root_cause_20261118/DATA_FLOW_AUDIT.md
+new file mode 100644
+index 0000000..b44893c
+--- /dev/null
++++ b/reports/mppi_root_cause_20261118/DATA_FLOW_AUDIT.md
+@@ -0,0 +1,63 @@
++# 控制链路与时间关系审计
++
++基线 main：`e26d669574e10d5184135f5fa629582371c45636`。本轮隔离目录为 `mpr_mpc_v2_root_cause_20261118`，主目录未修改。B/C 从干净 main 加载；D 从该隔离目录加载，仅显式开启 Cartesian virtual speed。
++
++```mermaid
++flowchart TD
++  E[MetaDrive 当前真实观测 o_t / 车辆状态 / 交通] --> P[prepare 每周期重算]
++  P --> L[Lattice 生成多条参数轨迹并过滤]
++  L --> N[select_nominal_path 选一条 coarse path]
++  N --> A[原 tracker 在真实 t0 和理想未来路径状态上生成 11×2 controls]
++  A --> W[冻结 Encoder 与粗轨迹 WM 推演]
++  W --> S[原 ResidualStateBuilder: 535维 原顺序]
++  S --> R[冻结 SAC actor: 2维归一化残差]
++  R --> M[原 action mapping: 横向目标 Δd / 目标速度 Δv]
++  M --> F[原 Lattice regenerate / feasibility 路径]
++  F --> T[post-SAC adapter: 11×2 steering, throttle_brake]
++  T --> B[B: 直接 baseline 首动作]
++  T --> G[C/D: baseline + 64 Gaussian AR1 序列]
++  G --> V[4轮 frozen WM reward/dynamics + terminal Q / 8 elites]
++  V --> U[每轮 weighted mean / std 更新]
++  U --> Z[最终 baseline 与 weighted mean 同批复评]
++  Z --> X[只执行 selected_sequence 0]
++  B --> X
++  X --> ENV[env.step: 5次 0.02秒物理更新]
++  ENV --> E
++```
++
++## 状态、动作空间、时间定义
++
++| 环节 | 输入/输出 | 时间与实际执行含义 |
++|---|---|---|
++| `planning/structured_proposal.py:select_coarse` | 当前真实车/路/障碍→多条 `(target_d,target_speed,horizon)` 轨迹→一条 coarse | 保留完整候选对象用于诊断，但后续在线优化只围绕选中路径；未对其他路径进行真实反事实执行，不能声称 nominal 经常选错 |
++| `planning/coordinator.py:prepare` | coarse→动作、冻结 latent、WM 特征、原535状态 | 每周期重新生成；粗轨迹特征未改 |
++| `refine_and_plan` | 原 SAC actor 输出→原残差映射→重生轨迹 | SAC 两维是横向和目标速度参数残差，不是 steering/throttle |
++| `planning/trajectory_adapter.py:path_to_actions` | 一条路径与真实当前车辆→`[H+1,2]` | 索引0使用真实车辆；索引 j>0 使用理想路径 `j*0.1s` 的 position/heading/speed。它不是由上一控制量积分得到的真实可达状态 |
++| `planning/time_alignment.py:align_frenet_path` | 路径 t/XY/s_d→插值状态 | 查询时间0,0.1,...,1.0；超出路径结尾则保持末端位置；不是整体平移一个控制周期 |
++| `planning/local_mppi.py` | baseline、当前 latent→局部物理控制序列 | 64个Gaussian加baseline；8elite、4轮；默认输出weighted mean与baseline比较的赢家。默认没有 `selection_mode` 字段，不能混同旧56回合显式 weighted_mean 的额外Elite诊断路径 |
++| `planning/evaluator.py` | z_t 与 a0...a10 | 对 t=0...9，先 `two_hot_inv(reward(z_t,a_t))`，再 `next(z_t,a_t)`；gamma=.995；终止预测影响后续reward/terminal掩码；Q(z10,a10)是TD-MPC2 continuation定义 |
++| `agent.py:act`→`env/env.py:step` | `selected_sequence[0]`→环境归一化动作 | 两维顺序 steering/throttle_brake；env转CPU数组并执行原动作空间约束，没有再走SAC残差映射；采样本来在[-1,1]，环境夹取应为恒等 |
++
++当前 WM 评分严格为有预测终止掩码的 `Σ gamma^t r_hat + gamma^H Q_TD(z_H,a_H)`，Cost=0，未启用未经验证Cost。random_pair同批候选共用两位Q成员，但不同轮次和最终复评可能重新抽样。索引保存在逐轮 coverage 的 q_pair；随机性是原生机制，不能仅凭变化认定bug。
++
++评价的a1...a10通常不会原样执行：下一次控制周期会重新计算 Lattice、粗轨迹风险/价值特征、SAC残差、重生路径、动作序列以及MPPI候选与分布。默认 warm-start=false，无上轮分布平移。a10是候选terminal Q动作；它不属于真实H10前缀执行的10个动作。
++
++## 已确认的虚拟速度语义不一致及隔离修正
++
++安装的 MetaDrive `BaseObject.speed` 源码返回世界速度模，单位m/s。路径 `s_d` 是 Frenet 纵向坐标导数；横向移动或弯道偏移时，它与世界XY轨迹速度模不相等。因此这是**同单位、不同物理量**的问题，不是km/h重复换算。原 adapter 将s_d直接传给 tracker，影响速度相关lookahead与油门。
++
++D的唯一开关 `mpr_mpc.mppi.cartesian_virtual_speed=true`：在同一路径源时间上计算 `norm(gradient(XY,t))` 并插值；末端位置保持区间速度设0。仅作用于 post-SAC MPPI baseline 的虚拟未来状态。时间、XY、heading、原粗轨迹535语义、SAC、首动作、WM和搜索预算保持不变。该功能默认关闭，config.yaml逐字未改。
++
++这是理想路径状态的一致性修正，不意味着车辆能无误差跟踪、不意味着末端能物理瞬停，也不解决末端TD-Q策略/滚动重规划之间的评价偏差。没有新增安全、Recovery、Emergency或在线审批。
++
++## 实证与协议边界
++
++`same_path_adapter_replay.csv`：36个预先指定时刻真实路径快照使用原控制器精确重放，原动作完全复现；首动作全不变，21个快照未来动作改变，最大分量差0.54536。
++
++`D_preflight.json`：同一个真实状态复建、恢复相同Torch及私有采样RNG；原535、coarse controls、latent、SAC残差、refined parameters及baseline首动作均逐位相等。该直道状态未来动作也相同（差0），不能拿它证明未来动作一定变化；真实不同路径证据由上述36快照提供。
++
++`action_alignment.csv`：逐步对照提交动作/实际车辆控制、control_dt、理想后继路径状态/真实车辆后继状态；不把tracker理想状态误差与WM latent预测误差混为一谈。`replanning_action_deviation.csv`比较旧计划未来动作与以后真正重新规划执行的动作。
++
++历史 `prediction_vs_actual.csv` 明确记录 H1/2/4/10 **固定动作前缀后原Lattice+SAC接管**。新48个回合每步重新规划直到原生done，二者不互充标签。新同一条轨迹某步预测总值与其后滚动RTG的差，是模型和策略目标共同差异，不能解释为同策略纯校准误差。
++
++所有地图和两次repeat种子在结果前冻结。B/C/D每一对初始 observation、vehicle、traffic、RNG 哈希逐项核验；统计单位是8张地图，非48个独立地图。并发采集耗时与后续单进程固定状态完整规划探针分开报告，不以GPU阶段时间冒充完整控制耗时。
+diff --git a/reports/mppi_root_cause_20261118/D_protocol.json b/reports/mppi_root_cause_20261118/D_protocol.json
+new file mode 100644
+index 0000000..da288ed
+--- /dev/null
++++ b/reports/mppi_root_cause_20261118/D_protocol.json
+@@ -0,0 +1,31 @@
++{
++  "scenarios": [
++    130719,
++    130132,
++    130620,
++    130467,
++    130806,
++    130343,
++    130605,
++    130018
++  ],
++  "repeat_seeds": [
++    1,
++    2
++  ],
++  "group": "D",
++  "native_episodes": 16,
++  "hypothesis": "Adapter uses Frenet longitudinal s_d as world ground speed in virtual future tracker state; test correct Cartesian speed only.",
++  "switch": "mpr_mpc.mppi.cartesian_virtual_speed=true, disabled by default",
++  "correction": "Source XY/time derivatives via numpy.gradient, norm then interpolate. After held-endpoint time speed=0. Existing times,positions,headings unchanged.",
++  "protected": "Coarse path and original535features ALWAYS legacy. Only postSAC MPPI baseline future virtual speeds change; actual t0 vehicle and baseline first action identical.",
++  "same_scoring_sampling_budget": true,
++  "no_new_safety_rule": true,
++  "no_training": true,
++  "evidence_rows": 36,
++  "evidence_sha256": "e9a7725620d8e8afd2dacd3ed31cdbc7e77cb79299e0617735251a9b952a8df0",
++  "B_C_completed_when_preregistered": 12,
++  "selection_on_performance": false,
++  "no_further_variants": true,
++  "acceptance": "At least one extra success, no material crash/OOR/route deterioration, paired discounted gain>0 with sceneCI, consistency beyond single map/seed, isolatedP95 target100ms. If no positive signal stop, no100episode expansion."
++}
+\ No newline at end of file
+diff --git a/reports/mppi_root_cause_20261118/ROOT_CAUSE_AUDIT.md b/reports/mppi_root_cause_20261118/ROOT_CAUSE_AUDIT.md
+new file mode 100644
+index 0000000..cd568db
+--- /dev/null
++++ b/reports/mppi_root_cause_20261118/ROOT_CAUSE_AUDIT.md
+@@ -0,0 +1,91 @@
++# MPR-MPC 闭环性能根因审计与最小修复（2026-11-18）
++
++**结论：修复了可复现的虚拟速度物理量不一致，但没有证明 MPPI 优于 Lattice+SAC。停止扩大实验；保持原默认配置，不将 D 设为默认，不训练新评分头。**
++
++最强证据指向“候选价值评价与真正部署的滚动控制目标不一致”，特别是终端TD-Q，而不是大量重复候选或首动作执行错位。这个判断是证据优先级，**尚不能识别唯一因果根因或各因素贡献比例**。确定性转换问题是真实但次要的问题：修正后成功率仍未提升，不能称为闭环退化的主因。
++
++## 1. 真实闭环结果与验收
++
++| 配置 | Success | Crash(any) | OOR(any) | Route completion | Timeout | Episode Return | Discounted Return | 步数 | 独立规划P95 |
++|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
++| B Lattice+SAC | 75.00% | 12.50% | 25.00% | 88.94% | 0.00% | 301.97 | 138.22 | 373.6 | 73.16ms |
++| C 原MPPI | 75.00% | 18.75% | 25.00% | 87.40% | 0.00% | 285.65 | 130.71 | 379.2 | 134.59ms |
++| D Cartesian速度修正 | 75.00% | 18.75% | 25.00% | 91.09% | 0.00% | 306.97 | 136.40 | 390.1 | 132.97ms |
++
++
++预先冻结8张新开发地图：[130719, 130132, 130620, 130467, 130806, 130343, 130605, 130018]；每图2个规划种子[1,2]，每组16原生回合，共48。未运行正式100场、未触碰封存验证。B重复种子在8图上轨迹均完全相同；C/D均因MPPI随机采样而不同。因此独立单位始终只有8图，不是48图。
++
++折扣回报配对差：
++
++- C−B：-7.514，地图聚类95%CI [-20.971, +3.797]。
++- D−B：-1.816，地图聚类95%CI [-8.946, +5.605]。
++- D−C：+5.697，地图聚类95%CI [-0.360, +13.334]。
++
++D相对C的路线完成率增加3.69个百分点，Episode Return增加21.32；Success/Crash/OOR总体未变。相对B，D路线完成率增加2.15个百分点，但Success增加0回合，Crash增加1/16=6.25个百分点，折扣回报仍为负差。D-C回报区间也包含0，不能宣称可靠改善。逐地图方向并不一致，见 paired_statistics.json；不能以原始Episode Return增加替代折扣回报和事故验收。
++
++**验收不通过**：没有额外成功回合；未证明事故指标不恶化及折扣收益正向改善；完整规划P95仍超100ms。保留B为工作基准，停止该轮开发采样和参数搜索，不进入新的独立验证或正式100场。
++
++每周期实际重新生成Lattice、原SAC、可选MPPI并执行首动作直到环境原生done；不是H步序列重放。逐场景/种子、失败原因、成功但碰撞场景及安全Cost均在 paired_closed_loop_episodes.csv。Crash/OOR按全回合任一真实事件记录；环境允许碰撞后继续驾驶，Success和Crash可同时为1，未改环境终止条件。
++
++## 2. A：候选生成证据
++
++C组6068个规划步、每步4轮，64个Gaussian加baseline。完整候选序列去重率每轮均100%；首动作去重率约99.98%以上。平均首动作距SAC从第0轮0.0871增加到第3轮0.1458；最终实际首动作平均改变量0.162（归一化二维L2）。不能描述为根本没有动作变化。
++
++原始采样被夹取的分量比例从13.44%降到4.59%；第0轮油门分量夹取26.69%。这些是克隆私有RNG精确重建夹取前样本得出的比例，不是用“恰等于边界”代替夹取计数。近SAC首动作比例（固定L2≤0.01）从5.71%降到1.46%。
++
++输入std steering从.0400→0.0154，throttle从.1200→0.0482；Elite全序列距离从0.4098降到0.1952。这是明显收缩，但仅凭这些数字不能叫“错误的过早塌缩”。std仍非零，首动作距离在增大，并无大量完全重复动作。
++
++Lattice每步平均约49.96个不同(d,v,H)可行参数组合，进入SAC/MPPI前只选1条。固定快照原始横向参数跨度平均约7.62m，包含不同速度、时间与横向意图；完整快照保留在 episodes/*/snapshot_*.npz。**但没有这些被舍弃路径的真实收益标签，不能断言 nominal 经常不是实际最好路径**；唯一性也不等于有效行为多样性，仍缺少64候选全部真实轨迹可达性/收益标签。因此没有实施结构化参数搜索或多模式扩张。
++
++历史已执行候选子集存在Oracle正收益，但模型不稳定识别。H1旧数据的地图均衡Oracle Gain为9.740，原H10评分选中增益3.738且区间跨0；H10子集Oracle Gain为26.317，模型选中-2.443。这是有限代表候选子集的后验Oracle，不是256候选的完整真实覆盖，也不是新的独立验证。
++
++## 3. B：评价与执行目标
++
++实现确为先reward(z_t,a_t)，two_hot_inv一次，再next，原gamma=.995和预测termination掩码。未发现一步Reward索引或折扣重复错误。random_pair同批共享、跨轮变化；现有实验已显示改变Q成员会扰动排名，但不足以证明改成固定Q能提高真实收益。本轮不更改Q聚合。
++
++新C组选择的预测正增益步比例99.64%，平均预测增益5.811；绝对terminal增益占prefix与terminal绝对分量和的86.38%。与此同时整回合C−B折扣收益为负。该现象支持评价目标失配/模型利用问题，但**不是同一步同状态反事实的因果收益证明**。
++
++新C单步Reward MAE 0.196。预测H10总分与后续真实滚动策略RTG的MAE为136.94，其中包含策略/执行协议差异，不能当作纯WM预测MAE。原历史终端延续价值误差约8.46、prefix约0.39；真实reward+真实末端latent oracle未可靠恢复排序，故不能仅归咎Dynamics或Reward。
++
++prediction_vs_actual.csv复用576条旧记录中571条同定义的baseline接管记录；另5条为2条TD actor、2条TD MPC接管和1条重复重放，明确列于 historical_prediction_statistics.json，不混入同策略排名。H1覆盖18地图、H2/4/10只有6地图，不能直接横向比较总体数字。每行均保留H、split、预测H10分数、同H重算score（可用时）、prefix、Q、实际reward/return/gain和原始路径；缺失字段留空，不补造。
++
++相同候选H1/H10原始Return相关0.721，但去掉起点baseline后的收益差相关只有0.180。原始相关受到起点难度影响，不可拿它反驳历史已报告约.079的收益差相关；数据子集也不同。H1→SAC、H10→SAC与每步重规划MPPI是三种不同策略，均明确分列。
++
++最强未解决问题是TD-Q延续策略与Lattice+Residual SAC及随后重新规划MPPI不一致，且a_H参与优化却不在真实前缀执行。过去policy_prior、Mean/Elite、iterations1/2/4、多个独立学习头均未可靠改善；本轮没有再重复这些尝试。现有证据尚不能把策略定义错位、Q泛化误差、监督状态缺失与环境收益噪声完全分离。
++
++## 4. C：动作转换与执行
++
++所有真实动作均精确等于selected_sequence[0]，车辆收到的归一化steering/throttle控制最大分量差0；实际控制周期=.02×5=.1s。没有首动作偏移、维度颠倒或重复残差映射证据。
++
++可复现问题：Frenet s_d不是世界速度模，但原虚拟future车状态用s_d。36个预定快照差值最高约2.17m/s；对角直线和偏移圆弯单元测试均复现。原实际控制器重放36/36精确复现旧动作，21个快照未来动作改变，最大分量差0.54536；首动作36/36不变。
++
++只修改3文件24行新增/4行删除：time_alignment.py加入可选XY/time速度模；trajectory_adapter.py透传可选参数；coordinator.py仅post-SAC MPPI路径读取显式开关。原coarse535、网络、映射、环境、WM评分、64/8/4、std/rho/beta及Cost=0不变。`cartesian_virtual_speed`默认false，config.yaml无改动。
++
++D预注册在任何D结果前完成（当时B/C完成12/32），假设来自物理量契约而非挑选有利回报；之后只运行这一种D。D_preflight恢复相同采样RNG并验证coarse535、coarse动作、latent、SAC残差、refined参数、baseline首动作逐位不变。该直道检查点未来动作差0，变化证据来自36条真实路径，而不是假称该点也有变化。
++
++新闭环中C/D理想后继状态的速度MAE分别0.315/0.317m/s，位置误差约0.015/0.016m；不支持该修正已经解决实际动力学误差。两组后续状态本来不同，不能作为同状态预测器公平误差对照。端点保持区间约1.1%控制步出现；D让保持位置对应零虚拟速度，但这不是物理停车保证。未增加安全规则。
++
++## 5. 耗时、测试与完整性
++
++48回合采集使用两进程共享GPU、记录候选；该耗时独立列为 shared_native_recording，含冷启动峰值，不据此宣称实时性。随后单进程、第一二预定地图相同B前缀29步到相同真实状态，各配置5暖机+50完整agent.act，共300次正式计时；关闭候选记录、不执行探针输出动作，配对状态及交通/RNG完全一致。
++
++独立完整规划P50/P95：B 69.08/73.16ms，C 130.32/134.59ms，D 129.85/132.97ms。D与C微小差异不能宣称性能优化；两者都不满足100ms。
++
++C平均Lattice约18.96ms、两个adapter合计5.86ms，SAC推理约.47ms；4轮候选+最终复评WM推演（含terminal）约47.92ms GPU时间，完整C约130.63ms。latency.csv保留CPU wall/GPU区分、4轮各次评价、最终复评和Q阶段；包含关系不可相加，CPU异步提交不能冒充GPU同步耗时。固定两状态探针不代表全地图P95合格。
++
++核心及本轮回归46项通过，其中7项为新增的转换/默认行为/原控制器路径重放/诊断RNG保持检查。额外运行的旧test_native_mppi_cost.py有15通过、20失败；干净main上完全相同20个失败（旧参数/旧去重/旧配置迁移期待），未删除测试或降低断言，未将这些既有问题伪报为全套通过。详见3份测试日志与verification.json。
++
++Checkpoint仍为原WM200k+RL300k总500k，SHA256 `4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a`；不是WM500k+RL500k。每回合前后WM及Actor张量hash相等；源checkpoint、原配置、历史文件重新hash一致，主main干净；无训练、commit或push。
++
++## 6. 最终技术决策
++
++1. 候选不是大量重复，但局部控制扰动与单一nominal路径限制尚不能完全排除；未获取丢弃路径真实收益，所以不重构候选空间。
++2. 当前最有证据的损失环节是价值评价与真实滚动执行的对应关系；唯一根因未被因果识别，不能以一次修正命中主因。
++3. 本轮只保留默认关闭的虚拟速度语义修正及完整诊断工具。它解决明确的转换定义问题，但未通过驾驶收益验收。
++4. 当前不值得扩大当前MPPI配置评测。继续使用B；不训练第六个头、不改采样预算或新增规则。若以后恢复研究，唯一优先问题应是**同状态首动作评价与真正逐步重规划后续策略的可验证一致性**，先有预注册反事实证据再决定算法变化；本轮不新增该在线模型或实验分支。
++
++## 7. 交付与复现
++
++DATA_FLOW_AUDIT.md含完整图；candidate_coverage.csv含每步每轮精确采样统计；path_and_action_comparison.csv比较原Lattice/SAC/Mean/实际首动作；prediction_vs_actual.csv及historical_origin_ranking.csv严格分H；action_alignment.csv逐步控制和物理对照；replanning_action_deviation.csv记录旧未来计划与后来真控制差；paired_closed_loop_episodes.csv和summary.csv是真实原生回合；paired_statistics.json是场景聚类区间；latency.csv含分阶段实测；experiment_manifest.json和verification.json记录所有控制变量；code_changes.patch包括3个core文件及本轮脚本、协议、文档。
++
++所有修改和新数据在隔离worktree，旧实验/main未覆盖。新NPZ为原生轨迹与快照，并非新checkpoint。运行与保存说明见RUNNING.md。
+diff --git a/reports/mppi_root_cause_20261118/RUNNING.md b/reports/mppi_root_cause_20261118/RUNNING.md
+new file mode 100644
+index 0000000..3e7ddf8
+--- /dev/null
++++ b/reports/mppi_root_cause_20261118/RUNNING.md
+@@ -0,0 +1,48 @@
++# 查看与复现
++
++本轮目录：`/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118`，分支 `experiment/mppi-root-cause-20261118`。主目录 `mpr_mpc_v2` 未改动；直接在那里 git add 不会提交此 worktree 的未提交修改。本轮没有自动 commit、合并或 push。
++
++查看结果：
++
++```bash
++cd /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118
++cat reports/mppi_root_cause_20261118/summary.csv
++cat reports/mppi_root_cause_20261118/paired_statistics.json
++cat reports/mppi_root_cause_20261118/verification.json
++git diff --stat
++```
++
++相关回归测试（不启动训练或环境评测）：
++
++```bash
++cd /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118
++OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
++/home/kzb/anaconda3/envs/tdmpc2/bin/python -m pytest -q \
++  tests/test_simplified_tdmpc2_mppi.py \
++  tests/test_mppi_value_evaluation.py \
++  tests/test_mppi_final_selection.py \
++  tests/test_mppi_diagnosis.py \
++  tests/test_first_action_study.py \
++  tests/test_mppi_failure_attribution.py \
++  reports/mppi_root_cause_20261118/test_alignment_fix.py
++```
++
++对应46项。额外的旧 `test_native_mppi_cost.py` 已在本轮和干净main各执行一次，均为15通过/20失败；完整日志已保存，没有修改旧测试。
++
++## 实验脚本与顺序
++
++1. `study_io.py`：只加载已冻结的WM200k+RL300k checkpoint；B/C读干净main，D读隔离worktree。无训练入口。
++2. `batch.py` / `closed_loop.py`：两进程收集8图×2种子×B/C=32回合。每周期原生重规划，不重放预存H步动作。
++3. `test_alignment_fix.py` + `speed_preflight.py`：测试及真实同状态535/首动作保持检查。
++4. `batch_D.py`：仅一个预注册速度修正，16回合；等待B/C完成和D_preflight通过。
++5. `run_probes.py` / `latency_probe.py`：等待D完成，单进程按地图/方法依次重建同一物理状态，5暖机+50计时，共300调用。记录各轮采样/评价/更新及完整规划；不执行探针输出动作。
++6. `historical_analysis.py`：复用571条可比较历史原SAC接管记录，明确排除另外5条不同接管/重复重放；不运行环境。
++7. `replay_adapter.py`：36个原实际控制器路径快照重放；`snapshot_comparison.py`比较原Lattice/SAC/MPPI动作。
++8. `summarize.py`：配对初始条件、原生done与RTG校验；以8张完整地图聚类bootstrap2000次；分离共享负载与独立探针耗时。
++9. `finalize.py`：验证原checkpoint/配置/历史文件未变，生成报告及代码Diff。
++
++这些脚本对输出采用独占创建：不要在当前已完成目录重新启动整套任务。需要复现实验时，应复制源码和冻结协议到新的报告目录，再按上述顺序运行；使用同一批地图只能称为复现，不能称为新独立验证。`history_review.json`及原 `protocol.json`/`D_protocol.json`保留本轮预注册证据，不根据已看到的结果更换地图或D方案。
++
++核心修正需显式设置 `mpr_mpc.mppi.cartesian_virtual_speed=true`；默认不设置即为旧行为。D不是已通过部署验收的方案。
++
++历史NPZ/模型等未跟踪二进制位于原实验worktree，脚本按manifest绝对路径读取。新trace/snapshot NPZ也受仓库通用ignore规则影响，仍保存在磁盘；`git add -A`不一定包含这些原始数据。代码补丁只打包本轮源码、协议和文档，不打包旧模型或实验二进制。
+diff --git a/reports/mppi_root_cause_20261118/batch.py b/reports/mppi_root_cause_20261118/batch.py
+new file mode 100644
+index 0000000..5ef534d
+--- /dev/null
++++ b/reports/mppi_root_cause_20261118/batch.py
+@@ -0,0 +1,36 @@
++"""Two bounded independent env workers; never overwrite an episode/result."""
++import os,subprocess,sys,time
++from pathlib import Path
++sys.path.insert(0,str(Path(__file__).parent))
++from study_io import R,ROOT,load,dump
++
++p=load(R/'protocol.json');env=dict(os.environ,OMP_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',MKL_NUM_THREADS='1',MUJOCO_GL='egl')
++jobs=[]
++for scene in p['scenarios']:
++    for seed in p['repeat_seeds']:
++        for group in p['groups']:
++            name=f'{group}_{scene}_r{seed}';output=R/'episodes'/name
++            if (output/'episode.json').exists():continue
++            if output.exists():
++                archive=R/'failed_attempts'/name;archive.parent.mkdir(exist_ok=True)
++                if archive.exists():archive=archive.with_name(name+'_'+str(int(time.time())))
++                output.rename(archive)
++            jobs.append((name,group,scene,seed))
++running=[];completed=[];failed=[]
++logs=R/'job_logs';logs.mkdir(exist_ok=True)
++while jobs or running:
++    while jobs and len(running)<p['parallel_workers'] and not failed:
++        name,group,scene,seed=jobs.pop(0);log=logs/f'{name}_{int(time.time())}.log';stream=log.open('x')
++        child=subprocess.Popen([sys.executable,'-u',str(R/'closed_loop.py'),'--group',group,'--scene',str(scene),'--seed',str(seed)],cwd=ROOT,env=env,stdout=stream,stderr=subprocess.STDOUT)
++        running.append((name,child,stream,log))
++    for name,child,stream,log in running[:]:
++        status=child.poll()
++        if status is None:continue
++        running.remove((name,child,stream,log));stream.close()
++        (completed if status==0 else failed).append(dict(name=name,status=status,log=str(log)))
++        print('EPISODE',name,'status',status,'completed',len(completed),'failed',len(failed),flush=True)
++    if failed and not running:break
++    if running:time.sleep(1)
++assert not failed,failed
++dump('collection_complete.json',dict(completed=completed,total_native_episodes=32,groups=p['groups'],new_weights=0))
++print('ALL32 NATIVE CLOSED LOOP EPISODES COMPLETE',flush=True)
+diff --git a/reports/mppi_root_cause_20261118/batch_D.py b/reports/mppi_root_cause_20261118/batch_D.py
+new file mode 100644
+index 0000000..657de54
+--- /dev/null
++++ b/reports/mppi_root_cause_20261118/batch_D.py
+@@ -0,0 +1,28 @@
++"""Run the ONE preregistered D correction after all32 B/C native episodes."""
++import os,subprocess,sys,time
++from pathlib import Path
++sys.path.insert(0,str(Path(__file__).parent))
++from study_io import R,ROOT,load,dump
++while not (R/'collection_complete.json').exists():
++    if 'Traceback' in (R/'batch.log').read_text():raise RuntimeError('B/C queue failed; do not continue D')
++    time.sleep(2)
++p=load(R/'D_protocol.json');jobs=[(s,seed) for s in p['scenarios'] for seed in p['repeat_seeds']]
++while not (R/'D_preflight.json').exists():time.sleep(1)
++assert load(R/'D_preflight.json')['passed'], 'D must pass unit/parity checks first'
++env=dict(os.environ,OMP_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',MKL_NUM_THREADS='1',MUJOCO_GL='egl')
++running=[];done=[]
++while jobs or running:
++    while jobs and len(running)<2:
++        scene,seed=jobs.pop(0);name=f'D_{scene}_r{seed}'
++        if (R/'episodes'/name/'episode.json').exists():done.append(name);continue
++        stream=(R/'job_logs'/f'{name}.log').open('x')
++        process=subprocess.Popen([sys.executable,'-u',str(R/'closed_loop.py'),'--group','D','--scene',str(scene),'--seed',str(seed)],cwd=ROOT,env=env,stdout=stream,stderr=subprocess.STDOUT)
++        running.append((name,process,stream))
++    for name,process,stream in running[:]:
++        status=process.poll()
++        if status is None:continue
++        running.remove((name,process,stream));stream.close();assert status==0,name
++        done.append(name);print('D EPISODE',name,len(done),'/16',flush=True)
++    if running:time.sleep(1)
++dump('D_collection_complete.json',dict(episodes=done,expected=16,only_one_factor=True))
++print('ALL16 D native episodes complete',flush=True)
+diff --git a/reports/mppi_root_cause_20261118/closed_loop.py b/reports/mppi_root_cause_20261118/closed_loop.py
+new file mode 100644
+index 0000000..a20ea65
+--- /dev/null
++++ b/reports/mppi_root_cause_20261118/closed_loop.py
+@@ -0,0 +1,153 @@
++"""Every physical tick replans Lattice/SAC/MPPI and executes exactly its first action."""
++import argparse,sys,time
++from pathlib import Path
++_data_root=Path(__file__).resolve().parents[2]
++_group=sys.argv[sys.argv.index('--group')+1] if '--group' in sys.argv else 'B'
++# Freeze B/C to clean main; D alone loads the opt-in corrected worktree.
++_code_root=_data_root if _group=='D' else _data_root.parent/'mpr_mpc_v2'
++sys.path.insert(0,str(_code_root));sys.path.insert(1,str(Path(__file__).parent))
++import numpy as np
++import torch
++from omegaconf import OmegaConf
++from study_io import R,ROOT,load,dump,table,make_runtime
++from instrumentation import SamplerAudit
++from tools.first_action_study import snapshot,tensor_hash
++from planning.time_alignment import align_frenet_path
++
++
++@torch.no_grad()
++def main():
++    ap=argparse.ArgumentParser();ap.add_argument('--group',choices=['B','C','D'],required=True)
++    ap.add_argument('--scene',type=int,required=True);ap.add_argument('--seed',type=int,required=True);args=ap.parse_args()
++    p=load(R/'protocol.json');assert args.scene in p['scenarios'] and args.seed in p['repeat_seeds']
++    name=f'{args.group}_{args.scene}_r{args.seed}';out=R/'episodes'/name;out.mkdir(parents=True,exist_ok=False)
++    parsed,cfg,env,agent=make_runtime(args.scene,args.seed,args.group,record=True)
++    from common.seed import set_seed
++    initial_model=tensor_hash(agent.model);initial_sac=tensor_hash(agent.residual_sac.actor)
++    try:
++        combined=args.scene+args.seed;set_seed(combined);agent.planner.reset(seed=combined)
++        obs=env.reset(seed=args.scene);assert env.unwrapped_metadrive.current_seed==args.scene
++        initial=snapshot(env,obs);dump(f'episodes/{name}/initial.json',initial)
++        OmegaConf.save(parsed,out/'config.yaml')
++        sim=env.unwrapped_metadrive
++        assert agent.planner.control_dt==sim.config['decision_repeat']*sim.config['physics_world_step_size']
++        planner=agent.planner;sampler=SamplerAudit(planner.local_mppi) if args.group!='B' else None
++        local_result=[None];phases={};active=[False];counts=dict(prepare=0,mppi=0)
++        original_plan=planner.local_mppi.plan;original_prepare=planner.prepare
++        def capture_plan(*a,**kw):
++            counts['mppi']+=1;result=original_plan(*a,**kw);local_result[0]=result;return result
++        def prepare(*a,**kw):counts['prepare']+=1;return original_prepare(*a,**kw)
++        planner.local_mppi.plan=capture_plan;planner.prepare=prepare
++        def measured(obj,method,key):
++            old=getattr(obj,method)
++            def fn(*a,**kw):
++                begin=time.perf_counter();result=old(*a,**kw)
++                if active[0]:phases[key]=phases.get(key,0.)+1000*(time.perf_counter()-begin)
++                return result
++            setattr(obj,method,fn)
++        measured(planner.structured,'select_coarse','lattice_selection_wall_ms')
++        measured(planner.action_adapter,'path_to_actions','trajectory_adapter_wall_ms')
++        observations=[obs.cpu().numpy().copy()];actions=[];rewards=[];costs=[];dones=[];terminated=[];truncated=[]
++        physical=[];selected_sequences=[];virtual_positions=[];virtual_speeds=[];virtual_headings=[]
++        act_ms=[];diag_ms=[];step_rows=[];coverage=[];alignment=[];done=crash=oor=False
++        while not done:
++            step=len(actions)+1;vehicle=sim.agent
++            before=dict(position=np.asarray(vehicle.position[:2]).copy(),speed=float(vehicle.speed),heading=float(vehicle.heading_theta))
++            if sampler:sampler.reset()
++            phases.clear();active[0]=True;torch.cuda.synchronize();begin=time.perf_counter()
++            action=agent.act(obs,t0=step==1,eval_mode=True)
++            torch.cuda.synchronize();elapsed=1000*(time.perf_counter()-begin);active[0]=False
++            result=agent.last_plan;ctx=planner.last_context
++            assert result.stage.use_residual and result.stage.use_mppi==(args.group!='B')
++            assert counts['prepare']==step and counts['mppi']==(step if args.group!='B' else 0)
++            sequence=result.debug['selected_mppi_actions'];assert torch.equal(action.cpu(),sequence[0].cpu())
++            diagstart=time.perf_counter();mp=local_result[0]
++            predicted_first=None;predicted_prefix=None;predicted_q=None;predicted_total=None
++            if sampler:
++                trace=mp.candidate_trace
++                assert len(trace['actions'])==4 and not mp.numerical_error
++                values=[v.cpu().numpy() for v in trace['values']]
++                metadata=dict(configuration=args.group,scene=args.scene,repeat_seed=args.seed,step=step)
++                coverage.extend(sampler.rows(metadata,values,trace['q_members']))
++                predicted_first=float(mp.selected_consequence['first_reward']);predicted_prefix=float(mp.selected_consequence['reward'])
++                predicted_q=float(mp.selected_consequence['terminal_q']);predicted_total=float(mp.selected_wm_value)
++            aligned=align_frenet_path(result.refined_path,required_steps=11,control_dt=planner.control_dt,
++                **({'cartesian_speed':True} if args.group=='D' else {}))
++            selection=ctx.selection
++            modes={(round(float(path.target_d),6),round(float(path.target_speed),6),round(float(path.horizon),6)) for path in selection.feasible}
++            row=dict(configuration=args.group,scene=args.scene,repeat_seed=args.seed,step=step,act_wall_ms=elapsed,
++                predicted_first_reward=predicted_first,predicted_prefix_reward=predicted_prefix,predicted_terminal_q=predicted_q,
++                predicted_total_return=predicted_total,baseline_selected=float(result.metrics['mpr/baseline_selected']),
++                first_action_delta=float(np.linalg.norm(action.cpu().numpy()-result.refined_actions[0].cpu().numpy())),
++                lattice_candidates=len(selection.candidates),lattice_feasible=len(selection.feasible),feasible_parameter_modes=len(modes),
++                coarse_target_d=float(result.coarse_path.target_d),refined_target_d=float(result.refined_path.target_d),
++                coarse_target_speed=float(result.coarse_path.target_speed),refined_target_speed=float(result.refined_path.target_speed),
++                path_end_time=float(result.refined_path.t[-1]),clipped_future_times=int((aligned.times>result.refined_path.t[-1]).sum()),
++                **phases,**{k:float(v) for k,v in result.metrics.items() if 'ms' in k})
++            if sampler:
++                pg=float(mp.selected_consequence['reward']-mp.baseline_consequence['reward'])
++                row.update(selected_predicted_gain=float(mp.wm_value_gain),selected_prefix_gain=pg,
++                           selected_discounted_terminal_gain=float(mp.wm_value_gain)-pg)
++            if step in p['detailed_snapshot_steps']:
++                snap=dict(observation=obs.cpu().numpy(),position=before['position'],speed=before['speed'],heading=before['heading'],
++                    coarse_xy=result.coarse_path.xy,coarse_t=result.coarse_path.t,coarse_speed=result.coarse_path.s_d,
++                    refined_xy=result.refined_path.xy,refined_t=result.refined_path.t,refined_speed=result.refined_path.s_d,
++                    coarse_actions=result.coarse_actions.cpu().numpy(),refined_actions=result.refined_actions.cpu().numpy(),
++                    selected_actions=sequence.cpu().numpy(),aligned_xy=aligned.positions,aligned_heading=aligned.headings,aligned_speed=aligned.speeds)
++                for i,path in enumerate(selection.candidates):
++                    snap[f'lattice_{i}_xy']=path.xy;snap[f'lattice_{i}_parameters']=np.array([path.target_d,path.target_speed,path.horizon])
++                if sampler:
++                    snap['gaussians']=torch.stack(mp.candidate_trace['actions']).cpu().numpy()
++                    snap['gaussian_values']=torch.stack(mp.candidate_trace['values']).cpu().numpy()
++                    snap['weighted_mean']=mp.final_mean.cpu().numpy()
++                np.savez_compressed(out/f'snapshot_{step}.npz',**snap)
++                dump(f'episodes/{name}/snapshot_{step}_origin.json',snapshot(env,obs))
++            diagnostic=1000*(time.perf_counter()-diagstart)
++            obs,reward,done,info=env.step(action)
++            assert abs(float(reward)-float(info['tdmpc2_reward']))<1e-4
++            after=sim.agent
++            actual_control=np.array([float(after.steering),float(after.throttle_brake)])
++            actual_position=np.asarray(after.position[:2]).copy();actual_speed=float(after.speed);actual_heading=float(after.heading_theta)
++            tracker_next,_=planner.structured.controller._track_path(after,result.refined_path)
++            alignment.append(dict(configuration=args.group,scene=args.scene,repeat_seed=args.seed,step=step,
++                expected_control_dt=planner.control_dt,actual_control_dt=sim.config['decision_repeat']*sim.config['physics_world_step_size'],
++                first_action_submission_equal=True,normalized_control_execution_error=float(np.max(np.abs(action.cpu().numpy()-actual_control))),
++                virtual_next_position_error=float(np.linalg.norm(aligned.positions[1]-actual_position)),
++                virtual_next_speed_error=float(aligned.speeds[1]-actual_speed),
++                virtual_next_heading_error=float((aligned.headings[1]-actual_heading+np.pi)%(2*np.pi)-np.pi),
++                old_path_next_control_delta=float(np.linalg.norm(np.asarray(tracker_next)-result.refined_actions[1].cpu().numpy())),
++                clipped_future_times=row['clipped_future_times'],speed_units='m/s actual and virtual',
++                virtual_speed_mode='Cartesian XY/time derivative' if args.group=='D' else 'legacy Frenet s_d',
++                note='Ideal path virtual state vs real controlled state; an error alone does not prove an index bug.'))
++            row.update(actual_first_reward=float(info['tdmpc2_reward']),diagnostic_post_act_ms=diagnostic,
++                actual_crash=bool(info.get('crash',False)),actual_oor=bool(info.get('out_of_road',False)),route_completion=float(info['route_completion']))
++            step_rows.append(row);act_ms.append(elapsed);diag_ms.append(diagnostic)
++            observations.append(obs.cpu().numpy().copy());actions.append(action.cpu().numpy().copy());rewards.append(float(info['tdmpc2_reward']))
++            costs.append(float(info['cost']));dones.append(bool(done));terminated.append(bool(info['terminated']));truncated.append(bool(info['truncated']))
++            physical.append([*actual_position,actual_speed,actual_heading]);selected_sequences.append(sequence.cpu().numpy().copy())
++            virtual_positions.append(aligned.positions);virtual_speeds.append(aligned.speeds);virtual_headings.append(aligned.headings)
++            crash|=any(bool(info.get(k,False)) for k in ['crash','crash_vehicle','crash_object','crash_human','crash_building','crash_sidewalk'])
++            oor|=bool(info.get('out_of_road',False))
++            assert step<=1000
++            if step%100==0:print(name,'step',step,'route',round(info['route_completion'],3),'act_ms',round(elapsed,1),flush=True)
++        rtg=np.zeros(len(rewards)+1)
++        for i in range(len(rewards)-1,-1,-1):rtg[i]=rewards[i]+p['gamma']*rtg[i+1]
++        for i,row in enumerate(step_rows):row['actual_replanning_policy_rtg']=float(rtg[i])
++        np.savez_compressed(out/'trace.npz',observations=observations,actions=actions,rewards=rewards,costs=costs,done=dones,
++            terminated=terminated,truncated=truncated,rtg=rtg,physical_after=physical,selected_sequences=selected_sequences,
++            virtual_positions=virtual_positions,virtual_speeds=virtual_speeds,virtual_headings=virtual_headings,act_wall_ms=act_ms,diagnostic_ms=diag_ms)
++        table(f'episodes/{name}/steps.csv',step_rows);table(f'episodes/{name}/coverage.csv',coverage);table(f'episodes/{name}/alignment.csv',alignment)
++        assert tensor_hash(agent.model)==initial_model and tensor_hash(agent.residual_sac.actor)==initial_sac
++        row=dict(configuration=args.group,scene=args.scene,repeat_seed=args.seed,success=float(info['success']),crash=float(crash),out_of_road=float(oor),
++            route_completion=float(info['route_completion']),timeout=float(info.get('end_reason')=='timeout' or bool(info['truncated'])),
++            episode_return=sum(rewards),discounted_return=float(rtg[0]),episode_length=len(rewards),safety_cost=sum(costs),
++            planning_p50_ms=float(np.quantile(act_ms,.5)),planning_p95_ms=float(np.quantile(act_ms,.95)),planning_max_ms=max(act_ms),
++            baseline_selected_rate=float(np.mean([r['baseline_selected'] for r in step_rows])),first_action_delta=float(np.mean([r['first_action_delta'] for r in step_rows])),
++            end_reason=info.get('end_reason',''),native_done=True,weights_unchanged=True,counts=counts,
++            initial_hashes=initial['hashes'],latency_scope='two-worker shared GPU synchronized full agent.act; observational recording included; post-act diagnostics separate')
++        row['runtime_code_root']=str(_code_root)
++        dump(f'episodes/{name}/episode.json',row);print('DONE',name,row['discounted_return'],row['success'],row['crash'],row['out_of_road'],flush=True)
++    finally:env.close()
++
++
++if __name__=='__main__':main()
+diff --git a/reports/mppi_root_cause_20261118/experiment_manifest.json b/reports/mppi_root_cause_20261118/experiment_manifest.json
+new file mode 100644
+index 0000000..312e3b8
+--- /dev/null
++++ b/reports/mppi_root_cause_20261118/experiment_manifest.json
+@@ -0,0 +1,449 @@
++{
++  "base_commit": "e26d669574e10d5184135f5fa629582371c45636",
++  "main_commit": "e26d669574e10d5184135f5fa629582371c45636",
++  "main_status_at_start": "",
++  "worktree": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118",
++  "branch": "experiment/mppi-root-cause-20261118",
++  "remote_main_verified": "e26d669574e10d5184135f5fa629582371c45636",
++  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
++  "source_config_sha256": "7d3b5db6de911c2020baa2fdc0d0daf7723fcbb887ecca6e5f483f363d0788ea",
++  "default_config_sha256": "08e04491abbc60d831ae7b656b2f14c3ecde04c020ce7b1f7e95427371d2711c",
++  "historical_review_sha256": "841f1d320a00d4872aace59695f4068e21d46413be15245ea0b8d2a234fb6897",
++  "protocol_sha256": "8b879034a0c1992255dedb5676b30f3d626083e31d98871c95edf060640a0832",
++  "historical_scene_ids": [
++    338,
++    352,
++    366,
++    378,
++    408,
++    420,
++    423,
++    464,
++    479,
++    527,
++    539,
++    540,
++    559,
++    574,
++    595,
++    614,
++    694,
++    726,
++    775,
++    792,
++    808,
++    817,
++    822,
++    841,
++    845,
++    872,
++    875,
++    885,
++    895,
++    931,
++    935,
++    985,
++    1014,
++    1028,
++    1041,
++    1080,
++    1084,
++    1109,
++    1125,
++    1134,
++    1143,
++    1172,
++    1176,
++    1196,
++    1199,
++    1205,
++    1208,
++    1244,
++    1269,
++    1273,
++    1312,
++    1314,
++    1318,
++    1335,
++    1344,
++    1354,
++    1357,
++    1389,
++    1457,
++    1477,
++    1507,
++    1525,
++    1534,
++    1571,
++    1642,
++    1714,
++    1719,
++    1720,
++    1737,
++    1748,
++    1757,
++    1760,
++    1803,
++    1820,
++    1823,
++    1827,
++    1828,
++    1869,
++    1873,
++    1884,
++    1898,
++    1911,
++    1939,
++    1960,
++    1962,
++    1971,
++    1991,
++    2024,
++    2050,
++    2108,
++    2109,
++    2110,
++    2175,
++    2188,
++    2201,
++    2210,
++    2238,
++    2256,
++    2263,
++    2271,
++    20193,
++    20239,
++    20309,
++    20389,
++    20392,
++    20415,
++    20599,
++    20700,
++    20811,
++    20974,
++    30075,
++    30098,
++    30119,
++    30135,
++    30143,
++    30214,
++    30295,
++    30359,
++    30408,
++    30425,
++    30445,
++    30463,
++    30732,
++    30733,
++    30802,
++    30825,
++    30873,
++    30953,
++    30964,
++    30992,
++    40058,
++    40113,
++    40250,
++    40298,
++    40330,
++    40377,
++    40394,
++    40507,
++    40511,
++    40614,
++    40684,
++    40696,
++    40765,
++    40768,
++    40936,
++    40974,
++    50194,
++    50454,
++    50522,
++    50575,
++    50648,
++    50661,
++    50680,
++    50695,
++    50937,
++    50976,
++    60073,
++    60086,
++    60112,
++    60124,
++    60462,
++    60541,
++    60566,
++    60610,
++    60830,
++    61246,
++    61499,
++    61711,
++    62014,
++    62116,
++    62203,
++    62322,
++    62583,
++    62922,
++    63063,
++    63147,
++    63184,
++    63530,
++    63621,
++    63757,
++    63858,
++    63893,
++    63946,
++    64281,
++    64377,
++    64391,
++    64428,
++    64641,
++    64654,
++    64744,
++    70000,
++    70124,
++    70128,
++    70402,
++    70446,
++    71999,
++    73125,
++    73260,
++    73348,
++    73388,
++    73423,
++    73936,
++    83060,
++    83571,
++    83797,
++    83964,
++    90066,
++    90115,
++    90125,
++    90261,
++    90443,
++    90604,
++    92041,
++    92137,
++    92165,
++    92704,
++    92903,
++    92923,
++    94057,
++    94142,
++    94201,
++    94397,
++    94894,
++    94928
++  ],
++  "historical_json_scanned": 7107,
++  "scenarios": [
++    130719,
++    130132,
++    130620,
++    130467,
++    130806,
++    130343,
++    130605,
++    130018
++  ],
++  "seeds": [
++    1,
++    2
++  ],
++  "protected_sources_before": {
++    "planning/time_alignment.py": "39b0e7bae597e06bbe4d9914b0a4f2fefdf8fe3df19bf91e3b2f5bfa58effec0",
++    "planning/__init__.py": "b8d5317748ed24ba557b4abbe842b8cdda9a331fd411765c30a85e6843735cf2",
++    "planning/config.py": "7ec961b75ccf9eb5c4bb170e5be3eda5a07d28c653de6e36e94dc28e52108c5f",
++    "planning/coordinator.py": "4f581956c69e09d11f5e6e4f97910118b729588537e40e118726164c4f7b0943",
++    "planning/residual_prior.py": "7a7cc838a4f324430fe79d2509c379efdd9f631f6981debe82c1fd8174f687d3",
++    "planning/structured_proposal.py": "44b00c503d98a52738904b0a137624b1f7cd7d389dc928a01a1b78ebf298acb0",
++    "planning/candidate_value.py": "e28f16076f9a5f061cbddf393aa97830bbc0c72b17452c38c6a0f6cb7a332031",
++    "planning/cost_validation.py": "0e30486e76a88397084b20267a4e2404d580214003ad32ebc80888bc40229b44",
++    "planning/mppi_safety.py": "fd9572cf7b96f21c2ce53be1083591008c31614ee51971fec21cccac44736d39",
++    "planning/mppi_ablation.py": "ae17967d67b4a5e30e0ad050a4f367fd9b4d053667f4a14dec86b9c92d4ce358",
++    "planning/evaluator.py": "bf214ddc0350e0280cb2cf7f66434138b8c50e50b08cbb866c028673ae067c44",
++    "planning/safety.py": "748bb9bc1b7a417ad5e54bd46deb8745943531232a768d7ceac5a84f3fae9282",
++    "planning/types.py": "3ab8ecfeb502d87e4a01af58d8262a418ea96552bb6b874284aa70d721069759",
++    "planning/visualization.py": "fddb6bf673bca61adaae3d4a76342799b604cef9fd0d9412ff81742bb597ce13",
++    "planning/timing.py": "7261fad9e9ae6dc74a81b740a4be08e9ff89f5cd02f38518bac089f9e6807c99",
++    "planning/trajectory_adapter.py": "8ea85777a011ba5e84b344b1b1c22ba06a4a08a413cee804c3837fef15083e3d",
++    "planning/sac_value.py": "6b75868ca8dd9f7a15ba5fd02fd3615f7485c67d416640fced972de8590c5c59",
++    "planning/swept_collision.py": "95ff69b1a34a3efaaac1d8fdb178c5576011a324b03952dc04d728b361c50961",
++    "planning/local_mppi.py": "a0c0784d09bff0352745fffa9d7d6753b8c6eb4cf9d02124f228967936fa394c",
++    "planning/native_config.py": "21b6d2e6495dd0cb37bbf3106873a08a1c0ee31b5c77c98ea16f712dce758baf",
++    "planning/residual_training.py": "632dc234f5634bb7dea4deeb6812140e89b6f9a62a27f2b6d8c0cb7bbdba2abd",
++    "planning/kinematic_filter.py": "b2518bb42583037d25e31dcb68cb88571bf007f49d930c74cc107c6c78939214",
++    "lattice/env.py": "68774a5fc3a84e93102e4d240063397ad7b814360bfa4a86f2bfb98eaa04b288",
++    "lattice/__init__.py": "0442d704097f68c1ceec506363a4dd7debb99209a8a1d7486fd48a90ea0b90a5",
++    "lattice/eval_rule.py": "2cea6e64e641501ca41dd6ba0e4c2468f306051d8d68bd857629d2ec66ca882c",
++    "lattice/visualization.py": "2684a94a711d83f4ec4ea5b2f207436cfcb5f6527f1567ec739dbb8f40c0b174",
++    "lattice/frenet_metadrive.py": "89e2efcf08dc0279b1b4b75f18ea31f9885b081026daf6f526613148d4c0a50c",
++    "residual_rl/replay.py": "9e428d6508b7e304b76c8ee54db416a6ac350e2e79896f2391a5a632f7c05d09",
++    "residual_rl/lagrangian.py": "b0306651cd81ddae14a27b2b3a363f228434de5eb6173dde6c30d44717493eb7",
++    "residual_rl/__init__.py": "03f5a1f2fb3551520d53af572d2c520e5fe3773f4823ebf7c98829814cae804c",
++    "residual_rl/sac_agent.py": "c7adb8f81fee500eac085a23d5d8955f22d019cbce08bfc10c34c2a277e7280b",
++    "residual_rl/networks.py": "31bed89fd24fd24d25a2528e667a66882ae610fe7bfcb5e106954efaa87d17bd",
++    "residual_rl/state_builder.py": "17480dd85deed3840b573148527c4a706d2457e5fdc1cdfca3d3955dd93782de",
++    "residual_rl/features.py": "6389c244b2b26e0de3cb5fecb3f30c73b4587155a68dd4e6a134fb99075dbd8b",
++    "residual_rl/types.py": "ea3bb49bc44993916f045a6aecb0d0ad0284376279b5c9ee9af57eaf5b251c96",
++    "residual_rl/action_adapter.py": "600120cf5aa89bb607118471c5031862afefb8d916da689656772888e3408983",
++    "vendor/tdmpc2_runtime/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "vendor/tdmpc2_runtime/tdmpc2.py": "b340f68bd2f73a6aaa16e532bde9cbeb8b7ea539d66a96e8e0e97f8eeb760250",
++    "vendor/tdmpc2_runtime/train.py": "13d9672ee827298c4b86bbd3561bcb58b3009951eb9f19ef2af14845ea235be8",
++    "vendor/tdmpc2_runtime/evaluate.py": "d25fc8f011c3f1ca664db81320f86c4b62fd47e9a10e4657563cab2674fffd20",
++    "vendor/tdmpc2_runtime/common/init.py": "3f085f2d11439312ce765bc0c4332048147d6540d7ca30cdeddacf2d70180ea4",
++    "vendor/tdmpc2_runtime/common/math.py": "8b25faa5ee22311e82f445e50efb4594b2e5dfa61d9efe82dc40940c668a4186",
++    "vendor/tdmpc2_runtime/common/scale.py": "cf61f2c7a1ac0f13a2638f5022adcf20283d6544f8ce218581b3290d9a03d5a7",
++    "vendor/tdmpc2_runtime/common/seed.py": "f77ca34f6ae0b489d740ad25bf6a8efc217a4610e19fec4a83d5b30a995b7dbd",
++    "vendor/tdmpc2_runtime/common/__init__.py": "d7714a0f5a5ed2a40542cf5cd69f9504fcd876dc8f9f5cba02e877c435c88e99",
++    "vendor/tdmpc2_runtime/common/logger.py": "0b0ad91e85f0608085c5948cbdd5c58860110253d7de47eb88a4f7092a45b589",
++    "vendor/tdmpc2_runtime/common/world_model.py": "570fb6418efed2ab94aa7fc329f2672dd61dea098eef17cecec8070a4611fe0c",
++    "vendor/tdmpc2_runtime/common/parser.py": "3eacba933ec2945a9c4d276400c9f6f44a6adb1c3a4cf7f3dbf433aa073c30e3",
++    "vendor/tdmpc2_runtime/common/buffer.py": "4f104005a7ff4ffa63ceb5f47e6eaebb0d608046ed5b39f9c7c7ba8b7390f243",
++    "vendor/tdmpc2_runtime/common/layers.py": "ea2de2e762bd684530df7cb8aa23b0afcee393622f902726ec27275637035f73",
++    "vendor/tdmpc2_runtime/trainer/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "vendor/tdmpc2_runtime/trainer/base.py": "5194d2cd37572b05131fa18933f1fc06288c090b50956e754e3aaf21681b278b",
++    "vendor/tdmpc2_runtime/trainer/online_trainer.py": "23d02f79b09daa40b77eea8ce164ccb4b940158de359560e449cc514d1ff12ff",
++    "vendor/tdmpc2_runtime/trainer/offline_trainer.py": "9dfaf833623daa9a7ced8d1fa788716a7155d5ff2cc09c922697b62ac54f4957",
++    "vendor/tdmpc2_runtime/envs/myosuite.py": "86fa45d397b13605422890523f1c50c9c96f4f1c2d97bd078c3a99664ad5dfb1",
++    "vendor/tdmpc2_runtime/envs/maniskill.py": "ac6f219295c8157cda8e78048df825771c3f3b3d480f8143aad7749d991f3fc5",
++    "vendor/tdmpc2_runtime/envs/dmcontrol.py": "ec61b4b90b2c14f281446c4146146753b9fbd95657e205dd09f30a6ab47c85b2",
++    "vendor/tdmpc2_runtime/envs/__init__.py": "ba7ff952d23e082587fdd2c329e27f3ab82040334724abf23f7c7966302a01f1",
++    "vendor/tdmpc2_runtime/envs/metaworld.py": "d90a0ad93dd32054c2c9a80569449680905821b7c50a6e530cf5f012f5b8f9f0",
++    "vendor/tdmpc2_runtime/envs/mujoco.py": "fa80a221f560bc7ada49e2ee38cd5f74fd2d46789a3f89184b06337e9b2307ab",
++    "vendor/tdmpc2_runtime/envs/tasks/fish.py": "7ded518285c364e6913999de51c26a80e94c9f056d31d710c01a338c8a34ddc3",
++    "vendor/tdmpc2_runtime/envs/tasks/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "vendor/tdmpc2_runtime/envs/tasks/cheetah.py": "98b09bff2d32d9ea94109fcbefcbe19d6691a464cfc111d3d10bbea7433cf15a",
++    "vendor/tdmpc2_runtime/envs/tasks/pendulum.py": "2ce9060621e355c1a1984925602c08b936dc46bd81a8d248b020553a3e66a0e4",
++    "vendor/tdmpc2_runtime/envs/tasks/ball_in_cup.py": "e7d0a29c97f2ede402cb4bf86adddc97c82483af83d8e6688bc73ab2606c537a",
++    "vendor/tdmpc2_runtime/envs/tasks/walker.py": "a51df23f1fc966bbd926a3614a0efd05933d11d3036fa279fd30f2c73d1017ce",
++    "vendor/tdmpc2_runtime/envs/tasks/hopper.py": "8f815b648b7aa1223b25a89b7d28bdf75e406c93b3b66469ffadca094486f066",
++    "vendor/tdmpc2_runtime/envs/tasks/reacher.py": "3e607a8d0bbb005a3468a4a4a7bcc9ba8731e22750b6d5f35e98169f6a85b6a6",
++    "vendor/tdmpc2_runtime/envs/wrappers/multitask.py": "bf1f26deb8f4f014b7dd0cdd4f68033aeba78b6fc2029a89484bcc6df6e51d08",
++    "vendor/tdmpc2_runtime/envs/wrappers/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "vendor/tdmpc2_runtime/envs/wrappers/tensor.py": "8b0a3a667f2aafab3aaa4affbd56652361c0a75ad143cc8bd70dfcb1f95def6b",
++    "vendor/tdmpc2_runtime/envs/wrappers/timeout.py": "bb00d092582d82eda7c0865033f256771fe700fefb5e700cf1495f0734e3f3c3",
++    "agent.py": "83a3dd7f328de79e68bf35c785d457c2d10feb3e4f5289eeed8c9f2e4cdd09b7",
++    "config.yaml": "08e04491abbc60d831ae7b656b2f14c3ecde04c020ce7b1f7e95427371d2711c",
++    "evaluate_model_suite.py": "69d8b14ffd40204fa3f5d065e4698666028bf7015136285dde0e64895253dc86"
++  },
++  "packages": {
++    "torch": "2.7.1",
++    "numpy": "1.24.4",
++    "metadrive-simulator": "0.4.3"
++  },
++  "python": "3.11.16 | packaged by conda-forge | (main, Aug 21 2026, 22:44:51) [GCC 14.4.0]",
++  "real_future_observations_only_in_diagnostics": true,
++  "D_protocol": {
++    "scenarios": [
++      130719,
++      130132,
++      130620,
++      130467,
++      130806,
++      130343,
++      130605,
++      130018
++    ],
++    "repeat_seeds": [
++      1,
++      2
++    ],
++    "group": "D",
++    "native_episodes": 16,
++    "hypothesis": "Adapter uses Frenet longitudinal s_d as world ground speed in virtual future tracker state; test correct Cartesian speed only.",
++    "switch": "mpr_mpc.mppi.cartesian_virtual_speed=true, disabled by default",
++    "correction": "Source XY/time derivatives via numpy.gradient, norm then interpolate. After held-endpoint time speed=0. Existing times,positions,headings unchanged.",
++    "protected": "Coarse path and original535features ALWAYS legacy. Only postSAC MPPI baseline future virtual speeds change; actual t0 vehicle and baseline first action identical.",
++    "same_scoring_sampling_budget": true,
++    "no_new_safety_rule": true,
++    "no_training": true,
++    "evidence_rows": 36,
++    "evidence_sha256": "e9a7725620d8e8afd2dacd3ed31cdbc7e77cb79299e0617735251a9b952a8df0",
++    "B_C_completed_when_preregistered": 12,
++    "selection_on_performance": false,
++    "no_further_variants": true,
++    "acceptance": "At least one extra success, no material crash/OOR/route deterioration, paired discounted gain>0 with sceneCI, consistency beyond single map/seed, isolatedP95 target100ms. If no positive signal stop, no100episode expansion."
++  },
++  "source_versions": {
++    "B": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2",
++    "C": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2",
++    "D": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118"
++  },
++  "D_build_modified_files": {
++    "planning/time_alignment.py": {
++      "before": "39b0e7bae597e06bbe4d9914b0a4f2fefdf8fe3df19bf91e3b2f5bfa58effec0",
++      "after": "699032d505bf311a2c9f2978c1cb06b36639bae37ca181ab3515e1374bda2edd"
++    },
++    "planning/coordinator.py": {
++      "before": "4f581956c69e09d11f5e6e4f97910118b729588537e40e118726164c4f7b0943",
++      "after": "7026f7957a59481fb342d02245bf4dc53a816fd2fbca8976208288cf531370ba"
++    },
++    "planning/trajectory_adapter.py": {
++      "before": "8ea85777a011ba5e84b344b1b1c22ba06a4a08a413cee804c3837fef15083e3d",
++      "after": "38d931db6f27a8a8773da056ecde17b0525224122c7b9a437a3f948be75ebcf6"
++    }
++  },
++  "verification": "verification.json",
++  "native_episode_configs": {
++    "episodes/B_130018_r1/config.yaml": "b0bbffadf20d4ba95e27e765d70e6584086e7f1dcebea5b27ec55a803994ae28",
++    "episodes/B_130018_r2/config.yaml": "1eed542a1e839db499153cd1f7a8d5d44cd691c3f96bf9d781625399deb71c00",
++    "episodes/B_130132_r1/config.yaml": "efdf6ab8b5c76929738b8eefbc4658413ce2915dbc11ad3fb5112f45e10ec7d6",
++    "episodes/B_130132_r2/config.yaml": "e85c3b315cc61d9b12b3b51014ddc38381309c46c45c53753955509d5cf994d8",
++    "episodes/B_130343_r1/config.yaml": "22eb4d178aca58764cb4264b1006d14ade00e222545c300ea4ba59426b02d316",
++    "episodes/B_130343_r2/config.yaml": "1b3746f73675b35399054a26baf4ab15b8d79398c10b0fd8b0c65985a0b41a9f",
++    "episodes/B_130467_r1/config.yaml": "832a2da12e4b729bb99b479051339a024b1986c991d72cbf74c50023dee80306",
++    "episodes/B_130467_r2/config.yaml": "12e3c87e0bfb48370bc8f2035155251d129631934e58fa78cf06b4ee73c8455f",
++    "episodes/B_130605_r1/config.yaml": "ef2dfe5fa944b6718e87b98be532f198798b25ba0347f848b870599a39b854e2",
++    "episodes/B_130605_r2/config.yaml": "f1ae95ebe6967a0920e26c7b85b7ac1c2b6be6ed46338b63ae3c50e74031a6df",
++    "episodes/B_130620_r1/config.yaml": "78a381daa151e98afdbaed8297bfd8e0abb34629ccc2cf84764a1e202cfa7a03",
++    "episodes/B_130620_r2/config.yaml": "f3cec8bb8bebff3821a99552ad24fd895ce29c63c89b5f7350e37db748ba14fd",
++    "episodes/B_130719_r1/config.yaml": "3a69115cfec4cde8d51c13a5e4c7c796b2313b914aebe94690b13fda233cefd9",
++    "episodes/B_130719_r2/config.yaml": "3f99a9f0248a31b9870875a3293de1be1eab570c80f73787783fdfded1faecd3",
++    "episodes/B_130806_r1/config.yaml": "4e11eb0c733e14d5db181bed44106ca6084278a974b84a1a4f83294d02c55bd1",
++    "episodes/B_130806_r2/config.yaml": "bfd7710066b90c1a1f8873762d8109b65678bf5b0d946a6514aef0dad0b1777a",
++    "episodes/C_130018_r1/config.yaml": "b0bbffadf20d4ba95e27e765d70e6584086e7f1dcebea5b27ec55a803994ae28",
++    "episodes/C_130018_r2/config.yaml": "1eed542a1e839db499153cd1f7a8d5d44cd691c3f96bf9d781625399deb71c00",
++    "episodes/C_130132_r1/config.yaml": "efdf6ab8b5c76929738b8eefbc4658413ce2915dbc11ad3fb5112f45e10ec7d6",
++    "episodes/C_130132_r2/config.yaml": "e85c3b315cc61d9b12b3b51014ddc38381309c46c45c53753955509d5cf994d8",
++    "episodes/C_130343_r1/config.yaml": "22eb4d178aca58764cb4264b1006d14ade00e222545c300ea4ba59426b02d316",
++    "episodes/C_130343_r2/config.yaml": "1b3746f73675b35399054a26baf4ab15b8d79398c10b0fd8b0c65985a0b41a9f",
++    "episodes/C_130467_r1/config.yaml": "832a2da12e4b729bb99b479051339a024b1986c991d72cbf74c50023dee80306",
++    "episodes/C_130467_r2/config.yaml": "12e3c87e0bfb48370bc8f2035155251d129631934e58fa78cf06b4ee73c8455f",
++    "episodes/C_130605_r1/config.yaml": "ef2dfe5fa944b6718e87b98be532f198798b25ba0347f848b870599a39b854e2",
++    "episodes/C_130605_r2/config.yaml": "f1ae95ebe6967a0920e26c7b85b7ac1c2b6be6ed46338b63ae3c50e74031a6df",
++    "episodes/C_130620_r1/config.yaml": "78a381daa151e98afdbaed8297bfd8e0abb34629ccc2cf84764a1e202cfa7a03",
++    "episodes/C_130620_r2/config.yaml": "f3cec8bb8bebff3821a99552ad24fd895ce29c63c89b5f7350e37db748ba14fd",
++    "episodes/C_130719_r1/config.yaml": "3a69115cfec4cde8d51c13a5e4c7c796b2313b914aebe94690b13fda233cefd9",
++    "episodes/C_130719_r2/config.yaml": "3f99a9f0248a31b9870875a3293de1be1eab570c80f73787783fdfded1faecd3",
++    "episodes/C_130806_r1/config.yaml": "4e11eb0c733e14d5db181bed44106ca6084278a974b84a1a4f83294d02c55bd1",
++    "episodes/C_130806_r2/config.yaml": "bfd7710066b90c1a1f8873762d8109b65678bf5b0d946a6514aef0dad0b1777a",
++    "episodes/D_130018_r1/config.yaml": "7fd76f07e6cdc0963937cf6abd6c73b11aad5f52fa761075c52f1494777de894",
++    "episodes/D_130018_r2/config.yaml": "25eaef1cfc2539a2280949b610b803bce9ddf01de5c14734676019c88f9299b5",
++    "episodes/D_130132_r1/config.yaml": "8002d855bc47fad07db28aea6a96873849b90af19d29fc8dacfbfb65d25f34fa",
++    "episodes/D_130132_r2/config.yaml": "b83b099cd97d574605d015fe349c6c7ee04b4a2d1c27e782b7defae111ae38e0",
++    "episodes/D_130343_r1/config.yaml": "f2e8e531dfc5a37df7826d58dd2d8dbb3d95d001045d03e2bf97d2530e9f9836",
++    "episodes/D_130343_r2/config.yaml": "80bd4d7036547ffc584ef00c922b08d13155cf92a6b751f28681a7cc679fcc58",
++    "episodes/D_130467_r1/config.yaml": "010ab9bfd2d594e0b937ca2d01a57dcf867acc3875840ababd2bf9453edb4784",
++    "episodes/D_130467_r2/config.yaml": "bac09b3de9cadf63e2b7a9a78470f3c73e56a255f4f8b2d7237a560b841d8d6c",
++    "episodes/D_130605_r1/config.yaml": "0434dca9df85e29e7eabb34b9b09c9f88c7aefbe9692960faf503c05e1fcb851",
++    "episodes/D_130605_r2/config.yaml": "2971a5902c155438b52d5e6fffba8959d238cb6db4856cb53f6f8c18509751e4",
++    "episodes/D_130620_r1/config.yaml": "5ea799793455aac40205a9293c1ba85b3df74531d4af32dec6f16d91d9d1b5e4",
++    "episodes/D_130620_r2/config.yaml": "8ee7a71ca9c85fba104ac33693a017ebda9f743abfdddef88ef47f205cac18b0",
++    "episodes/D_130719_r1/config.yaml": "3d0d29d128e1e2dd26a40a5edbfe4434fae3f3b3326f1532539753571256862c",
++    "episodes/D_130719_r2/config.yaml": "98eff33b343703b9ecb3285017ed121c33c71ad750be418c58450686620e90d0",
++    "episodes/D_130806_r1/config.yaml": "65e074e79213c99b6b73d6836f0c69fbb741252d9806ea04f9437fa67196cce7",
++    "episodes/D_130806_r2/config.yaml": "ae8f2c660fd7d00522779027138c743b5c24a2053296317fa00cd3fc0d733bb7"
++  },
++  "main_status_end": "",
++  "decision": "Do not deploy or expand: no additional success; D-B discounted gain not positive; crash not improved; P95>100ms",
++  "counters": {
++    "native_episodes": 48,
++    "maps": 8,
++    "paired_seeds": 2,
++    "isolated_probe_calls": 300,
++    "training": 0,
++    "formal100": 0
++  }
++}
+\ No newline at end of file
+diff --git a/reports/mppi_root_cause_20261118/finalize.py b/reports/mppi_root_cause_20261118/finalize.py
+new file mode 100644
+index 0000000..aaccdf2
+--- /dev/null
++++ b/reports/mppi_root_cause_20261118/finalize.py
+@@ -0,0 +1,155 @@
++"""Freeze provenance and write the evidence-led report; never modify original experiments."""
++import difflib,json,subprocess
++from pathlib import Path
++import numpy as np
++import pandas as pd
++from study_io import R,ROOT,MAIN,load,sha,dump
++
++def write_code_patch():
++    patch=subprocess.check_output(['git','diff','--binary'],cwd=ROOT,text=True)
++    for file in sorted(R.iterdir()):
++        if file.suffix in ['.py','.md'] or file.name in ['protocol.json','D_protocol.json','experiment_manifest.json']:
++            name=str(file.relative_to(ROOT))
++            result=subprocess.run(['git','diff','--no-index','--','/dev/null',name],cwd=ROOT,text=True,capture_output=True)
++            assert result.returncode==1,result.stderr
++            patch+=result.stdout
++    (R/'code_changes.patch').write_text(patch)
++    subprocess.run(['git','apply','--reverse','--check',str(R/'code_changes.patch')],cwd=ROOT,check=True)
++
++def main():
++    manifest=load(R/'experiment_manifest.json');protocol=load(R/'protocol.json')
++    changes={name:dict(before=value,after=sha(ROOT/name)) for name,value in manifest['protected_sources_before'].items() if sha(ROOT/name)!=value}
++    assert set(changes)=={'planning/coordinator.py','planning/time_alignment.py','planning/trajectory_adapter.py'}
++    assert sha(Path(protocol['checkpoint']))==protocol['checkpoint_sha256']
++    assert sha(ROOT/'config.yaml')==manifest['default_config_sha256']
++    assert sha(Path(protocol['source_environment_config']))==manifest['source_config_sha256']
++    main_status=subprocess.check_output(['git','status','--short'],cwd=MAIN,text=True)
++    assert not main_status,main_status
++    review=load(R/'history_review.json');historical=review['reports_fully_read']+review['associated_files_fully_read']
++    invalid=[x['path'] for x in historical if sha(Path(x['path']))!=x['sha256']];assert not invalid,invalid
++    for scene in protocol['scenarios'][:2]:
++        states=[load(R/f'probe_{g}_{scene}.json')['physical_state']['hashes'] for g in ['B','C','D']]
++        assert states[0]==states[1]==states[2]
++    def failures(file):return sorted(line for line in file.read_text().splitlines() if line.startswith('FAILED '))
++    assert failures(R/'tests_audit.log')==failures(R/'tests_native_cost_clean_main.log')
++    assert '34 passed' in (R/'tests_alignment.log').read_text()
++    assert '12 passed' in (R/'tests_audit_relevant.log').read_text()
++    dump('verification.json',dict(base_commit=manifest['base_commit'],main_status_end=main_status,
++        checkpoint_sha256=sha(Path(protocol['checkpoint'])),checkpoint_unchanged=True,default_config_unchanged=True,
++        protected_source_changes=changes,historical_files_rehashed=len(historical),historical_data_unchanged=True,
++        core_and_targeted_tests_passed=46,new_tests=7,
++        additional_legacy_cost_tests=dict(passed=15,failed=20,same_failures_on_clean_main=True,failures=failures(R/'tests_audit.log')),
++        native_episodes=48,independent_maps=8,repeat_seeds=[1,2],isolated_probe_calls=300,
++        probe_initial_observation_vehicle_traffic_rng_paired=True,default_output_path_unchanged=True,
++        train_calls=0,new_value_heads=0,formal100=False,commit=False,push=False))
++    dump('experiment_manifest_initial.json',manifest)
++    manifest.update(D_protocol=load(R/'D_protocol.json'),source_versions=dict(B=str(MAIN),C=str(MAIN),D=str(ROOT)),
++        D_build_modified_files=changes,verification='verification.json',native_episode_configs={str(p.relative_to(R)):sha(p) for p in sorted((R/'episodes').glob('*/config.yaml'))},
++        main_status_end=main_status,decision='Do not deploy or expand: no additional success; D-B discounted gain not positive; crash not improved; P95>100ms',
++        counters=dict(native_episodes=48,maps=8,paired_seeds=2,isolated_probe_calls=300,training=0,formal100=0))
++    (R/'experiment_manifest.json').write_text(json.dumps(manifest,indent=2))
++    e=pd.read_csv(R/'summary.csv');absolute=e[e.comparison=='absolute mean'].set_index('configuration')
++    stats=load(R/'paired_statistics.json')['comparisons'];chain=load(R/'control_chain_statistics.json')['groups']
++    hist=load(R/'historical_prediction_statistics.json');lat=pd.read_csv(R/'latency.csv')
++    isolated=lat[(lat.scope=='isolated_frozen_state')&(lat.stage=='total_wall_ms')].set_index('configuration')
++    cov=pd.read_csv(R/'candidate_coverage_summary.csv');c=cov[cov.configuration=='C'].set_index('iteration')
++    def number(g,k):return f'{absolute.loc[g,k]:.3f}'
++    def diff(key):
++        x=stats[key]['discounted_return'];return f"{x['mean']:+.3f}，地图聚类95%CI [{x['ci95'][0]:+.3f}, {x['ci95'][1]:+.3f}]"
++    result_table='| 配置 | Success | Crash(any) | OOR(any) | Route completion | Timeout | Episode Return | Discounted Return | 步数 | 独立规划P95 |\n|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n'
++    for g,name in [('B','B Lattice+SAC'),('C','C 原MPPI'),('D','D Cartesian速度修正')]:
++        v=absolute.loc[g];result_table+=f"| {name} | {v.success:.2%} | {v.crash:.2%} | {v.out_of_road:.2%} | {v.route_completion:.2%} | {v.timeout:.2%} | {v.episode_return:.2f} | {v.discounted_return:.2f} | {v.episode_length:.1f} | {isolated.loc[g,'p95_ms']:.2f}ms |\n"
++    text=f'''# MPR-MPC 闭环性能根因审计与最小修复（2026-11-18）
++
++**结论：修复了可复现的虚拟速度物理量不一致，但没有证明 MPPI 优于 Lattice+SAC。停止扩大实验；保持原默认配置，不将 D 设为默认，不训练新评分头。**
++
++最强证据指向“候选价值评价与真正部署的滚动控制目标不一致”，特别是终端TD-Q，而不是大量重复候选或首动作执行错位。这个判断是证据优先级，**尚不能识别唯一因果根因或各因素贡献比例**。确定性转换问题是真实但次要的问题：修正后成功率仍未提升，不能称为闭环退化的主因。
++
++## 1. 真实闭环结果与验收
++
++{result_table}
++
++预先冻结8张新开发地图：{protocol['scenarios']}；每图2个规划种子[1,2]，每组16原生回合，共48。未运行正式100场、未触碰封存验证。B重复种子在8图上轨迹均完全相同；C/D均因MPPI随机采样而不同。因此独立单位始终只有8图，不是48图。
++
++折扣回报配对差：
++
++- C−B：{diff('C-B')}。
++- D−B：{diff('D-B')}。
++- D−C：{diff('D-C')}。
++
++D相对C的路线完成率增加3.69个百分点，Episode Return增加21.32；Success/Crash/OOR总体未变。相对B，D路线完成率增加2.15个百分点，但Success增加0回合，Crash增加1/16=6.25个百分点，折扣回报仍为负差。D-C回报区间也包含0，不能宣称可靠改善。逐地图方向并不一致，见 paired_statistics.json；不能以原始Episode Return增加替代折扣回报和事故验收。
++
++**验收不通过**：没有额外成功回合；未证明事故指标不恶化及折扣收益正向改善；完整规划P95仍超100ms。保留B为工作基准，停止该轮开发采样和参数搜索，不进入新的独立验证或正式100场。
++
++每周期实际重新生成Lattice、原SAC、可选MPPI并执行首动作直到环境原生done；不是H步序列重放。逐场景/种子、失败原因、成功但碰撞场景及安全Cost均在 paired_closed_loop_episodes.csv。Crash/OOR按全回合任一真实事件记录；环境允许碰撞后继续驾驶，Success和Crash可同时为1，未改环境终止条件。
++
++## 2. A：候选生成证据
++
++C组6068个规划步、每步4轮，64个Gaussian加baseline。完整候选序列去重率每轮均100%；首动作去重率约99.98%以上。平均首动作距SAC从第0轮{c.loc[0,'first_action_distance_mean']:.4f}增加到第3轮{c.loc[3,'first_action_distance_mean']:.4f}；最终实际首动作平均改变量{number('C','first_action_delta')}（归一化二维L2）。不能描述为根本没有动作变化。
++
++原始采样被夹取的分量比例从{c.loc[0,'clipping_ratio']:.2%}降到{c.loc[3,'clipping_ratio']:.2%}；第0轮油门分量夹取{c.loc[0,'throttle_clipping']:.2%}。这些是克隆私有RNG精确重建夹取前样本得出的比例，不是用“恰等于边界”代替夹取计数。近SAC首动作比例（固定L2≤0.01）从{c.loc[0,'sac_near_first_overlap']:.2%}降到{c.loc[3,'sac_near_first_overlap']:.2%}。
++
++输入std steering从.0400→{c.loc[3,'input_std_steer']:.4f}，throttle从.1200→{c.loc[3,'input_std_throttle']:.4f}；Elite全序列距离从{c.loc[0,'elite_diversity']:.4f}降到{c.loc[3,'elite_diversity']:.4f}。这是明显收缩，但仅凭这些数字不能叫“错误的过早塌缩”。std仍非零，首动作距离在增大，并无大量完全重复动作。
++
++Lattice每步平均约{chain['C']['lattice_feasible_mean']:.2f}个不同(d,v,H)可行参数组合，进入SAC/MPPI前只选1条。固定快照原始横向参数跨度平均约7.62m，包含不同速度、时间与横向意图；完整快照保留在 episodes/*/snapshot_*.npz。**但没有这些被舍弃路径的真实收益标签，不能断言 nominal 经常不是实际最好路径**；唯一性也不等于有效行为多样性，仍缺少64候选全部真实轨迹可达性/收益标签。因此没有实施结构化参数搜索或多模式扩张。
++
++历史已执行候选子集存在Oracle正收益，但模型不稳定识别。H1旧数据的地图均衡Oracle Gain为{hist['horizons']['1']['statistics']['oracle_gain']['mean']:.3f}，原H10评分选中增益{hist['horizons']['1']['statistics']['model_gain']['mean']:.3f}且区间跨0；H10子集Oracle Gain为{hist['horizons']['10']['statistics']['oracle_gain']['mean']:.3f}，模型选中{hist['horizons']['10']['statistics']['model_gain']['mean']:.3f}。这是有限代表候选子集的后验Oracle，不是256候选的完整真实覆盖，也不是新的独立验证。
++
++## 3. B：评价与执行目标
++
++实现确为先reward(z_t,a_t)，two_hot_inv一次，再next，原gamma=.995和预测termination掩码。未发现一步Reward索引或折扣重复错误。random_pair同批共享、跨轮变化；现有实验已显示改变Q成员会扰动排名，但不足以证明改成固定Q能提高真实收益。本轮不更改Q聚合。
++
++新C组选择的预测正增益步比例{chain['C']['predicted_positive_gain_ratio']:.2%}，平均预测增益{chain['C']['predicted_gain_mean']:.3f}；绝对terminal增益占prefix与terminal绝对分量和的{chain['C']['terminal_gain_absolute_share']:.2%}。与此同时整回合C−B折扣收益为负。该现象支持评价目标失配/模型利用问题，但**不是同一步同状态反事实的因果收益证明**。
++
++新C单步Reward MAE {chain['C']['first_reward_mae']:.3f}。预测H10总分与后续真实滚动策略RTG的MAE为{chain['C']['predicted_total_vs_rolling_actual_mae']:.2f}，其中包含策略/执行协议差异，不能当作纯WM预测MAE。原历史终端延续价值误差约8.46、prefix约0.39；真实reward+真实末端latent oracle未可靠恢复排序，故不能仅归咎Dynamics或Reward。
++
++prediction_vs_actual.csv复用576条旧记录中571条同定义的baseline接管记录；另5条为2条TD actor、2条TD MPC接管和1条重复重放，明确列于 historical_prediction_statistics.json，不混入同策略排名。H1覆盖18地图、H2/4/10只有6地图，不能直接横向比较总体数字。每行均保留H、split、预测H10分数、同H重算score（可用时）、prefix、Q、实际reward/return/gain和原始路径；缺失字段留空，不补造。
++
++相同候选H1/H10原始Return相关{hist['h1_h10_raw_label_spearman']:.3f}，但去掉起点baseline后的收益差相关只有{hist['h1_h10_within_origin_gain_spearman']:.3f}。原始相关受到起点难度影响，不可拿它反驳历史已报告约.079的收益差相关；数据子集也不同。H1→SAC、H10→SAC与每步重规划MPPI是三种不同策略，均明确分列。
++
++最强未解决问题是TD-Q延续策略与Lattice+Residual SAC及随后重新规划MPPI不一致，且a_H参与优化却不在真实前缀执行。过去policy_prior、Mean/Elite、iterations1/2/4、多个独立学习头均未可靠改善；本轮没有再重复这些尝试。现有证据尚不能把策略定义错位、Q泛化误差、监督状态缺失与环境收益噪声完全分离。
++
++## 4. C：动作转换与执行
++
++所有真实动作均精确等于selected_sequence[0]，车辆收到的归一化steering/throttle控制最大分量差0；实际控制周期=.02×5=.1s。没有首动作偏移、维度颠倒或重复残差映射证据。
++
++可复现问题：Frenet s_d不是世界速度模，但原虚拟future车状态用s_d。36个预定快照差值最高约2.17m/s；对角直线和偏移圆弯单元测试均复现。原实际控制器重放36/36精确复现旧动作，21个快照未来动作改变，最大分量差0.54536；首动作36/36不变。
++
++只修改3文件24行新增/4行删除：time_alignment.py加入可选XY/time速度模；trajectory_adapter.py透传可选参数；coordinator.py仅post-SAC MPPI路径读取显式开关。原coarse535、网络、映射、环境、WM评分、64/8/4、std/rho/beta及Cost=0不变。`cartesian_virtual_speed`默认false，config.yaml无改动。
++
++D预注册在任何D结果前完成（当时B/C完成12/32），假设来自物理量契约而非挑选有利回报；之后只运行这一种D。D_preflight恢复相同采样RNG并验证coarse535、coarse动作、latent、SAC残差、refined参数、baseline首动作逐位不变。该直道检查点未来动作差0，变化证据来自36条真实路径，而不是假称该点也有变化。
++
++新闭环中C/D理想后继状态的速度MAE分别{chain['C']['next_speed_mae']:.3f}/{chain['D']['next_speed_mae']:.3f}m/s，位置误差约{chain['C']['next_position_mae']:.3f}/{chain['D']['next_position_mae']:.3f}m；不支持该修正已经解决实际动力学误差。两组后续状态本来不同，不能作为同状态预测器公平误差对照。端点保持区间约1.1%控制步出现；D让保持位置对应零虚拟速度，但这不是物理停车保证。未增加安全规则。
++
++## 5. 耗时、测试与完整性
++
++48回合采集使用两进程共享GPU、记录候选；该耗时独立列为 shared_native_recording，含冷启动峰值，不据此宣称实时性。随后单进程、第一二预定地图相同B前缀29步到相同真实状态，各配置5暖机+50完整agent.act，共300次正式计时；关闭候选记录、不执行探针输出动作，配对状态及交通/RNG完全一致。
++
++独立完整规划P50/P95：B {isolated.loc['B','p50_ms']:.2f}/{isolated.loc['B','p95_ms']:.2f}ms，C {isolated.loc['C','p50_ms']:.2f}/{isolated.loc['C','p95_ms']:.2f}ms，D {isolated.loc['D','p50_ms']:.2f}/{isolated.loc['D','p95_ms']:.2f}ms。D与C微小差异不能宣称性能优化；两者都不满足100ms。
++
++C平均Lattice约18.96ms、两个adapter合计5.86ms，SAC推理约.47ms；4轮候选+最终复评WM推演（含terminal）约47.92ms GPU时间，完整C约130.63ms。latency.csv保留CPU wall/GPU区分、4轮各次评价、最终复评和Q阶段；包含关系不可相加，CPU异步提交不能冒充GPU同步耗时。固定两状态探针不代表全地图P95合格。
++
++核心及本轮回归46项通过，其中7项为新增的转换/默认行为/原控制器路径重放/诊断RNG保持检查。额外运行的旧test_native_mppi_cost.py有15通过、20失败；干净main上完全相同20个失败（旧参数/旧去重/旧配置迁移期待），未删除测试或降低断言，未将这些既有问题伪报为全套通过。详见3份测试日志与verification.json。
++
++Checkpoint仍为原WM200k+RL300k总500k，SHA256 `{protocol['checkpoint_sha256']}`；不是WM500k+RL500k。每回合前后WM及Actor张量hash相等；源checkpoint、原配置、历史文件重新hash一致，主main干净；无训练、commit或push。
++
++## 6. 最终技术决策
++
++1. 候选不是大量重复，但局部控制扰动与单一nominal路径限制尚不能完全排除；未获取丢弃路径真实收益，所以不重构候选空间。
++2. 当前最有证据的损失环节是价值评价与真实滚动执行的对应关系；唯一根因未被因果识别，不能以一次修正命中主因。
++3. 本轮只保留默认关闭的虚拟速度语义修正及完整诊断工具。它解决明确的转换定义问题，但未通过驾驶收益验收。
++4. 当前不值得扩大当前MPPI配置评测。继续使用B；不训练第六个头、不改采样预算或新增规则。若以后恢复研究，唯一优先问题应是**同状态首动作评价与真正逐步重规划后续策略的可验证一致性**，先有预注册反事实证据再决定算法变化；本轮不新增该在线模型或实验分支。
++
++## 7. 交付与复现
++
++DATA_FLOW_AUDIT.md含完整图；candidate_coverage.csv含每步每轮精确采样统计；path_and_action_comparison.csv比较原Lattice/SAC/Mean/实际首动作；prediction_vs_actual.csv及historical_origin_ranking.csv严格分H；action_alignment.csv逐步控制和物理对照；replanning_action_deviation.csv记录旧未来计划与后来真控制差；paired_closed_loop_episodes.csv和summary.csv是真实原生回合；paired_statistics.json是场景聚类区间；latency.csv含分阶段实测；experiment_manifest.json和verification.json记录所有控制变量；code_changes.patch包括3个core文件及本轮脚本、协议、文档。
++
++所有修改和新数据在隔离worktree，旧实验/main未覆盖。新NPZ为原生轨迹与快照，并非新checkpoint。运行与保存说明见RUNNING.md。
++'''
++    with (R/'ROOT_CAUSE_AUDIT.md').open('x') as f:f.write(text)
++    # Code/doc-only reproducible diff. Generated CSV/NPZ/logs remain separate artifacts.
++    write_code_patch()
++    dump('artifact_index.json',{str(p.relative_to(R)):dict(bytes=p.stat().st_size,sha256=sha(p)) for p in sorted(R.rglob('*')) if p.is_file() and '__pycache__' not in str(p)})
++    print('REPORT_AND_PATCH_COMPLETE',len(historical),'historical files verified',flush=True)
++
++if __name__=='__main__':main()
+diff --git a/reports/mppi_root_cause_20261118/historical_analysis.py b/reports/mppi_root_cause_20261118/historical_analysis.py
+new file mode 100644
+index 0000000..17aef34
+--- /dev/null
++++ b/reports/mppi_root_cause_20261118/historical_analysis.py
+@@ -0,0 +1,83 @@
++"""Reanalyse recorded interventions only. No new model, environment or label definition."""
++from collections import defaultdict
++import csv
++import numpy as np
++from scipy.stats import spearmanr,kendalltau
++from study_io import R,PRIOR,load,dump,table
++
++def read(path):
++    with path.open() as f:return list(csv.DictReader(f))
++
++def main():
++    source=PRIOR/'reports/mppi_first_action_value_20261117'
++    returns=read(source/'first_action_returns.csv')
++    candidates={(r['origin'],r['candidate']):r for r in read(source/'first_action_candidates.csv')}
++    oracle={(r['origin_id'],r['candidate_id'],int(r['horizon'])):r for r in read(PRIOR/'reports/mppi_first_action_failure_20261118/predicted_vs_actual_state.csv')}
++    catalogs={};rows=[];groups=defaultdict(list)
++    for r in returns:
++        if r['takeover']!='baseline' or r['replay'].lower()=='true':continue
++        origin=r['origin_id'];cid=r['candidate_id'];h=int(r['horizon']);c=candidates[origin,cid]
++        if origin not in catalogs:catalogs[origin]=np.load(source/'origins'/origin/'catalog.npz')
++        z=catalogs[origin];j=int(c['sequence_row']);idx=int(z['pool_indices'][j])
++        o=oracle.get((origin,cid,h),{})
++        rows.append(dict(scene=int(r['scenario']),origin=origin,candidate=cid,horizon=h,split=r['split'],
++            label_protocol=f'execute fixed first {h} candidate actions, then original feedback Lattice+SAC to native done',
++            actual_first_reward=float(r['actual_first_reward']),actual_discounted_return=float(r['actual_return']),
++            actual_success=float(r['success']),actual_crash=float(r['crash']),actual_out_of_road=float(r['out_of_road']),
++            actual_route_completion=float(r['route_completion']),
++            predicted_prefix_reward=o.get('predicted_prefix'),predicted_terminal_q=o.get('predicted_terminal_q'),
++            predicted_total_return=o.get('J00_predicted'),actual_prefix_reward=o.get('actual_prefix'),
++            predicted_common_h10_return=float(z['scores'][idx]),predicted_common_h10_prefix=float(z['prefix'][idx]),
++            predicted_common_h10_terminal_contribution=float(z['scores'][idx]-z['prefix'][idx]),
++            first_action_distance=float(c['delta_from_baseline']),
++            latent_l2=o.get('latent_l2'),latent_cosine=o.get('latent_cosine'),
++            q_members=o.get('q_members'),source=r['source']))
++        groups[origin,h].append(rows[-1])
++    origin_rows=[]
++    for (origin,h),g in groups.items():
++        base=next(r for r in g if r['candidate']=='c0');y=np.array([r['actual_discounted_return'] for r in g])
++        score=np.array([r['predicted_common_h10_return'] for r in g]);gains=y-base['actual_discounted_return']
++        selected=int(score.argmax());best=float(gains.max());tie=1.0 # Preserved prior fixed tie threshold, not tuned.
++        i,j=np.triu_indices(len(g),1);dy=y[i]-y[j];ds=score[i]-score[j];eligible=np.abs(dy)>tie
++        for r in g:
++            r.update(actual_gain=r['actual_discounted_return']-base['actual_discounted_return'],
++                predicted_gain=r['predicted_common_h10_return']-base['predicted_common_h10_return'],
++                h10_prediction_minus_h_label=r['predicted_common_h10_return']-r['actual_discounted_return'],
++                top1_regret=best-gains[selected])
++        origin_rows.append(dict(scene=base['scene'],origin=origin,horizon=h,split=base['split'],branches=len(g),
++            pair_accuracy=float(np.mean(np.sign(dy[eligible])*np.sign(ds[eligible])==1)) if eligible.any() else None,
++            spearman=float(spearmanr(score,y).statistic) if np.ptp(y)>0 and np.ptp(score)>0 else None,
++            kendall=float(kendalltau(score,y).statistic) if np.ptp(y)>0 and np.ptp(score)>0 else None,
++            effective_pairs=int(eligible.sum()),tie_pairs=int((~eligible).sum()),
++            oracle_gain=best,model_gain=float(gains[selected]),top1_regret=best-gains[selected],
++            positive_candidate_ratio=float(np.mean([r['actual_discounted_return']-base['actual_discounted_return']>tie for r in g if r['candidate']!='c0'])),
++            negative_candidate_ratio=float(np.mean([r['actual_discounted_return']-base['actual_discounted_return']<-tie for r in g if r['candidate']!='c0'])),
++            baseline_return=base['actual_discounted_return']))
++    table('prediction_vs_actual.csv',rows);table('historical_origin_ranking.csv',origin_rows)
++    # Same action pool paired across horizons. These are not MPPI closed-loop labels.
++    labelsets=defaultdict(dict)
++    for r in rows:labelsets[r['origin'],r['candidate']][r['horizon']]=r['actual_discounted_return']
++    paired=[x for x in labelsets.values() if 1 in x and 10 in x]
++    gainsets=defaultdict(dict)
++    for r in rows:
++        if r['candidate']!='c0':gainsets[r['origin'],r['candidate']][r['horizon']]=r['actual_gain']
++    paired_gain=[x for x in gainsets.values() if 1 in x and 10 in x]
++    summary={}
++    rng=np.random.default_rng(20261118)
++    for h in [1,2,4,10]:
++        selected=[r for r in origin_rows if r['horizon']==h];scenes=sorted({r['scene'] for r in selected})
++        stats={}
++        for k in ['pair_accuracy','oracle_gain','model_gain','top1_regret','positive_candidate_ratio']:
++            means=np.array([np.mean([r[k] for r in selected if r['scene']==s and r[k] is not None]) for s in scenes])
++            boot=means[rng.integers(len(means),size=(2000,len(means)))].mean(1)
++            stats[k]=dict(mean=float(means.mean()),ci95=np.quantile(boot,[.025,.975]).tolist())
++        summary[str(h)]=dict(scenes=len(scenes),origins=len(selected),branches=sum(r['branches'] for r in selected),statistics=stats)
++    dump('historical_prediction_statistics.json',dict(horizons=summary,
++        h1_h10_raw_label_spearman=float(spearmanr([x[1] for x in paired],[x[10] for x in paired]).statistic),
++        h1_h10_within_origin_gain_spearman=float(spearmanr([x[1] for x in paired_gain],[x[10] for x in paired_gain]).statistic),
++        branch_count=len(rows),raw_record_count=len(returns),excluded_records=[r for r in returns if r['takeover']!='baseline' or r['replay'].lower()=='true'],
++        paired_h1_h10=len(paired),tie_threshold=1.0,
++        warning='Historical already-used data, not new validation. H10 score tested against different H labels; errors are protocol mismatch as well as model error.'))
++    print('HISTORICAL_ROWS',len(rows),'ORIGINS',len(groups),flush=True)
++
++if __name__=='__main__':main()
+diff --git a/reports/mppi_root_cause_20261118/instrumentation.py b/reports/mppi_root_cause_20261118/instrumentation.py
+new file mode 100644
+index 0000000..8614e83
+--- /dev/null
++++ b/reports/mppi_root_cause_20261118/instrumentation.py
+@@ -0,0 +1,49 @@
++"""Observational sampling diagnostics; outputs/RNG of the planner are untouched."""
++import numpy as np
++import torch
++
++
++class SamplerAudit:
++    def __init__(self,planner):
++        self.planner=planner;self.events=[];self.elites=[]
++        sample,elite=planner._candidate_batch,planner._elite_weights
++        def sampled(mean,std,baseline):
++            state=planner.generator.get_state().clone()
++            batch=sample(mean,std,baseline)
++            self.events.append((state,mean.detach().clone(),std.detach().clone(),baseline.detach().clone(),batch.detach().clone()))
++            return batch
++        def selected(values):
++            result=elite(values);self.elites.append(result[0].detach().clone());return result
++        planner._candidate_batch=sampled;planner._elite_weights=selected
++    def reset(self):self.events=[];self.elites=[]
++    @torch.no_grad()
++    def rows(self,metadata,values,members):
++        rows=[];p=self.planner
++        original_state=p.generator.get_state().clone()
++        for iteration,(state,mean,std,baseline,batch) in enumerate(self.events):
++            side=torch.Generator(device=p.device);side.set_state(state)
++            innovations=torch.randn(p.num_samples,p.horizon+1,p.action_dim,device=p.device,generator=side)
++            noise=innovations.clone();scale=(1-p.noise_rho.square()).sqrt()
++            for t in range(1,p.horizon+1):noise[:,t]=p.noise_rho*noise[:,t-1]+scale*innovations[:,t]
++            raw=mean[None]+std[None]*noise
++            reconstructed=raw.clamp(-1,1)
++            if p.terminal_action=='policy_prior' or p.terminal_value=='sac_value':reconstructed[:,-1]=baseline[-1]
++            assert torch.equal(reconstructed,batch[1:]),'Raw-draw reconstruction differs'
++            a=batch[1:].cpu().numpy();b=baseline.cpu().numpy();delta=a-b
++            elite=a[:0] if iteration>=len(self.elites) else batch[self.elites[iteration]].cpu().numpy()
++            first=np.linalg.norm(delta[:,0],axis=1);flat=a.reshape(len(a),-1)
++            eliteflat=elite.reshape(len(elite),-1)
++            distances=np.linalg.norm(eliteflat[:,None]-eliteflat[None,:],axis=-1)
++            clip=(raw.abs()>1).cpu().numpy()
++            rows.append(dict(metadata,iteration=iteration,unique_candidate_ratio=len(np.unique(flat,axis=0))/len(flat),
++                unique_first_action_ratio=len(np.unique(a[:,0],axis=0))/len(a),first_action_distance_mean=float(first.mean()),
++                first_action_distance_p95=float(np.quantile(first,.95)),full_sequence_rmse=float(np.sqrt(np.mean(delta**2))),
++                steering_variance=float(a[:,:,0].var()),throttle_variance=float(a[:,:,1].var()),
++                clipping_ratio=float(clip.mean()),steer_clipping=float(clip[:,:,0].mean()),throttle_clipping=float(clip[:,:,1].mean()),
++                sac_exact_first_overlap=float(np.all(a[:,0]==b[0],axis=1).mean()),sac_near_first_overlap=float((first<=.01).mean()),
++                elite_diversity=float(distances[np.triu_indices(len(elite),1)].mean()) if len(elite)>1 else 0.,
++                input_std_steer=float(std[:,0].mean()),input_std_throttle=float(std[:,1].mean()),
++                q_pair=list(members[iteration]),predicted_value_range=float(np.ptp(values[iteration])),
++                exact_preclip_reconstruction=True,near_overlap_threshold=.01))
++        assert torch.equal(original_state,p.generator.get_state())
++        return rows
+diff --git a/reports/mppi_root_cause_20261118/latency_probe.py b/reports/mppi_root_cause_20261118/latency_probe.py
+new file mode 100644
+index 0000000..0c8b1be
+--- /dev/null
++++ b/reports/mppi_root_cause_20261118/latency_probe.py
+@@ -0,0 +1,58 @@
++"""Single-worker full-agent latency at identical frozen physical states; no probe action execution."""
++import argparse,sys,time
++from pathlib import Path
++p=argparse.ArgumentParser();p.add_argument('--group',choices=['B','C','D'],required=True);p.add_argument('--scene',type=int,required=True);a=p.parse_args()
++root=Path(__file__).resolve().parents[2]
++sys.path.insert(0,str(root if a.group=='D' else root.parent/'mpr_mpc_v2'))
++import numpy as np
++import torch
++from study_io import R,load,dump,table,make_runtime
++from tools.first_action_study import snapshot
++
++@torch.no_grad()
++def main():
++    assert (R/'D_collection_complete.json').exists(),'Do not contend with native collection'
++    parsed,cfg,env,agent=make_runtime(a.scene,1,a.group,record=False)
++    from common.seed import set_seed
++    try:
++        set_seed(a.scene+1);agent.planner.reset(seed=a.scene+1);obs=env.reset(seed=a.scene)
++        agent.planner.allow_mppi=False
++        for i in range(29):
++            action=agent.act(obs,t0=i==0,eval_mode=True);obs,_,done,_=env.step(action);assert not done
++        origin=snapshot(env,obs);agent.planner.allow_mppi=a.group!='B'
++        phases={};round_index=[-1];evaluation_index=[-1]
++        def measured(obj,name,key,sampling=False):
++            old=getattr(obj,name)
++            def call(*args,**kwargs):
++                if sampling:round_index[0]+=1
++                if name=='evaluate_mppi_candidates':evaluation_index[0]+=1
++                begin=time.perf_counter();result=old(*args,**kwargs)
++                label=key.format(iteration=round_index[0],batch=evaluation_index[0]);phases[label]=phases.get(label,0.)+1000*(time.perf_counter()-begin)
++                return result
++            setattr(obj,name,call)
++        planner=agent.planner
++        measured(planner.structured,'select_coarse','lattice_cpu_wall_ms')
++        measured(planner.action_adapter,'path_to_actions','adapter_cpu_wall_ms')
++        measured(planner.local_mppi,'_candidate_batch','iteration_{iteration}_sampling_cpu_wall_ms',True)
++        measured(planner.local_mppi,'_update_distribution','iteration_{iteration}_update_cpu_wall_ms')
++        measured(planner.evaluator,'evaluate_mppi_candidates','evaluation_batch_{batch}_cpu_wall_ms')
++        measured(planner.evaluator,'_terminal_prediction','terminal_prediction_cpu_wall_ms')
++        rows=[]
++        for i in range(55):
++            phases.clear();round_index[0]=-1;evaluation_index[0]=-1
++            torch.cuda.synchronize();t=time.perf_counter();agent.act(obs,t0=False,eval_mode=True);torch.cuda.synchronize()
++            elapsed=1000*(time.perf_counter()-t)
++            if i>=5:
++                rows.append(dict(configuration=a.group,scene=a.scene,repeat_seed=1,probe=i-5,
++                    total_wall_ms=elapsed,scope='isolated full agent.act; same physical state; no candidate recording',
++                    **phases,**{k:float(v) for k,v in agent.last_plan.metrics.items() if 'ms' in k}))
++        final=snapshot(env,obs)
++        assert all(final['hashes'][k]==origin['hashes'][k] for k in ['observation','vehicle','traffic']),'Probe changed physical state'
++        assert all(final['rng_component_hashes'][k]==origin['rng_component_hashes'][k] for k in ['engine','traffic_manager']),'Probe changed simulator RNG'
++        # Torch/planner RNG advances normally; simulator snapshot RNG excludes these in physical hashes below.
++        table(f'probe_{a.group}_{a.scene}.csv',rows)
++        dump(f'probe_{a.group}_{a.scene}.json',dict(scene=a.scene,configuration=a.group,physical_state=origin,
++             prefix_steps=29,warmup=5,measured=50,probe_actions_executed=0,p95_ms=float(np.quantile([r['total_wall_ms'] for r in rows],.95))))
++        print('PROBE_DONE',a.group,a.scene,flush=True)
++    finally:env.close()
++if __name__=='__main__':main()
+diff --git a/reports/mppi_root_cause_20261118/protocol.json b/reports/mppi_root_cause_20261118/protocol.json
+new file mode 100644
+index 0000000..6b8493d
+--- /dev/null
++++ b/reports/mppi_root_cause_20261118/protocol.json
+@@ -0,0 +1,58 @@
++{
++  "base_commit": "e26d669574e10d5184135f5fa629582371c45636",
++  "branch": "experiment/mppi-root-cause-20261118",
++  "checkpoint": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/metadrive-risk/1/mpr_mpc_v2_1.0_wm200k_rl300k_20261103_195237/models/milestone_500k_full_mpr_mpc.pt",
++  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
++  "source_environment_config": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs/benchmark/sac_refinement_BD_fixed100_20261111_152755/part1/config_B_lattice_sac_seed1.yaml",
++  "scenarios": [
++    130719,
++    130132,
++    130620,
++    130467,
++    130806,
++    130343,
++    130605,
++    130018
++  ],
++  "repeat_seeds": [
++    1,
++    2
++  ],
++  "groups": [
++    "B",
++    "C"
++  ],
++  "episodes_per_group": 16,
++  "gamma": 0.995,
++  "horizon": 10,
++  "episode_horizon": 1000,
++  "control_dt": 0.1,
++  "B": "Original deterministic Lattice+SAC, freshly recomputed each step; MPPI off",
++  "C": "Current default LocalMPPI:64 Gaussian+Baseline,8elite,4iterations,rho .8/.8,std .04/.12,beta .5,candidate/random_pair,cost0; no selection_mode inserted",
++  "native_loop": "Every control step: prepare Lattice, original535/SAC, optional MPPI, execute selected[0], native env.step, new observation. No fixed-H replay.",
++  "D": "No D predefined: only add if a reproducible deterministic bug/one-factor correction is established and separately frozen before D outcomes. No forced refactor.",
++  "diagnostics": "record_candidates observational only. Exact pre-clamp sampler reconstructed using cloned private RNG AFTER act; original/global RNG unchanged. Post-act diagnostics timed separately.",
++  "detailed_snapshot_steps": [
++    1,
++    50,
++    150
++  ],
++  "coverage": "every native MPPI step and every iteration",
++  "probe": "After all closed-loop jobs: one isolated worker, first2newmaps repeat1, Baseline prefix29 to step30,5warmup+50calls per map per group, record_candidates false; no probe controls executed",
++  "parallel_workers": 2,
++  "closed_loop_latency_scope": "Complete synchronized agent.act under two-worker shared load, NOT isolated real-time certification; separate isolated full-planner probe follows.",
++  "bootstrap": {
++    "samples": 2000,
++    "seed": 20261118,
++    "unit": "whole map; both repeat seeds paired within map"
++  },
++  "acceptance": "At least one extra success, no material crash/OOR/route deterioration, paired discounted gain>0 with sceneCI, consistency beyond single map/seed, isolatedP95 target100ms. If no positive signal stop, no100episode expansion.",
++  "near_overlap_l2": 0.01,
++  "unknown_actual_alternative_paths": "No true return labels for all Gaussian/Lattice alternatives; never substitute WM/oracle scores for true performance.",
++  "training": 0,
++  "scoring_heads": 0,
++  "formal100": false,
++  "default_config_changes": false,
++  "commit": false,
++  "push": false
++}
+\ No newline at end of file
+diff --git a/reports/mppi_root_cause_20261118/replay_adapter.py b/reports/mppi_root_cause_20261118/replay_adapter.py
+new file mode 100644
+index 0000000..e0d450f
+--- /dev/null
++++ b/reports/mppi_root_cause_20261118/replay_adapter.py
+@@ -0,0 +1,36 @@
++"""CPU-only replay of preselected real snapshots through the unchanged Lattice tracker."""
++import sys
++from types import SimpleNamespace
++from pathlib import Path
++sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
++import numpy as np
++import pandas as pd
++from omegaconf import OmegaConf
++from lattice.frenet_metadrive import FRENET_DEFAULT_CONFIG,MetaDriveFrenetController
++from planning.trajectory_adapter import LatticeActionAdapter
++from study_io import R,table,dump
++
++def main():
++    evidence=pd.read_csv(R/'virtual_speed_evidence.csv');rows=[]
++    for rel in evidence.source:
++        file=R.parents[1]/rel;z=np.load(file);step=int(file.stem.split('_')[1])
++        cfg=OmegaConf.to_container(OmegaConf.load(file.parent/'config.yaml'))
++        controller=MetaDriveFrenetController(dict(FRENET_DEFAULT_CONFIG,**cfg['lattice']))
++        record=pd.read_csv(file.parent/'steps.csv').set_index('step').loc[step]
++        path=SimpleNamespace(t=z['refined_t'],xy=z['refined_xy'],s_d=z['refined_speed'],target_speed=float(record.refined_target_speed))
++        vehicle=SimpleNamespace(position=z['position'],speed=float(z['speed']),heading_theta=float(z['heading']))
++        adapter=LatticeActionAdapter(controller)
++        a=adapter.path_to_actions(path,vehicle,required_steps=11,control_dt=.1,device='cpu').numpy()
++        b=adapter.path_to_actions(path,vehicle,required_steps=11,control_dt=.1,device='cpu',cartesian_virtual_speed=True).numpy()
++        assert np.array_equal(a,z['refined_actions']),(rel,'tracker replay mismatch')
++        assert np.array_equal(a[0],b[0])
++        rows.append(dict(source=rel,legacy_exactly_reproduced=True,first_action_unchanged=True,
++            future_control_l2_mean=float(np.linalg.norm(a[1:]-b[1:],axis=1).mean()),
++            future_control_max_difference=float(np.abs(a[1:]-b[1:]).max()),
++            changed_tail_steps=int(np.any(a[1:]!=b[1:],axis=1).sum())))
++    table('same_path_adapter_replay.csv',rows)
++    dump('same_path_adapter_replay.json',dict(snapshots=len(rows),all_legacy_exact=True,all_first_actions_unchanged=True,
++        snapshots_with_changed_tail=sum(r['changed_tail_steps']>0 for r in rows),
++        max_future_control_difference=max(r['future_control_max_difference'] for r in rows),
++        protocol='Same saved path and current state, actual original Lattice tracker. No environment execution or alternative return labels.'))
++if __name__=='__main__':main()
+diff --git a/reports/mppi_root_cause_20261118/run_probes.py b/reports/mppi_root_cause_20261118/run_probes.py
+new file mode 100644
+index 0000000..5f33c3d
+--- /dev/null
++++ b/reports/mppi_root_cause_20261118/run_probes.py
+@@ -0,0 +1,11 @@
++"""Wait for all native episodes, then run isolated probes sequentially."""
++import os,sys,time,subprocess
++from study_io import R,ROOT,load,dump
++while not (R/'D_collection_complete.json').exists():time.sleep(2)
++env=dict(os.environ,OMP_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',MKL_NUM_THREADS='1',MUJOCO_GL='egl')
++for scene in load(R/'protocol.json')['scenarios'][:2]:
++    for group in ['B','C','D']:
++        with (R/f'probe_{group}_{scene}.log').open('x') as f:
++            subprocess.run([sys.executable,'-u',str(R/'latency_probe.py'),'--group',group,'--scene',str(scene)],cwd=ROOT,env=env,stdout=f,stderr=subprocess.STDOUT,check=True)
++        print('PROBE',group,scene,flush=True)
++dump('probe_complete.json',dict(probes=6,calls=300,warmup_calls=30,isolated=True))
+diff --git a/reports/mppi_root_cause_20261118/setup.py b/reports/mppi_root_cause_20261118/setup.py
+new file mode 100644
+index 0000000..bd5f0dc
+--- /dev/null
++++ b/reports/mppi_root_cause_20261118/setup.py
+@@ -0,0 +1,63 @@
++"""Freeze NEW development maps and exact B/C protocol before any outcomes."""
++import importlib.metadata as md,subprocess,sys
++from pathlib import Path
++sys.path.insert(0,str(Path(__file__).parent))
++from study_io import *
++
++
++def main():
++    h=load(R/'history_review.json');assert not h['unreadable_files']
++    previous=load(MAIN/'reports/mppi_selection_20261117/protocol.json')
++    scenes=h['proposed_new_development_maps'];assert not set(scenes)&set(h['historical_scene_ids'])
++    assert min(scenes)>=130000 and len(scenes)==8
++    # Additional broad scene-ID scan of ALL historical report protocols/results.
++    seen=set();files=[]
++    def visit(x,key=''):
++        if isinstance(x,dict):
++            for k,v in x.items():visit(v,k)
++        elif isinstance(x,list):
++            if any(s in key.lower() for s in ['scen','maps','origins']):
++                for v in x:
++                    if isinstance(v,int) and not isinstance(v,bool):seen.add(v)
++                    elif isinstance(v,list) and v and isinstance(v[0],int):seen.add(v[0])
++            for v in x:
++                if isinstance(v,dict):visit(v)
++        elif isinstance(x,int) and key.lower() in ['scene','scenario','scene_id','scenario_id']:seen.add(x)
++    for base in [MAIN,PRIOR]:
++        for f in (base/'reports').rglob('*.json'):
++            visit(load(f));files.append(str(f))
++    assert not set(scenes)&seen,'New scenes overlap historical metadata'
++    commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
++    assert commit=='e26d669574e10d5184135f5fa629582371c45636'
++    ck=Path(previous['checkpoint']);assert sha(ck)==previous['checkpoint_sha256']
++    protocol=dict(base_commit=commit,branch='experiment/mppi-root-cause-20261118',
++        checkpoint=str(ck),checkpoint_sha256=previous['checkpoint_sha256'],source_environment_config=previous['source_environment_config'],
++        scenarios=scenes,repeat_seeds=[1,2],groups=['B','C'],episodes_per_group=16,
++        gamma=.995,horizon=10,episode_horizon=1000,control_dt=.1,
++        B='Original deterministic Lattice+SAC, freshly recomputed each step; MPPI off',
++        C='Current default LocalMPPI:64 Gaussian+Baseline,8elite,4iterations,rho .8/.8,std .04/.12,beta .5,candidate/random_pair,cost0; no selection_mode inserted',
++        native_loop='Every control step: prepare Lattice, original535/SAC, optional MPPI, execute selected[0], native env.step, new observation. No fixed-H replay.',
++        D='No D predefined: only add if a reproducible deterministic bug/one-factor correction is established and separately frozen before D outcomes. No forced refactor.',
++        diagnostics='record_candidates observational only. Exact pre-clamp sampler reconstructed using cloned private RNG AFTER act; original/global RNG unchanged. Post-act diagnostics timed separately.',
++        detailed_snapshot_steps=[1,50,150],coverage='every native MPPI step and every iteration',
++        probe='After all closed-loop jobs: one isolated worker, first2newmaps repeat1, Baseline prefix29 to step30,5warmup+50calls per map per group, record_candidates false; no probe controls executed',
++        parallel_workers=2,closed_loop_latency_scope='Complete synchronized agent.act under two-worker shared load, NOT isolated real-time certification; separate isolated full-planner probe follows.',
++        bootstrap=dict(samples=2000,seed=20261118,unit='whole map; both repeat seeds paired within map'),
++        acceptance='At least one extra success, no material crash/OOR/route deterioration, paired discounted gain>0 with sceneCI, consistency beyond single map/seed, isolatedP95 target100ms. If no positive signal stop, no100episode expansion.',
++        near_overlap_l2=.01,unknown_actual_alternative_paths='No true return labels for all Gaussian/Lattice alternatives; never substitute WM/oracle scores for true performance.',
++        training=0,scoring_heads=0,formal100=False,default_config_changes=False,commit=False,push=False)
++    dump('protocol.json',protocol)
++    protected={str(f.relative_to(ROOT)):sha(f) for d in ['planning','lattice','residual_rl','vendor/tdmpc2_runtime'] for f in (ROOT/d).rglob('*.py')}
++    for name in ['agent.py','config.yaml','evaluate_model_suite.py']:protected[name]=sha(ROOT/name)
++    dump('experiment_manifest.json',dict(base_commit=commit,main_commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=MAIN,text=True).strip(),
++        main_status_at_start=subprocess.check_output(['git','status','--short'],cwd=MAIN,text=True),
++        worktree=str(ROOT),branch=protocol['branch'],remote_main_verified=commit,checkpoint_sha256=sha(ck),
++        source_config_sha256=sha(Path(protocol['source_environment_config'])),default_config_sha256=sha(ROOT/'config.yaml'),
++        historical_review_sha256=sha(R/'history_review.json'),protocol_sha256=sha(R/'protocol.json'),
++        historical_scene_ids=sorted(seen),historical_json_scanned=len(files),scenarios=scenes,seeds=[1,2],
++        protected_sources_before=protected,packages={n:md.version(n) for n in ['torch','numpy','metadrive-simulator']},
++        python=sys.version,real_future_observations_only_in_diagnostics=True))
++    print('NEW8maps frozen:',scenes,'B/C x2 seeds =32 native episodes. No historical validation reused.',flush=True)
++
++
++if __name__=='__main__':main()
+diff --git a/reports/mppi_root_cause_20261118/snapshot_comparison.py b/reports/mppi_root_cause_20261118/snapshot_comparison.py
+new file mode 100644
+index 0000000..37ea80a
+--- /dev/null
++++ b/reports/mppi_root_cause_20261118/snapshot_comparison.py
+@@ -0,0 +1,27 @@
++"""Compare recorded Lattice, SAC, Gaussian/Mean and executed first controls at fixed sample times."""
++import numpy as np
++from study_io import R,table
++
++def main():
++    rows=[]
++    for file in sorted((R/'episodes').glob('*/snapshot_*.npz')):
++        z=np.load(file);group,scene,repeat=file.parent.name.split('_');step=int(file.stem.split('_')[1])
++        parameters=np.array([z[k] for k in z.files if k.startswith('lattice_') and k.endswith('_parameters')])
++        endpoints=np.array([z[k][-1] for k in z.files if k.startswith('lattice_') and k.endswith('_xy')])
++        pairwise=np.linalg.norm(endpoints[:,None]-endpoints[None,:],axis=-1)
++        coarse,refined,selected=[z[k] for k in ['coarse_actions','refined_actions','selected_actions']]
++        r=dict(configuration=group,scene=int(scene),repeat_seed=int(repeat[1:]),step=step,
++            raw_lattice_candidates=len(parameters),distinct_raw_lateral_targets=len(np.unique(parameters[:,0])),
++            distinct_raw_speed_targets=len(np.unique(parameters[:,1])),distinct_raw_horizons=len(np.unique(parameters[:,2])),
++            raw_lateral_parameter_range=float(np.ptp(parameters[:,0])),raw_endpoint_pairwise_max=float(pairwise.max()),
++            sac_vs_lattice_first_delta=float(np.linalg.norm(refined[0]-coarse[0])),
++            sac_vs_lattice_sequence_rmse=float(np.sqrt(np.mean((refined-coarse)**2))),
++            final_vs_sac_first_steer=float(selected[0,0]-refined[0,0]),final_vs_sac_first_throttle=float(selected[0,1]-refined[0,1]),
++            final_vs_sac_sequence_rmse=float(np.sqrt(np.mean((selected-refined)**2))),
++            note='Raw path diversity, not true-return ranking of discarded Lattice paths')
++        if 'weighted_mean' in z:
++            mean=z['weighted_mean'];r.update(weighted_mean_vs_sac_rmse=float(np.sqrt(np.mean((mean-refined)**2))),
++                mean_vs_final_first_delta=float(np.linalg.norm(mean[0]-selected[0])))
++        rows.append(r)
++    table('path_and_action_comparison.csv',rows)
++if __name__=='__main__':main()
+diff --git a/reports/mppi_root_cause_20261118/speed_preflight.py b/reports/mppi_root_cause_20261118/speed_preflight.py
+new file mode 100644
+index 0000000..eaddc0d
+--- /dev/null
++++ b/reports/mppi_root_cause_20261118/speed_preflight.py
+@@ -0,0 +1,46 @@
++"""Real same-state coarse535/SAC parity and converter replay, no D episode."""
++import sys
++from pathlib import Path
++sys.path.insert(0,str(Path(__file__).resolve().parents[2]));sys.path.insert(0,str(Path(__file__).parent))
++import numpy as np
++import torch
++from study_io import R,load,dump,make_runtime
++from tools.first_action_study import snapshot
++
++
++@torch.no_grad()
++def main():
++    assert 'passed' in (R/'tests_alignment.log').read_text()
++    p=load(R/'protocol.json');scene=p['scenarios'][0];seed=1
++    parsed,cfg,env,agent=make_runtime(scene,seed,'D',record=True)
++    from common.seed import set_seed
++    try:
++        set_seed(scene+seed);obs=env.reset(seed=scene);agent.planner.allow_mppi=False
++        for step in range(29):
++            action=agent.act(obs,t0=step==0,eval_mode=True);obs,_,done,_=env.step(action);assert not done
++        planner=agent.planner;planner.allow_mppi=True;vehicle=env.unwrapped_metadrive.agent
++        planner.mppi_cfg['cartesian_virtual_speed']=False
++        c0=planner.prepare(obs,vehicle)
++        cpu=torch.random.get_rng_state().clone();gpu=torch.cuda.get_rng_state().clone();private=planner.local_mppi.generator.get_state().clone()
++        before=planner.refine_and_plan(c0,vehicle,eval_mode=True,global_step=agent.global_env_step)
++        planner.mppi_cfg['cartesian_virtual_speed']=True
++        c1=planner.prepare(obs,vehicle)
++        torch.random.set_rng_state(cpu);torch.cuda.set_rng_state(gpu);planner.local_mppi.generator.set_state(private)
++        after=planner.refine_and_plan(c1,vehicle,eval_mode=True,global_step=agent.global_env_step)
++        checks=dict(coarse535=torch.equal(c0.residual_state,c1.residual_state),coarse_actions=torch.equal(c0.coarse_actions,c1.coarse_actions),
++            latent=torch.equal(c0.latent,c1.latent),requested_SAC=torch.equal(before.requested_normalized_residual,after.requested_normalized_residual),
++            refined_parameters=np.array_equal(before.refined_parameters,after.refined_parameters),
++            baseline_first_action=torch.equal(before.refined_actions[0],after.refined_actions[0]))
++        assert all(checks.values()),checks
++        np.savez_compressed(R/'D_preflight_arrays.npz',coarse535=c0.residual_state.cpu().numpy(),
++            legacy_refined_actions=before.refined_actions.cpu().numpy(),cartesian_refined_actions=after.refined_actions.cpu().numpy(),
++            selected_C=before.action.cpu().numpy(),selected_D=after.action.cpu().numpy())
++        dump('D_preflight.json',dict(passed=True,checks=checks,scene=scene,pre_action_step=30,
++            tail_control_max_difference=float((before.refined_actions[1:]-after.refined_actions[1:]).abs().max()),
++            same_initial_state_hashes=snapshot(env,obs)['hashes'],prefix_steps=29,executed_D_actions=0,
++            note='One physical Baseline prefix used only to rebuild a real state. Probe C/D actions not executed; native episodes run separately.'))
++        print('D_PREFLIGHT_PASSED',checks,flush=True)
++    finally:env.close()
++
++
++if __name__=='__main__':main()
+diff --git a/reports/mppi_root_cause_20261118/study_io.py b/reports/mppi_root_cause_20261118/study_io.py
+new file mode 100644
+index 0000000..1f7a0ae
+--- /dev/null
++++ b/reports/mppi_root_cause_20261118/study_io.py
+@@ -0,0 +1,65 @@
++"""Isolated, frozen-checkpoint root-cause study; no training entry points."""
++import csv,hashlib,json
++from pathlib import Path
++import numpy as np
++
++R=Path(__file__).resolve().parent
++ROOT=R.parents[1]
++MAIN=ROOT.parent/'mpr_mpc_v2'
++PRIOR=ROOT.parent/'mpr_mpc_v2_first_action_20261117'
++
++def load(p):return json.loads(Path(p).read_text())
++def sha(p):
++    h=hashlib.sha256()
++    with Path(p).open('rb') as f:
++        for b in iter(lambda:f.read(1024*1024),b''):h.update(b)
++    return h.hexdigest()
++def clean(x):
++    if isinstance(x,np.ndarray):return clean(x.tolist())
++    if isinstance(x,np.generic):return clean(x.item())
++    if isinstance(x,Path):return str(x)
++    if isinstance(x,dict):return {str(k):clean(v) for k,v in x.items()}
++    if isinstance(x,(list,tuple)):return [clean(v) for v in x]
++    if isinstance(x,float) and not np.isfinite(x):return None
++    return x
++def dump(name,value):
++    f=R/name;f.parent.mkdir(parents=True,exist_ok=True)
++    with f.open('x') as stream:json.dump(clean(value),stream,indent=2,allow_nan=False)
++def table(name,rows):
++    with (R/name).open('x',newline='') as f:
++        w=csv.DictWriter(f,fieldnames=list(dict.fromkeys(k for r in rows for k in r)));w.writeheader();w.writerows(clean(rows))
++
++
++def make_runtime(scene,seed,group,record=True):
++    import contextlib,io,sys,torch
++    code_root = ROOT if group == 'D' else MAIN
++    sys.path.insert(0,str(code_root))
++    from omegaconf import OmegaConf
++    from mpr_mpc._bootstrap import bootstrap
++    bootstrap()
++    from common.seed import set_seed
++    from env import make_env
++    import evaluate_model_suite as suite
++    from planning.sac_value import policy_context_sha256
++    p=load(R/'protocol.json');ck=Path(p['checkpoint'])
++    raw=OmegaConf.load(p['source_environment_config'])
++    raw.mpr_mpc.mppi=OmegaConf.load(code_root/'config.yaml').mpr_mpc.mppi
++    if group == 'D':
++        raw.mpr_mpc.mppi.cartesian_virtual_speed = True
++    # Do NOT insert selection_mode: preserve current default's legacy two-way comparison.
++    raw.mpr_mpc.mppi.record_candidates=bool(record)
++    raw.restore_checkpoint_runtime=True;raw.restore_mppi_runtime=False
++    raw.enable_wandb=raw.save_agent=raw.save_video=False;raw.residual_rl.buffer_size=8;raw.seed=seed
++    parsed,cfg=suite._make_cfg(raw,ck.parent.parent.name,ck,[scene])
++    torch.set_num_threads(1);torch.set_float32_matmul_precision('high');set_seed(seed)
++    env=make_env(cfg)
++    with contextlib.redirect_stdout(io.StringIO()):
++        agent=suite._make_agent(cfg,env);state=agent.load(ck)
++    agent.eval();suite._apply_evaluation_stack(agent.planner,'world_model_residual_rl' if group=='B' else 'full_mpr_mpc',state)
++    agent.set_global_step(max(agent.global_env_step,agent.planner.mppi_start_step))
++    assert agent.planner.residual_state_dim==535 and agent.planner.allow_residual
++    assert agent.planner.allow_mppi==(group!='B')
++    if group == 'D':assert agent.planner.mppi_cfg['cartesian_virtual_speed']
++    assert policy_context_sha256(cfg)==load(MAIN/'reports/sac_value_20261117/dataset_manifest.json')['context']
++    assert agent.planner.control_dt==.1 and int(cfg.metadrive['simulator']['horizon'])==1000
++    return parsed,cfg,env,agent
+diff --git a/reports/mppi_root_cause_20261118/summarize.py b/reports/mppi_root_cause_20261118/summarize.py
+new file mode 100644
+index 0000000..81e49f6
+--- /dev/null
++++ b/reports/mppi_root_cause_20261118/summarize.py
+@@ -0,0 +1,105 @@
++"""Map-cluster paired statistics for the preregistered native closed-loop experiment."""
++from collections import defaultdict
++import json
++import numpy as np
++import pandas as pd
++from study_io import R,load,dump,table
++
++METRICS=['success','crash','out_of_road','route_completion','timeout','episode_return','discounted_return','episode_length','safety_cost','baseline_selected_rate','first_action_delta']
++
++def ci(values):
++    v=np.asarray(values,float);rng=np.random.default_rng(20261118)
++    return dict(mean=float(v.mean()),ci95=np.quantile(v[rng.integers(len(v),size=(2000,len(v)))].mean(1),[.025,.975]).tolist())
++
++def main():
++    assert (R/'probe_complete.json').exists()
++    protocol=load(R/'protocol.json');episodes=[];coverage=[];alignment=[];steps=[];replanning=[];probes=[]
++    bykey={};checks=[]
++    for folder in sorted((R/'episodes').iterdir()):
++        if not (folder/'episode.json').exists():continue
++        row=load(folder/'episode.json');group=row['configuration'];scene=row['scene'];seed=row['repeat_seed']
++        episodes.append({k:v for k,v in row.items() if k not in ['initial_hashes','counts']});bykey[group,scene,seed]=row
++        s=pd.read_csv(folder/'steps.csv');steps.append(s)
++        if group!='B':coverage.append(pd.read_csv(folder/'coverage.csv'))
++        alignment.append(pd.read_csv(folder/'alignment.csv'))
++        z=np.load(folder/'trace.npz');rewards=z['rewards'];rtg=z['rtg'];controls=z['actions'];seq=z['selected_sequences']
++        assert len(rewards)==row['episode_length'] and len(rtg)==len(rewards)+1 and z['done'][-1]
++        assert not z['done'][:-1].any() and np.isfinite(controls).all()
++        assert np.array_equal(seq[:,0],controls)
++        assert np.allclose(rtg[:-1],rewards+.995*rtg[1:],rtol=0,atol=1e-8)
++        assert row['weights_unchanged'] and row['native_done']
++        checks.append(dict(episode=folder.name,first_action_exact=True,native_done=True,rtg_verified=True,weights_unchanged=True))
++        # Difference between the old plan's future controls and controls freshly replanned/executed later.
++        for h in [1,2,4,10]:
++            if len(controls)>h:
++                delta=seq[:-h,h]-controls[h:]
++                replanning.append(dict(configuration=group,scene=scene,repeat_seed=seed,horizon=h,matched_steps=len(delta),
++                    planned_vs_replanned_action_l2=float(np.linalg.norm(delta,axis=1).mean()),
++                    steering_mae=float(np.abs(delta[:,0]).mean()),throttle_mae=float(np.abs(delta[:,1]).mean()),
++                    protocol='native rolling control; old future plan vs later newly replanned actual control; no fixed-H replay'))
++    assert len(episodes)==48 and all((g,s,seed) in bykey for g in ['B','C','D'] for s in protocol['scenarios'] for seed in [1,2])
++    origin_checks=[]
++    for scene in protocol['scenarios']:
++        for seed in [1,2]:
++            origin=[bykey[g,scene,seed]['initial_hashes'] for g in ['B','C','D']]
++            assert origin[0]==origin[1]==origin[2],(scene,seed)
++            origin_checks.append(dict(scene=scene,repeat_seed=seed,observation_vehicle_traffic_rng_exact=True))
++    table('paired_closed_loop_episodes.csv',episodes);table('replanning_action_deviation.csv',replanning)
++    c=pd.concat(coverage,ignore_index=True);c.to_csv(R/'candidate_coverage.csv',index=False,mode='x')
++    a=pd.concat(alignment,ignore_index=True);a.to_csv(R/'action_alignment.csv',index=False,mode='x')
++    s=pd.concat(steps,ignore_index=True);s.to_csv(R/'closed_loop_prediction_steps.csv',index=False,mode='x')
++    e=pd.DataFrame(episodes);statistics={};summary=[]
++    for g in ['B','C','D']:
++        rows=e[e.configuration==g];st=s[s.configuration==g]
++        p95=float(st.act_wall_ms.quantile(.95));p50=float(st.act_wall_ms.quantile(.5))
++        summary.append(dict(configuration=g,comparison='absolute mean',maps=8,episodes=16,**{k:float(rows[k].mean()) for k in METRICS},planning_p50_ms=p50,planning_p95_ms=p95,planning_max_ms=float(st.act_wall_ms.max())))
++    for group,base in [('C','B'),('D','B'),('D','C')]:
++        diff=e[e.configuration==group].set_index(['scene','repeat_seed'])[METRICS]-e[e.configuration==base].set_index(['scene','repeat_seed'])[METRICS]
++        stat={k:ci(diff[k].groupby('scene').mean().values) for k in METRICS}
++        stat['per_scene_discounted_difference']=diff.discounted_return.groupby('scene').mean().to_dict()
++        stat['per_seed_discounted_difference']=diff.discounted_return.groupby('repeat_seed').mean().to_dict()
++        vals=diff.discounted_return.groupby('scene').mean().values
++        stat['leave_one_map_out_gain_range']=[float(np.delete(vals,i).mean()) for i in range(len(vals))]
++        statistics[f'{group}-{base}']=stat
++        summary.append(dict(configuration=group,comparison=f'paired difference vs {base}',maps=8,episodes=16,**{k:v['mean'] for k,v in stat.items() if k in METRICS}))
++    table('summary.csv',summary);dump('paired_statistics.json',dict(unit='8 complete maps;2 paired repeat seeds/map',bootstrap_samples=2000,seed=20261118,comparisons=statistics))
++    for file in sorted(R.glob('probe_*.csv')):probes.append(pd.read_csv(file))
++    for scene in protocol['scenarios'][:2]:
++        states=[load(R/f'probe_{g}_{scene}.json')['physical_state']['hashes'] for g in ['B','C','D']]
++        assert states[0]==states[1]==states[2],('probe origin mismatch',scene)
++    probe=pd.concat(probes,ignore_index=True);probe.to_csv(R/'latency_probe_samples.csv',index=False,mode='x')
++    timing=[]
++    for scope,frame,total in [('shared_native_recording',s,'act_wall_ms'),('isolated_frozen_state',probe,'total_wall_ms')]:
++        for g,rows in frame.groupby('configuration'):
++            for key in [total,*[k for k in rows.columns if k.endswith('_ms') and k!=total]]:
++                v=pd.to_numeric(rows[key],errors='coerce').dropna()
++                if len(v):timing.append(dict(configuration=g,scope=scope,stage=key,samples=len(v),p50_ms=float(v.quantile(.5)),p95_ms=float(v.quantile(.95)),p99_ms=float(v.quantile(.99)),maximum_ms=float(v.max()),mean_ms=float(v.mean())))
++    table('latency.csv',timing)
++    coverage_metrics=['unique_candidate_ratio','unique_first_action_ratio','first_action_distance_mean','full_sequence_rmse','clipping_ratio','throttle_clipping','sac_near_first_overlap','elite_diversity','input_std_steer','input_std_throttle']
++    cov=[]
++    for (g,i),rows in c.groupby(['configuration','iteration']):
++        cov.append(dict(configuration=g,iteration=int(i),planning_steps=len(rows),**{k:float(rows[k].mean()) for k in coverage_metrics}))
++    table('candidate_coverage_summary.csv',cov)
++    effects={}
++    for g in ['B','C','D']:
++        st=s[s.configuration==g];al=a[a.configuration==g]
++        ef=dict(lattice_feasible_mean=float(st.lattice_feasible.mean()),lattice_distinct_parameter_modes_mean=float(st.feasible_parameter_modes.mean()),
++            clipped_endpoint_step_ratio=float((st.clipped_future_times>0).mean()),
++            submitted_control_max_error=float(al.normalized_control_execution_error.max()),
++            next_position_mae=float(al.virtual_next_position_error.mean()),next_speed_mae=float(al.virtual_next_speed_error.abs().mean()),
++            next_heading_mae=float(al.virtual_next_heading_error.abs().mean()),old_path_next_control_delta_mean=float(al.old_path_next_control_delta.mean()))
++        if g!='B':
++            gain=st.selected_predicted_gain;term=st.selected_discounted_terminal_gain
++            ef.update(predicted_positive_gain_ratio=float((gain>0).mean()),predicted_gain_mean=float(gain.mean()),
++                terminal_gain_absolute_share=float(term.abs().sum()/(term.abs().sum()+st.selected_prefix_gain.abs().sum())),
++                first_reward_mae=float((st.predicted_first_reward-st.actual_first_reward).abs().mean()),
++                predicted_total_vs_rolling_actual_mae=float((st.predicted_total_return-st.actual_replanning_policy_rtg).abs().mean()))
++        effects[g]=ef
++    # Repeat seeds can give identical B trajectories; retain them but do not count them as maps.
++    repeat_duplicates={g:sum(np.array_equal(np.load(R/'episodes'/f'{g}_{scene}_r1'/'trace.npz')['actions'],np.load(R/'episodes'/f'{g}_{scene}_r2'/'trace.npz')['actions']) for scene in protocol['scenarios']) for g in ['B','C','D']}
++    dump('control_chain_statistics.json',dict(groups=effects,identical_repeat_trajectories=repeat_duplicates,
++        warning='Ideal-state discrepancies are not interchangeable with WM latent error. Rolling-policy RTG is not H10->SAC counterfactual.'))
++    dump('collection_verification.json',dict(episodes=checks,paired_initial_states=origin_checks,episode_count=48,map_count=8,training=0,formal100=False,all_checks_passed=True))
++    print(pd.DataFrame(summary).to_string(index=False),flush=True)
++
++if __name__=='__main__':main()
+diff --git a/reports/mppi_root_cause_20261118/test_alignment_fix.py b/reports/mppi_root_cause_20261118/test_alignment_fix.py
+new file mode 100644
+index 0000000..65de73e
+--- /dev/null
++++ b/reports/mppi_root_cause_20261118/test_alignment_fix.py
+@@ -0,0 +1,82 @@
++"""Small regressions for the one Cartesian-virtual-speed correction."""
++import importlib.util
++from pathlib import Path
++from types import SimpleNamespace
++import numpy as np
++import torch
++from mpr_mpc.planning.time_alignment import align_frenet_path
++from mpr_mpc.planning.trajectory_adapter import LatticeActionAdapter
++from mpr_mpc.planning.local_mppi import LocalMPPI
++
++
++def path():
++    t=np.arange(0,1.01,.1)
++    return SimpleNamespace(t=t,xy=np.c_[10*t,3*t],s_d=np.full(len(t),10.),target_speed=12.)
++
++
++def test_cartesian_ground_speed_differs_from_longitudinal_frenet_component():
++    p=path();legacy=align_frenet_path(p,required_steps=11,control_dt=.1)
++    actual=align_frenet_path(p,required_steps=11,control_dt=.1,cartesian_speed=True)
++    assert np.allclose(legacy.speeds,10.)
++    assert np.allclose(actual.speeds,np.sqrt(109),atol=1e-12)
++    assert np.array_equal(actual.times,legacy.times) and np.array_equal(actual.positions,legacy.positions)
++    assert np.array_equal(actual.headings,legacy.headings)
++
++
++def test_curved_offset_path_speed_matches_cartesian_curve_not_reference_arclength():
++    t=np.arange(0,1.01,.1)
++    p=SimpleNamespace(t=t,xy=np.c_[8*np.cos(t),8*np.sin(t)],s_d=np.full(len(t),10.))
++    a=align_frenet_path(p,required_steps=11,control_dt=.1,cartesian_speed=True)
++    assert np.allclose(a.speeds,8.,atol=.03)
++
++
++def test_default_and_explicit_false_are_bit_identical():
++    p=path()
++    a=align_frenet_path(p,required_steps=14,control_dt=.1)
++    b=align_frenet_path(p,required_steps=14,control_dt=.1,cartesian_speed=False)
++    for name in ['positions','headings','speeds','times']:assert np.array_equal(getattr(a,name),getattr(b,name))
++    assert np.all(a.speeds==10.)
++
++
++def test_held_endpoint_has_zero_virtual_velocity_only_after_its_time():
++    p=path();a=align_frenet_path(p,required_steps=14,control_dt=.1,cartesian_speed=True)
++    assert np.allclose(a.positions[11:],a.positions[10]) and np.all(a.speeds[11:]==0)
++    assert a.speeds[10]>0
++
++
++def test_real_first_action_unchanged_only_virtual_tail_speed_changes():
++    class Tracker:
++        def _track_path(self,vehicle,p):return [0.,.35*(p.target_speed-vehicle.speed)],0
++    adapter=LatticeActionAdapter(Tracker());v=SimpleNamespace(speed=10.,position=np.zeros(2),heading_theta=0.)
++    a=adapter.path_to_actions(path(),v,required_steps=11,control_dt=.1,device='cpu')
++    b=adapter.path_to_actions(path(),v,required_steps=11,control_dt=.1,device='cpu',cartesian_virtual_speed=True)
++    assert torch.equal(a[0],b[0]) and not torch.equal(a[1:],b[1:])
++
++
++def test_actual_saved_trajectory_replay_changes_only_speed_field():
++    root=Path(__file__).parent;source=next((root/'episodes').glob('B_*/snapshot_50.npz'))
++    with np.load(source) as f:p=SimpleNamespace(t=f['refined_t'],xy=f['refined_xy'],s_d=f['refined_speed'])
++    a=align_frenet_path(p,required_steps=11,control_dt=.1)
++    b=align_frenet_path(p,required_steps=11,control_dt=.1,cartesian_speed=True)
++    assert np.array_equal(a.positions,b.positions) and np.array_equal(a.headings,b.headings)
++    assert np.all(b.speeds>=0) and np.isfinite(b.speeds).all()
++
++
++def test_raw_sampler_audit_does_not_change_actions_or_rng():
++    spec=importlib.util.spec_from_file_location('sampler_audit_for_test',Path(__file__).parent/'instrumentation.py')
++    mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod)
++    class Evaluator:
++        def __init__(self):self.values=[]
++        def evaluate_mppi_candidates(self,z,a,**kw):
++            value=a[:,0,0];self.values.append(value.numpy().copy())
++            return SimpleNamespace(total_value=value,discounted_reward=value,terminal_q=value*0,timings={})
++    cfg=dict(num_samples=8,num_elites=4,iterations=4,initial_std=[.04,.12],min_std=[.01,.03],max_std=[.08,.25])
++    one=LocalMPPI(Evaluator(),cfg,horizon=3,action_dim=2,device='cpu')
++    evaluator=Evaluator();two=LocalMPPI(evaluator,cfg,horizon=3,action_dim=2,device='cpu');audit=mod.SamplerAudit(two)
++    baseline=torch.zeros(4,2);baseline[:,1]=1.
++    a=one.plan(torch.zeros(1,2),baseline,eval_mode=True);b=two.plan(torch.zeros(1,2),baseline,eval_mode=True)
++    assert torch.equal(a.selected_sequence,b.selected_sequence)
++    assert torch.equal(one.generator.get_state(),two.generator.get_state())
++    before=two.generator.get_state().clone();rows=audit.rows({},evaluator.values,[(0,1)]*4)
++    assert len(rows)==4 and all(r['exact_preclip_reconstruction'] for r in rows)
++    assert torch.equal(before,two.generator.get_state())

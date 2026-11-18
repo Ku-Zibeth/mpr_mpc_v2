@@ -1,0 +1,33 @@
+{
+  "configuration": "B",
+  "scene": 130719,
+  "repeat_seed": 2,
+  "success": 1.0,
+  "crash": 0.0,
+  "out_of_road": 0.0,
+  "route_completion": 0.9796979658497595,
+  "timeout": 0.0,
+  "episode_return": 259.8139922232246,
+  "discounted_return": 124.38026019373345,
+  "episode_length": 330,
+  "safety_cost": 0.8401384969048454,
+  "planning_p50_ms": 77.41510547930375,
+  "planning_p95_ms": 83.28189284075052,
+  "planning_max_ms": 408.4101120242849,
+  "baseline_selected_rate": 1.0,
+  "first_action_delta": 0.0,
+  "end_reason": "arrive_dest",
+  "native_done": true,
+  "weights_unchanged": true,
+  "counts": {
+    "prepare": 330,
+    "mppi": 0
+  },
+  "initial_hashes": {
+    "observation": "f3aef5eccec652f70679c25554a6eea28225ad043d2215e14b754101db6a2942",
+    "vehicle": "39a0c4da52099756deae35035c6a33a9ca1dbdcf2b28a4b71a1c65823a747e81",
+    "traffic": "51847aeb512f0ccc8de906ed3c3ff3346fe112dd7b6ccef3f12892e3aa082843",
+    "rng": "b4cbef03d9b4b4f88663c8a9253a2d5649f041eb7323f831f8dcc831b3434316"
+  },
+  "latency_scope": "two-worker shared GPU synchronized full agent.act; observational recording included; post-act diagnostics separate"
+}

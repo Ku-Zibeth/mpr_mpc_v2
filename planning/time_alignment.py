@@ -19,7 +19,8 @@ def _interp_angle(query: np.ndarray, source: np.ndarray, angles: np.ndarray) -> 
     return np.interp(query, source, np.unwrap(angles))
 
 
-def align_frenet_path(path, *, required_steps: int, control_dt: float) -> AlignedTrajectory:
+def align_frenet_path(path, *, required_steps: int, control_dt: float,
+                      cartesian_speed: bool = False) -> AlignedTrajectory:
     if required_steps <= 0:
         raise ValueError("required_steps must be positive.")
     if control_dt <= 0:
@@ -43,6 +44,20 @@ def align_frenet_path(path, *, required_steps: int, control_dt: float) -> Aligne
     )
     headings = _interp_angle(clipped_times, source_times, point_yaws)
     aligned_speeds = np.interp(clipped_times, source_times, speeds)
+    if cartesian_speed:
+        # s_d is longitudinal Frenet speed, while the tracker consumes the
+        # magnitude of world velocity. Derive that magnitude from the SAME
+        # position/time trajectory; keep legacy interpolation as the default.
+        edge_order = 2 if len(points) > 2 else 1
+        velocity = np.column_stack([
+            np.gradient(points[:, axis], source_times, edge_order=edge_order)
+            for axis in range(2)
+        ])
+        ground_speed = np.linalg.norm(velocity, axis=1)
+        aligned_speeds = np.interp(clipped_times, source_times, ground_speed)
+        # Beyond the endpoint the existing position policy holds position.
+        # Its velocity is zero, not the last nonzero longitudinal speed.
+        aligned_speeds[query_times > source_times[-1]] = 0.0
     return AlignedTrajectory(query_times, positions, headings, aligned_speeds)
 
 

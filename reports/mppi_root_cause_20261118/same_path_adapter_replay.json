@@ -1,0 +1,8 @@
+{
+  "snapshots": 36,
+  "all_legacy_exact": true,
+  "all_first_actions_unchanged": true,
+  "snapshots_with_changed_tail": 21,
+  "max_future_control_difference": 0.5453633069992065,
+  "protocol": "Same saved path and current state, actual original Lattice tracker. No environment execution or alternative return labels."
+}

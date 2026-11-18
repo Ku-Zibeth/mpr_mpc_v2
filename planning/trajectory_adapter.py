@@ -39,6 +39,7 @@ class LatticeActionAdapter:
         control_dt: float,
         device: torch.device | str,
         dtype: torch.dtype = torch.float32,
+        cartesian_virtual_speed: bool = False,
     ) -> torch.Tensor:
         """Return ``[required_steps,2]``; ``horizon`` is a legacy alias."""
         if required_steps is None:
@@ -47,9 +48,9 @@ class LatticeActionAdapter:
             required_steps = int(horizon)
         if horizon is not None and int(horizon) != int(required_steps):
             raise ValueError("required_steps and horizon disagree.")
-        aligned = align_frenet_path(
-            path, required_steps=int(required_steps), control_dt=float(control_dt)
-        )
+        alignment_options = {"cartesian_speed": True} if cartesian_virtual_speed else {}
+        aligned = align_frenet_path(path, required_steps=int(required_steps),
+                                    control_dt=float(control_dt), **alignment_options)
         actions = []
         for step in range(int(required_steps)):
             state = vehicle if step == 0 else SimpleNamespace(

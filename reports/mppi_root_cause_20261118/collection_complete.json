@@ -1,0 +1,170 @@
+{
+  "completed": [
+    {
+      "name": "B_130719_r1",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/B_130719_r1_1794988264.log"
+    },
+    {
+      "name": "C_130719_r1",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/C_130719_r1_1794988264.log"
+    },
+    {
+      "name": "B_130719_r2",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/B_130719_r2_1794988311.log"
+    },
+    {
+      "name": "C_130719_r2",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/C_130719_r2_1794988335.log"
+    },
+    {
+      "name": "B_130132_r1",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/B_130132_r1_1794988346.log"
+    },
+    {
+      "name": "B_130132_r2",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/B_130132_r2_1794988396.log"
+    },
+    {
+      "name": "C_130132_r2",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/C_130132_r2_1794988446.log"
+    },
+    {
+      "name": "C_130132_r1",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/C_130132_r1_1794988395.log"
+    },
+    {
+      "name": "B_130620_r1",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/B_130620_r1_1794988480.log"
+    },
+    {
+      "name": "B_130620_r2",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/B_130620_r2_1794988528.log"
+    },
+    {
+      "name": "C_130620_r1",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/C_130620_r1_1794988492.log"
+    },
+    {
+      "name": "B_130467_r1",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/B_130467_r1_1794988579.log"
+    },
+    {
+      "name": "C_130620_r2",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/C_130620_r2_1794988575.log"
+    },
+    {
+      "name": "C_130467_r1",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/C_130467_r1_1794988617.log"
+    },
+    {
+      "name": "B_130467_r2",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/B_130467_r2_1794988661.log"
+    },
+    {
+      "name": "B_130806_r1",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/B_130806_r1_1794988701.log"
+    },
+    {
+      "name": "C_130806_r1",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/C_130806_r1_1794988725.log"
+    },
+    {
+      "name": "B_130806_r2",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/B_130806_r2_1794988765.log"
+    },
+    {
+      "name": "C_130467_r2",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/C_130467_r2_1794988688.log"
+    },
+    {
+      "name": "B_130343_r1",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/B_130343_r1_1794988794.log"
+    },
+    {
+      "name": "C_130806_r2",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/C_130806_r2_1794988789.log"
+    },
+    {
+      "name": "B_130343_r2",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/B_130343_r2_1794988828.log"
+    },
+    {
+      "name": "C_130343_r1",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/C_130343_r1_1794988821.log"
+    },
+    {
+      "name": "C_130343_r2",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/C_130343_r2_1794988857.log"
+    },
+    {
+      "name": "B_130605_r1",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/B_130605_r1_1794988866.log"
+    },
+    {
+      "name": "B_130605_r2",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/B_130605_r2_1794988926.log"
+    },
+    {
+      "name": "C_130605_r1",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/C_130605_r1_1794988900.log"
+    },
+    {
+      "name": "B_130018_r1",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/B_130018_r1_1794989010.log"
+    },
+    {
+      "name": "C_130605_r2",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/C_130605_r2_1794988987.log"
+    },
+    {
+      "name": "C_130018_r1",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/C_130018_r1_1794989053.log"
+    },
+    {
+      "name": "B_130018_r2",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/B_130018_r2_1794989098.log"
+    },
+    {
+      "name": "C_130018_r2",
+      "status": 0,
+      "log": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118/reports/mppi_root_cause_20261118/job_logs/C_130018_r2_1794989126.log"
+    }
+  ],
+  "total_native_episodes": 32,
+  "groups": [
+    "B",
+    "C"
+  ],
+  "new_weights": 0
+}

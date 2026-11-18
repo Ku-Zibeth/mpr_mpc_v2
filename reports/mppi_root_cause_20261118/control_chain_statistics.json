@@ -1,0 +1,50 @@
+{
+  "groups": {
+    "B": {
+      "lattice_feasible_mean": 50.00401472064235,
+      "lattice_distinct_parameter_modes_mean": 50.00401472064235,
+      "clipped_endpoint_step_ratio": 0.011040481766477083,
+      "submitted_control_max_error": 0.0,
+      "next_position_mae": 0.01600503294643028,
+      "next_speed_mae": 0.31863633527289437,
+      "next_heading_mae": 0.030811281882610765,
+      "old_path_next_control_delta_mean": 0.07405295643453158
+    },
+    "C": {
+      "lattice_feasible_mean": 49.96110744891233,
+      "lattice_distinct_parameter_modes_mean": 49.96110744891233,
+      "clipped_endpoint_step_ratio": 0.011041529334212262,
+      "submitted_control_max_error": 0.0,
+      "next_position_mae": 0.015178202906300032,
+      "next_speed_mae": 0.31538113369545506,
+      "next_heading_mae": 0.03509625040790081,
+      "old_path_next_control_delta_mean": 0.07613975027852861,
+      "predicted_positive_gain_ratio": 0.9963744232036915,
+      "predicted_gain_mean": 5.810874676578675,
+      "terminal_gain_absolute_share": 0.8637810412394932,
+      "first_reward_mae": 0.19621739016851422,
+      "predicted_total_vs_rolling_actual_mae": 136.93660236833247
+    },
+    "D": {
+      "lattice_feasible_mean": 49.44480051273835,
+      "lattice_distinct_parameter_modes_mean": 49.44480051273835,
+      "clipped_endpoint_step_ratio": 0.010735459061047909,
+      "submitted_control_max_error": 0.0,
+      "next_position_mae": 0.016205669812815293,
+      "next_speed_mae": 0.31674424198741113,
+      "next_heading_mae": 0.034675512288255085,
+      "old_path_next_control_delta_mean": 0.08216921324083619,
+      "predicted_positive_gain_ratio": 0.9963146931581477,
+      "predicted_gain_mean": 5.488248912555784,
+      "terminal_gain_absolute_share": 0.878168734539747,
+      "first_reward_mae": 0.17134168241831796,
+      "predicted_total_vs_rolling_actual_mae": 132.25328656222538
+    }
+  },
+  "identical_repeat_trajectories": {
+    "B": 8,
+    "C": 0,
+    "D": 0
+  },
+  "warning": "Ideal-state discrepancies are not interchangeable with WM latent error. Rolling-policy RTG is not H10->SAC counterfactual."
+}

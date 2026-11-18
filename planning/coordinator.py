@@ -388,6 +388,10 @@ class MPRMPCPlanner:
             required_steps=self.horizon + 1,
             control_dt=self.control_dt,
             device=self.device,
+            # Experimental correction ONLY after the frozen SAC state/action.
+            # prepare() retains the trained coarse535 feature semantics.
+            **({"cartesian_virtual_speed": True} if stage.use_mppi and
+               self.mppi_cfg.get("cartesian_virtual_speed", False) else {}),
         )
 
         if stage.use_mppi:

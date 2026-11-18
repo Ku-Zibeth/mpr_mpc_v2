@@ -1,0 +1,6 @@
+{
+  "probes": 6,
+  "calls": 300,
+  "warmup_calls": 30,
+  "isolated": true
+}

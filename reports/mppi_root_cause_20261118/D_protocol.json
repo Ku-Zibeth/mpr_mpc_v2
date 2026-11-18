@@ -1,0 +1,31 @@
+{
+  "scenarios": [
+    130719,
+    130132,
+    130620,
+    130467,
+    130806,
+    130343,
+    130605,
+    130018
+  ],
+  "repeat_seeds": [
+    1,
+    2
+  ],
+  "group": "D",
+  "native_episodes": 16,
+  "hypothesis": "Adapter uses Frenet longitudinal s_d as world ground speed in virtual future tracker state; test correct Cartesian speed only.",
+  "switch": "mpr_mpc.mppi.cartesian_virtual_speed=true, disabled by default",
+  "correction": "Source XY/time derivatives via numpy.gradient, norm then interpolate. After held-endpoint time speed=0. Existing times,positions,headings unchanged.",
+  "protected": "Coarse path and original535features ALWAYS legacy. Only postSAC MPPI baseline future virtual speeds change; actual t0 vehicle and baseline first action identical.",
+  "same_scoring_sampling_budget": true,
+  "no_new_safety_rule": true,
+  "no_training": true,
+  "evidence_rows": 36,
+  "evidence_sha256": "e9a7725620d8e8afd2dacd3ed31cdbc7e77cb79299e0617735251a9b952a8df0",
+  "B_C_completed_when_preregistered": 12,
+  "selection_on_performance": false,
+  "no_further_variants": true,
+  "acceptance": "At least one extra success, no material crash/OOR/route deterioration, paired discounted gain>0 with sceneCI, consistency beyond single map/seed, isolatedP95 target100ms. If no positive signal stop, no100episode expansion."
+}
