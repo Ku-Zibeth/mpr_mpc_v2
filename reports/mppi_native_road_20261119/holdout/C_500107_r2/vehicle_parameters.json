@@ -1,0 +1,12 @@
+{
+  "wheelbase": 2.46894,
+  "rear_axle": 1.4166,
+  "max_steering": 0.6981317007977318,
+  "mass": 1100.0,
+  "engine_force": 799.6217041015625,
+  "brake_impulse": 129.62167358398438,
+  "friction": 0.8999999761581421,
+  "physics_dt": 0.02,
+  "length": 4.515,
+  "width": 1.852
+}

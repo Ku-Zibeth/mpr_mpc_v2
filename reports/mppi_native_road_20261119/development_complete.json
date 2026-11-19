@@ -1,0 +1,5 @@
+{
+  "episodes": 48,
+  "independent_maps": 12,
+  "paired_initial_and_frozen_policy": true
+}

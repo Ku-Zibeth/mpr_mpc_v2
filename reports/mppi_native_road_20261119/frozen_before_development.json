@@ -1,0 +1,11 @@
+{
+  "source_sha": {
+    "planning/local_mppi.py": "7a6844adff70fb2705a2cc28959a3e2bd55e2a4b11b491c4b0d6adb3bc8c6db3",
+    "planning/coordinator.py": "cc9e9ae86fafcb8c40e42077f36b6843969131ecf416991d5bfe7ac577c1d0d1",
+    "planning/native_road.py": "e202e0de84ceb7cf524dc663e4ed850b4a8e560b9524f9d9f511e920081a9f1e",
+    "planning/tracking_evaluator.py": "cfe9dfd6d12eb1aae67a3e7987880548dce28985ad9e1db972b9057e8b919588",
+    "reports/mppi_native_road_20261119/variant_configs.json": "c3c66333ce82f9d769d5ed2098e559dde03e027e8f15755d2a18fdc6d94829d5",
+    "reports/mppi_native_road_20261119/protocol.json": "471e8bcbb63ea67c3acb67d1cb8cd4545468f64831a1f94c013ea61ca7afa5bf"
+  },
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a"
+}

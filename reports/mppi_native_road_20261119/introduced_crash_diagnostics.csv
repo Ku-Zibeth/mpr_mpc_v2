@@ -1,0 +1,4 @@
+scene,seed,step,crash,crash_vehicle,crash_object,crash_human,crash_building,crash_sidewalk,contact_types,search_active,selected_overlap_cost,selected_line_risk,first_action_deviation,speed
+500129,1,532,True,False,True,False,False,False,"['ROAD_LINE_BROKEN_SINGLE_WHITE', 'TRAFFIC_BARRIER']",0.0,0.0,0.0,0.0,5.861068030918932
+500322,1,667,True,False,True,False,False,False,"['ROAD_LINE_BROKEN_SINGLE_WHITE', 'TRAFFIC_BARRIER']",0.0,0.0,0.0,0.0,14.513800052227662
+500862,1,332,True,True,False,False,False,False,['VEHICLE'],1.0,0.0020370166918679,0.0,0.0795431435108184,9.36901247339284

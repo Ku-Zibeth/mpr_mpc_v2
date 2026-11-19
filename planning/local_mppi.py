@@ -27,9 +27,10 @@ MPPI_DIAGNOSTIC_KEYS = (
     'replacement_supported','final_selection_margin',
     'comfort_enabled','comfort_baseline_cost','comfort_selected_cost','comfort_gain',
     'comfort_feasible_ratio','comfort_mean_feasible','comfort_used_elite','comfort_wm_rollout_calls','comfort_evaluation_ms',
-    'comfort_enabled','comfort_baseline_cost','comfort_selected_cost','comfort_gain',
-    'comfort_feasible_ratio','comfort_mean_feasible','comfort_used_elite',
-    'comfort_evaluation_ms','comfort_wm_rollout_calls',
+    'tracking_enabled','tracking_cost_baseline','tracking_cost_selected','tracking_gain',
+    'tracking_error_baseline','tracking_error_selected','tracking_road_cost','tracking_obstacle_cost','tracking_feedback','tracking_evaluation_ms',
+    'tracking_resolution_floor_m','tracking_resolution_rejected_ratio',
+    'native_road_enabled','native_search_active','native_baseline_risk','native_selected_risk','native_baseline_clearance','native_selected_clearance',
 ) + tuple(f'iteration_{i}_{name}' for i in range(4) for name in ('elite_value_mean','elite_value_max','sampling_diversity','weight_entropy','effective_sample_size'))
 MPPI_EPISODE_METRICS = {f'mppi_{k}':f'mppi/{k}' for k in (*MPPI_DIAGNOSTIC_KEYS,'total_planning_ms')}
 
@@ -96,7 +97,7 @@ class LocalMPPI:
         self.compare_final_elite = 'selection_mode' in cfg  # exact legacy behavior when absent
         self.record_candidates = bool(cfg.get('record_candidates',False))
         self.objective_mode = str(cfg.get('objective_mode','legacy'))
-        if self.objective_mode not in {'legacy','comfort'}:
+        if self.objective_mode not in {'legacy','comfort','tracking'}:
             raise ValueError('Unknown MPPI objective_mode.')
         # Opt-in admission of a predicted improvement, not a safety certificate
         # or an estimate of H1/SAC continuation value. Legacy outputs stay exact.
@@ -168,7 +169,7 @@ class LocalMPPI:
         return mean,std,elite
 
     @torch.no_grad()
-    def plan(self,z_t,baseline,*,eval_mode,task=None,comfort_evaluator=None,comfort_context=None):
+    def plan(self,z_t,baseline,*,eval_mode,task=None,comfort_evaluator=None,comfort_context=None,tracking_evaluator=None,tracking_context=None):
         baseline = baseline.to(self.device)
         if (baseline.shape!=(self.horizon+1,self.action_dim) or not torch.isfinite(baseline).all()
                 or (baseline.abs()>1).any()):
@@ -177,6 +178,10 @@ class LocalMPPI:
             if comfort_evaluator is None or comfort_context is None:
                 raise ValueError('Comfort mode requires an explicit calibrated evaluator and live context.')
             return self._plan_comfort(baseline,comfort_evaluator,comfort_context)
+        if self.objective_mode == 'tracking':
+            if tracking_evaluator is None or tracking_context is None:
+                raise ValueError('Tracking mode requires a calibrated evaluator and live reference context.')
+            return self._plan_tracking(baseline,tracking_evaluator,tracking_context)
         mean = self.initial_mean(baseline)
         std = self.initial_std_vector.expand_as(mean).clone()
         active = self.horizon if self.terminal_action == 'policy_prior' or self.terminal_value == 'sac_value' else self.horizon+1
@@ -471,6 +476,72 @@ class LocalMPPI:
             evaluation=dict(objective_mode='comfort',terminal_q_used=False,physical_horizon=1,throttle='exact SAC',safety_guarantee=False),
             candidate_trace=dict(iterations=traces),planning_mode='baseline' if baseline_selected else 'comfort',
             selection_candidates=dict(baseline=baseline,mean=mean,best_elite=best))
+
+
+    @torch.no_grad()
+    def _plan_tracking(self,baseline,evaluator,context):
+        """Original Gaussian/CEM budget, explicit geometric task cost, no WM/Q."""
+        import numpy as np
+        import time
+        started=time.perf_counter();phase=PhaseTimings(self.device)
+        mean=self.initial_mean(baseline);std=self.initial_std_vector.expand_as(mean).clone();std[-1]=0.
+        initial_mean,initial_std=mean.clone(),std.clone();history=[];traces=[];error=None
+        base=evaluator.evaluate(baseline[None],baseline,context)
+        base_value=baseline.new_tensor(float(base['score'][0]));best=baseline.clone();best_value=base_value;elite=base_value[None]
+        native_active=True
+        if evaluator.cfg.get('native_risk_only',False):
+            if not evaluator.cfg.get('native_road',False):raise ValueError('Risk-only search requires native geometry.')
+            native_active=bool(base['native_line_cost'][0]>0 or base['road_cost'][0]>0 or base['obstacle_cost'][0]>0)
+        for i in range(self.iterations if native_active else 0):
+            with phase.measure('mppi_sampling'):candidates=evaluator.project(self._candidate_batch(mean,std,baseline),baseline)
+            with phase.measure('tracking_evaluation'):
+                result=evaluator.evaluate(candidates,baseline,context);values=baseline.new_tensor(result['score'])
+            if not bool(torch.isfinite(values).all()):error='non_finite_tracking_score';break
+            idx=int(values.argmax())
+            if bool(values[idx]>best_value):best,best_value=candidates[idx].clone(),values[idx]
+            with phase.measure('elite_update'):
+                mean,std,elite=self._update_distribution(candidates,values);mean=evaluator.project(mean[None],baseline)[0];std[-1]=0.
+            history.append(dict(iteration=i,candidate_count=len(candidates),elite_count=self.num_elites,best_tracking_score=float(values[idx])))
+            if self.record_candidates:traces.append(dict(actions=candidates.clone(),scores=values.clone()))
+        parameters=torch.stack((baseline,mean,best))
+        with phase.measure('final_value_evaluation'):final=evaluator.evaluate(parameters,baseline,context)
+        # Optional metrology-resolution ablation: do not chase a reference
+        # improvement smaller than the measured physical prediction error.
+        # This does not certify safety or estimate actual return improvement.
+        resolution=float(evaluator.cfg.get('min_terminal_error_reduction_m',0.))
+        if not math.isfinite(resolution) or resolution<0:raise ValueError('Invalid tracking resolution.')
+        admitted=np.ones(len(parameters),dtype=bool)
+        if resolution>0:
+            admitted[1:]=final['terminal_tracking_error'][0]-final['terminal_tracking_error'][1:]>=resolution
+        final_scores=np.where(admitted,final['score'],-np.inf)
+        selected=int(np.argmax(final_scores)) if error is None and np.isfinite(final['score']).all() else 0
+        if final['score'][selected]<=float(base_value)+1e-8:selected=0
+        sequence=parameters[selected].clone();H=evaluator.horizon
+        sequence[:H]=baseline.new_tensor(final['applied_actions'][selected])
+        # Only the current action is applied. Future controls describe the
+        # frozen-path feedback rollout, not a promise of future SAC decisions.
+        delta=sequence[0]-baseline[0];baseline_selected=selected==0
+        nan=baseline.new_tensor(float('nan'));score=float(final['score'][selected]);timing=phase.finish()
+        metrics=dict(timing,tracking_enabled=1.,tracking_cost_baseline=float(-base_value),tracking_cost_selected=-score,tracking_gain=score-float(base_value),
+            tracking_error_baseline=float(final['terminal_tracking_error'][0]),tracking_error_selected=float(final['terminal_tracking_error'][selected]),
+            tracking_road_cost=float(final['road_cost'][selected]),tracking_obstacle_cost=float(final['obstacle_cost'][selected]),
+            tracking_feedback=float(evaluator.cfg.get('feedback_rollout',True)),baseline_selected=float(baseline_selected),
+            tracking_resolution_floor_m=resolution,tracking_resolution_rejected_ratio=float(1-admitted[1:].mean()),
+            native_road_enabled=float(evaluator.cfg.get('native_road',False)),native_search_active=float(native_active),
+            native_baseline_risk=float(base['native_line_cost'][0]),native_selected_risk=float(final['native_line_cost'][selected]),
+            native_baseline_clearance=float(base['native_clearance'][0]),native_selected_clearance=float(final['native_clearance'][selected]),
+            invalid_prediction=float(error is not None),iterations_completed=float(len(history)),wm_evaluated_candidates=0.,
+            first_action_delta_norm=float(delta.norm()),first_steer_delta=float(delta[0]),first_throttle_delta=float(delta[1]),
+            selected_source_code=float(selected),active_action_steps=float(H),planning_time_ms=1000*(time.perf_counter()-started))
+        def consequence(index):return dict(value=nan,reward=nan,terminal_q=nan,cost=nan,validated=False,positions=final['states'][index,:,:2])
+        return LocalMPPIResult(action=sequence[0],selected_sequence=sequence,initial_mean=initial_mean,final_mean=mean,initial_std=initial_std,final_std=std,
+            baseline_wm_value=nan,optimized_wm_value=nan,selected_wm_value=nan,wm_value_gain=nan,elite_values=elite,baseline_selected=baseline_selected,
+            max_action_delta=(parameters[selected]-baseline).abs().amax(0),metrics=metrics,iterations=history,numerical_error=error,
+            baseline_consequence=consequence(0),selected_consequence=consequence(selected),
+            evaluation=dict(objective_mode='tracking',physical_horizon=H,feedback_rollout=evaluator.cfg.get('feedback_rollout',True),
+                original_SAC_future_replanning_simulated=False,current_throttle='bounded search' if evaluator.cfg.get('optimize_throttle',False) else 'exact SAC',world_model_Q_used=False,safety_guarantee=False),
+            candidate_trace=dict(iterations=traces),selection_candidates=dict(baseline=baseline,mean=mean,best_elite=best),
+            planning_mode='baseline' if baseline_selected else 'tracking')
 
 
 __all__ = ['LocalMPPI','LocalMPPIResult','_action_vector','MPPI_DIAGNOSTIC_KEYS','MPPI_EPISODE_METRICS']

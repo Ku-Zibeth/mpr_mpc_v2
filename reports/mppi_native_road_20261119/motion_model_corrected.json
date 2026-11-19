@@ -1,0 +1,429 @@
+{
+  "model": "physical_uncapped",
+  "selected": "calibrated_cg",
+  "coefficients": {
+    "drive_gain": 0.8761783077827419,
+    "brake_gain": 0.5686800458074307,
+    "slip_gain": 0.7244076306304573
+  },
+  "fit_scenes": [
+    200618,
+    200015,
+    200465,
+    200972,
+    200777,
+    200723,
+    200081,
+    200583,
+    200901,
+    200160,
+    200391,
+    200333
+  ],
+  "check_scenes": [
+    300910,
+    300881,
+    300853,
+    300588,
+    300200,
+    300832,
+    300410,
+    300794,
+    300751,
+    300883,
+    300497,
+    300776
+  ],
+  "sources": [
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200618_r1/trace.npz",
+      "sha256": "bbcd7b3cdca60065fac4ee8c66da11dcd740f2b23d484af2e47859ef5dd68404"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200015_r1/trace.npz",
+      "sha256": "344af93c45a95e56b0e5b6a76b9d52c7a31c767cf15be69e24dfd11bcdd96ee9"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200465_r1/trace.npz",
+      "sha256": "623c7850fc487fca0370cc6d944e4ddb5f03bc091cad61ddc83ebdb85996af31"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200972_r1/trace.npz",
+      "sha256": "0a7fac0319ab1cb705d0168520ac90c4fce4b74ec308e0c69bec8f2b15306d90"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200777_r1/trace.npz",
+      "sha256": "54f5a677859401353c78559c50130298e683c1043eb92a663b18a60fa106800e"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200723_r1/trace.npz",
+      "sha256": "c28ccad9c5a4f57f24614e2b426e6ff22b5621b3225cc4e8dd96651ffcb62655"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200081_r1/trace.npz",
+      "sha256": "f815397cd56ed08cb2b5c960bf267bf0f60d22c0b1e8cdd58c557d98003141d5"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200583_r1/trace.npz",
+      "sha256": "2290ff85c1c29bfa2082be35ab7f0de9e3d6f507acb4f71e2e9e48e01f1a5f9a"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200901_r1/trace.npz",
+      "sha256": "a468cfdc65d77f96e82c2e4f473f72e71a33e53d7253c551a240d0d893bc8934"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200160_r1/trace.npz",
+      "sha256": "11aaa2c959e34444ab047c087db6b5b7ea490228995294bb4b4993832a590e9d"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200391_r1/trace.npz",
+      "sha256": "a97089e02300a9f0bbc999bc4e9bc509cd627a6ae3f4404288d8bf899b59e193"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200333_r1/trace.npz",
+      "sha256": "6cec46cfc8555508956e8ce396c6ce6a11fdbb4df75bf157c649989c1f5994be"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_comfort_20261120/reports/mppi_comfort_optimization_20261120/episodes/A_300910_r1/trace.npz",
+      "sha256": "84b688888e37e88fd8210696d420dedba62ef56b4049a8752c44e5196b696e6f"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_comfort_20261120/reports/mppi_comfort_optimization_20261120/episodes/A_300881_r1/trace.npz",
+      "sha256": "34c2307c53c21d94b0a22f17965a53412b959811213cf0ee88479cec3682fe19"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_comfort_20261120/reports/mppi_comfort_optimization_20261120/episodes/A_300853_r1/trace.npz",
+      "sha256": "6bf8121fb86ca6cccb7f959196eee10b18abf7cdbab11450cde229582ffb7cb4"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_comfort_20261120/reports/mppi_comfort_optimization_20261120/episodes/A_300588_r1/trace.npz",
+      "sha256": "4af77729461730f2d380cdf11e55f3157c0c61001334c5e55ad339b80622329e"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_comfort_20261120/reports/mppi_comfort_optimization_20261120/episodes/A_300200_r1/trace.npz",
+      "sha256": "bc80eb86f14f97b992c7c7e1016d3cae773cec30010de3aea263f0ea31143457"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_comfort_20261120/reports/mppi_comfort_optimization_20261120/episodes/A_300832_r1/trace.npz",
+      "sha256": "d54fb820121ddb05b5a89573bc2b95adbaf928eaa26b1419c32e48ddf3730576"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_comfort_20261120/reports/mppi_comfort_optimization_20261120/episodes/A_300410_r1/trace.npz",
+      "sha256": "33ed85ebfa7e1f16502e7d1bd42ffb92ed3ace68e4c8a29046a3960e7475ddc6"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_comfort_20261120/reports/mppi_comfort_optimization_20261120/episodes/A_300794_r1/trace.npz",
+      "sha256": "8054bcd5b81f69429d5dfedd9d5f3902572d18336569881ae52eac606d745c48"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_comfort_20261120/reports/mppi_comfort_optimization_20261120/episodes/A_300751_r1/trace.npz",
+      "sha256": "a6c6e855d45736a759a8fa067a30634c786b63d01c64441ef7a21fbde4bc91f9"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_comfort_20261120/reports/mppi_comfort_optimization_20261120/episodes/A_300883_r1/trace.npz",
+      "sha256": "a1df6a50aed2e97162c393a64e80b979c8980bf9e7faaba5abc8cacf48ffe696"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_comfort_20261120/reports/mppi_comfort_optimization_20261120/episodes/A_300497_r1/trace.npz",
+      "sha256": "6739061dbdd1731300042f8d265f8a677f9fc2aaf9c9e21788c83a7885192940"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_comfort_20261120/reports/mppi_comfort_optimization_20261120/episodes/A_300776_r1/trace.npz",
+      "sha256": "baff5e6871c46d8b0592b44b6e0e24dea074d33bfab24c2d3dcaed79459a837c"
+    }
+  ],
+  "vehicle_parameters": {
+    "300853": {
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "max_steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine_force": 753.2460327148438,
+      "brake_impulse": 83.24606323242188,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "length": 4.515,
+      "width": 1.852
+    },
+    "200081": {
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "max_steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine_force": 818.2146606445312,
+      "brake_impulse": 148.2146759033203,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "length": 4.515,
+      "width": 1.852
+    },
+    "300794": {
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "max_steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine_force": 798.1873168945312,
+      "brake_impulse": 128.1873016357422,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "length": 4.515,
+      "width": 1.852
+    },
+    "300832": {
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "max_steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine_force": 795.4567260742188,
+      "brake_impulse": 125.45674133300781,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "length": 4.515,
+      "width": 1.852
+    },
+    "200583": {
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "max_steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine_force": 836.4490356445312,
+      "brake_impulse": 166.4490509033203,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "length": 4.515,
+      "width": 1.852
+    },
+    "200160": {
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "max_steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine_force": 836.1362915039062,
+      "brake_impulse": 166.1363067626953,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "length": 4.515,
+      "width": 1.852
+    },
+    "300410": {
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "max_steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine_force": 845.6390380859375,
+      "brake_impulse": 175.63906860351562,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "length": 4.515,
+      "width": 1.852
+    },
+    "200972": {
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "max_steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine_force": 778.7421264648438,
+      "brake_impulse": 108.74214935302734,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "length": 4.515,
+      "width": 1.852
+    },
+    "300883": {
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "max_steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine_force": 798.9912719726562,
+      "brake_impulse": 128.9912567138672,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "length": 4.515,
+      "width": 1.852
+    },
+    "300200": {
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "max_steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine_force": 811.9458618164062,
+      "brake_impulse": 141.94589233398438,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "length": 4.515,
+      "width": 1.852
+    },
+    "200333": {
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "max_steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine_force": 772.9179077148438,
+      "brake_impulse": 102.91788482666016,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "length": 4.515,
+      "width": 1.852
+    },
+    "200015": {
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "max_steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine_force": 797.0825805664062,
+      "brake_impulse": 127.08256530761719,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "length": 4.515,
+      "width": 1.852
+    },
+    "300776": {
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "max_steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine_force": 787.2496948242188,
+      "brake_impulse": 117.24969482421875,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "length": 4.515,
+      "width": 1.852
+    },
+    "200777": {
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "max_steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine_force": 846.8135375976562,
+      "brake_impulse": 176.81353759765625,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "length": 4.515,
+      "width": 1.852
+    },
+    "200465": {
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "max_steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine_force": 815.7146606445312,
+      "brake_impulse": 145.7146453857422,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "length": 4.515,
+      "width": 1.852
+    },
+    "200723": {
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "max_steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine_force": 823.3944091796875,
+      "brake_impulse": 153.3944091796875,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "length": 4.515,
+      "width": 1.852
+    },
+    "300881": {
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "max_steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine_force": 809.5123901367188,
+      "brake_impulse": 139.5123748779297,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "length": 4.515,
+      "width": 1.852
+    },
+    "200901": {
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "max_steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine_force": 752.6365356445312,
+      "brake_impulse": 82.63650512695312,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "length": 4.515,
+      "width": 1.852
+    },
+    "200391": {
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "max_steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine_force": 828.5938720703125,
+      "brake_impulse": 158.59388732910156,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "length": 4.515,
+      "width": 1.852
+    },
+    "300497": {
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "max_steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine_force": 832.2966918945312,
+      "brake_impulse": 162.2967071533203,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "length": 4.515,
+      "width": 1.852
+    },
+    "300588": {
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "max_steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine_force": 796.819580078125,
+      "brake_impulse": 126.81958770751953,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "length": 4.515,
+      "width": 1.852
+    },
+    "300751": {
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "max_steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine_force": 809.2965698242188,
+      "brake_impulse": 139.29653930664062,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "length": 4.515,
+      "width": 1.852
+    },
+    "200618": {
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "max_steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine_force": 772.8497314453125,
+      "brake_impulse": 102.84973907470703,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "length": 4.515,
+      "width": 1.852
+    },
+    "300910": {
+      "wheelbase": 2.46894,
+      "rear_axle": 1.4166,
+      "max_steering": 0.6981317007977318,
+      "mass": 1100.0,
+      "engine_force": 750.9136962890625,
+      "brake_impulse": 80.91370391845703,
+      "friction": 0.8999999761581421,
+      "physics_dt": 0.02,
+      "length": 4.515,
+      "width": 1.852
+    }
+  },
+  "fit_success": true,
+  "no_neural_training": true,
+  "selection": "old-map H5 position RMSE, all four fixed model definitions retained",
+  "scientific_limit": "Check maps are previous development data, not independent driving validation. Three physical scalars, not a new WM/value head. Contact/slip outliers retained through robust loss."
+}

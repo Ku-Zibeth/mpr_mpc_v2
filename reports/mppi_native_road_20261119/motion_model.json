@@ -1,0 +1,208 @@
+{
+  "model": "physical_uncapped",
+  "selected": "calibrated_cg",
+  "coefficients": {
+    "drive_gain": 0.9145111809389602,
+    "brake_gain": 0.7616638470087996,
+    "slip_gain": 0.7240485440538221
+  },
+  "fit_scenes": [
+    200618,
+    200015,
+    200465,
+    200972,
+    200777,
+    200723,
+    200081,
+    200583,
+    200901,
+    200160,
+    200391,
+    200333
+  ],
+  "check_scenes": [
+    300910,
+    300881,
+    300853,
+    300588,
+    300200,
+    300832,
+    300410,
+    300794,
+    300751,
+    300883,
+    300497,
+    300776
+  ],
+  "sources": [
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200618_r1/trace.npz",
+      "sha256": "bbcd7b3cdca60065fac4ee8c66da11dcd740f2b23d484af2e47859ef5dd68404"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200015_r1/trace.npz",
+      "sha256": "344af93c45a95e56b0e5b6a76b9d52c7a31c767cf15be69e24dfd11bcdd96ee9"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200465_r1/trace.npz",
+      "sha256": "623c7850fc487fca0370cc6d944e4ddb5f03bc091cad61ddc83ebdb85996af31"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200972_r1/trace.npz",
+      "sha256": "0a7fac0319ab1cb705d0168520ac90c4fce4b74ec308e0c69bec8f2b15306d90"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200777_r1/trace.npz",
+      "sha256": "54f5a677859401353c78559c50130298e683c1043eb92a663b18a60fa106800e"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200723_r1/trace.npz",
+      "sha256": "c28ccad9c5a4f57f24614e2b426e6ff22b5621b3225cc4e8dd96651ffcb62655"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200081_r1/trace.npz",
+      "sha256": "f815397cd56ed08cb2b5c960bf267bf0f60d22c0b1e8cdd58c557d98003141d5"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200583_r1/trace.npz",
+      "sha256": "2290ff85c1c29bfa2082be35ab7f0de9e3d6f507acb4f71e2e9e48e01f1a5f9a"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200901_r1/trace.npz",
+      "sha256": "a468cfdc65d77f96e82c2e4f473f72e71a33e53d7253c551a240d0d893bc8934"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200160_r1/trace.npz",
+      "sha256": "11aaa2c959e34444ab047c087db6b5b7ea490228995294bb4b4993832a590e9d"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200391_r1/trace.npz",
+      "sha256": "a97089e02300a9f0bbc999bc4e9bc509cd627a6ae3f4404288d8bf899b59e193"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119/reports/mppi_evaluation_redesign_20261119/baselines/200333_r1/trace.npz",
+      "sha256": "6cec46cfc8555508956e8ce396c6ce6a11fdbb4df75bf157c649989c1f5994be"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_comfort_20261120/reports/mppi_comfort_optimization_20261120/episodes/A_300910_r1/trace.npz",
+      "sha256": "84b688888e37e88fd8210696d420dedba62ef56b4049a8752c44e5196b696e6f"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_comfort_20261120/reports/mppi_comfort_optimization_20261120/episodes/A_300881_r1/trace.npz",
+      "sha256": "34c2307c53c21d94b0a22f17965a53412b959811213cf0ee88479cec3682fe19"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_comfort_20261120/reports/mppi_comfort_optimization_20261120/episodes/A_300853_r1/trace.npz",
+      "sha256": "6bf8121fb86ca6cccb7f959196eee10b18abf7cdbab11450cde229582ffb7cb4"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_comfort_20261120/reports/mppi_comfort_optimization_20261120/episodes/A_300588_r1/trace.npz",
+      "sha256": "4af77729461730f2d380cdf11e55f3157c0c61001334c5e55ad339b80622329e"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_comfort_20261120/reports/mppi_comfort_optimization_20261120/episodes/A_300200_r1/trace.npz",
+      "sha256": "bc80eb86f14f97b992c7c7e1016d3cae773cec30010de3aea263f0ea31143457"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_comfort_20261120/reports/mppi_comfort_optimization_20261120/episodes/A_300832_r1/trace.npz",
+      "sha256": "d54fb820121ddb05b5a89573bc2b95adbaf928eaa26b1419c32e48ddf3730576"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_comfort_20261120/reports/mppi_comfort_optimization_20261120/episodes/A_300410_r1/trace.npz",
+      "sha256": "33ed85ebfa7e1f16502e7d1bd42ffb92ed3ace68e4c8a29046a3960e7475ddc6"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_comfort_20261120/reports/mppi_comfort_optimization_20261120/episodes/A_300794_r1/trace.npz",
+      "sha256": "8054bcd5b81f69429d5dfedd9d5f3902572d18336569881ae52eac606d745c48"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_comfort_20261120/reports/mppi_comfort_optimization_20261120/episodes/A_300751_r1/trace.npz",
+      "sha256": "a6c6e855d45736a759a8fa067a30634c786b63d01c64441ef7a21fbde4bc91f9"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_comfort_20261120/reports/mppi_comfort_optimization_20261120/episodes/A_300883_r1/trace.npz",
+      "sha256": "a1df6a50aed2e97162c393a64e80b979c8980bf9e7faaba5abc8cacf48ffe696"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_comfort_20261120/reports/mppi_comfort_optimization_20261120/episodes/A_300497_r1/trace.npz",
+      "sha256": "6739061dbdd1731300042f8d265f8a677f9fc2aaf9c9e21788c83a7885192940"
+    },
+    {
+      "path": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_comfort_20261120/reports/mppi_comfort_optimization_20261120/episodes/A_300776_r1/trace.npz",
+      "sha256": "baff5e6871c46d8b0592b44b6e0e24dea074d33bfab24c2d3dcaed79459a837c"
+    }
+  ],
+  "vehicle_parameters": {
+    "LENGTH": 4.515,
+    "WIDTH": 1.852,
+    "MASS": 1100.0,
+    "FRONT_WHEELBASE": 1.05234,
+    "REAR_WHEELBASE": 1.4166,
+    "max_steering": 40.0,
+    "vehicle_type": "DefaultVehicle",
+    "control_dt": 0.1,
+    "enable_reverse": false,
+    "vehicle_config": {
+      "max_engine_force": 772.8497314453125,
+      "max_steering": 40.0,
+      "wheel_friction": 0.8999999761581421,
+      "max_brake_force": 102.84973907470703,
+      "max_speed_km_h": 80.0,
+      "vehicle_model": "default",
+      "enable_reverse": false,
+      "show_navi_mark": true,
+      "show_dest_mark": false,
+      "show_line_to_dest": false,
+      "show_line_to_navi_mark": false,
+      "show_navigation_arrow": true,
+      "use_special_color": true,
+      "no_wheel_friction": false,
+      "image_source": "rgb_camera",
+      "navigation_module": "<class 'metadrive.component.navigation_module.node_network_navigation.NodeNetworkNavigation'>",
+      "spawn_lane_index": [
+        ">",
+        ">>",
+        2
+      ],
+      "destination": null,
+      "spawn_longitude": 5.0,
+      "spawn_lateral": 0.0,
+      "spawn_position_heading": null,
+      "spawn_velocity": null,
+      "spawn_velocity_car_frame": false,
+      "overtake_stat": false,
+      "random_color": false,
+      "width": null,
+      "length": null,
+      "height": null,
+      "mass": null,
+      "scale": null,
+      "top_down_width": null,
+      "top_down_length": null,
+      "lidar": "{'num_lasers': 240, 'distance': 50, 'num_others': 0, 'gaussian_noise': 0.0, 'dropout_prob': 0.0, 'add_others_navi': False}",
+      "side_detector": "{'num_lasers': 0, 'distance': 50, 'gaussian_noise': 0.0, 'dropout_prob': 0.0}",
+      "lane_line_detector": "{'num_lasers': 0, 'distance': 20, 'gaussian_noise': 0.0, 'dropout_prob': 0.0}",
+      "show_lidar": false,
+      "show_side_detector": false,
+      "show_lane_line_detector": false,
+      "light": false,
+      "norm_pixel": true,
+      "random_agent_model": false
+    },
+    "legacy_geometry_cfg": {
+      "model_margin": 0.3,
+      "road_margin": 0.15,
+      "substeps": 5,
+      "max_acceleration": 4.0,
+      "max_deceleration": 6.0,
+      "ttc_lookahead": 5.0,
+      "swept_max_depth": 10,
+      "swept_angle_tolerance": 0.0001,
+      "swept_position_tolerance": 0.0001
+    }
+  },
+  "fit_success": true,
+  "no_neural_training": true,
+  "selection": "old-map H5 position RMSE, all four fixed model definitions retained",
+  "scientific_limit": "Check maps are previous development data, not independent driving validation. Three physical scalars, not a new WM/value head. Contact/slip outliers retained through robust loss."
+}

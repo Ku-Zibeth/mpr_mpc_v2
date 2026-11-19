@@ -1,0 +1,100 @@
+{
+  "base_commit": "1e9fefc5fc38339879ad859fcfba64dfeef8ce09",
+  "branch": "experiment/mppi-native-road-20261119",
+  "main_clean": true,
+  "previous_worktree_and_report_unchanged": true,
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "default_config_sha256": "08e04491abbc60d831ae7b656b2f14c3ecde04c020ce7b1f7e95427371d2711c",
+  "original_WM_SAC_Lattice_environment_vendor_sources_unchanged": true,
+  "no_training_or_commit_or_push": true,
+  "no_default_activation": true,
+  "development_maps": 12,
+  "development_episodes": 48,
+  "heldout_maps": 24,
+  "heldout_paired_episodes": 48,
+  "heldout_total_episodes": 96,
+  "repeated_performance_episodes": 6,
+  "repeated_performance_extra_independent_maps": 0,
+  "total_native_complete_episodes": 150,
+  "source_frozen_during_all96_validation_episodes": {
+    "complete_episodes": 96,
+    "all_frozen_source_hashes_exact": true,
+    "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+    "sources_saved": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_native_road_20261119/reports/mppi_native_road_20261119/frozen_validation_sources"
+  },
+  "all_initial_environment_and_policy_paired": true,
+  "nominal_prefix_comparisons_exact": 84,
+  "traffic_repeats_actually_differ_on_all24_maps": true,
+  "raw_trajectories_preserved": true,
+  "unit_tests": {
+    "passed": 59,
+    "failed": 0
+  },
+  "unchanged_sampling_AST": [
+    "initial_mean",
+    "_candidate_batch",
+    "_weights",
+    "_elite_weights",
+    "_update_distribution",
+    "_plan_comfort"
+  ],
+  "default_and_previous_mode_parity": {
+    "conditions": 12,
+    "arrays": 92,
+    "legacy_comfort_and_unmodified_tracking_exact": true
+  },
+  "broad_phase_candidate_parity": {
+    "contexts": 8,
+    "candidates_per_context": 65,
+    "all_exact": true,
+    "not_used_in_frozen_driving_validation": true,
+    "mathematical_scope": "exact zero overlap contribution under unchanged bicycle+CV model, not a new safety guarantee"
+  },
+  "full_performance_trace_parity": {
+    "episodes": 2,
+    "all_actions_observations_states_rewards_costs_termination_exact": true,
+    "extra_independent_maps": 0
+  },
+  "crash_native_replays": {
+    "trajectories": 3,
+    "all_observations_rewards_termination_exact": true,
+    "new_independent_maps": 0,
+    "selection_or_tuning": false
+  },
+  "deployment_gate": {
+    "accepted": false,
+    "criteria": {
+      "independent_discounted_return_CI_lower_positive": false,
+      "success_improved": true,
+      "crash_not_increased": true,
+      "out_of_road_not_increased": true,
+      "route_completion_not_lower": true,
+      "majority_maps_gain": false,
+      "both_traffic_seeds_return_improve": true,
+      "full_planning_P95_under100ms": false,
+      "contemporary_lowpass_comparator_available": false
+    },
+    "independent_maps": 24,
+    "paired_episodes": 48,
+    "strict_gate": "heldout actual return95%CI lower>0; success> A; crash/OOR mean not higher; route not lower; improved return on majority of maps and both traffic repeats; planner P95<=100ms; compare simple filter. Report bounds/CI even if point targets pass.",
+    "default_enabled": false
+  },
+  "python": "3.11.16 | packaged by conda-forge | (main, Aug 21 2026, 22:44:51) [GCC 14.4.0]",
+  "packages": {
+    "torch": "2.7.1",
+    "numpy": "1.24.4",
+    "scipy": "1.15.3",
+    "shapely": "2.1.2",
+    "metadrive-simulator": "0.4.3"
+  },
+  "final_core_sha256": {
+    "planning/local_mppi.py": "7a6844adff70fb2705a2cc28959a3e2bd55e2a4b11b491c4b0d6adb3bc8c6db3",
+    "planning/coordinator.py": "cc9e9ae86fafcb8c40e42077f36b6843969131ecf416991d5bfe7ac577c1d0d1",
+    "planning/native_road.py": "e202e0de84ceb7cf524dc663e4ed850b4a8e560b9524f9d9f511e920081a9f1e",
+    "planning/tracking_evaluator.py": "d0388d08ee6a3d719c0f052dcff4156b99412750b22db449fd664db3abd5febf",
+    "planning/tracking_broad_phase.py": "5bf3f44b52aff1aad2d29ff7cf2cfc6435950528693d62339ebf214ec6f7665a"
+  },
+  "limitation": "Success/OOR improve on heldout paired sample, but returnCI includes0, collision swaps introduce3 new cases, cumulative safety cost increases, P95>100ms; no all-metric deployment claim.",
+  "patch_applies_cleanly_to_original_main": true,
+  "main_clean_after_work": true
+}

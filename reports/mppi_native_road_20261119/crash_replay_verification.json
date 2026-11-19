@@ -1,0 +1,6 @@
+{
+  "trajectories": 3,
+  "all_observations_rewards_termination_exact": true,
+  "new_independent_maps": 0,
+  "selection_or_tuning": false
+}

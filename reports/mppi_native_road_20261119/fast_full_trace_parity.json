@@ -1,0 +1,5 @@
+{
+  "episodes": 2,
+  "all_actions_observations_states_rewards_costs_termination_exact": true,
+  "extra_independent_maps": 0
+}

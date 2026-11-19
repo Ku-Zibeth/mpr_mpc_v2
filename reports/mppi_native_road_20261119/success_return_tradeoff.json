@@ -1,0 +1,36 @@
+{
+  "groups": [
+    {
+      "group": "rescued",
+      "episodes": 6,
+      "discounted_return_delta": 21.347165240181294,
+      "episode_return_delta": 135.00862987573674,
+      "safety_cost_delta": -0.40254000074869367
+    },
+    {
+      "group": "lost",
+      "episodes": 0,
+      "discounted_return_delta": null,
+      "episode_return_delta": null,
+      "safety_cost_delta": null
+    },
+    {
+      "group": "both_success",
+      "episodes": 37,
+      "discounted_return_delta": -1.5557195928170742,
+      "episode_return_delta": -6.581439109403201,
+      "safety_cost_delta": 0.18943863731887103
+    },
+    {
+      "group": "both_failure",
+      "episodes": 5,
+      "discounted_return_delta": 2.454855813394346,
+      "episode_return_delta": -4.001455717611725,
+      "safety_cost_delta": 0.7962665057977134
+    }
+  ],
+  "new_crashes": 3,
+  "avoided_crashes": 3,
+  "rescued_with_negative_discounted_gain": 1,
+  "interpretation": "Actual native return, completion and cumulative cost are distinct outcomes; descriptive paired decomposition, not a modified reward or a new selection criterion."
+}

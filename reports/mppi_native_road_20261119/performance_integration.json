@@ -1,0 +1,16 @@
+{
+  "integrated_after_frozen_validation_complete": true,
+  "driving_validation_used_original_frozen_sources": true,
+  "original_sources_saved": true,
+  "exact_context_parity": true,
+  "thresholds_changed": false,
+  "models_or_sampling_changed": false,
+  "full_trace_parity_pending": false,
+  "default_enabled": false,
+  "current_evaluator_sha256": "d0388d08ee6a3d719c0f052dcff4156b99412750b22db449fd664db3abd5febf",
+  "helper_sha256": "5bf3f44b52aff1aad2d29ff7cf2cfc6435950528693d62339ebf214ec6f7665a",
+  "full_trace_parity_passed": true,
+  "full_native_reproduction_episodes": 2,
+  "independent_driving_data_changed": false,
+  "strict_safety_or_sampling_checks_removed": false
+}

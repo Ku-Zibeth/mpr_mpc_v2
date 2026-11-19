@@ -1,0 +1,10 @@
+{
+  "scene": 500322,
+  "traffic_seed": 504824900,
+  "road_geometry_sha256": "b0c2a60e664f5ddb91ff04f8e79e6eaf0e69178b83a7465871af764371fab489",
+  "invalid_lane_polygons_repaired": 0,
+  "actual_map_seed": 500322,
+  "traffic_initial_hash": "9ac8bbdedfc4c98b7e382a9f843eb0a6d70c23bafe0cddf593bf71edc823c34d",
+  "spawn_body_on_road": true,
+  "spawn_on_lane": true
+}

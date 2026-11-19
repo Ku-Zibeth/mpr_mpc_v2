@@ -1,0 +1,14 @@
+{
+  "scenes": [
+    600009,
+    600503
+  ],
+  "methods": [
+    "A",
+    "Tconditional"
+  ],
+  "workers": 1,
+  "full_native_termination": true,
+  "not_new_independent_evidence": true,
+  "clock": "mpr/total_planning_ms: actual coordinator planning wall time; env.step excluded; no outer collector checks in this clock"
+}

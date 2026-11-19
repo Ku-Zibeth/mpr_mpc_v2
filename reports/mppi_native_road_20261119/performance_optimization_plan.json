@@ -1,0 +1,8 @@
+{
+  "written_before_inspecting_holdout_outcomes": true,
+  "method": "exact computational broad phase, unchanged zero-contribution objective",
+  "helper_sha256": "e592f0f9db1eb365973e09fefe012ef8925c4a591fec7bc4dd6c994d60827eba",
+  "acceptance": "all arrays and full plan action/distribution exact on8 actual contexts plus pure tests; after validation completion, two sequential full traces must exactly reproduce existing original traces before treating timings as same-policy optimization",
+  "scope": "no changed reward, candidate score, sampling, RNG, uncertainty envelope or threshold; explicit opt-in, default off",
+  "frozen_validation_uses_helper": false
+}

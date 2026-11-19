@@ -1,0 +1,30 @@
+{
+  "Tfast": {
+    "objective_mode": "tracking",
+    "tracking": {
+      "enabled": true,
+      "prediction_steps": 5,
+      "feedback_rollout": true,
+      "lateral_scale": 0.3137473914991184,
+      "heading_scale": 0.08663439466595103,
+      "steering_delta_bound": 0.08,
+      "action_scale": 0.08,
+      "motion_error_p95": 0.1568736957495592,
+      "motion_model": "physical_uncapped",
+      "motion_coefficients": {
+        "drive_gain": 0.8761783077827419,
+        "brake_gain": 0.5686800458074307,
+        "slip_gain": 0.7244076306304573
+      },
+      "road_margin": 0.15,
+      "model_margin": 0.3,
+      "optimize_throttle": false,
+      "throttle_delta_bound": 0.25,
+      "speed_scale": 2.857142857142857,
+      "native_road": true,
+      "native_risk_only": true,
+      "native_margin_m": 0.2546622687287514,
+      "exact_geometry": true
+    }
+  }
+}

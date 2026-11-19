@@ -92,13 +92,17 @@ class MPRMPCPlanner:
             mppi_cfg,
             horizon=self.horizon,
             action_dim=self.action_dim,
-            device=self.device,
+            device='cpu' if mppi_cfg.get('objective_mode')=='tracking' else self.device,
         )
         self.comfort_evaluator = None
+        self.tracking_evaluator = None
         if self.local_mppi.objective_mode == 'comfort':
             from .comfort_evaluator import ComfortTrajectoryEvaluator
             self.comfort_evaluator = ComfortTrajectoryEvaluator(
                 mapping(mppi_cfg.get('comfort')),control_dt=self.control_dt,device=self.device)
+        if self.local_mppi.objective_mode == 'tracking':
+            from .tracking_evaluator import TrackingTrajectoryEvaluator
+            self.tracking_evaluator = TrackingTrajectoryEvaluator(mapping(mppi_cfg.get('tracking')),control_dt=self.control_dt)
         # Existing E5 policies consume these three geometric state features.
         # Preserve their input semantics once for the coarse SAC state only;
         # no MPPI candidate passes through this legacy feature extractor.
@@ -165,6 +169,8 @@ class MPRMPCPlanner:
         self.local_mppi.reset(seed=getattr(self, "_episode_seed", None))
         if self.comfort_evaluator is not None:
             self.comfort_evaluator.reset()
+        if self.tracking_evaluator is not None:
+            self.tracking_evaluator.reset()
         if self.safety is not None:
             self.safety.reset()
         self.last_context = None
@@ -410,6 +416,10 @@ class MPRMPCPlanner:
                 comfort_context = self.comfort_evaluator.context(vehicle,refined.xy,
                     width=width,wheelbase=wheelbase,max_steering=steering)
                 comfort_options = dict(comfort_evaluator=self.comfort_evaluator,comfort_context=comfort_context)
+            if self.tracking_evaluator is not None:
+                tracking_context=self.tracking_evaluator.context(vehicle,refined,context.safety_context,
+                    self.control_dt/float(mapping(section(self.cfg,'metadrive').get('simulator')).get('decision_repeat',5)),self.structured.controller)
+                comfort_options=dict(tracking_evaluator=self.tracking_evaluator,tracking_context=tracking_context)
             mppi = self.local_mppi.plan(context.latent, refined_actions, eval_mode=eval_mode,**comfort_options)
             self.mppi_call_count += 1
             self.baseline_selected_count += int(mppi.baseline_selected)
@@ -476,7 +486,7 @@ class MPRMPCPlanner:
         diagnostics["mpr/sac_trajectory_is_fallback"] = float(not residual_valid)
         if not residual_valid:
             diagnostics["mpr/sac_predicted_cost"] = float("nan")
-        diagnostics["mpr/mppi_correction_magnitude"] = float((selected_actions-refined_actions).square().mean().sqrt())
+        diagnostics["mpr/mppi_correction_magnitude"] = float((selected_actions-refined_actions.to(selected_actions.device)).square().mean().sqrt())
         diagnostics["mpr/coarse_target_speed_mps"] = float(coarse.target_speed)
         diagnostics["mpr/refined_target_speed_mps"] = float(refined.target_speed)
         diagnostics["mpr/actual_speed_mps"] = float(np.linalg.norm(np.asarray(vehicle.velocity)[:2]))
@@ -491,7 +501,9 @@ class MPRMPCPlanner:
         if stage.use_mppi and self.safety is not None and context.safety_context is not None:
             # Display only: reuse the frozen SAC geometry service, never filter
             # or rank candidates, and never feed this back into the 535-D state.
-            if self.comfort_evaluator is not None:
+            if self.tracking_evaluator is not None:
+                final_mppi_xy=mppi.selected_consequence['positions']
+            elif self.comfort_evaluator is not None:
                 short = torch.cat((selected_actions[:1],selected_actions[-1:]),0)
                 positions,_,_ = self.comfort_evaluator.motion.rollout(short[None],comfort_context.motion)
                 final_mppi_xy = positions[0,::self.comfort_evaluator.motion.substeps].detach().cpu().numpy()

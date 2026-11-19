@@ -1,0 +1,5 @@
+{
+  "comparisons": 84,
+  "all_passed": true,
+  "description": "Exact action/observation prefix and same SAC command at first actual intervention; not merely same initial state."
+}

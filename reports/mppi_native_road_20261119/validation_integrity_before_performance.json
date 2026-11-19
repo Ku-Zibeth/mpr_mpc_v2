@@ -1,0 +1,6 @@
+{
+  "complete_episodes": 96,
+  "all_frozen_source_hashes_exact": true,
+  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "sources_saved": "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_native_road_20261119/reports/mppi_native_road_20261119/frozen_validation_sources"
+}
