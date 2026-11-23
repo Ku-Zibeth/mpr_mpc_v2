@@ -1,6 +1,6 @@
 # MPR-MPC 保留版
 
-本目录保留产生下表结果的算法、完整模型和可复现配置。旧实验工作目录、历史调参脚本及非选定检查点已清理；原始兄弟项目 `mpr_mpc`、原版TD-MPC2不在清理范围内。
+本目录开源产生下表结果的算法、配置、固定场景和实验记录；训练好的模型仅保留在本地，不随源码发布。旧实验工作目录、历史调参脚本及非选定检查点已清理；原始兄弟项目 `mpr_mpc`、原版TD-MPC2不在清理范围内。
 
 | 测试组 | 原到达成功率 | 碰撞后仍到达回合 | 成功率：到达且全程无碰撞 | 失败回合 |
 |---|---:|---:|---:|---:|
@@ -23,17 +23,17 @@
 ## 模型与环境
 
 ```bash
-git lfs install
-git lfs pull
 conda activate tdmpc2
 python scripts/check_environment.py
 ```
 
-权重文件：[models/wm200k_rl300k.pt](models/wm200k_rl300k.pt)，通过Git LFS管理，SHA256为：
+精确重跑需要原 WM200k＋Residual SAC300k 完整权重。权重不随源码发布；持有原权重的用户应将其放置在 `models/wm200k_rl300k.pt`。对应 SHA256 为：
 
 ```text
 4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a
 ```
+
+没有原权重时，可以复查已有400回合数据及统计，但不能直接重现该检查点的驾驶表现。重新训练不会保证得到完全相同的成功率。
 
 依赖清单见 `requirements.txt`、`environment.yml`、`environment-lock.txt`。评测需要可用CUDA；不依赖任何已删除的工作树或外部TD-MPC2源码目录。
 
@@ -71,7 +71,7 @@ bash scripts/evaluate_selected.sh --smoke-steps 2 --output-dir logs/technical_sm
 
 ```text
 profiles/selected.yaml       唯一保留的评测配置
-models/                     原始完整模型及SHA256清单
+models/                     权重说明及SHA256清单；权重文件仅在本地
 scenarios/selected100.json   固定100场景
 reports/selected_run/        原始记录、新口径汇总、失败清单及状态证据
 planning/                   被选版本的原规划核心与必要兼容实现

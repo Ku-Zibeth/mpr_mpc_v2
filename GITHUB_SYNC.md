@@ -1,39 +1,36 @@
-# 同步保留版到GitHub
+# 源码发布：以本地 main 为准
 
-本地整合已完成；下列命令由你执行，才会创建提交并上传。模型通过Git LFS同步；原实验目录已移除，所有操作都在主目录执行。
+算法、配置、场景和历史结果公开；训练好的权重保留在本地，不纳入当前版本。
 
 ```bash
 (
-  set -euo pipefail
-  cd /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2
-  test "$(git branch --show-current)" = main
-
-  git lfs install --local
-  git add -A
-  git diff --cached --shortstat
-  git lfs ls-files
-
-  if ! git diff --cached --quiet; then
-    git commit -m "Consolidate selected MPR-MPC model and collision-free evaluation"
-  fi
-
-  git pull --rebase origin main
-  git push -u origin main
-
-  release_local_sha="$(git rev-parse HEAD)"
-  release_remote_sha="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
-  test "$release_local_sha" = "$release_remote_sha"
-  printf '同步完成，本地与GitHub main一致：%s\n' "$release_local_sha"
-  git log -1 --oneline
+set -euo pipefail
+cd /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2
+test "$(git branch --show-current)" = main
+git rm --cached --ignore-unmatch -- models/wm200k_rl300k.pt
+git add -A
+python - <<'CHECK'
+import subprocess
+from pathlib import Path
+blocked={'.pt','.pth','.ckpt','.safetensors','.onnx'}
+paths=subprocess.check_output(['git','ls-files','-z']).decode().split('\0')
+weights=[p for p in paths if p and Path(p).suffix.lower() in blocked]
+if weights: raise SystemExit('停止上传，仍有已跟踪权重：'+repr(weights))
+assert Path('models/wm200k_rl300k.pt').is_file(), '本地原权重缺失'
+print('检查通过：当前提交不含权重，本地原权重存在。')
+CHECK
+git diff --cached --shortstat
+if ! git diff --cached --quiet; then
+  git commit -m "Publish reproducible source and keep trained checkpoints local"
+fi
+git push -u origin main
+publish_local_sha="$(git rev-parse HEAD)"
+publish_remote_sha="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+test "$publish_local_sha" = "$publish_remote_sha"
+printf '源码同步成功：%s\n' "$publish_local_sha"
 )
 ```
 
-本机已安装Git LFS3.4.1，权重已通过本地clean过滤器校验：
+当前远端 main 与本地同步，正常推送即可。若远端在此期间出现新提交导致拒绝推送，应先核对差异，不使用强制覆盖。
 
-```text
-version https://git-lfs.github.com/spec/v1
-oid sha256:4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a
-size 113814831
-```
-
-SSH远程沿用现有 `ssh://git@ssh.github.com:443/Ku-Zibeth/mpr_mpc_v2.git`。Git LFS的SSH服务发现与认证流程见[官方说明](https://github.com/git-lfs/git-lfs/blob/main/docs/api/server-discovery.md)。
+`git rm --cached` 仅移除版本跟踪，不删除本地权重。已上传的旧提交和 LFS 对象不会随当前版本删除自动清除，本流程不改写历史。

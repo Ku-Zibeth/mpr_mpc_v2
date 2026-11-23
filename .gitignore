@@ -17,7 +17,7 @@ model_checkpoints/
 *.pth
 *.ckpt
 *.safetensors
-!models/wm200k_rl300k.pt
 *.npy
 *.npz
 .DS_Store
+*.onnx

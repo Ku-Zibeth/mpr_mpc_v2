@@ -1,8 +1,12 @@
-# Retained checkpoint
+# 本地检查点（不随源码发布）
 
-`wm200k_rl300k.pt` is the exact original WM200k + frozen-WM Residual SAC300k full checkpoint (113814831 bytes).
-SHA256: `4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a`.
+评测使用原始 WM200k＋冻结世界模型后 Residual SAC300k 完整检查点。
+将已有权重放置为 `models/wm200k_rl300k.pt`，文件大小为 113814831 字节。
 
-The checkpoint is tracked with Git LFS. After cloning, run `git lfs install` and `git lfs pull`.
-No model tensor, optimizer state, SAC535 input, action mapping or Lattice generation was changed by consolidation.
-`manifest.json` identifies the retained configuration, source runtime hashes and expected reference results.
+SHA256：`4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a`。
+
+权重仅保留在本地，由 `.gitignore` 排除；本仓库不提供权重下载。
+`manifest.json` 保留检查点指纹、原评测配置、场景及参考结果，不能替代模型权重。
+算法、535维 SAC 输入、动作映射、网络及 Lattice 生成未因源码发布发生变化。
+
+没有该权重可执行 `python tools/summarize_selected.py` 重建历史结果；精确重跑驾驶评测需要上述原权重。
