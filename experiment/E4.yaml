@@ -1,7 +1,0 @@
-# @package _global_
-defaults:
-  - E3
-  - _self_
-exp_name: mpr_mpc_v2_E4
-experiment_profile: E4
-# Historical profile alias; all profiles now use the same single Gaussian.

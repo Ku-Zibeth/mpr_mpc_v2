@@ -1,9 +1,0 @@
-{
-  "checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
-  "source_snapshot_sha256": "2a4e5408eea2bb8cd7aef7ca1bb7b8c3d77d0e323d02cfccf75ebd0937435749",
-  "networks_and_action_mapping_files_unchanged": true,
-  "native_metadrive_class_AST_unchanged": true,
-  "training_not_started": true,
-  "actual_control_limit": 1000,
-  "WM_horizon": 10
-}

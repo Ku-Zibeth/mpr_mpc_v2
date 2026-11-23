@@ -1,6 +1,0 @@
-{
-  "component/vehicle/base_vehicle.py": "dc4953ef85605838feea0a753b0ea4f6d2d8b079817e5b1367a7f2460a7c08c1",
-  "component/block/base_block.py": "5b6ff6828c47047639ce0c2c838f15ff470428eaf658fafb56d84dee6c8e2847",
-  "envs/metadrive_env.py": "eef0168b396c9a32186a102cb196bd2faa76a0d3a42aa39bf4ed4af4202baf33",
-  "envs/safe_metadrive_env.py": "a1a1e53272654c94315d981081a9166d5695e865fc06e32d339b3283f606f5e2"
-}

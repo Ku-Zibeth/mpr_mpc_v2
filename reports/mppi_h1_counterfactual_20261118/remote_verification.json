@@ -1,7 +1,0 @@
-{
-  "url": "https://api.github.com/repos/Ku-Zibeth/mpr_mpc_v2/branches/main",
-  "sha": "12da6bbfd40138b839eab35b0bd6d36dbb964eac",
-  "commit_date_utc": "2026-11-18T10:29:26Z",
-  "message": "Audit MPPI closed-loop failures and fix virtual speed semantics",
-  "source": "GitHub connector GET, matched local HEAD"
-}

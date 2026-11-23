@@ -1,7 +1,0 @@
-{
-  "contexts": 8,
-  "candidates_per_context": 65,
-  "all_exact": true,
-  "not_used_in_frozen_driving_validation": true,
-  "mathematical_scope": "exact zero overlap contribution under unchanged bicycle+CV model, not a new safety guarantee"
-}

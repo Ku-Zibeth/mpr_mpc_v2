@@ -1,0 +1,105 @@
+{
+  "endpoint": "native final_success=1 AND whole-episode episode_crash=0",
+  "bootstrap_unit": "whole scenario/map, all four methods resampled together",
+  "bootstrap_samples": 2000,
+  "bootstrap_seed": 20261124,
+  "paired_comparisons": [
+    {
+      "comparison": "B_lattice_sac - A_lattice",
+      "paired_episodes": 100,
+      "unique_scenarios": 100,
+      "strict_success_gain_pp": 6.0,
+      "strict_success_gain_ci95_low_pp": -3.0000000000000027,
+      "strict_success_gain_ci95_high_pp": 15.999999999999993,
+      "rescued_count": 14,
+      "regressed_count": 8,
+      "rescued_seeds": [
+        2054521,
+        2031796,
+        2002311,
+        2066287,
+        2029773,
+        2055624,
+        2016856,
+        2010671,
+        2044331,
+        2045422,
+        2086195,
+        2047453,
+        2081936,
+        2075453
+      ],
+      "regressed_seeds": [
+        2056628,
+        2087503,
+        2065805,
+        2022984,
+        2024491,
+        2057577,
+        2047302,
+        2050550
+      ]
+    },
+    {
+      "comparison": "C_lattice_mppi - A_lattice",
+      "paired_episodes": 100,
+      "unique_scenarios": 100,
+      "strict_success_gain_pp": -2.0,
+      "strict_success_gain_ci95_low_pp": -9.999999999999998,
+      "strict_success_gain_ci95_high_pp": 6.000000000000005,
+      "rescued_count": 8,
+      "regressed_count": 10,
+      "rescued_seeds": [
+        2054521,
+        2002311,
+        2066287,
+        2049687,
+        2075599,
+        2010671,
+        2086195,
+        2047453
+      ],
+      "regressed_seeds": [
+        2046754,
+        2062146,
+        2063744,
+        2065685,
+        2052067,
+        2022820,
+        2066368,
+        2047302,
+        2080005,
+        2050550
+      ]
+    },
+    {
+      "comparison": "D_lattice_sac_mppi - B_lattice_sac",
+      "paired_episodes": 100,
+      "unique_scenarios": 100,
+      "strict_success_gain_pp": 9.0,
+      "strict_success_gain_ci95_low_pp": 2.0000000000000018,
+      "strict_success_gain_ci95_high_pp": 16.000000000000004,
+      "rescued_count": 12,
+      "regressed_count": 3,
+      "rescued_seeds": [
+        2095516,
+        2093105,
+        2003952,
+        2056628,
+        2036785,
+        2061855,
+        2087503,
+        2070519,
+        2075599,
+        2024491,
+        2047302,
+        2023472
+      ],
+      "regressed_seeds": [
+        2074374,
+        2016856,
+        2022820
+      ]
+    }
+  ]
+}

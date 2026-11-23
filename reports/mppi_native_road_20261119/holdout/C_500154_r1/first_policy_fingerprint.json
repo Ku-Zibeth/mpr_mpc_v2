@@ -1,8 +1,0 @@
-{
-  "latent": "0f572da688c04983b2524617ea9ad4063fb9012bd04b1ae68e514a18fff09ed4",
-  "state535": "1ea5ad61bdc7ce1f9d7416de958bfe47e52857da8cfa003020fdc49ad5944877",
-  "coarse_actions": "57fe345268e2094c94df946c1b68f2522d13d9bc48b19e0cc092534f07d945fe",
-  "refined_actions": "5c1dae68ad74c03c5d253f4988dae029bfd6d4b156f2d5ce52665aeb9da0a206",
-  "normalized_residual": "54b1c32fc8e3dd3229ce92a8604af9a934b0f3e3631ea5b279da6b73edf1d0ff",
-  "refined_parameters": "db896052e521b76f7fd325d1c802df7aee6a9267b9a1a9c4b46a41db7da1b6e3"
-}

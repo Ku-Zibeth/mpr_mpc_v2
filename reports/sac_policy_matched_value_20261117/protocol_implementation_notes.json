@@ -1,8 +1,0 @@
-{
-  "original_protocol_preserved": true,
-  "correction": "Protocol variance sentence hypothesized random coarseQ features. Source audit shows coarseWM fullensemble mean; random_pair belongs toMPPI only. MPPIOFF + deterministicSAC has zero observed repeatvariance atall8endpoints.",
-  "independent_simulator_process_per_suffix": true,
-  "failed_reset_handling": "Same-process reset did not reproduce origin. Two completed unpairedSACpilot trajectories retained, excludedfromscientific33suffix dataset; allpairedbranches reruninfreshprocess. No policy/config/scenario/weights change.",
-  "return_mae_definition": "Thisphase absolute continuationRTG MAE; prior8.46 was candidate-minus-baseline continuation difference MAE. Not directly comparable.",
-  "terminal_action": "TDQ(REALz, actualSACfirstphysicalaction) vsSACQ(REAL535, residualmean mapping to thatsameaction); objectives inherently differ. NativeTDtakeover also evaluatesQ atownactualfirstaction separately."
-}

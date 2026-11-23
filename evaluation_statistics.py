@@ -16,6 +16,8 @@ METRICS = {
     "crash": ("episode_crash", None),
     "route_completion": ("final_route_completion", None),
     "success": ("final_success", None),
+    "native_success": ("native_success", None),
+    "collision_and_native_success": ("collision_and_native_success", None),
     "collision_and_success": ("collision_and_success", None),
     "collision_and_offroad": ("collision_and_offroad", None),
     "collision_given_success": ("collision_and_success", "final_success"),
@@ -46,6 +48,7 @@ METRICS = {
     "unverified_action_executions": ("unverified_action_executions", None),
 }
 BINARY_RATES = {
+    "native_success", "collision_and_native_success",
     "out_of_road", "crash", "success", "collision_and_success",
     "collision_and_offroad", "cost_limit_exceedance", "timeout_rate", "safety_failure_rate",
 }
@@ -127,6 +130,9 @@ def summarize_runs(label: str, rows: list[dict], *, samples: int, seed: int) -> 
         result[f"{name}_unique_scenarios"] = len({
             int(r["scenario"]) for r in rows if _number(r, name) > 0
         })
+    if any("native_success" in row for row in rows):
+        result["native_success_count"] = sum(float(row.get("native_success", 0)) > .5 for row in rows)
+        result["collision_and_native_success_count"] = sum(float(row.get("collision_and_native_success", 0)) > .5 for row in rows)
     ttc = [_number(r, "minimum_ttc") for r in rows]
     finite = [value for value in ttc if math.isfinite(value)]
     result["minimum_ttc"] = min(finite) if finite else None

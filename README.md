@@ -1,537 +1,85 @@
-# MPR-MPC V2
+# MPR-MPC 保留版
 
-This is the independent safety/planning implementation under `mpr_mpc_v2`.
-The original sibling `mpr_mpc` and its trained checkpoints are not modified.
-No trained checkpoint, training log directory, or Git/LFS database was copied.
+本目录保留产生下表结果的算法、完整模型和可复现配置。旧实验工作目录、历史调参脚本及非选定检查点已清理；原始兄弟项目 `mpr_mpc`、原版TD-MPC2不在清理范围内。
 
-Start here: [V2 implementation, commands, compatibility and limitations](V2_IMPLEMENTATION.md).
-Run commands from this directory, not from the sibling original package.
+| 测试组 | 原到达成功率 | 碰撞后仍到达回合 | 成功率：到达且全程无碰撞 | 失败回合 |
+|---|---:|---:|---:|---:|
+| A：Lattice | 83% | 8 | 75% | 25 |
+| B：Lattice＋SAC | 92% | 11 | 81% | 19 |
+| C：Lattice＋MPPI | 89% | 16 | 73% | 27 |
+| D：Lattice＋SAC＋MPPI | 96% | 6 | 90% | 10 |
 
-Current delivery: [Native MPPI + WM Cost report, measurements and commands](NATIVE_MPPI_COST_REPORT.md).
-MPPI now uses the historical single Gaussian (64 samples, 8 elites, 4 iterations).
-Reward/terminal-Q value is penalized only by WM-predicted cost, baseline deviation,
-and relative-action smoothness. Multimodal search, candidate footprint/swept checks,
-emergency search, uncertainty penalties and per-mode cost approvals are removed.
-Unvalidated cost predictions are explicitly labelled and still participate in ranking.
-Basic held-out cost validation is a diagnostic, not a safety certificate.
+这是同一批100个场景上的既有实验重统计，不是新独立验证。原始400回合记录和完整配置保存在 [reports/selected_run](reports/selected_run)。
 
-The default schedule remains 20K world-model steps, including Cost Head supervision,
-then frozen-WM Residual SAC until 50K. MPPI runs only in evaluation. Existing 535-D
-SAC checkpoints retain their geometric input features once per coarse trajectory;
-these legacy features do not filter or score MPPI candidates. See the current report
-for this compatibility exception and the remaining 100 ms performance gap.
+## 保留内容
 
-[Round 4](ROUND4_REPORT.md) and [Round 3](ROUND3_REPORT.md) are historical reports;
-their multimodal/emergency calibration commands no longer describe the current planner.
+- 模型：200k世界模型＋冻结世界模型后训练300k Residual SAC。
+- MPPI：实测Tfast native-road tracking版本，原单高斯/AR(1)、64 samples、8 elites、4 iterations预算；无风险时保留基准动作。
+- 原535维SAC输入、动作映射、Lattice生成、TD-MPC2及SAC权重均保持原样。
+- 周车密度 `0.075`，事故障碍概率 `0.8`，越界容忍固定 `0.1m`。
+- 测试种子 `20261127`；四组共享 [selected100.json](scenarios/selected100.json)。
+- 唯一正式评测配置：[profiles/selected.yaml](profiles/selected.yaml)。旧核心兼容接口保留，未再提供历史实验启动配置。
+
+## 模型与环境
+
+```bash
+git lfs install
+git lfs pull
+conda activate tdmpc2
+python scripts/check_environment.py
+```
+
+权重文件：[models/wm200k_rl300k.pt](models/wm200k_rl300k.pt)，通过Git LFS管理，SHA256为：
+
+```text
+4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a
+```
+
+依赖清单见 `requirements.txt`、`environment.yml`、`environment-lock.txt`。评测需要可用CUDA；不依赖任何已删除的工作树或外部TD-MPC2源码目录。
+
+## 运行四组评测
 
 ```bash
 cd /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2
-/home/kzb/anaconda3/envs/tdmpc2/bin/python -m pytest -q
-/home/kzb/anaconda3/envs/tdmpc2/bin/python tools/smoke_v2.py
+bash scripts/evaluate_selected.sh
 ```
 
-The sections below retain the upstream setup/layout documentation. V2-specific
-training, E0--E5 evaluation, and frozen-stack commands are in the document above.
-`evaluate_improvements.py` provides the paired E0--E5 entry point with a separate
-trained checkpoint per profile; it will not treat a YAML switch as retraining.
-
-## Upstream Reference
-
-Self-contained MetaDrive training code for MPR-MPC: Lattice proposal + Residual SAC-Lagrangian + Local MPPI, using a vendored TD-MPC2 runtime.
-
-The repository vendors the runtime components required by the tested MPR-MPC training path. No external TD-MPC2 checkout and no external `lattice_tdmpc2` checkout are required for the default MetaDrive workflow.
-
-## Quick Start
+默认保存到 `logs/selected_evaluation/`。同一命令可以续跑；使用新目录可重新评测：
 
 ```bash
-git clone https://github.com/Ku-Zibeth/MPR_MetaDrive.git
-cd MPR_MetaDrive
-
-conda env create -f environment.yml
-conda activate tdmpc2
-
-python -m pip install --upgrade pip
-
-python -m pip install torch==2.7.1 \
-  --index-url https://download.pytorch.org/whl/cu126
-
-python -m pip install -r requirements.txt
-
-python scripts/check_environment.py
-python scripts/check_environment.py --full
-python -m pytest tests -q
+bash scripts/evaluate_selected.sh --output-dir logs/my_selected_evaluation
 ```
 
-Start a compressed two-stage training smoke before a full experiment
-(the final evaluation can enable MPPI):
+- `summary.csv`：正式成功率按“原到达且整回合无碰撞”统计。
+- `episodes.csv`：`native_success`保留原到达标志；`final_success`/`strict_success`为正式新口径。
+- `failures/all_failed_seeds.json`：四组的新口径失败场景种子。
+- `steps/`：逐步规划诊断。
+
+碰撞后继续行驶至原生终止，以保持原实验的控制路径和奖励定义；回报、路线完成率、成本、耗时使用实际完整回合记录。一次碰撞与任务失败重叠时只计一个失败回合。
+
+## 重建已有结果与检查
 
 ```bash
-python train.py \
-checkpoint=null \
-resume_checkpoint=null \
-steps=1500 \
-mpr_mpc.stages.residual_start_step=300 \
-mpr_mpc.stages.mppi_start_step=700 \
-residual_rl.seed_steps=100 \
-residual_rl.learning_starts=100 \
-milestone_checkpoints.world_model_step=300 \
-milestone_checkpoints.world_model_residual_step=700 \
-milestone_checkpoints.full_model_step=1500 \
-enable_wandb=false \
-eval_episodes=1 \
-metadrive.simulator.horizon=150
+python tools/summarize_selected.py
+python -m pytest -q
+bash scripts/evaluate_selected.sh --smoke-steps 2 --output-dir logs/technical_smoke
 ```
 
-## Repository Layout
+短测会人为截断回合，仅用于启动与接口检查，不代表驾驶性能。
+
+## 文件布局
 
 ```text
-MPR_MetaDrive/
-├── train.py
-├── evaluate.py
-├── config.yaml
-├── agent.py
-├── trainer.py
-├── training_schedule.py
-├── _bootstrap.py
-├── env/
-├── lattice/
-├── lattice_tdmpc2/
-├── planning/
-├── residual_rl/
-├── tdmpc2/
-├── vendor/
-│   └── tdmpc2_runtime/
-├── scripts/
-│   └── check_environment.py
-├── tests/
-├── requirements.txt
-├── environment.yml
-├── environment-lock.txt
-├── THIRD_PARTY.md
-└── README.md
+profiles/selected.yaml       唯一保留的评测配置
+models/                     原始完整模型及SHA256清单
+scenarios/selected100.json   固定100场景
+reports/selected_run/        原始记录、新口径汇总、失败清单及状态证据
+planning/                   被选版本的原规划核心与必要兼容实现
+residual_rl/                 原Residual SAC
+vendor/                     独立运行所需TD-MPC2依赖
+scripts/evaluate_selected.sh 正式启动入口
 ```
 
-Runtime imports are repository-local:
+`reports/selected_run/source_*`是历史来源记录，其中旧路径仅作溯源。运行时只使用项目内的 `profiles/selected.yaml`、`models/` 和 `scenarios/`。
 
-```text
-env/                         MetaDrive TD-MPC2 environment adapter
-lattice/                     vendored Frenet-Lattice runtime
-lattice_tdmpc2/              vendored safety-cost/runtime components
-vendor/tdmpc2_runtime/       vendored TD-MPC2 runtime
-tdmpc2/                      thin MPR-MPC compatibility shim
-```
-
-`scripts/check_environment.py` verifies these modules resolve inside the clone.
-
-## Tested Platform
-
-Verified local machine on 2026-09-27:
-
-```text
-Ubuntu: 24.04.5 LTS
-Python: 3.11.16
-Conda: 24.5.0
-GPU: NVIDIA GeForce RTX 3070, 8192 MiB
-NVIDIA driver: 595.91.07
-nvidia-smi CUDA compatibility: 13.2
-PyTorch: 2.7.1+cu126
-PyTorch CUDA runtime: 12.6
-MetaDrive: metadrive-simulator==0.4.3
-```
-
-MPR-MPC training currently requires an NVIDIA CUDA GPU. `train.py` fails fast if `torch.cuda.is_available()` is false.
-
-## PyTorch And CUDA
-
-Install PyTorch separately before `requirements.txt` so the CUDA build is explicit:
-
-```bash
-python -m pip install torch==2.7.1 \
-  --index-url https://download.pytorch.org/whl/cu126
-```
-
-`requirements.txt` intentionally does not pin `torch`. Run:
-
-```bash
-python -m pip check
-```
-
-after installation to confirm there are no dependency conflicts.
-
-The system CUDA Toolkit is not required for the inspected training path. You need a working NVIDIA driver and the CUDA-enabled PyTorch wheel.
-
-## Output Directory
-
-Default output is always repository-relative, independent of the shell current working directory:
-
-```text
-MPR_MetaDrive/logs/<task>/<seed>/<exp_name>/
-```
-
-Default example:
-
-```text
-MPR_MetaDrive/logs/metadrive-risk/1/mpr_mpc/
-├── models/
-│   ├── latest.pt
-│   ├── best.pt
-│   ├── final.pt
-│   ├── milestone_20k_world_model.pt
-│   ├── milestone_50k_world_model_residual_rl.pt
-│   └── milestone_1m_full_mpr_mpc.pt
-├── eval.csv
-├── wandb/
-└── ...
-```
-
-The rule is:
-
-```text
-default log_root = <repository root>/logs
-default work_dir = <log_root>/<task>/<seed>/<exp_name>
-default model_dir = <work_dir>/models
-```
-
-Override the log root for a large disk:
-
-```bash
-python train.py log_root=/mnt/ssd/mpr_runs
-```
-
-Then outputs go to:
-
-```text
-/mnt/ssd/mpr_runs/metadrive-risk/1/<exp_name>/
-```
-
-Override one exact run directory:
-
-```bash
-python train.py work_dir=/mnt/ssd/mpr_runs/metadrive-risk/1/my_run
-```
-
-W&B local files use `cfg.work_dir`, so they also stay under the run directory.
-
-## Training Architecture
-
-Current algorithm name:
-
-```yaml
-algorithm_version: mpr_mpc_residual_sac_mppi_v2
-```
-
-Stages:
-
-```text
-Stage A [0, 20K):
-  Lattice data collection + TD-MPC2 world-model/environment-cost supervision
-  Residual OFF
-  MPPI OFF
-
-Stage B [20K, 50K):
-  Lattice + Residual SAC; world model and cost head FROZEN
-  MPPI OFF
-
-Stage C (evaluation only):
-  Lattice + Residual SAC + Local MPPI
-  No optimizer updates; corresponding source/mode/horizon cost approval required
-```
-
-TD-MPC2 update ratios:
-
-```yaml
-tdmpc_stage_training:
-  stage_a_update_ratio: 1.0
-  stage_b_update_ratio: 0.0
-  stage_c_update_ratio: 0.0
-```
-
-State encoder:
-
-```text
-MetaDrive state observation: 259 = ego 9 + navigation 10 + LiDAR 240
-
-ego        obs[..., 0:9]     -> 128
-navigation obs[..., 9:19]    -> 128
-LiDAR      obs[..., 19:259]  -> 128
-
-concat 384 -> fusion MLP -> latent 512
-```
-
-This grouped encoder is enabled by default:
-
-```yaml
-state_encoder:
-  grouped: true
-  ego_dim: 9
-  nav_dim: 10
-  lidar_dim: 240
-  group_embed_dim: 128
-```
-
-Set `state_encoder.grouped=false` to use the original single state MLP encoder.
-The TD-MPC2 latent interface remains `latent_dim: 512`.
-
-Residual action mapping:
-
-Default:
-
-```yaml
-residual_rl:
-  residual_mapping: latent_tanh
-  latent_tanh_scale: [1.0, 1.0]
-  latent_tanh_eps: 1.0e-6
-```
-
-Residual SAC still outputs normalized actions `r_d, r_v in [-1, 1]`. In
-`latent_tanh` mode those actions refine only the coarse Lattice `target_d` and
-`target_speed` in atanh-normalized parameter space:
-
-```text
-x_c = 2 * (p_c - p_min) / (p_max - p_min) - 1
-u_c = atanh(clamp(x_c, -1 + eps, 1 - eps))
-u_r = u_c + kappa * r
-p_r = p_min + 0.5 * (tanh(u_r) + 1) * (p_max - p_min)
-```
-
-For `target_d`, bounds come from the current Lattice lateral bounds. For
-`target_speed`, bounds are `mpr_mpc.refinement.min_speed` and
-`mpr_mpc.refinement.max_speed`. Horizon is not modified by Residual SAC.
-
-Set `residual_rl.residual_mapping=linear` to use the previous mapping:
-
-```text
-delta_d = r_d * lane_width
-delta_v = r_v * 0.5 * coarse_target_speed
-```
-
-The Residual SAC state remains `512 latent + 12 path features + 1 WM return + 2 feasibility = 527`.
-The SAC actor, critic losses, replay buffer action format, Lattice, and MPPI
-algorithm are unchanged.
-
-Local MPPI defaults:
-
-```yaml
-num_samples: 64
-num_elites: 8
-iterations: 4
-```
-
-## Full Training
-
-```bash
-python train.py \
-checkpoint=null \
-resume_checkpoint=null \
-exp_name=mpr_mpc_residual_sac_v1 \
-wandb_run_name=mpr_mpc_residual_sac_v1 \
-wandb_project=mpr_mpc_metadrive
-```
-
-Disable W&B:
-
-```bash
-python train.py enable_wandb=false
-```
-
-For headless MetaDrive training, keep:
-
-```yaml
-metadrive:
-  simulator:
-    use_render: false
-```
-
-`MUJOCO_GL=egl` is set by the entrypoints for vendored TD-MPC2 / dm-control / MuJoCo compatibility; MetaDrive headless training primarily depends on `use_render=false`.
-
-## Checkpoints
-
-Regular resumable checkpoints:
-
-```text
-logs/metadrive-risk/1/<exp_name>/models/latest.pt
-logs/metadrive-risk/1/<exp_name>/models/best.pt
-logs/metadrive-risk/1/<exp_name>/models/final.pt
-```
-
-Milestones:
-
-```text
-20K:
-  logs/metadrive-risk/1/<exp_name>/models/milestone_20k_world_model.pt
-  Evaluation stack: Lattice ON, Residual SAC OFF, Local MPPI OFF
-
-50K:
-  logs/metadrive-risk/1/<exp_name>/models/milestone_50k_world_model_residual_rl.pt
-  Evaluation stack: Lattice ON, Residual SAC ON, Local MPPI OFF
-
-50K deployment package (same frozen WM and trained SAC):
-  logs/metadrive-risk/1/<exp_name>/models/milestone_50k_full_mpr_mpc.pt
-  Evaluation stack: Lattice ON, Residual SAC ON, Local MPPI ON
-```
-
-Resume:
-
-```bash
-python train.py \
-checkpoint=null \
-resume_checkpoint="$PWD/logs/metadrive-risk/1/<exp_name>/models/latest.pt"
-```
-
-Replay buffers are not serialized, so resume is not bit-exact continuation.
-
-## Evaluation
-
-By default `evaluation_stack=checkpoint` infers the runtime stack from the loaded milestone:
-
-```text
-world_model               -> Lattice ON, Residual SAC OFF, Local MPPI OFF
-world_model_residual_rl   -> Lattice ON, Residual SAC ON,  Local MPPI OFF
-full_mpr_mpc              -> Lattice ON, Residual SAC ON,  Local MPPI ON
-regular latest/best/final -> normal stage-based behavior
-```
-
-You can override the stack explicitly with `evaluation_stack=world_model`,
-`evaluation_stack=world_model_residual_rl`, or `evaluation_stack=full_mpr_mpc`.
-
-```bash
-python evaluate.py \
-checkpoint="$PWD/logs/metadrive-risk/1/<exp_name>/models/milestone_1m_full_mpr_mpc.pt" \
-eval_episodes=20 \
-enable_wandb=false
-```
-
-Rendered local evaluation:
-
-```bash
-python evaluate.py \
-checkpoint="$PWD/logs/metadrive-risk/1/<exp_name>/models/milestone_1m_full_mpr_mpc.pt" \
-eval_episodes=3 \
-enable_wandb=false \
-metadrive.simulator.use_render=true
-```
-
-Interactive rendering expects a desktop/display-capable environment.
-
-## Environment Check
-
-```bash
-python scripts/check_environment.py
-python scripts/check_environment.py --full
-```
-
-The script checks:
-
-```text
-Python 3.11
-PyTorch 2.7.1 / CUDA runtime 12.6
-CUDA availability and GPU name
-metadrive-simulator 0.4.3
-gymnasium 0.29.1
-hydra-core 1.3.2
-omegaconf 2.3.0
-tensordict 0.8.3
-torchrl 0.8.1
-repository-local runtime sources
-default log root
-algorithm_version
-```
-
-`--full` additionally creates the configured MetaDrive environment, runs a reset plus a few random steps, and verifies `reward`, `cost`, and `risk_field_cost`.
-
-Version drift is reported as `[WARN]`; missing CUDA or external runtime source resolution is `[FAIL]`.
-
-## Tests
-
-```bash
-python -m compileall .
-python -m pytest tests -q
-python -m pip check
-```
-
-Project MetaDrive sanity check:
-
-```bash
-python - <<'PY'
-from omegaconf import OmegaConf
-from _bootstrap import LOG_ROOT, bootstrap
-
-bootstrap()
-
-from common.parser import parse_cfg
-from env import make_env
-
-cfg = OmegaConf.load("config.yaml")
-cfg.log_root = str(LOG_ROOT)
-cfg.enable_wandb = False
-cfg.metadrive.simulator.horizon = 5
-
-env = make_env(parse_cfg(cfg))
-try:
-    obs = env.reset()
-    for _ in range(3):
-        obs, reward, done, info = env.step(env.rand_act())
-    print("cost:", info.get("cost"))
-    print("risk_field_cost:", info.get("risk_field_cost"))
-finally:
-    env.close()
-PY
-```
-
-## Vendored Runtime
-
-See [THIRD_PARTY.md](THIRD_PARTY.md).
-
-Summary:
-
-```text
-vendor/tdmpc2_runtime/
-  Source: https://github.com/nicklashansen/tdmpc2
-  Base commit: e9f59321933cbc8e11a002b842adc7d4ffae8ff1
-  Includes local runtime modifications required by MPR-MPC.
-
-lattice_tdmpc2/
-  Source: https://github.com/Ku-Zibeth/lattice_tdmpc2
-  Commit: 638fa40cffadf547d025f5aecbad5ffe97a6aad7
-
-lattice/
-  Project-specific Frenet-Lattice runtime snapshot used by MPR-MPC.
-```
-
-Vendoring is used to make the research code reproducible and to avoid upstream API drift or missing local runtime changes.
-
-## Troubleshooting
-
-`torch.cuda.is_available() == False`:
-
-```bash
-nvidia-smi
-python -c "import torch; print(torch.__version__, torch.version.cuda, torch.cuda.is_available())"
-```
-
-`ModuleNotFoundError: common`, `env`, or `lattice`:
-
-```bash
-python scripts/check_environment.py
-```
-
-All runtime modules should resolve inside the `MPR_MetaDrive` clone.
-
-Panda3D/OpenGL issues:
-
-```bash
-sudo apt update
-sudo apt install -y libgl1 libglib2.0-0 libegl1 libglvnd0 ffmpeg
-```
-
-W&B login issues:
-
-```bash
-wandb login
-```
-
-or:
-
-```bash
-python train.py enable_wandb=false
-```
+训练框架 `train.py`、`trainer.py` 及必要运行依赖保留；本次整合没有训练、微调或覆盖模型权重。

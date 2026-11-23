@@ -1,9 +1,0 @@
-{
-  "local_main": "45073e15f4d38ea53840a4bef22a5bd06e2774a5",
-  "remote_main_observed_by_git_ls_remote": "bfe035d7ea441bb845f65d7b72c3e3dbebfb3d33",
-  "remote_tracking_origin_main": "bfe035d7ea441bb845f65d7b72c3e3dbebfb3d33",
-  "local_contains_online_elite": true,
-  "remote_contains_online_elite": false,
-  "remote_operation": "git ls-remote origin refs/heads/main (read-only)",
-  "conclusion": "56 episodes match current local main runtime fingerprint; DO NOT attribute them to current GitHub main. No fetch/checkout/reset/push."
-}

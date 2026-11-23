@@ -1,4 +1,4 @@
-"""Benchmark all MPR-MPC model versions on the same MetaDrive scenarios.
+"""Internal frozen-model evaluation utilities for the retained release.
 
 The script is evaluation-only:
     - no training
@@ -53,7 +53,7 @@ from mpr_mpc.evaluation_diagnostics import EpisodeDiagnostics, StepDiagnosticsLo
 
 
 DEFAULT_MODELS_ROOT = (
-    SCRIPT_ROOT / "logs" / "metadrive-risk" / "1"
+    SCRIPT_ROOT / "models"
 )
 
 
@@ -525,6 +525,9 @@ def _evaluate_checkpoint(
             for key in PLAN_MEAN_KEYS:
                 row[_metric_name("mean", key)] = _nanmean(plan_values[key])
 
+            if bool(benchmark.get("collision_as_failure", False)):
+                from mpr_mpc.evaluation_success import apply_collision_failure
+                apply_collision_failure(row)
             rows.append(row)
             if on_episode is not None:
                 on_episode(row)
@@ -665,5 +668,5 @@ def main(raw_cfg: DictConfig) -> None:
 
 
 if __name__ == "__main__":
-    torch.set_float32_matmul_precision("high")
-    main()
+    from tools.run_native_ablation100 import main as selected_main
+    selected_main()

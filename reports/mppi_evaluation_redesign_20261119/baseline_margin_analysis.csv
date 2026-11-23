@@ -1,7 +1,0 @@
-margin,replacement_rate,selected_gain,negative_selection_rate,crash_delta,oor_delta,source,eligible_nontrivial
-0.0,1.0,-1.0456994767367598,0.4375,-0.0625,0.0,old8maps development only,False
-1.2566566467285156,0.75,-1.037311538235524,0.375,-0.0625,0.0,old8maps development only,True
-3.731636047363281,0.5,-0.41205023890774,0.1875,0.0,0.0,old8maps development only,True
-9.452388763427734,0.25,-0.1941179166986653,0.0625,0.0,0.0,old8maps development only,True
-13.2349853515625,0.125,-0.1720274168443585,0.0625,0.0,0.0,old8maps development only,True
-13.2349853515625,0.08333333333333333,0.9275658945950513,0.0,,,new12maps3seeds ONE frozen margin; no retuning,True

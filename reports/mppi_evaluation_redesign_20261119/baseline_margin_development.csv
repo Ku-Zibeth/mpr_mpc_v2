@@ -1,6 +1,0 @@
-margin,replacement_rate,selected_gain,negative_selection_rate,crash_delta,oor_delta,source,eligible_nontrivial
-0.0,1.0,-1.0456994767367598,0.4375,-0.0625,0.0,old8maps development only,False
-1.2566566467285156,0.75,-1.037311538235524,0.375,-0.0625,0.0,old8maps development only,True
-3.7316360473632812,0.5,-0.41205023890774006,0.1875,0.0,0.0,old8maps development only,True
-9.452388763427734,0.25,-0.1941179166986653,0.0625,0.0,0.0,old8maps development only,True
-13.2349853515625,0.125,-0.17202741684435852,0.0625,0.0,0.0,old8maps development only,True

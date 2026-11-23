@@ -160,6 +160,8 @@ SAFE_METADRIVE_EXTRA_CONFIG: dict[str, Any] = {
     "enable_idm_lane_change": True,
     "disable_idm_deceleration": False,
     "out_of_road_mode": "legacy",
+    "out_of_road_margin_widths": 0.0,
+    "out_of_road_margin_m": None,
     "out_of_road_warning_limit": 5,
     "out_of_road_warning_penalty": 1.0,
     "out_of_road_warning_cost": 1.0,
@@ -182,6 +184,25 @@ class TDMPC2SafeMetaDriveEnv(SafeMetaDriveEnv):
 
             return LidarStateObservation(self.config)
         return super().get_single_observation()
+
+    def _is_out_of_road(self, vehicle):
+        if self.config.get("out_of_road_mode", "legacy") != "body_margin":
+            return super()._is_out_of_road(vehicle)
+        from .road_boundary import BodyMarginRoadBoundary
+
+        boundary = getattr(self, "_body_margin_boundary", None)
+        if boundary is None:
+            boundary = self._body_margin_boundary = BodyMarginRoadBoundary()
+        outside, margin = boundary.check(
+            vehicle, self.config["out_of_road_margin_widths"],
+            margin_m=self.config.get("out_of_road_margin_m"),
+        )
+        self._body_margin_details = dict(
+            out_of_road_native=float(super()._is_out_of_road(vehicle)),
+            out_of_road_margin_m=float(margin),
+            out_of_road_vehicle_width_m=float(vehicle.WIDTH),
+        )
+        return bool(outside)
 
 
 def _plain_dict(value: Any) -> dict[str, Any]:
@@ -447,6 +468,8 @@ class MetaDriveTDMPC2Env(gym.Env):
             risk_field_reward_penalty=risk_penalty,
             tdmpc2_reward=reward,
         )
+        if self.simulator_config.get("out_of_road_mode") == "body_margin":
+            info.update(self._env._body_margin_details)
         safety_cost, safety_risk_cost, safety_event_cost = self._safety_cost(info, normalized_risk)
         info.update(
             cost=safety_cost,

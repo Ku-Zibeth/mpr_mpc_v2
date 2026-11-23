@@ -1,0 +1,30 @@
+{
+  "removed_worktrees": [
+    "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_comfort_20261120",
+    "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119",
+    "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_first_action_20261117",
+    "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_h1_counterfactual_20261118",
+    "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_native_road_20261119",
+    "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118",
+    "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_tracking_20261119"
+  ],
+  "removed_merged_local_branches": [
+    "experiment/mppi-comfort-20261120",
+    "experiment/mppi-evaluation-redesign-20261119",
+    "experiment/mppi-first-action-20261117",
+    "experiment/mppi-h1-counterfactual-20261118",
+    "experiment/mppi-native-road-20261119",
+    "experiment/mppi-root-cause-20261118",
+    "experiment/mppi-tracking-20261119"
+  ],
+  "unrelated_original_projects_untouched": [
+    "mpr_mpc",
+    "tdmpc2",
+    "env",
+    "lattice",
+    "lattice_tdmpc2"
+  ],
+  "source_backup": "Local Git metadata: .git/consolidation-backup-20261123 (uncommitted source patches only)",
+  "selected_model": "models/wm200k_rl300k.pt",
+  "selected_checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a"
+}

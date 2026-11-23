@@ -1,9 +1,0 @@
-{
-  "performed": false,
-  "reason": "At least one preregistered LOMO/inner-stop gate failed. Stop; do not add validation or enlarge models.",
-  "new_maps": [],
-  "new_origins": [],
-  "old_seen_validation_reused": false,
-  "frozen_A2_sha256": "a0d91c24bb611dcf026d3a6f5274b7abb84eef37928c8e85ca38c555e5f41e61",
-  "online": false
-}

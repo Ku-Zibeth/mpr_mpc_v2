@@ -20,11 +20,7 @@ VARIANTS = (
     ("C_lattice_mppi", "lattice_mppi"),
     ("D_lattice_sac_mppi", "full_mpr_mpc"),
 )
-DEFAULT_CHECKPOINT = (
-    suite.DEFAULT_MODELS_ROOT
-    / "mpr_mpc_frozen_wm200k_rl500k_seed1_v2"
-    / "models/milestone_500k_world_model_residual_rl.pt"
-)
+DEFAULT_CHECKPOINT = suite.SCRIPT_ROOT / "models" / "wm200k_rl300k.pt"
 
 
 def _select_variants(benchmark):
@@ -207,5 +203,5 @@ def main(raw_cfg: DictConfig) -> None:
 
 
 if __name__ == "__main__":
-    torch.set_float32_matmul_precision("high")
-    main()
+    from tools.run_native_ablation100 import main as selected_main
+    selected_main()

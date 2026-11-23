@@ -1,7 +1,0 @@
-{
-  "helper_sha256": "5bf3f44b52aff1aad2d29ff7cf2cfc6435950528693d62339ebf214ec6f7665a",
-  "change": "Algebraically factor native SAT axis tensors; retain self/cross dot products, no ideal-orthogonality approximation and no tolerance change.",
-  "not_loaded_by_frozen_validation": true,
-  "no_holdout_outcomes_inspected": true,
-  "requirements": "Candidate arrays and full action/mean/std exact on8 current real-state contexts; all pure SAT tests exact; after frozen validation ends full2 closed trajectories exact."
-}

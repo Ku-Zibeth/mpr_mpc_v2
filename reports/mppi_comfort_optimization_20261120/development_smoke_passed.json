@@ -1,7 +1,0 @@
-{
-  "episodes": 6,
-  "steps": 600,
-  "baseline_original_actions_observations_rewards_bitwise": true,
-  "initial_conditions_exact": true,
-  "no_weight_retuning": true
-}

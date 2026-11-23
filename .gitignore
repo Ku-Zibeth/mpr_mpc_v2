@@ -1,62 +1,23 @@
-# Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Virtual environment
+*.py[cod]
+.pytest_cache/
 .venv/
 venv/
-conda-env/
-
-# IDE
-.vscode/
-.idea/
-
-# Environment variables
 .env
 .env.*
-
-# Logs
+.vscode/
+.idea/
 *.log
+logs/
 wandb/
-checkpoints/
 videos/
-.pytest_cache/
-
-# Model checkpoints
+checkpoints/
+model_checkpoints/
 *.pt
 *.pth
 *.ckpt
-
-# Cache / generated data
+*.safetensors
+!models/wm200k_rl300k.pt
 *.npy
 *.npz
-
-# OS
 .DS_Store
-
-# Trained model weights
-*.pt
-*.pth
-*.ckpt
-*.safetensors
-
-# Model checkpoint directories
-checkpoints/
-checkpoint/
-
-# Training logs
-logs/
-**/logs/
-
-# Model checkpoints
-*.pt
-*.pth
-*.ckpt
-*.safetensors
-
-# Checkpoint directories
-checkpoints/
-checkpoint/
-model_checkpoints/

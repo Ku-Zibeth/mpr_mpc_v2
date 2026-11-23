@@ -215,7 +215,7 @@ class MPRMPCPlanner:
     @torch.no_grad()
     def prepare(
         self, observation, vehicle, *, need_world_model_features: bool = True,
-        need_residual_state: bool = True
+        need_residual_state: bool = True, need_tracking_geometry: bool = False
     ) -> MPRPlanContext:
         if bool(getattr(vehicle, "enable_reverse", False)):
             raise ValueError("MPR safety requires enable_reverse=false for verified braking semantics.")
@@ -238,7 +238,9 @@ class MPRMPCPlanner:
         )
         residual_bounds = self.residual_bounds(coarse_path)
         safety_context = None
-        if self.safety is not None and need_world_model_features and need_residual_state:
+        if self.safety is not None and (
+            (need_world_model_features and need_residual_state) or need_tracking_geometry
+        ):
             width, wheelbase, steering = self._vehicle_geometry(vehicle)
             safety_context = self.safety.context(self.structured.planner, vehicle,
                                                   width=width, wheelbase=wheelbase, max_steering=steering)
@@ -618,6 +620,7 @@ class MPRMPCPlanner:
             vehicle,
             need_world_model_features=stage.use_residual or (eval_mode and stage.use_mppi),
             need_residual_state=stage.use_residual,
+            need_tracking_geometry=eval_mode and stage.use_mppi and self.tracking_evaluator is not None,
         )
         result = self.refine_and_plan(
             context,

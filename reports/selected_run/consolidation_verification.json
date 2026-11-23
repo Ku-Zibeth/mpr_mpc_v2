@@ -1,0 +1,178 @@
+{
+  "selected_checkpoint_sha256": "4d0f1d43749794d1d1c28533309cbe75bc3712d25a92936ca7b477c30014810a",
+  "source_control_code_hashes_match": true,
+  "reference_counts": {
+    "A_lattice": 75,
+    "B_lattice_sac": 81,
+    "C_lattice_mppi": 73,
+    "D_lattice_sac_mppi": 90
+  },
+  "unit_tests_passed": 106,
+  "environment_check_passed": true,
+  "pre_cleanup_smoke_action_checks": {
+    "action_checks": [
+      {
+        "configuration": "A_lattice",
+        "scenario": 2054521,
+        "step": 1,
+        "max_action_error": 0.0
+      },
+      {
+        "configuration": "A_lattice",
+        "scenario": 2001333,
+        "step": 1,
+        "max_action_error": 0.0
+      },
+      {
+        "configuration": "A_lattice",
+        "scenario": 2040214,
+        "step": 1,
+        "max_action_error": 0.0
+      },
+      {
+        "configuration": "B_lattice_sac",
+        "scenario": 2054521,
+        "step": 1,
+        "max_action_error": 0.0
+      },
+      {
+        "configuration": "B_lattice_sac",
+        "scenario": 2001333,
+        "step": 1,
+        "max_action_error": 0.0
+      },
+      {
+        "configuration": "B_lattice_sac",
+        "scenario": 2040214,
+        "step": 1,
+        "max_action_error": 0.0
+      },
+      {
+        "configuration": "C_lattice_mppi",
+        "scenario": 2054521,
+        "step": 1,
+        "max_action_error": 0.0
+      },
+      {
+        "configuration": "C_lattice_mppi",
+        "scenario": 2001333,
+        "step": 1,
+        "max_action_error": 0.0
+      },
+      {
+        "configuration": "C_lattice_mppi",
+        "scenario": 2040214,
+        "step": 1,
+        "max_action_error": 0.0
+      },
+      {
+        "configuration": "D_lattice_sac_mppi",
+        "scenario": 2054521,
+        "step": 1,
+        "max_action_error": 0.0
+      },
+      {
+        "configuration": "D_lattice_sac_mppi",
+        "scenario": 2001333,
+        "step": 1,
+        "max_action_error": 0.0
+      },
+      {
+        "configuration": "D_lattice_sac_mppi",
+        "scenario": 2040214,
+        "step": 1,
+        "max_action_error": 0.0
+      }
+    ],
+    "initial_states_match_source": true
+  },
+  "post_cleanup_action_checks": [
+    {
+      "configuration": "A_lattice",
+      "scenario": 2054521,
+      "step": 1,
+      "action_error": 0.0
+    },
+    {
+      "configuration": "A_lattice",
+      "scenario": 2001333,
+      "step": 1,
+      "action_error": 0.0
+    },
+    {
+      "configuration": "A_lattice",
+      "scenario": 2040214,
+      "step": 1,
+      "action_error": 0.0
+    },
+    {
+      "configuration": "B_lattice_sac",
+      "scenario": 2054521,
+      "step": 1,
+      "action_error": 0.0
+    },
+    {
+      "configuration": "B_lattice_sac",
+      "scenario": 2001333,
+      "step": 1,
+      "action_error": 0.0
+    },
+    {
+      "configuration": "B_lattice_sac",
+      "scenario": 2040214,
+      "step": 1,
+      "action_error": 0.0
+    },
+    {
+      "configuration": "C_lattice_mppi",
+      "scenario": 2054521,
+      "step": 1,
+      "action_error": 0.0
+    },
+    {
+      "configuration": "C_lattice_mppi",
+      "scenario": 2001333,
+      "step": 1,
+      "action_error": 0.0
+    },
+    {
+      "configuration": "C_lattice_mppi",
+      "scenario": 2040214,
+      "step": 1,
+      "action_error": 0.0
+    },
+    {
+      "configuration": "D_lattice_sac_mppi",
+      "scenario": 2054521,
+      "step": 1,
+      "action_error": 0.0
+    },
+    {
+      "configuration": "D_lattice_sac_mppi",
+      "scenario": 2001333,
+      "step": 1,
+      "action_error": 0.0
+    },
+    {
+      "configuration": "D_lattice_sac_mppi",
+      "scenario": 2040214,
+      "step": 1,
+      "action_error": 0.0
+    }
+  ],
+  "post_cleanup_technical_episodes": 12,
+  "post_cleanup_steps_per_episode": 1,
+  "removed_worktrees": [
+    "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_comfort_20261120",
+    "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_evaluation_redesign_20261119",
+    "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_first_action_20261117",
+    "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_h1_counterfactual_20261118",
+    "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_native_road_20261119",
+    "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_root_cause_20261118",
+    "/home/kzb/kzb_code/tdmpc2/mpr_mpc_v2_tracking_20261119"
+  ],
+  "formal400_episode_rerun_performed": false,
+  "committed": false,
+  "pushed": false,
+  "model_lfs_pointer_verified": true
+}

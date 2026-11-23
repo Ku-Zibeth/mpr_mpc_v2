@@ -1,0 +1,45 @@
+[OK] Python - 3.11.16
+[OK] Repository root - /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2
+[OK] Default log root - /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/logs
+[OK] torch - 2.7.1
+[OK] PyTorch CUDA runtime - 12.6
+[OK] CUDA - NVIDIA GeForce RTX 3070
+[OK] CUDA device count - 1
+[OK] metadrive-simulator - 0.4.3
+[OK] gymnasium - 0.29.1
+[OK] hydra-core - 1.3.2
+[OK] omegaconf - 2.3.0
+[OK] tensordict - 0.8.3
+[OK] torchrl - 0.8.1
+[OK] numpy - 1.24.4
+[OK] hydra - 1.3.2
+[OK] omegaconf - 2.3.0
+[OK] wandb - 0.17.4
+[OK] gymnasium - 0.29.1
+[OK] metadrive - imported
+[OK] tensordict - 0.8.3
+[OK] torchrl - 0.8.1
+[OK] pandas - 2.0.3
+[OK] scipy - 1.15.3
+[OK] env - imported
+[OK] common.buffer - imported
+[OK] lattice - imported
+[OK] lattice.frenet_metadrive - imported
+[OK] lattice_tdmpc2 - imported
+[OK] tdmpc2 - imported
+[OK] mpr_mpc - imported
+[OK] mpr_mpc.agent - imported
+[OK] mpr_mpc.planning.coordinator - imported
+[OK] mpr_mpc.residual_rl - imported
+[OK] mpr_mpc.tdmpc2.core - imported
+[OK] env source - /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/env/__init__.py
+[OK] common.buffer source - /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/vendor/tdmpc2_runtime/common/buffer.py
+[OK] lattice source - /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/lattice/__init__.py
+[OK] lattice.frenet_metadrive source - /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/lattice/frenet_metadrive.py
+[OK] lattice_tdmpc2 source - /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/lattice_tdmpc2/__init__.py
+[OK] tdmpc2 source - /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/vendor/tdmpc2_runtime/tdmpc2.py
+[OK] mpr_mpc.tdmpc2.core source - /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/tdmpc2/core.py
+[OK] vendor root - /home/kzb/kzb_code/tdmpc2/mpr_mpc_v2/vendor
+[OK] TDMPC2 class module - tdmpc2
+[OK] algorithm_version - mpr_mpc_residual_sac_mppi_v2
+Environment check passed.

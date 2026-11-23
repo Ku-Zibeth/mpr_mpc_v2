@@ -1,6 +1,0 @@
-{
-  "development_episodes": 48,
-  "holdout_episodes": 96,
-  "independent_validation_used": true,
-  "frozen_configuration": "Tconditional"
-}
